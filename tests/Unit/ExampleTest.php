@@ -11,6 +11,6 @@ class ExampleTest extends TestCase
      */
     public function testThatTrueIsTrue(): void
     {
-        $this->assertTrue(true);
+        $this->assertCount(3, [1, 2, 3]);
     }
 }

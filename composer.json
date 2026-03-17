@@ -18,10 +18,12 @@
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
+        "larastan/larastan": "^3.9",
         "laravel/pail": "^1.2.5",
         "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
+        "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^12.5.12",
         "squizlabs/php_codesniffer": "^4.0"
     },
@@ -61,9 +63,13 @@
             "vendor/bin/pint",
             "vendor/bin/phpcbf"
         ],
+        "stan": [
+            "vendor/bin/phpstan analyse --memory-limit=512M"
+        ],
         "lint": [
             "@cs-fix",
-            "@cs"
+            "@cs",
+            "@stan"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
