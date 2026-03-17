@@ -14,5 +14,3 @@ parameters:
         - bootstrap/cache
 
     level: 5
-
-
