@@ -1,0 +1,8 @@
+{
+    "preset": "psr12",
+    "exclude": [
+        "vendor",
+        "storage",
+        "bootstrap/cache"
+    ]
+}

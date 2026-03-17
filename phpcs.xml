@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<ruleset name="AssociationManager">
+    <description>Coding Standard für das AssociationManager-Projekt (PSR-12)</description>
+
+    <!-- Zu prüfende Verzeichnisse -->
+    <file>app</file>
+    <file>routes</file>
+    <file>database</file>
+    <file>tests</file>
+
+    <!-- Ausschlüsse -->
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/storage/*</exclude-pattern>
+    <exclude-pattern>*/bootstrap/cache/*</exclude-pattern>
+    <exclude-pattern>*_ide_helper*</exclude-pattern>
+
+    <!-- PHP-Version -->
+    <config name="php_version" value="80200"/>
+
+    <!-- Ausgabe -->
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <!-- Standard -->
+    <rule ref="PSR12"/>
+
+</ruleset>
