@@ -18,13 +18,14 @@ class CreateUser extends Command
      */
     public function handle(): int
     {
-        $this->info('Neuen Benutzer anlegen');
-        $this->line('----------------------------');
+        $title = __('commands.create_user.title');
+        $this->info($title);
+        $this->line(str_repeat('-', mb_strlen($title)));
 
-        $name = $this->ask('Name');
-        $email = $this->ask('E-Mail');
-        $password = $this->secret('Passwort');
-        $passwordConfirm = $this->secret('Passwort bestätigen');
+        $name = $this->ask(__('commands.create_user.ask_name'));
+        $email = $this->ask(__('commands.common.ask_email'));
+        $password = $this->secret(__('commands.create_user.ask_password'));
+        $passwordConfirm = $this->secret(__('commands.create_user.ask_password_confirm'));
 
         $validator = Validator::make(
             [
@@ -58,7 +59,7 @@ class CreateUser extends Command
             'password' => Hash::make($password),
         ]);
 
-        $this->info("Benutzer \"$name\" ($email) wurde erfolgreich angelegt.");
+        $this->info(__('commands.create_user.success', ['name' => $name, 'email' => $email]));
 
         return self::SUCCESS;
     }
