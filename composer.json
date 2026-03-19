@@ -52,24 +52,15 @@
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1 --timeout=0\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others"
         ],
-        "test": [
-            "@php artisan config:clear --ansi",
-            "@php artisan test"
-        ],
-        "cs": [
-            "vendor/bin/phpcs"
-        ],
-        "cs-fix": [
+        "dev:analyze:phpstan": "vendor/bin/phpstan analyse --memory-limit=512M",
+        "dev:lint:phpcs": "vendor/bin/phpcs",
+        "dev:lint:fix": [
             "vendor/bin/pint",
             "vendor/bin/phpcbf"
         ],
-        "stan": [
-            "vendor/bin/phpstan analyse --memory-limit=512M"
-        ],
-        "lint": [
-            "@cs-fix",
-            "@cs",
-            "@stan"
+        "test": [
+            "@php artisan config:clear --ansi",
+            "@php artisan test"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

@@ -25,7 +25,9 @@ class UpdatePasswordTest extends TestCase
             ])
             ->call('updatePassword');
 
-        $this->assertTrue(Hash::check('new-password', $user->fresh()->password));
+        $refreshedUser = $user->fresh();
+        $this->assertNotNull($refreshedUser);
+        $this->assertTrue(Hash::check('new-password', $refreshedUser->password));
     }
 
     public function testCurrentPasswordMustBeCorrect(): void
@@ -41,7 +43,9 @@ class UpdatePasswordTest extends TestCase
             ->call('updatePassword')
             ->assertHasErrors(['current_password']);
 
-        $this->assertTrue(Hash::check('password', $user->fresh()->password));
+        $refreshedUser = $user->fresh();
+        $this->assertNotNull($refreshedUser);
+        $this->assertTrue(Hash::check('password', $refreshedUser->password));
     }
 
     public function testNewPasswordsMustMatch(): void
@@ -57,6 +61,8 @@ class UpdatePasswordTest extends TestCase
             ->call('updatePassword')
             ->assertHasErrors(['password']);
 
-        $this->assertTrue(Hash::check('password', $user->fresh()->password));
+        $refreshedUser = $user->fresh();
+        $this->assertNotNull($refreshedUser);
+        $this->assertTrue(Hash::check('password', $refreshedUser->password));
     }
 }

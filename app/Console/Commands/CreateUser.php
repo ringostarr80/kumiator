@@ -48,6 +48,10 @@ class CreateUser extends Command
             return self::FAILURE;
         }
 
+        assert(is_string($name));
+        assert(is_string($email));
+        assert(is_string($password));
+
         User::create([
             'name'     => $name,
             'email'    => $email,

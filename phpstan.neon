@@ -4,8 +4,9 @@ includes:
 parameters:
     paths:
         - app
-        - routes
         - database
+        - lang
+        - routes
         - tests
 
     excludePaths:
@@ -13,4 +14,4 @@ parameters:
         - storage
         - bootstrap/cache
 
-    level: 5
+    level: max

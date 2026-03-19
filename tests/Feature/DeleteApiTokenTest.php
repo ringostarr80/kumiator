@@ -32,6 +32,9 @@ class DeleteApiTokenTest extends TestCase
             ->set(['apiTokenIdBeingDeleted' => $token->id])
             ->call('deleteApiToken');
 
-        $this->assertCount(0, $user->fresh()->tokens);
+        $userTokens = $user->fresh()?->tokens;
+
+        $this->assertNotNull($userTokens);
+        $this->assertCount(0, $userTokens);
     }
 }

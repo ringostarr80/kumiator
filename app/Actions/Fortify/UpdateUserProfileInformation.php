@@ -3,6 +3,7 @@
 namespace App\Actions\Fortify;
 
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
@@ -22,11 +23,12 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             'photo' => ['nullable', 'mimes:jpg,jpeg,png', 'max:1024'],
         ])->validateWithBag('updateProfileInformation');
 
-        if (isset($input['photo'])) {
+        if (isset($input['photo']) && $input['photo'] instanceof UploadedFile) {
             $user->updateProfilePhoto($input['photo']);
         }
 
         if ($input['email'] !== $user->email) {
+            // @phpstan-ignore argument.type
             $this->updateVerifiedUser($user, $input);
         } else {
             $user->forceFill([

@@ -28,6 +28,7 @@ class TwoFactorAuthenticationSettingsTest extends TestCase
 
         $user = $user->fresh();
 
+        $this->assertNotNull($user);
         $this->assertNotNull($user->two_factor_secret);
         $this->assertCount(8, $user->recoveryCodes());
     }
@@ -47,11 +48,19 @@ class TwoFactorAuthenticationSettingsTest extends TestCase
             ->call('regenerateRecoveryCodes');
 
         $user = $user->fresh();
+        $this->assertNotNull($user);
 
         $component->call('regenerateRecoveryCodes');
 
         $this->assertCount(8, $user->recoveryCodes());
-        $this->assertCount(8, array_diff($user->recoveryCodes(), $user->fresh()->recoveryCodes()));
+
+        $refreshedUser = $user->fresh();
+        $this->assertNotNull($refreshedUser);
+        $this->assertCount(
+            8,
+            // @phpstan-ignore argument.type, argument.type
+            array_diff($user->recoveryCodes(), $refreshedUser->recoveryCodes())
+        );
     }
 
     public function testTwoFactorAuthenticationCanBeDisabled(): void
@@ -67,10 +76,14 @@ class TwoFactorAuthenticationSettingsTest extends TestCase
         $component = Livewire::test(TwoFactorAuthenticationForm::class)
             ->call('enableTwoFactorAuthentication');
 
-        $this->assertNotNull($user->fresh()->two_factor_secret);
+        $refreshedUser = $user->fresh();
+        $this->assertNotNull($refreshedUser);
+        $this->assertNotNull($refreshedUser->two_factor_secret);
 
         $component->call('disableTwoFactorAuthentication');
 
-        $this->assertNull($user->fresh()->two_factor_secret);
+        $refreshedUser = $user->fresh();
+        $this->assertNotNull($refreshedUser);
+        $this->assertNull($refreshedUser->two_factor_secret);
     }
 }

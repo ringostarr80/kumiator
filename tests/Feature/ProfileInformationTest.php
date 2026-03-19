@@ -18,8 +18,10 @@ class ProfileInformationTest extends TestCase
 
         $component = Livewire::test(UpdateProfileInformationForm::class);
 
-        $this->assertEquals($user->name, $component->get('state')['name']);
-        $this->assertEquals($user->email, $component->get('state')['email']);
+        $componentState = $component->get('state');
+        assert(is_array($componentState));
+        $this->assertEquals($user->name, $componentState['name']);
+        $this->assertEquals($user->email, $componentState['email']);
     }
 
     public function testProfileInformationCanBeUpdated(): void
@@ -30,7 +32,10 @@ class ProfileInformationTest extends TestCase
             ->set('state', ['name' => 'Test Name', 'email' => 'test@example.com'])
             ->call('updateProfileInformation');
 
-        $this->assertEquals('Test Name', $user->fresh()->name);
-        $this->assertEquals('test@example.com', $user->fresh()->email);
+        $refreshedUser = $user->fresh();
+
+        $this->assertNotNull($refreshedUser);
+        $this->assertEquals('Test Name', $refreshedUser->name);
+        $this->assertEquals('test@example.com', $refreshedUser->email);
     }
 }
