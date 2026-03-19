@@ -27,6 +27,7 @@ return [
         'no_users'          => 'No users found.',
         'header_name'       => 'Name',
         'header_email'      => 'E-Mail',
+        'header_roles'      => 'Roles',
         'header_created_at' => 'Created at',
         'total'             => 'Total: :count users',
     ],
