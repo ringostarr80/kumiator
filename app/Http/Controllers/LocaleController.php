@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\RedirectResponse;
@@ -10,7 +12,7 @@ class LocaleController extends Controller
     {
         $supported = ['de', 'en'];
 
-        if (in_array($locale, $supported)) {
+        if (in_array($locale, $supported, true)) {
             session(['locale' => $locale]);
         }
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
 use App\Models\User;
@@ -9,8 +11,8 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
-#[Signature('user:create')]
 #[Description('Legt einen neuen Benutzer an')]
+#[Signature('user:create')]
 class CreateUser extends Command
 {
     /**
@@ -29,16 +31,16 @@ class CreateUser extends Command
 
         $validator = Validator::make(
             [
-                'name'                  => $name,
-                'email'                 => $email,
-                'password'              => $password,
+                'name' => $name,
+                'email' => $email,
+                'password' => $password,
                 'password_confirmation' => $passwordConfirm,
             ],
             [
-                'name'     => ['required', 'string', 'max:255'],
-                'email'    => ['required', 'email', 'unique:users,email'],
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'email', 'unique:users,email'],
                 'password' => ['required', 'string', 'min:8', 'confirmed'],
-            ]
+            ],
         );
 
         if ($validator->fails()) {
@@ -54,8 +56,8 @@ class CreateUser extends Command
         assert(is_string($password));
 
         User::create([
-            'name'     => $name,
-            'email'    => $email,
+            'name' => $name,
+            'email' => $email,
             'password' => Hash::make($password),
         ]);
 

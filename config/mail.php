@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
 
     /*
@@ -42,7 +44,7 @@ return [
             'scheme' => env('MAIL_SCHEME'),
             'url' => env('MAIL_URL'),
             'host' => env('MAIL_HOST', '127.0.0.1'),
-            'port' => env('MAIL_PORT', 2525),
+            'port' => env('MAIL_PORT', 2_525),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
@@ -50,8 +52,8 @@ return [
                 'MAIL_EHLO_DOMAIN',
                 parse_url(
                     (string) env('APP_URL', 'http://localhost'),
-                    PHP_URL_HOST
-                )
+                    PHP_URL_HOST,
+                ),
             ),
         ],
 

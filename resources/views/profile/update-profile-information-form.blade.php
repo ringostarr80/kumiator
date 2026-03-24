@@ -65,6 +65,12 @@
             <x-input id="email" type="email" class="mt-1 block w-full" wire:model="state.email" required autocomplete="username" />
             <x-input-error for="email" class="mt-2" />
 
+            @if ($this->user->roles->isNotEmpty())
+                <p class="text-sm mt-2 text-gray-600">
+                    {{ __('Role') }}: {{ $this->user->roles->pluck('name')->first() }}
+                </p>
+            @endif
+
             @if (Laravel\Fortify\Features::enabled(Laravel\Fortify\Features::emailVerification()) && ! $this->user->hasVerifiedEmail())
                 <p class="text-sm mt-2">
                     {{ __('Your email address is unverified.') }}

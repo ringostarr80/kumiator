@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Models\User;
@@ -59,7 +61,7 @@ class TwoFactorAuthenticationSettingsTest extends TestCase
         $this->assertCount(
             8,
             // @phpstan-ignore argument.type, argument.type
-            array_diff($user->recoveryCodes(), $refreshedUser->recoveryCodes())
+            array_diff($user->recoveryCodes(), $refreshedUser->recoveryCodes()),
         );
     }
 
