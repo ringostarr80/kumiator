@@ -6,6 +6,7 @@
     <file>app</file>
     <file>config</file>
     <file>database</file>
+    <file>lang</file>
     <file>routes</file>
     <file>tests</file>
 
@@ -147,7 +148,7 @@
     <rule ref="SlevomatCodingStandard.Functions.RequireTrailingCommaInClosureUse"/>
     <!--<rule ref="SlevomatCodingStandard.Functions.DisallowTrailingCommaInDeclaration"/>-->
     <rule ref="SlevomatCodingStandard.Functions.RequireTrailingCommaInDeclaration"/>
-    <rule ref="SlevomatCodingStandard.Functions.StaticClosure"/>
+    <!--<rule ref="SlevomatCodingStandard.Functions.StaticClosure"/>-->
     <rule ref="SlevomatCodingStandard.Functions.StrictCall"/>
     <rule ref="SlevomatCodingStandard.Functions.UnusedInheritedVariablePassedToClosure"/>
     <!--<rule ref="SlevomatCodingStandard.Functions.UnusedParameter"/>-->
