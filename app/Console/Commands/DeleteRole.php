@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\User;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -29,9 +30,26 @@ class DeleteRole extends Command
 
         $usersCount = $role->users()->count();
 
+        if ($usersCount > 0) {
+            /** @var \Illuminate\Database\Eloquent\Collection<int, User> $users */
+            $users = $role->users()->get();
+            $usersWithSingleRole = $users->filter(
+                static fn (User $user) => $user->roles()->count() === 1,
+            );
+
+            if ($usersWithSingleRole->isNotEmpty()) {
+                $this->error(__('commands.delete_role.has_sole_users', [
+                    'name' => $name,
+                    'count' => $usersWithSingleRole->count(),
+                ]));
+
+                return self::FAILURE;
+            }
+        }
+
         $this->line(__('commands.delete_role.role_found', ['name' => $name, 'users_count' => $usersCount]));
 
-        if (!$this->confirm(__('commands.delete_role.confirm_delete'))) {
+        if (! $this->confirm(__('commands.delete_role.confirm_delete'))) {
             $this->info(__('commands.delete_role.aborted'));
 
             return self::SUCCESS;

@@ -8,8 +8,10 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -36,6 +38,22 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::redirectUserForTwoFactorAuthenticationUsing(RedirectIfTwoFactorAuthenticatable::class);
+
+        Fortify::authenticateUsing(static function (Request $request): ?User {
+            $email = $request->input('email');
+            assert(is_string($email));
+
+            $password = $request->input('password');
+            assert(is_string($password));
+
+            $user = User::where('email', $email)->first();
+
+            if ($user !== null && Hash::check($password, $user->password) && $user->approved_at !== null) {
+                return $user;
+            }
+
+            return null;
+        });
 
         RateLimiter::for('login', static function (Request $request) {
             $username = $request->input(Fortify::username()) ?? '';

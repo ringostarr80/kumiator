@@ -43,4 +43,16 @@ class AuthenticationTest extends TestCase
 
         $this->assertGuest();
     }
+
+    public function testUnapprovedUsersCanNotAuthenticate(): void
+    {
+        $user = User::factory()->unapproved()->create();
+
+        $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertGuest();
+    }
 }

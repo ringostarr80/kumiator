@@ -15,6 +15,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 /**
  * @property ?\Illuminate\Support\Carbon $email_verified_at
+ * @property ?\Illuminate\Support\Carbon $approved_at
  */
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -69,6 +70,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return [
             'email_verified_at' => 'datetime',
+            'approved_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

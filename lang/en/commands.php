@@ -14,6 +14,8 @@ return [
         'ask_name' => 'Name',
         'ask_password' => 'Password',
         'ask_password_confirm' => 'Confirm password',
+        'ask_role' => 'Role',
+        'no_roles' => 'No roles found. Please create a role first using role:create.',
         'success' => 'User ":name" (:email) was successfully created.',
     ],
 
@@ -45,6 +47,7 @@ return [
         'ask_name' => 'Role name',
         'role_found' => 'Role found: :name (:users_count users assigned)',
         'confirm_delete' => 'Do you really want to delete this role?',
+        'has_sole_users' => 'Role ":name" cannot be deleted because :count users have only this role assigned.',
         'aborted' => 'Aborted.',
         'success' => 'Role ":name" was successfully deleted.',
     ],
@@ -62,6 +65,12 @@ return [
         'ask_role' => 'Role',
         'no_roles' => 'No roles found. Please create a role first using role:create.',
         'success' => 'User ":name" (:email) was successfully assigned the role ":role".',
+    ],
+
+    'approve_user' => [
+        'title' => 'Approve user',
+        'already_approved' => 'User ":name" (:email) is already approved.',
+        'success' => 'User ":name" (:email) was successfully approved.',
     ],
 
     'verify_user' => [

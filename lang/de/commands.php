@@ -14,6 +14,8 @@ return [
         'ask_name' => 'Name',
         'ask_password' => 'Passwort',
         'ask_password_confirm' => 'Passwort bestätigen',
+        'ask_role' => 'Rolle',
+        'no_roles' => 'Keine Rollen vorhanden. Bitte zuerst eine Rolle mit role:create anlegen.',
         'success' => 'Benutzer ":name" (:email) wurde erfolgreich angelegt.',
     ],
 
@@ -45,6 +47,8 @@ return [
         'ask_name' => 'Rollenname',
         'role_found' => 'Rolle gefunden: :name (:users_count Benutzer zugewiesen)',
         'confirm_delete' => 'Soll diese Rolle wirklich gelöscht werden?',
+        'has_sole_users' => 'Rolle ":name" kann nicht gelöscht werden.'
+            . ' :count Benutzer haben nur diese Rolle.',
         'aborted' => 'Abgebrochen.',
         'success' => 'Rolle ":name" wurde erfolgreich gelöscht.',
     ],
@@ -62,6 +66,12 @@ return [
         'ask_role' => 'Rolle',
         'no_roles' => 'Keine Rollen vorhanden. Bitte zuerst eine Rolle mit role:create anlegen.',
         'success' => 'Benutzer ":name" (:email) wurde die Rolle ":role" erfolgreich zugewiesen.',
+    ],
+
+    'approve_user' => [
+        'title' => 'Benutzer freischalten',
+        'already_approved' => 'Benutzer ":name" (:email) ist bereits freigeschaltet.',
+        'success' => 'Benutzer ":name" (:email) wurde erfolgreich freigeschaltet.',
     ],
 
     'verify_user' => [
