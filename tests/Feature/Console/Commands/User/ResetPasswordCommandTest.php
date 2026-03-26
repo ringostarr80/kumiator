@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Console\Commands;
+namespace Tests\Feature\Console\Commands\User;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Testing\PendingCommand;
 use Tests\TestCase;
 
-class ResetUserPasswordCommandTest extends TestCase
+final class ResetPasswordCommandTest extends TestCase
 {
     use RefreshDatabase;
 

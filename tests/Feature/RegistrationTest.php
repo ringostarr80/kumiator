@@ -11,7 +11,7 @@ use Laravel\Jetstream\Jetstream;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
-class RegistrationTest extends TestCase
+final class RegistrationTest extends TestCase
 {
     use RefreshDatabase;
 

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Console\Commands;
+namespace Tests\Feature\Console\Commands\User;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\PendingCommand;
 use Tests\TestCase;
 
-class DeleteUserCommandTest extends TestCase
+final class DeleteCommandTest extends TestCase
 {
     use RefreshDatabase;
 

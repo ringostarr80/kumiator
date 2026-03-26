@@ -8,13 +8,15 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class AuthenticationTest extends TestCase
+final class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const string LOGIN_URL_PATH = '/login';
+
     public function testLoginScreenCanBeRendered(): void
     {
-        $response = $this->get('/login');
+        $response = $this->get(self::LOGIN_URL_PATH);
 
         $response->assertStatus(200);
     }
@@ -23,7 +25,7 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->post('/login', [
+        $response = $this->post(self::LOGIN_URL_PATH, [
             'email' => $user->email,
             'password' => 'password',
         ]);
@@ -36,7 +38,7 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->post('/login', [
+        $this->post(self::LOGIN_URL_PATH, [
             'email' => $user->email,
             'password' => 'wrong-password',
         ]);
@@ -48,7 +50,7 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->unapproved()->create();
 
-        $this->post('/login', [
+        $this->post(self::LOGIN_URL_PATH, [
             'email' => $user->email,
             'password' => 'password',
         ]);

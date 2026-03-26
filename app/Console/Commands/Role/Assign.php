@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Role;
 
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
@@ -12,7 +12,7 @@ use Spatie\Permission\Models\Role;
 
 #[Signature('role:assign')]
 #[Description('Weist einem Benutzer eine Rolle zu')]
-class AssignRole extends Command
+class Assign extends Command
 {
     /**
      * Execute the console command.

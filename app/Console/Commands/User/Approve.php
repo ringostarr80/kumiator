@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\User;
 
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
@@ -12,7 +12,7 @@ use Illuminate\Support\Carbon;
 
 #[Signature('user:approve')]
 #[Description('Schaltet einen Benutzer frei')]
-class ApproveUser extends Command
+class Approve extends Command
 {
     /**
      * Execute the console command.

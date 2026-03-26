@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\User;
 
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
 
 #[Signature('user:delete')]
 #[Description('Löscht einen bestehenden Benutzer')]
-class DeleteUser extends Command
+class Delete extends Command
 {
     /**
      * Execute the console command.

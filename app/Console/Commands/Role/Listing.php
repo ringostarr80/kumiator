@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Role;
 
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -11,7 +11,7 @@ use Spatie\Permission\Models\Role;
 
 #[Signature('role:list')]
 #[Description('Listet alle Rollen auf')]
-class ListRoles extends Command
+class Listing extends Command
 {
     /**
      * Execute the console command.

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Console\Commands;
+namespace Tests\Feature\Console\Commands\Role;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\PendingCommand;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
-class CreateRoleCommandTest extends TestCase
+final class CreateCommandTest extends TestCase
 {
     use RefreshDatabase;
 

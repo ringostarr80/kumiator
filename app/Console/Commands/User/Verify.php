@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\User;
 
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
@@ -12,7 +12,7 @@ use Illuminate\Support\Carbon;
 
 #[Signature('user:verify')]
 #[Description('Verifiziert die E-Mail-Adresse eines Benutzers')]
-class VerifyUser extends Command
+class Verify extends Command
 {
     /**
      * Execute the console command.

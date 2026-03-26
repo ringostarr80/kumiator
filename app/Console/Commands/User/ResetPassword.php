@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\User;
 
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Validator;
 
 #[Signature('user:reset-password')]
 #[Description('Setzt das Passwort eines Benutzers neu')]
-class ResetUserPassword extends Command
+class ResetPassword extends Command
 {
     /**
      * Execute the console command.

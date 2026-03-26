@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Role;
 
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -12,7 +12,7 @@ use Spatie\Permission\Models\Role;
 
 #[Description('Legt eine neue Rolle an')]
 #[Signature('role:create')]
-class CreateRole extends Command
+class Create extends Command
 {
     /**
      * Execute the console command.

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Console\Commands;
+namespace Tests\Feature\Console\Commands\User;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -10,7 +10,7 @@ use Illuminate\Testing\PendingCommand;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
-class ListUsersCommandTest extends TestCase
+final class ListingCommandTest extends TestCase
 {
     use RefreshDatabase;
 

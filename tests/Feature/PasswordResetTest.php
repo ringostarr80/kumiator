@@ -11,9 +11,11 @@ use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
 
-class PasswordResetTest extends TestCase
+final class PasswordResetTest extends TestCase
 {
     use RefreshDatabase;
+
+    private const string FORGOT_PASSWORD_URL_PATH = '/forgot-password';
 
     public function testResetPasswordLinkScreenCanBeRendered(): void
     {
@@ -21,7 +23,7 @@ class PasswordResetTest extends TestCase
             $this->markTestSkipped('Password updates are not enabled.');
         }
 
-        $response = $this->get('/forgot-password');
+        $response = $this->get(self::FORGOT_PASSWORD_URL_PATH);
 
         $response->assertStatus(200);
     }
@@ -36,7 +38,7 @@ class PasswordResetTest extends TestCase
 
         $user = User::factory()->create();
 
-        $this->post('/forgot-password', [
+        $this->post(self::FORGOT_PASSWORD_URL_PATH, [
             'email' => $user->email,
         ]);
 
@@ -53,7 +55,7 @@ class PasswordResetTest extends TestCase
 
         $user = User::factory()->create();
 
-        $this->post('/forgot-password', [
+        $this->post(self::FORGOT_PASSWORD_URL_PATH, [
             'email' => $user->email,
         ]);
 
@@ -76,7 +78,7 @@ class PasswordResetTest extends TestCase
 
         $user = User::factory()->create();
 
-        $this->post('/forgot-password', [
+        $this->post(self::FORGOT_PASSWORD_URL_PATH, [
             'email' => $user->email,
         ]);
 

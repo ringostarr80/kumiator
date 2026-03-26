@@ -8,15 +8,17 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class PasswordConfirmationTest extends TestCase
+final class PasswordConfirmationTest extends TestCase
 {
     use RefreshDatabase;
+
+    private const string CONFIRM_PASSWORD_URL_PATH = '/user/confirm-password';
 
     public function testConfirmPasswordScreenCanBeRendered(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
 
-        $response = $this->actingAs($user)->get('/user/confirm-password');
+        $response = $this->actingAs($user)->get(self::CONFIRM_PASSWORD_URL_PATH);
 
         $response->assertStatus(200);
     }
@@ -25,7 +27,7 @@ class PasswordConfirmationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->post('/user/confirm-password', [
+        $response = $this->actingAs($user)->post(self::CONFIRM_PASSWORD_URL_PATH, [
             'password' => 'password',
         ]);
 
@@ -37,7 +39,7 @@ class PasswordConfirmationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->post('/user/confirm-password', [
+        $response = $this->actingAs($user)->post(self::CONFIRM_PASSWORD_URL_PATH, [
             'password' => 'wrong-password',
         ]);
 

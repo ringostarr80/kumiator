@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\View\View;
 use Tests\TestCase;
 
-class AppLayoutTest extends TestCase
+final class AppLayoutTest extends TestCase
 {
     use RefreshDatabase;
 

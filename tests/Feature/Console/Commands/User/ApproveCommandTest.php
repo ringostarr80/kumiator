@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Console\Commands;
+namespace Tests\Feature\Console\Commands\User;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\PendingCommand;
 use Tests\TestCase;
 
-class ApproveUserCommandTest extends TestCase
+final class ApproveCommandTest extends TestCase
 {
     use RefreshDatabase;
 
