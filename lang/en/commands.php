@@ -33,6 +33,7 @@ return [
         'header_email' => 'E-Mail',
         'header_role' => 'Role',
         'header_verified' => 'Verified',
+        'header_approved' => 'Approved',
         'header_created_at' => 'Created at',
         'total' => 'Total: :count users',
     ],

@@ -35,6 +35,7 @@ class ListUsersCommandTest extends TestCase
                     __('commands.list_users.header_email'),
                     __('commands.list_users.header_role'),
                     __('commands.list_users.header_verified'),
+                    __('commands.list_users.header_approved'),
                     __('commands.list_users.header_created_at'),
                 ],
                 [
@@ -42,6 +43,7 @@ class ListUsersCommandTest extends TestCase
                         'John Doe',
                         'john@example.com',
                         'admin',
+                        '✓',
                         '✓',
                         $user->created_at?->format(self::DATETIME_FORMAT),
                     ],
@@ -66,6 +68,7 @@ class ListUsersCommandTest extends TestCase
                     __('commands.list_users.header_email'),
                     __('commands.list_users.header_role'),
                     __('commands.list_users.header_verified'),
+                    __('commands.list_users.header_approved'),
                     __('commands.list_users.header_created_at'),
                 ],
                 [
@@ -73,6 +76,7 @@ class ListUsersCommandTest extends TestCase
                         'Jane Doe',
                         $user->email,
                         '—',
+                        '✓',
                         '✓',
                         $user->created_at?->format(self::DATETIME_FORMAT),
                     ],
@@ -96,6 +100,7 @@ class ListUsersCommandTest extends TestCase
                     __('commands.list_users.header_email'),
                     __('commands.list_users.header_role'),
                     __('commands.list_users.header_verified'),
+                    __('commands.list_users.header_approved'),
                     __('commands.list_users.header_created_at'),
                 ],
                 [
@@ -103,6 +108,39 @@ class ListUsersCommandTest extends TestCase
                         'Unverified User',
                         $user->email,
                         '—',
+                        '✗',
+                        '✓',
+                        $user->created_at?->format(self::DATETIME_FORMAT),
+                    ],
+                ],
+            )
+            ->assertSuccessful()
+            ->run();
+    }
+
+    public function testUnapprovedUserShowsCross(): void
+    {
+        $user = User::factory()->unapproved()->create(['name' => 'Unapproved User']);
+
+        $command = $this->artisan('user:list');
+        assert($command instanceof PendingCommand);
+
+        $command
+            ->expectsTable(
+                [
+                    __('commands.list_users.header_name'),
+                    __('commands.list_users.header_email'),
+                    __('commands.list_users.header_role'),
+                    __('commands.list_users.header_verified'),
+                    __('commands.list_users.header_approved'),
+                    __('commands.list_users.header_created_at'),
+                ],
+                [
+                    [
+                        'Unapproved User',
+                        $user->email,
+                        '—',
+                        '✓',
                         '✗',
                         $user->created_at?->format(self::DATETIME_FORMAT),
                     ],
