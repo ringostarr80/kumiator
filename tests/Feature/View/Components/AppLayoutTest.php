@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature;
+namespace Tests\Feature\View\Components;
 
 use App\View\Components\AppLayout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
