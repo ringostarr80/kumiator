@@ -18,7 +18,7 @@ class ListUsers extends Command
      */
     public function handle(): int
     {
-        $users = User::with('roles')->orderBy('name')->get(['id', 'name', 'email', 'created_at']);
+        $users = User::with('roles')->orderBy('name')->get(['id', 'name', 'email', 'email_verified_at', 'created_at']);
 
         if ($users->isEmpty()) {
             $this->info(__('commands.list_users.no_users'));
@@ -31,12 +31,14 @@ class ListUsers extends Command
                 __('commands.list_users.header_name'),
                 __('commands.list_users.header_email'),
                 __('commands.list_users.header_role'),
+                __('commands.list_users.header_verified'),
                 __('commands.list_users.header_created_at'),
             ],
             $users->map(static fn (User $user) => [
                 $user->name,
                 $user->email,
                 $user->roles->pluck('name')->first() ?? '—',
+                $user->email_verified_at !== null ? '✓' : '✗',
                 $user->created_at?->format('d.m.Y H:i'),
             ]),
         );

@@ -32,6 +32,7 @@ return [
         'header_name' => 'Name',
         'header_email' => 'E-Mail',
         'header_role' => 'Rolle',
+        'header_verified' => 'Verifiziert',
         'header_created_at' => 'Erstellt am',
         'total' => 'Gesamt: :count Benutzer',
     ],

@@ -14,6 +14,8 @@ class ListUsersCommandTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const string DATETIME_FORMAT = 'd.m.Y H:i';
+
     public function testUsersAreListed(): void
     {
         $role = Role::findOrCreate('admin');
@@ -32,6 +34,7 @@ class ListUsersCommandTest extends TestCase
                     __('commands.list_users.header_name'),
                     __('commands.list_users.header_email'),
                     __('commands.list_users.header_role'),
+                    __('commands.list_users.header_verified'),
                     __('commands.list_users.header_created_at'),
                 ],
                 [
@@ -39,7 +42,8 @@ class ListUsersCommandTest extends TestCase
                         'John Doe',
                         'john@example.com',
                         'admin',
-                        $user->created_at?->format('d.m.Y H:i'),
+                        '✓',
+                        $user->created_at?->format(self::DATETIME_FORMAT),
                     ],
                 ],
             )
@@ -61,6 +65,7 @@ class ListUsersCommandTest extends TestCase
                     __('commands.list_users.header_name'),
                     __('commands.list_users.header_email'),
                     __('commands.list_users.header_role'),
+                    __('commands.list_users.header_verified'),
                     __('commands.list_users.header_created_at'),
                 ],
                 [
@@ -68,7 +73,38 @@ class ListUsersCommandTest extends TestCase
                         'Jane Doe',
                         $user->email,
                         '—',
-                        $user->created_at?->format('d.m.Y H:i'),
+                        '✓',
+                        $user->created_at?->format(self::DATETIME_FORMAT),
+                    ],
+                ],
+            )
+            ->assertSuccessful()
+            ->run();
+    }
+
+    public function testUnverifiedUserShowsCross(): void
+    {
+        $user = User::factory()->unverified()->create(['name' => 'Unverified User']);
+
+        $command = $this->artisan('user:list');
+        assert($command instanceof PendingCommand);
+
+        $command
+            ->expectsTable(
+                [
+                    __('commands.list_users.header_name'),
+                    __('commands.list_users.header_email'),
+                    __('commands.list_users.header_role'),
+                    __('commands.list_users.header_verified'),
+                    __('commands.list_users.header_created_at'),
+                ],
+                [
+                    [
+                        'Unverified User',
+                        $user->email,
+                        '—',
+                        '✗',
+                        $user->created_at?->format(self::DATETIME_FORMAT),
                     ],
                 ],
             )
