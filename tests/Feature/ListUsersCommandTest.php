@@ -1,0 +1,89 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature;
+
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\PendingCommand;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
+
+class ListUsersCommandTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function testUsersAreListed(): void
+    {
+        $role = Role::findOrCreate('admin');
+        $user = User::factory()->create([
+            'name' => 'John Doe',
+            'email' => 'john@example.com',
+        ]);
+        $user->assignRole($role);
+
+        $command = $this->artisan('user:list');
+        assert($command instanceof PendingCommand);
+
+        $command
+            ->expectsTable(
+                [
+                    __('commands.list_users.header_name'),
+                    __('commands.list_users.header_email'),
+                    __('commands.list_users.header_role'),
+                    __('commands.list_users.header_created_at'),
+                ],
+                [
+                    [
+                        'John Doe',
+                        'john@example.com',
+                        'admin',
+                        $user->created_at?->format('d.m.Y H:i'),
+                    ],
+                ],
+            )
+            ->expectsOutputToContain(__('commands.list_users.total', ['count' => 1]))
+            ->assertSuccessful()
+            ->run();
+    }
+
+    public function testUserWithoutRoleShowsDash(): void
+    {
+        $user = User::factory()->create(['name' => 'Jane Doe']);
+
+        $command = $this->artisan('user:list');
+        assert($command instanceof PendingCommand);
+
+        $command
+            ->expectsTable(
+                [
+                    __('commands.list_users.header_name'),
+                    __('commands.list_users.header_email'),
+                    __('commands.list_users.header_role'),
+                    __('commands.list_users.header_created_at'),
+                ],
+                [
+                    [
+                        'Jane Doe',
+                        $user->email,
+                        '—',
+                        $user->created_at?->format('d.m.Y H:i'),
+                    ],
+                ],
+            )
+            ->assertSuccessful()
+            ->run();
+    }
+
+    public function testNoUsersShowsInfoMessage(): void
+    {
+        $command = $this->artisan('user:list');
+        assert($command instanceof PendingCommand);
+
+        $command
+            ->expectsOutputToContain(__('commands.list_users.no_users'))
+            ->assertSuccessful()
+            ->run();
+    }
+}
