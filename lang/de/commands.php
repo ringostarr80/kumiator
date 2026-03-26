@@ -80,4 +80,11 @@ return [
         'success' => 'Benutzer ":name" (:email) wurde erfolgreich verifiziert.',
     ],
 
+    'reset_password' => [
+        'title' => 'Passwort zurücksetzen',
+        'ask_password' => 'Neues Passwort',
+        'ask_password_confirm' => 'Neues Passwort bestätigen',
+        'success' => 'Das Passwort für Benutzer ":name" (:email) wurde erfolgreich zurückgesetzt.',
+    ],
+
 ];

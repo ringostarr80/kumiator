@@ -79,4 +79,11 @@ return [
         'success' => 'User ":name" (:email) was successfully verified.',
     ],
 
+    'reset_password' => [
+        'title' => 'Reset user password',
+        'ask_password' => 'New password',
+        'ask_password_confirm' => 'Confirm new password',
+        'success' => 'Password for user ":name" (:email) was successfully reset.',
+    ],
+
 ];
