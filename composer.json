@@ -1,11 +1,12 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "ringostarr80/association-manager",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Web-based management platform for associations.",
     "keywords": [
-        "laravel",
-        "framework"
+        "association",
+        "management",
+        "membership"
     ],
     "license": "MIT",
     "require": {
