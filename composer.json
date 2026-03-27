@@ -10,21 +10,22 @@
     ],
     "license": "MIT",
     "require": {
-        "php": "^8.3",
-        "laravel/framework": "^13.0",
+        "php": "^8.4",
+        "laravel/framework": "^13.2",
         "laravel/jetstream": "^5.5",
-        "laravel/sanctum": "^4.0",
+        "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
         "livewire/livewire": "^3.6.4",
         "spatie/laravel-permission": "^7.2"
     },
     "require-dev": {
-        "fakerphp/faker": "^1.23",
+        "fakerphp/faker": "^1.24",
         "larastan/larastan": "^3.9",
-        "laravel/pail": "^1.2.5",
-        "laravel/pint": "^1.27",
+        "laravel/pail": "^1.2",
+        "laravel/pint": "^1.29",
         "mockery/mockery": "^1.6",
-        "nunomaduro/collision": "^8.6",
+        "nunomaduro/collision": "^8.9",
+        "php-parallel-lint/php-parallel-lint": "^1.4",
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan": "^2.1",
         "phpstan/phpstan-deprecation-rules": "^2.0",
@@ -57,7 +58,14 @@
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1 --timeout=0\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others"
         ],
-        "dev:analyze:phpstan": "vendor/bin/phpstan analyse --memory-limit=512M",
+        "dev:analyze:phpstan": "@dev:analyze:phpstan-8.4",
+        "dev:analyze:phpstan-8.4": "vendor/bin/phpstan analyse --configuration=phpstan-8.4.neon --memory-limit=512M",
+        "dev:analyze:phpstan-8.5": "vendor/bin/phpstan analyse --configuration=phpstan-8.5.neon --memory-limit=512M",
+        "dev:lint": [
+            "@dev:lint:php",
+            "@dev:lint:phpcs"
+        ],
+        "dev:lint:php": "parallel-lint --exclude vendor .",
         "dev:lint:phpcs": "vendor/bin/phpcs",
         "dev:lint:fix": [
             "vendor/bin/pint",
@@ -92,16 +100,18 @@
         }
     },
     "config": {
-        "optimize-autoloader": true,
-        "preferred-install": "dist",
-        "sort-packages": true,
         "allow-plugins": {
             "dealerdirect/phpcodesniffer-composer-installer": true,
             "pestphp/pest-plugin": true,
             "php-http/discovery": true,
             "phpstan/extension-installer": true
-        }
+        },
+        "optimize-autoloader": true,
+        "platform": {
+            "php": "8.4"
+        },
+        "preferred-install": "dist",
+        "sort-packages": true
     },
-    "minimum-stability": "dev",
-    "prefer-stable": true
+    "minimum-stability": "stable"
 }
