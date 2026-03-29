@@ -9,7 +9,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\PendingCommand;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
-use Mockery\MockInterface;
+use PragmaRX\Google2FA\Google2FA;
+use Tests\Support\FixedSecretTwoFactorProvider;
 use Tests\TestCase;
 
 final class EnableTwoFactorCommandTest extends TestCase
@@ -18,11 +19,12 @@ final class EnableTwoFactorCommandTest extends TestCase
 
     private const string TEST_EMAIL = 'john@example.com';
     private const string TEST_NAME = 'John Doe';
-    private const string VALID_CODE = '123456';
+    private const string TEST_SECRET = 'JBSWY3DPEHPK3PXP';
 
     public function testTwoFactorCanBeEnabled(): void
     {
-        $this->mockTwoFactorProvider(verifyResult: true);
+        $this->bindFixedSecretProvider();
+        $validCode = $this->generateValidCode(self::TEST_SECRET);
 
         User::factory()->create([
             'name' => self::TEST_NAME,
@@ -34,7 +36,7 @@ final class EnableTwoFactorCommandTest extends TestCase
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
-            ->expectsQuestion(__('commands.enable_two_factor.ask_code'), self::VALID_CODE)
+            ->expectsQuestion(__('commands.enable_two_factor.ask_code'), $validCode)
             ->expectsOutputToContain(
                 __('commands.enable_two_factor.success', [
                     'name' => self::TEST_NAME,
@@ -53,7 +55,8 @@ final class EnableTwoFactorCommandTest extends TestCase
 
     public function testSecretAndQrCodeUrlAreDisplayed(): void
     {
-        $this->mockTwoFactorProvider(verifyResult: true);
+        $this->bindFixedSecretProvider();
+        $validCode = $this->generateValidCode(self::TEST_SECRET);
 
         User::factory()->create([
             'name' => self::TEST_NAME,
@@ -66,16 +69,17 @@ final class EnableTwoFactorCommandTest extends TestCase
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
             ->expectsOutputToContain(__('commands.enable_two_factor.secret_label'))
-            ->expectsOutputToContain('TESTSECRETKEY123')
+            ->expectsOutputToContain(self::TEST_SECRET)
             ->expectsOutputToContain(__('commands.enable_two_factor.qr_code_label'))
-            ->expectsQuestion(__('commands.enable_two_factor.ask_code'), self::VALID_CODE)
+            ->expectsQuestion(__('commands.enable_two_factor.ask_code'), $validCode)
             ->assertSuccessful()
             ->run();
     }
 
     public function testRecoveryCodesAreDisplayed(): void
     {
-        $this->mockTwoFactorProvider(verifyResult: true);
+        $this->bindFixedSecretProvider();
+        $validCode = $this->generateValidCode(self::TEST_SECRET);
 
         User::factory()->create([
             'name' => self::TEST_NAME,
@@ -87,7 +91,7 @@ final class EnableTwoFactorCommandTest extends TestCase
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
-            ->expectsQuestion(__('commands.enable_two_factor.ask_code'), self::VALID_CODE)
+            ->expectsQuestion(__('commands.enable_two_factor.ask_code'), $validCode)
             ->expectsOutputToContain(__('commands.enable_two_factor.recovery_codes_label'))
             ->assertSuccessful()
             ->run();
@@ -99,8 +103,6 @@ final class EnableTwoFactorCommandTest extends TestCase
 
     public function testInvalidCodeFailsAndCleansUp(): void
     {
-        $this->mockTwoFactorProvider(verifyResult: false);
-
         User::factory()->create([
             'name' => self::TEST_NAME,
             'email' => self::TEST_EMAIL,
@@ -132,7 +134,7 @@ final class EnableTwoFactorCommandTest extends TestCase
 
         $enableAction = app(EnableTwoFactorAuthentication::class);
         $enableAction($user, force: true);
-        $user->forceFill(['two_factor_confirmed_at' => now()])->save();
+        $user->forceFill(['two_factor_confirmed_at' => now()])->saveOrFail();
 
         $command = $this->artisan('user:enable-2fa');
         assert($command instanceof PendingCommand);
@@ -163,20 +165,18 @@ final class EnableTwoFactorCommandTest extends TestCase
             ->run();
     }
 
-    private function mockTwoFactorProvider(bool $verifyResult): void
+    private function bindFixedSecretProvider(): void
     {
-        $this->mock(
+        $this->app->instance(
             TwoFactorAuthenticationProvider::class,
-            static function (MockInterface $mock) use ($verifyResult): void {
-                /** @phpstan-ignore method.notFound */
-                $mock->shouldReceive('generateSecretKey')->andReturn('TESTSECRETKEY123');
-                /** @phpstan-ignore method.notFound */
-                $mock->shouldReceive('qrCodeUrl')->andReturn(
-                    'otpauth://totp/Test:john@example.com?secret=TESTSECRETKEY123',
-                );
-                /** @phpstan-ignore method.notFound */
-                $mock->shouldReceive('verify')->andReturn($verifyResult);
-            },
+            new FixedSecretTwoFactorProvider(new Google2FA(), self::TEST_SECRET),
         );
+    }
+
+    private function generateValidCode(string $secret): string
+    {
+        $google2fa = new Google2FA();
+
+        return $google2fa->getCurrentOtp($secret);
     }
 }
