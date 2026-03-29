@@ -55,7 +55,7 @@ class Delete extends Command
             return self::SUCCESS;
         }
 
-        $role->delete();
+        $role->deleteOrFail();
 
         $this->info(__('commands.delete_role.success', ['name' => $name]));
 

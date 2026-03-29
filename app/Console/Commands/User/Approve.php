@@ -26,6 +26,7 @@ class Approve extends Command
         $email = $this->ask(__('commands.common.ask_email')) ?? '';
         assert(is_string($email));
 
+        /** @var ?User $user */
         $user = User::where('email', $email)->first();
 
         if ($user === null) {
@@ -41,7 +42,7 @@ class Approve extends Command
         }
 
         $user->approved_at = Carbon::now();
-        $user->save();
+        $user->saveOrFail();
 
         $this->info(__('commands.approve_user.success', ['name' => $user->name, 'email' => $email]));
 

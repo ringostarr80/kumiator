@@ -27,6 +27,7 @@ class ResetPassword extends Command
         $email = $this->ask(__('commands.common.ask_email')) ?? '';
         assert(is_string($email));
 
+        /** @var ?User $user */
         $user = User::where('email', $email)->first();
 
         if ($user === null) {
@@ -59,7 +60,7 @@ class ResetPassword extends Command
         assert(is_string($password));
 
         $user->password = Hash::make($password);
-        $user->save();
+        $user->saveOrFail();
 
         $this->info(__('commands.reset_password.success', ['name' => $user->name, 'email' => $email]));
 

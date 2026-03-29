@@ -25,6 +25,7 @@ class Delete extends Command
         $email = $this->ask(__('commands.common.ask_email')) ?? '';
         assert(is_string($email));
 
+        /** @var ?User $user */
         $user = User::where('email', $email)->first();
 
         if ($user === null) {
@@ -41,7 +42,7 @@ class Delete extends Command
             return self::SUCCESS;
         }
 
-        $user->delete();
+        $user->deleteOrFail();
 
         $this->info(__('commands.delete_user.success', ['name' => $user->name, 'email' => $email]));
 

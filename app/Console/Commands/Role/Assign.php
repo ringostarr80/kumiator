@@ -26,6 +26,7 @@ class Assign extends Command
         $email = $this->ask(__('commands.common.ask_email')) ?? '';
         assert(is_string($email));
 
+        /** @var ?User $user */
         $user = User::where('email', $email)->first();
 
         if ($user === null) {
