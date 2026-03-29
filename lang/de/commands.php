@@ -82,6 +82,26 @@ return [
         'success' => 'Benutzer ":name" (:email) wurde erfolgreich verifiziert.',
     ],
 
+    'enable_two_factor' => [
+        'title' => 'Zwei-Faktor-Authentifizierung aktivieren',
+        'already_enabled' => 'Benutzer ":name" (:email) hat die Zwei-Faktor-Authentifizierung bereits aktiviert.',
+        'secret_label' => 'TOTP-Secret:',
+        'qr_code_label' => 'TOTP-URL (zum Einrichten in einer Authenticator-App):',
+        'ask_code' => 'Bitte den 6-stelligen Code aus der Authenticator-App eingeben',
+        'invalid_code' => 'Ungültiger Code. Die Zwei-Faktor-Authentifizierung wurde nicht aktiviert.',
+        'success' => 'Zwei-Faktor-Authentifizierung für Benutzer ":name" (:email) wurde erfolgreich aktiviert.',
+        'recovery_codes_label' => 'Wiederherstellungscodes:',
+    ],
+
+    'disable_two_factor' => [
+        'title' => 'Zwei-Faktor-Authentifizierung deaktivieren',
+        'not_enabled' => 'Benutzer ":name" (:email) hat die Zwei-Faktor-Authentifizierung nicht aktiviert.',
+        'user_found' => 'Benutzer gefunden: :name (:email)',
+        'confirm_disable' => 'Soll die Zwei-Faktor-Authentifizierung wirklich deaktiviert werden?',
+        'aborted' => 'Abgebrochen.',
+        'success' => 'Zwei-Faktor-Authentifizierung für Benutzer ":name" (:email) wurde erfolgreich deaktiviert.',
+    ],
+
     'reset_password' => [
         'title' => 'Passwort zurücksetzen',
         'ask_password' => 'Neues Passwort',

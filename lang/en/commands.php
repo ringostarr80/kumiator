@@ -81,6 +81,26 @@ return [
         'success' => 'User ":name" (:email) was successfully verified.',
     ],
 
+    'enable_two_factor' => [
+        'title' => 'Enable two-factor authentication',
+        'already_enabled' => 'User ":name" (:email) already has two-factor authentication enabled.',
+        'secret_label' => 'TOTP secret:',
+        'qr_code_label' => 'TOTP URL (for setting up in an authenticator app):',
+        'ask_code' => 'Please enter the 6-digit code from your authenticator app',
+        'invalid_code' => 'Invalid code. Two-factor authentication was not enabled.',
+        'success' => 'Two-factor authentication for user ":name" (:email) was successfully enabled.',
+        'recovery_codes_label' => 'Recovery codes:',
+    ],
+
+    'disable_two_factor' => [
+        'title' => 'Disable two-factor authentication',
+        'not_enabled' => 'User ":name" (:email) does not have two-factor authentication enabled.',
+        'user_found' => 'User found: :name (:email)',
+        'confirm_disable' => 'Do you really want to disable two-factor authentication?',
+        'aborted' => 'Aborted.',
+        'success' => 'Two-factor authentication for user ":name" (:email) was successfully disabled.',
+    ],
+
     'reset_password' => [
         'title' => 'Reset user password',
         'ask_password' => 'New password',
