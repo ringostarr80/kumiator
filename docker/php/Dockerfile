@@ -25,6 +25,10 @@ RUN docker-php-ext-install \
     pcntl \
     intl
 
+RUN apk add g++ make php84-dev && \
+    pecl install pcov && \
+    docker-php-ext-enable pcov
+
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
