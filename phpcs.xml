@@ -51,7 +51,10 @@
     <rule ref="SlevomatCodingStandard.Classes.DisallowStringExpressionPropertyFetch"/>
     <!--<rule ref="SlevomatCodingStandard.Classes.EmptyLinesAroundClassBraces"/>-->
     <rule ref="SlevomatCodingStandard.Classes.EnumCaseSpacing"/>
-    <rule ref="SlevomatCodingStandard.Classes.ForbiddenPublicProperty"/>
+    <rule ref="SlevomatCodingStandard.Classes.ForbiddenPublicProperty">
+        <!-- Livewire components require public properties for two-way data binding -->
+        <exclude-pattern>app/Livewire/*</exclude-pattern>
+    </rule>
     <rule ref="SlevomatCodingStandard.Classes.MethodSpacing"/>
     <rule ref="SlevomatCodingStandard.Classes.ModernClassNameReference"/>
     <rule ref="SlevomatCodingStandard.Classes.ParentCallSpacing"/>

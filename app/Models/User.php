@@ -14,6 +14,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
 /**
+ * @property int $id
  * @property ?\Illuminate\Support\Carbon $email_verified_at
  * @property ?\Illuminate\Support\Carbon $approved_at
  */
@@ -62,6 +63,15 @@ class User extends Authenticatable implements MustVerifyEmail
     ];
 
     /**
+     * Returns a stable string identifier used as the WebAuthn user handle.
+     * The handle is the integer primary key cast to string; it must be stable and opaque.
+     */
+    public function getWebAuthnUserHandle(): string
+    {
+        return (string)$this->id;
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -69,6 +79,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected function casts(): array
     {
         return [
+            'id' => 'integer',
             'email_verified_at' => 'datetime',
             'approved_at' => 'datetime',
             'password' => 'hashed',

@@ -44,5 +44,19 @@
                 </x-button>
             </div>
         </form>
+
+        {{-- Passkey login --}}
+        <div x-data="passkeyLogin('{{ __('app.passkey_auth_error') }}')" class="mt-6 border-t border-gray-200 pt-6">
+            <x-secondary-button
+                type="button"
+                class="w-full justify-center"
+                @click="authenticate"
+                x-bind:disabled="loading"
+            >
+                <span x-show="!loading">{{ __('app.sign_in_with_passkey') }}</span>
+                <span x-show="loading">…</span>
+            </x-secondary-button>
+            <p x-show="errorMessage" x-text="errorMessage" class="mt-2 text-sm text-red-600 text-center"></p>
+        </div>
     </x-authentication-card>
 </x-guest-layout>

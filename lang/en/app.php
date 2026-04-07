@@ -170,6 +170,32 @@ return [
     'team_invitation_discard' => 'If you did not expect to receive an invitation to this team, you may discard'
         . ' this email.',
 
+    // Passkeys
+    'passkeys' => 'Passkeys',
+    'passkeys_description' => 'Manage your passkeys for passwordless sign-in.'
+        . ' Passkeys are more secure than passwords and much easier to use.',
+    'passkeys_empty' => 'You have not registered any passkeys yet.',
+    'add_passkey' => 'Add Passkey',
+    'passkey_name' => 'Passkey Name',
+    'passkey_name_placeholder' => 'e.g. iPhone, MacBook, YubiKey',
+    'passkey_default_name' => 'My Passkey',
+    'passkey_added' => 'Passkey added successfully.',
+    'passkey_deleted' => 'Passkey deleted.',
+    'passkey_delete_confirm' => 'Are you sure you want to delete this passkey?',
+    'passkey_registered_at' => 'Registered on',
+    'passkey_last_used' => 'Last used',
+    'passkey_never_used' => 'Never used',
+    'sign_in_with_passkey' => 'Sign in with Passkey',
+    'passkey_auth_error' => 'Passkey authentication failed. Please try again.',
+    'passkey_credential_not_found' => 'Credential not found.',
+    'passkey_invalid_response_type' => 'Invalid authenticator response type for authentication.',
+    'passkey_orphaned_credential' => 'Credential record references a non-existent user (data integrity violation).',
+    'passkey_session_expired' => 'Authentication session expired. Please try again.',
+    'passkey_registration_session_expired' => 'Registration session expired. Please try again.',
+    'passkey_empty_request' => 'Empty request body.',
+    'passkey_authentication_failed' => 'Authentication failed.',
+    'passkey_registration_failed' => 'Passkey registration failed.',
+
     // Welcome Component (Jetstream Dashboard)
     'welcome_jetstream' => 'Welcome to your Jetstream application!',
     'welcome_jetstream_description' => 'Laravel Jetstream provides a beautiful, robust starting point for your'

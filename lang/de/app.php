@@ -175,6 +175,33 @@ return [
     'team_invitation_discard' => 'Wenn du keine Einladung zu diesem Team erwartet hast,'
         . ' kannst du diese E-Mail ignorieren.',
 
+    // Passkeys
+    'passkeys' => 'Passkeys',
+    'passkeys_description' => 'Verwalte deine Passkeys für eine passwortlose Anmeldung.'
+        . ' Passkeys sind sicherer als Passwörter und deutlich einfacher zu verwenden.',
+    'passkeys_empty' => 'Du hast noch keine Passkeys registriert.',
+    'add_passkey' => 'Passkey hinzufügen',
+    'passkey_name' => 'Passkey-Name',
+    'passkey_name_placeholder' => 'z.B. iPhone, MacBook, YubiKey',
+    'passkey_default_name' => 'Mein Passkey',
+    'passkey_added' => 'Passkey erfolgreich hinzugefügt.',
+    'passkey_deleted' => 'Passkey gelöscht.',
+    'passkey_delete_confirm' => 'Möchtest du diesen Passkey wirklich löschen?',
+    'passkey_registered_at' => 'Registriert am',
+    'passkey_last_used' => 'Zuletzt verwendet',
+    'passkey_never_used' => 'Noch nicht verwendet',
+    'sign_in_with_passkey' => 'Mit Passkey anmelden',
+    'passkey_auth_error' => 'Passkey-Anmeldung fehlgeschlagen. Bitte versuche es erneut.',
+    'passkey_credential_not_found' => 'Passkey nicht gefunden.',
+    'passkey_invalid_response_type' => 'Ungültiger Authentifikator-Antworttyp für die Authentifizierung.',
+    'passkey_orphaned_credential' => 'Der Credential-Datensatz verweist auf einen nicht vorhandenen Benutzer'
+        . ' (Datenintegritätsverletzung).',
+    'passkey_session_expired' => 'Authentifizierungs-Sitzung abgelaufen. Bitte versuche es erneut.',
+    'passkey_registration_session_expired' => 'Registrierungs-Sitzung abgelaufen. Bitte versuche es erneut.',
+    'passkey_empty_request' => 'Leerer Anfrage-Body.',
+    'passkey_authentication_failed' => 'Authentifizierung fehlgeschlagen.',
+    'passkey_registration_failed' => 'Passkey-Registrierung fehlgeschlagen.',
+
     // Welcome Component (Jetstream Dashboard)
     'welcome_jetstream' => 'Willkommen in deiner Jetstream-Anwendung!',
     'welcome_jetstream_description' => 'Laravel Jetstream bietet einen eleganten und robusten Ausgangspunkt für deine'
