@@ -113,6 +113,13 @@ final class PasskeyAuthenticationServiceTest extends TestCase
         $this->assertNotSame($optionsA->challenge, $optionsB->challenge);
     }
 
+    public function testRunFakeCredentialLookupDoesNotThrow(): void
+    {
+        // Should complete silently with no matching rows.
+        $this->service->runFakeCredentialLookup();
+        $this->addToAssertionCount(1);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

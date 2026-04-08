@@ -8,6 +8,7 @@ use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Services\WebAuthn\PasskeyAuthenticationContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Mockery\MockInterface;
 use Tests\TestCase;
@@ -69,6 +70,23 @@ final class PasskeyAuthenticationTest extends TestCase
         $response->assertOk();
         $response->assertJsonStructure(['challenge']);
         $response->assertJsonCount(0, 'allowCredentials');
+    }
+
+    public function testOptionsEndpointRunsFakeCredentialLookupForUnknownEmail(): void
+    {
+        DB::enableQueryLog();
+
+        $this->getJson(self::AUTHENTICATE_OPTIONS_URL . '?email=unknown@example.com')
+            ->assertOk();
+
+        $credentialQueries = array_filter(
+            DB::getQueryLog(),
+            static fn (array $q): bool => str_contains($q['query'], 'passkey_credentials'),
+        );
+
+        DB::disableQueryLog();
+
+        $this->assertNotEmpty($credentialQueries, 'Expected a fake passkey_credentials query for an unknown e-mail.');
     }
 
     public function testOptionsEndpointReturns422ForInvalidEmail(): void

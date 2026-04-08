@@ -52,6 +52,10 @@ class PasskeyAuthenticationController extends Controller
 
         if ($email !== null) {
             $user = User::where('email', $email)->first();
+
+            if ($user === null) {
+                $this->authenticationService->runFakeCredentialLookup();
+            }
         }
 
         $options = $this->authenticationService->createOptions($user);

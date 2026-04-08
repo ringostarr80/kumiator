@@ -118,6 +118,21 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
         return $user;
     }
 
+    /**
+     * Run a fake credential DB lookup to equalise response time between known
+     * and unknown e-mail addresses on the options endpoint.
+     *
+     * The query mirrors PasskeyCredentialRepository::findAllForUser() but uses
+     * user ID 0, which is never issued by the auto-increment primary key, so
+     * the result is always empty. This prevents timing-based e-mail enumeration.
+     */
+    public function runFakeCredentialLookup(): void
+    {
+        $fakeUser = new User();
+        $fakeUser->id = 0;
+        $this->repository->findAllForUser($fakeUser);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────────────────────────────────
