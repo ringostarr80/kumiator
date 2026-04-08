@@ -91,6 +91,7 @@ class PasskeyCredential extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
             'transports' => 'array',
             'backup_eligible' => 'boolean',
             'backup_state' => 'boolean',
