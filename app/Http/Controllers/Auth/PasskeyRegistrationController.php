@@ -89,6 +89,12 @@ final class PasskeyRegistrationController extends Controller
             return response()->json(['message' => __('app.passkey_empty_request')], Response::HTTP_BAD_REQUEST);
         }
 
+        $user = Auth::user();
+
+        if (!($user instanceof User)) {
+            abort(Response::HTTP_UNAUTHORIZED);
+        }
+
         try {
             $serializer = $this->serverService->getSerializer();
             $storedOptions = $serializer->deserialize($optionsJson, PublicKeyCredentialCreationOptions::class, 'json');
@@ -102,6 +108,7 @@ final class PasskeyRegistrationController extends Controller
                 : __('app.passkey_default_name');
 
             $passkeyCredential = $this->registrationService->verifyAndSave(
+                user: $user,
                 rawResponse: $rawResponse,
                 storedOptions: $storedOptions,
                 credentialName: $credentialName,

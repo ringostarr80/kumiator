@@ -101,6 +101,7 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
      * @param string $host The effective domain (e.g. "localhost" or "example.com")
      */
     public function verifyAndSave(
+        User $user,
         string $rawResponse,
         PublicKeyCredentialCreationOptions $storedOptions,
         string $credentialName,
@@ -118,10 +119,6 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
 
         $validator = $this->serverService->buildAttestationValidator(WebAuthnConfig::appUrl());
         $credentialRecord = $validator->check($response, $storedOptions, $host);
-
-        // Find the user via the user handle from the options
-        $userHandle = $storedOptions->user->id;
-        $user = User::findOrFail($userHandle);
 
         return $this->repository->saveNewCredential($user, $credentialRecord, $credentialName);
     }

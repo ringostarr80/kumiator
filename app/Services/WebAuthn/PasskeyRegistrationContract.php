@@ -13,6 +13,7 @@ interface PasskeyRegistrationContract
     public function createOptions(User $user): PublicKeyCredentialCreationOptions;
 
     public function verifyAndSave(
+        User $user,
         string $rawResponse,
         PublicKeyCredentialCreationOptions $storedOptions,
         string $credentialName,

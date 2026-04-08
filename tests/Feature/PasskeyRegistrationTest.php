@@ -197,6 +197,7 @@ final class PasskeyRegistrationTest extends TestCase
                     ->with(
                         Mockery::any(),
                         Mockery::any(),
+                        Mockery::any(),
                         Mockery::on(fn (string $name): bool => $name === __('app.passkey_default_name')),
                         Mockery::any(),
                     )
@@ -221,6 +222,7 @@ final class PasskeyRegistrationTest extends TestCase
             function (MockInterface $mock) use ($passkey): void {
                 $mock->shouldReceive('verifyAndSave')
                     ->with(
+                        Mockery::any(),
                         Mockery::any(),
                         Mockery::any(),
                         Mockery::on(fn (string $name): bool => $name === __('app.passkey_default_name')),
