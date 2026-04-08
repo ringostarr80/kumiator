@@ -28,7 +28,7 @@ use Webauthn\PublicKeyCredentialCreationOptions;
  *   POST /user/passkeys/register – verify browser response and persist
  *   DELETE /user/passkeys/{id} – remove a stored passkey
  */
-class PasskeyRegistrationController extends Controller
+final class PasskeyRegistrationController extends Controller
 {
     use AuthorizesRequests;
     use NormalizesWebAuthnJson;

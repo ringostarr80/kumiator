@@ -24,7 +24,7 @@ use Webauthn\PublicKeyCredentialRequestOptions;
  *   GET /passkeys/authenticate/options – generate and return request options
  *   POST /passkeys/authenticate – verify browser response and log in
  */
-class PasskeyAuthenticationController extends Controller
+final class PasskeyAuthenticationController extends Controller
 {
     use NormalizesWebAuthnJson;
 

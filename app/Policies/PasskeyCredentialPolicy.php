@@ -7,7 +7,7 @@ namespace App\Policies;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 
-class PasskeyCredentialPolicy
+final class PasskeyCredentialPolicy
 {
     /**
      * A user may only delete their own passkeys.
