@@ -37,7 +37,8 @@ return new class () extends Migration {
             $table->string('aaguid', 36)->default('00000000-0000-0000-0000-000000000000');
 
             // A user-facing name so that users can identify their devices.
-            $table->string('name')->default('');
+            // Limited to 80 characters to match the UI input maxlength constraint.
+            $table->string('name', 80)->default('');
 
             $table->timestamp('last_used_at')->nullable();
             $table->timestamps();
