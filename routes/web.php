@@ -14,13 +14,14 @@ Route::get('/', static fn () => view('welcome'));
 // ──────────────────────────────────────────────────────────────────────────────
 // Passkey authentication (guests only)
 // ──────────────────────────────────────────────────────────────────────────────
-Route::middleware(['guest', 'throttle:passkey-authenticate'])->group(static function (): void {
+Route::middleware('guest')->group(static function (): void {
     // Returns PublicKeyCredentialRequestOptions JSON for the browser
     Route::get('/passkeys/authenticate/options', [PasskeyAuthenticationController::class, 'options'])
         ->name('passkeys.authenticate.options');
 
     // Verifies the assertion and logs the user in
     Route::post('/passkeys/authenticate', [PasskeyAuthenticationController::class, 'authenticate'])
+        ->middleware('throttle:passkey-authenticate')
         ->name('passkeys.authenticate');
 });
 

@@ -20,13 +20,13 @@ final class PasskeyAuthenticationTest extends TestCase
     private const string AUTHENTICATE_OPTIONS_URL = '/passkeys/authenticate/options';
     private const string AUTHENTICATE_URL = '/passkeys/authenticate';
 
-    public function testAuthenticationEndpointsAreRateLimited(): void
+    public function testAuthenticateEndpointIsRateLimited(): void
     {
         for ($i = 0; $i < 5; $i++) {
-            $this->getJson(self::AUTHENTICATE_OPTIONS_URL)->assertOk();
+            $this->postJson(self::AUTHENTICATE_URL)->assertStatus(422);
         }
 
-        $this->getJson(self::AUTHENTICATE_OPTIONS_URL)->assertTooManyRequests();
+        $this->postJson(self::AUTHENTICATE_URL)->assertTooManyRequests();
     }
 
     // ──────────────────────────────────────────────────────────────────────────
