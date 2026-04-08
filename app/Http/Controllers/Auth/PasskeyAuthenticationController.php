@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PasskeyAuthenticateOptionsRequest;
 use App\Models\User;
 use App\Services\WebAuthn\PasskeyAuthenticationService;
 use App\Services\WebAuthn\WebAuthnServerService;
@@ -40,13 +41,13 @@ class PasskeyAuthenticationController extends Controller
      * to a specific user, improving UX for non-discoverable passkeys.
      * When omitted, the browser can use any available passkey (discoverable flow).
      */
-    public function options(Request $request): JsonResponse
+    public function options(PasskeyAuthenticateOptionsRequest $request): JsonResponse
     {
         $user = null;
 
-        if ($request->filled('email')) {
-            $email = $request->input('email');
-            assert(is_string($email));
+        $email = $request->validated()['email'] ?? null;
+
+        if ($email !== null) {
             $user = User::where('email', $email)->first();
         }
 

@@ -71,6 +71,14 @@ final class PasskeyAuthenticationTest extends TestCase
         $response->assertJsonCount(0, 'allowCredentials');
     }
 
+    public function testOptionsEndpointReturns422ForInvalidEmail(): void
+    {
+        $response = $this->getJson(self::AUTHENTICATE_OPTIONS_URL . '?email=not-an-email');
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['email']);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     // Authenticate endpoint
     // ──────────────────────────────────────────────────────────────────────────
