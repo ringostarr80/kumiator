@@ -19,7 +19,8 @@ globalThis.passkeyLogin = function (defaultErrorMessage) {
             this.errorMessage = '';
             this.loading = true;
             try {
-                globalThis.location.href = await globalThis.Passkeys.authenticateWithPasskey();
+                const email = document.getElementById('email')?.value ?? null;
+                globalThis.location.href = await globalThis.Passkeys.authenticateWithPasskey(email);
             } catch (err) {
                 this.errorMessage = err.response?.data?.message ?? defaultErrorMessage;
             } finally {
