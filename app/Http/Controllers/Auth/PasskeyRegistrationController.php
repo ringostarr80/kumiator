@@ -28,6 +28,7 @@ use Webauthn\PublicKeyCredentialCreationOptions;
 class PasskeyRegistrationController extends Controller
 {
     use AuthorizesRequests;
+    use NormalizesWebAuthnJson;
 
     /** Session key used to store the pending creation options. */
     private const SESSION_KEY = 'webauthn.registration.options';

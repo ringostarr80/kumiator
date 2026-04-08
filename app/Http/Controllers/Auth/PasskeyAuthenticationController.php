@@ -25,6 +25,8 @@ use Webauthn\PublicKeyCredentialRequestOptions;
  */
 class PasskeyAuthenticationController extends Controller
 {
+    use NormalizesWebAuthnJson;
+
     /** Session key used to store the pending request options. */
     private const SESSION_KEY = 'webauthn.authentication.options';
 
