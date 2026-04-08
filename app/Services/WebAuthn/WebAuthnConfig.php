@@ -74,4 +74,26 @@ final class WebAuthnConfig
             ? $value
             : '';
     }
+
+    /**
+     * Returns the effective RP host used for WebAuthn validator calls.
+     *
+     * Prefers the explicit `relying_party.id` from config. Falls back to the
+     * host component of `app.url`. Returns an empty string when neither is set,
+     * which will cause the library to reject the assertion – a safe failure.
+     */
+    public static function effectiveHost(): string
+    {
+        $rpId = self::rpId();
+
+        if ($rpId !== null) {
+            return $rpId;
+        }
+
+        $host = parse_url(self::appUrl(), PHP_URL_HOST);
+
+        return is_string($host)
+            ? $host
+            : '';
+    }
 }

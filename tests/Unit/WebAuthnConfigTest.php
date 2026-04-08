@@ -43,4 +43,32 @@ final class WebAuthnConfigTest extends TestCase
 
         $this->assertSame('', WebAuthnConfig::appUrl());
     }
+
+    public function testEffectiveHostPrefersRpId(): void
+    {
+        config(['webauthn.relying_party.id' => 'example.com', 'app.url' => 'https://other.com']);
+
+        $this->assertSame('example.com', WebAuthnConfig::effectiveHost());
+    }
+
+    public function testEffectiveHostFallsBackToAppUrlHost(): void
+    {
+        config(['webauthn.relying_party.id' => null, 'app.url' => 'https://app.example.com']);
+
+        $this->assertSame('app.example.com', WebAuthnConfig::effectiveHost());
+    }
+
+    public function testEffectiveHostReturnsEmptyStringWhenNeitherIsSet(): void
+    {
+        config(['webauthn.relying_party.id' => null, 'app.url' => '']);
+
+        $this->assertSame('', WebAuthnConfig::effectiveHost());
+    }
+
+    public function testEffectiveHostReturnsEmptyStringForMalformedUrl(): void
+    {
+        config(['webauthn.relying_party.id' => null, 'app.url' => 'not-a-url']);
+
+        $this->assertSame('', WebAuthnConfig::effectiveHost());
+    }
 }

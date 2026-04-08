@@ -105,7 +105,7 @@ class PasskeyRegistrationController extends Controller
                 rawResponse: $rawResponse,
                 storedOptions: $storedOptions,
                 credentialName: $credentialName,
-                host: WebAuthnConfig::rpId() ?? (string)parse_url(WebAuthnConfig::appUrl(), PHP_URL_HOST),
+                host: WebAuthnConfig::effectiveHost(),
             );
         } catch (AuthenticatorResponseVerificationException $e) {
             return response()->json(['message' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
