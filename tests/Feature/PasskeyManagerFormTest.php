@@ -7,7 +7,6 @@ namespace Tests\Feature;
 use App\Livewire\Profile\PasskeyManagerForm;
 use App\Models\PasskeyCredential;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Livewire;
@@ -66,22 +65,6 @@ final class PasskeyManagerFormTest extends TestCase
         Livewire::test(PasskeyManagerForm::class)->assertStatus(401);
     }
 
-    public function testDeletePasskeyAbortsWhenAuthUserIsNull(): void
-    {
-        $user = User::factory()->create();
-        $passkey = PasskeyCredential::factory()->for($user)->create();
-
-        // Mount with a real user so loadPasskeys() in mount() succeeds,
-        // then swap Auth::user() to null before the action runs.
-        $component = Livewire::actingAs($user)->test( // @phpstan-ignore argument.templateType
-            PasskeyManagerForm::class,
-        );
-
-        Auth::shouldReceive('user')->andReturnNull();
-
-        $component->call('deletePasskey', $passkey->id)->assertStatus(401);
-    }
-
     public function testOwnerCanDeletePasskey(): void
     {
         $user = User::factory()->create();
@@ -112,11 +95,10 @@ final class PasskeyManagerFormTest extends TestCase
         $other = User::factory()->create();
         $passkey = PasskeyCredential::factory()->for($owner)->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
         Livewire::actingAs($other)
             ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
-            ->call('deletePasskey', $passkey->id);
+            ->call('deletePasskey', $passkey->id)
+            ->assertForbidden();
 
         $this->assertModelExists($passkey);
     }

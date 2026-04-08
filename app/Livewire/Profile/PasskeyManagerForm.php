@@ -10,6 +10,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
 /**
@@ -39,19 +40,13 @@ class PasskeyManagerForm extends Component
     }
 
     /**
-     * Delete a passkey. Verifies that the credential belongs to the current user.
+     * Delete a passkey. Authorization is delegated to PasskeyCredentialPolicy.
      */
     public function deletePasskey(string $passkeyId): void
     {
-        $user = Auth::user();
+        $passkey = PasskeyCredential::findOrFail($passkeyId);
 
-        if ($user === null) {
-            abort(Response::HTTP_UNAUTHORIZED);
-        }
-
-        $passkey = PasskeyCredential::where('id', $passkeyId)
-            ->where('user_id', $user->id)
-            ->firstOrFail();
+        Gate::authorize('delete', $passkey);
 
         $this->repository->delete($passkey);
 
