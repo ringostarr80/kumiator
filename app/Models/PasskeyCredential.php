@@ -47,7 +47,7 @@ use Webauthn\PublicKeyCredentialDescriptor;
  * @property \Illuminate\Support\Carbon $created_at
  * @property \Illuminate\Support\Carbon $updated_at
  */
-class PasskeyCredential extends Model
+final class PasskeyCredential extends Model
 {
     /** @use HasFactory<\Database\Factories\PasskeyCredentialFactory> */
     use HasFactory;
