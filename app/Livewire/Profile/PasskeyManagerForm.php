@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Profile;
 
+use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -71,7 +72,7 @@ class PasskeyManagerForm extends Component
     {
         $user = Auth::user();
 
-        if ($user === null) {
+        if (!($user instanceof User)) {
             abort(Response::HTTP_UNAUTHORIZED);
         }
 
