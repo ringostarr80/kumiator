@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PasskeyStoreRequest;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
@@ -71,7 +72,7 @@ class PasskeyRegistrationController extends Controller
     /**
      * Verify the browser's attestation response and persist the new passkey.
      */
-    public function store(Request $request): JsonResponse
+    public function store(PasskeyStoreRequest $request): JsonResponse
     {
         $optionsJson = $request->session()->pull(self::SESSION_KEY);
 
@@ -92,12 +93,12 @@ class PasskeyRegistrationController extends Controller
             $serializer = $this->serverService->getSerializer();
             $storedOptions = $serializer->deserialize($optionsJson, PublicKeyCredentialCreationOptions::class, 'json');
 
-            $credentialName = $request->input('name', '');
-            $credentialName = is_string($credentialName)
-                ? $credentialName
+            $nameRaw = $request->validated('name');
+            $nameInput = is_string($nameRaw)
+                ? trim($nameRaw)
                 : '';
-            $credentialName = trim($credentialName) !== ''
-                ? trim($credentialName)
+            $credentialName = $nameInput !== ''
+                ? $nameInput
                 : __('app.passkey_default_name');
 
             $passkeyCredential = $this->registrationService->verifyAndSave(
