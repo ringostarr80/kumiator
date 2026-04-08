@@ -19,7 +19,7 @@ use Illuminate\Support\ServiceProvider;
  * Serializer is relatively expensive and the serializer is stateless.
  * The other services are resolved freshly each request (transient).
  */
-class WebAuthnServiceProvider extends ServiceProvider
+final class WebAuthnServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
