@@ -15,7 +15,11 @@ Route::get('/', static fn () => view('welcome'));
 // Passkey authentication (guests only)
 // ──────────────────────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(static function (): void {
-    // Returns PublicKeyCredentialRequestOptions JSON for the browser
+    // Returns PublicKeyCredentialRequestOptions JSON for the browser.
+    // Intentionally not rate-limited: the endpoint performs only a read-only DB lookup
+    // (email → allowCredentials) and returns identical JSON for both known and unknown
+    // e-mail addresses, so there is no meaningful information gain for an attacker.
+    // The POST /passkeys/authenticate endpoint carries the rate limit that matters.
     Route::get('/passkeys/authenticate/options', [PasskeyAuthenticationController::class, 'options'])
         ->name('passkeys.authenticate.options');
 
