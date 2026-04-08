@@ -31,9 +31,10 @@ export async function registerPasskey(credentialName) {
     }
 
     // 3. Send the attestation response to the server
-    const storeResponse = await globalThis.axios.post('/user/passkeys/register', credential.toJSON(), {
-        headers: { 'Content-Type': 'application/json' },
-        params: { name: credentialName },
+    const storeResponse = await globalThis.axios.post(
+        '/user/passkeys/register',
+        { ...credential.toJSON(), name: credentialName },
+        { headers: { 'Content-Type': 'application/json' },
     });
 
     return storeResponse.data;
