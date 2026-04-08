@@ -54,38 +54,6 @@ final class PasskeyCredentialRepositoryTest extends TestCase
         $this->assertInstanceOf(PublicKeyCredentialSource::class, $result);
     }
 
-    public function testFindAllPublicKeyCredentialSourcesForUserReturnsOnlyUsersCredentials(): void
-    {
-        $user = User::factory()->create();
-        $other = User::factory()->create();
-
-        $this->repository->saveNewCredential($user, $this->buildPublicKeyCredentialSource(), 'Key 1');
-        $this->repository->saveNewCredential($user, $this->buildPublicKeyCredentialSource(), 'Key 2');
-        $this->repository->saveNewCredential($other, $this->buildPublicKeyCredentialSource(), 'Other Key');
-
-        $result = $this->repository->findAllPublicKeyCredentialSourcesForUser($user);
-
-        $this->assertCount(2, $result);
-    }
-
-    public function testFindUserByCredentialIdReturnsNullForUnknownId(): void
-    {
-        $result = $this->repository->findUserByCredentialId('unknown-id');
-
-        $this->assertNull($result);
-    }
-
-    public function testFindUserByCredentialIdReturnsOwner(): void
-    {
-        $user = User::factory()->create();
-        $model = $this->repository->saveNewCredential($user, $this->buildPublicKeyCredentialSource(), 'Key');
-
-        $result = $this->repository->findUserByCredentialId($model->credential_id);
-
-        $this->assertNotNull($result);
-        $this->assertSame($user->id, $result->id);
-    }
-
     public function testFindAllForUserReturnsOnlyUserCredentials(): void
     {
         $user = User::factory()->create();

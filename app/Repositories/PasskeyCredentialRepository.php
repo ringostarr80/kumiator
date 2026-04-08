@@ -71,24 +71,6 @@ final class PasskeyCredentialRepository
     }
 
     /**
-     * Return all PublicKeyCredentialSources for a user (used when building allowCredentials).
-     *
-     * @return list<PublicKeyCredentialSource>
-     */
-    public function findAllPublicKeyCredentialSourcesForUser(User $user): array
-    {
-        return array_values(
-            $this->findAllForUser($user)
-                ->map(
-                    fn (PasskeyCredential $model) => $this->deserializePublicKeyCredentialSource(
-                        $model->credential_public_key,
-                    ),
-                )
-                ->all(),
-        );
-    }
-
-    /**
      * Persist a new PublicKeyCredentialSource after a successful registration ceremony.
      */
     public function saveNewCredential(
@@ -139,17 +121,6 @@ final class PasskeyCredentialRepository
     // ──────────────────────────────────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Helper used during authentication when the user entity comes from the
-     * credential's userHandle rather than an explicit login form.
-     */
-    public function findUserByCredentialId(string $credentialId): ?User
-    {
-        $model = $this->findByCredentialId($credentialId);
-
-        return $model?->user;
-    }
 
     private function serializePublicKeyCredentialSource(PublicKeyCredentialSource $credentialRecord): string
     {
