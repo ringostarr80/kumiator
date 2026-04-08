@@ -164,8 +164,14 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
 
             $validator = $this->serverService->buildAssertionValidator(WebAuthnConfig::appUrl());
             $validator->check($fakeSource, $response, $storedOptions, $host, null);
-        } catch (\Throwable) {
-            // Expected — this verification is intentionally designed to fail.
+            // If we reach here, the fake verification unexpectedly succeeded.
+            // This is safe: the caller still throws credential_not_found.
+        } catch (AuthenticatorResponseVerificationException) {
+            // Expected — the fake credential is designed to be rejected.
+        } catch (\Throwable $e) {
+            // Unexpected error (e.g. library incompatibility) — log it, but do not
+            // rethrow. The caller denies access regardless.
+            report($e);
         }
     }
 
