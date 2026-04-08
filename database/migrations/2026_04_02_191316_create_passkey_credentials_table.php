@@ -15,7 +15,7 @@ return new class () extends Migration {
 
             // The credential ID issued by the authenticator (Base64URL-encoded).
             // Must be unique because one credential ID can only belong to one user.
-            $table->text('credential_id')->unique();
+            $table->string('credential_id', 255)->unique();
 
             // The full PublicKeyCredentialSource serialised as JSON.
             // Storing the whole object avoids the need to re-map individual columns
