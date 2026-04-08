@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\PasskeyAuthenticateOptionsRequest;
 use App\Models\User;
 use App\Services\WebAuthn\PasskeyAuthenticationContract;
+use App\Services\WebAuthn\WebAuthnConfig;
 use App\Services\WebAuthn\WebAuthnServerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -92,7 +93,7 @@ class PasskeyAuthenticationController extends Controller
             $user = $this->authenticationService->verify(
                 rawResponse: $rawResponse,
                 storedOptions: $storedOptions,
-                host: $request->getHost(),
+                host: WebAuthnConfig::rpId() ?? (string)parse_url(WebAuthnConfig::appUrl(), PHP_URL_HOST),
             );
         } catch (AuthenticatorResponseVerificationException $e) {
             return response()->json(['message' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
