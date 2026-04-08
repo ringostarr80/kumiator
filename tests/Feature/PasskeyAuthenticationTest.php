@@ -6,7 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\PasskeyCredential;
 use App\Models\User;
-use App\Services\WebAuthn\PasskeyAuthenticationService;
+use App\Services\WebAuthn\PasskeyAuthenticationContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Mockery\MockInterface;
@@ -116,13 +116,13 @@ final class PasskeyAuthenticationTest extends TestCase
 
     public function testAuthenticateReturns422WhenVerificationFails(): void
     {
-        $this->partialMock(PasskeyAuthenticationService::class, function (MockInterface $mock): void {
+        $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
+
+        $this->partialMock(PasskeyAuthenticationContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('verify')->andThrow(
                 new AuthenticatorResponseVerificationException('Verification failed.'),
             );
         });
-
-        $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
 
         $response = $this->postJson(self::AUTHENTICATE_URL, ['data' => 'test']);
 
@@ -132,11 +132,11 @@ final class PasskeyAuthenticationTest extends TestCase
 
     public function testAuthenticateReturns500WhenUnexpectedExceptionOccurs(): void
     {
-        $this->partialMock(PasskeyAuthenticationService::class, function (MockInterface $mock): void {
+        $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
+
+        $this->partialMock(PasskeyAuthenticationContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('verify')->andThrow(new \RuntimeException('Unexpected error.'));
         });
-
-        $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
 
         $response = $this->postJson(self::AUTHENTICATE_URL, ['data' => 'test']);
 
@@ -147,12 +147,12 @@ final class PasskeyAuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->partialMock(PasskeyAuthenticationService::class, function (MockInterface $mock) use ($user): void {
-            $mock->shouldReceive('verify')->andReturn($user);
-        });
-
         // Populate the session via the real options endpoint
         $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
+
+        $this->partialMock(PasskeyAuthenticationContract::class, function (MockInterface $mock) use ($user): void {
+            $mock->shouldReceive('verify')->andReturn($user);
+        });
 
         $response = $this->postJson(self::AUTHENTICATE_URL, []);
 
@@ -165,11 +165,11 @@ final class PasskeyAuthenticationTest extends TestCase
     {
         $user = User::factory()->unapproved()->create();
 
-        $this->partialMock(PasskeyAuthenticationService::class, function (MockInterface $mock) use ($user): void {
+        $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
+
+        $this->partialMock(PasskeyAuthenticationContract::class, function (MockInterface $mock) use ($user): void {
             $mock->shouldReceive('verify')->andReturn($user);
         });
-
-        $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
 
         $response = $this->postJson(self::AUTHENTICATE_URL, []);
 

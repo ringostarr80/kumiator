@@ -26,7 +26,7 @@ use Webauthn\TrustPath\EmptyTrustPath;
  *   3. Call verify() with the raw JSON, the stored options and an optional
  *      user hint. On success, the authenticated User model is returned.
  */
-class PasskeyAuthenticationService
+final class PasskeyAuthenticationService implements PasskeyAuthenticationContract
 {
     public function __construct(
         private readonly WebAuthnServerService $serverService,

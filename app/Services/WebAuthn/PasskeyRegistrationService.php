@@ -28,7 +28,7 @@ use Webauthn\PublicKeyCredentialUserEntity;
  *   3. Call verifyAndSave() with the raw JSON, the stored options, and a
  *      user-chosen name for the new passkey.
  */
-class PasskeyRegistrationService
+final class PasskeyRegistrationService implements PasskeyRegistrationContract
 {
     public function __construct(
         private readonly WebAuthnServerService $serverService,

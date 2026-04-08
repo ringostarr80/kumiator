@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PasskeyAuthenticateOptionsRequest;
 use App\Models\User;
-use App\Services\WebAuthn\PasskeyAuthenticationService;
+use App\Services\WebAuthn\PasskeyAuthenticationContract;
 use App\Services\WebAuthn\WebAuthnServerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,7 +31,7 @@ class PasskeyAuthenticationController extends Controller
     private const SESSION_KEY = 'webauthn.authentication.options';
 
     public function __construct(
-        private readonly PasskeyAuthenticationService $authenticationService,
+        private readonly PasskeyAuthenticationContract $authenticationService,
         private readonly WebAuthnServerService $serverService,
     ) {
     }

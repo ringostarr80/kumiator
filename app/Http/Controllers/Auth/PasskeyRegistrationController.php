@@ -8,7 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
-use App\Services\WebAuthn\PasskeyRegistrationService;
+use App\Services\WebAuthn\PasskeyRegistrationContract;
 use App\Services\WebAuthn\WebAuthnServerService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -35,7 +35,7 @@ class PasskeyRegistrationController extends Controller
     private const SESSION_KEY = 'webauthn.registration.options';
 
     public function __construct(
-        private readonly PasskeyRegistrationService $registrationService,
+        private readonly PasskeyRegistrationContract $registrationService,
         private readonly WebAuthnServerService $serverService,
         private readonly PasskeyCredentialRepository $repository,
     ) {

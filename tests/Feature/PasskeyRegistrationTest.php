@@ -6,7 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\PasskeyCredential;
 use App\Models\User;
-use App\Services\WebAuthn\PasskeyRegistrationService;
+use App\Services\WebAuthn\PasskeyRegistrationContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Mockery;
@@ -118,9 +118,12 @@ final class PasskeyRegistrationTest extends TestCase
         // mock while the GET used the real service. verifyAndSave() is the only
         // method called during store(), so uninitialised mock properties are
         // never accessed.
-        $this->partialMock(PasskeyRegistrationService::class, function (MockInterface $mock) use ($passkey): void {
-            $mock->shouldReceive('verifyAndSave')->andReturn($passkey);
-        });
+        $this->partialMock(
+            PasskeyRegistrationContract::class,
+            function (MockInterface $mock) use ($passkey): void {
+                $mock->shouldReceive('verifyAndSave')->andReturn($passkey);
+            },
+        );
 
         $response = $this->actingAs($user)
             ->postJson(self::REGISTER_URL, ['name' => 'Test Passkey'], ['Content-Type' => 'application/json']);
@@ -151,7 +154,7 @@ final class PasskeyRegistrationTest extends TestCase
 
         $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL);
 
-        $this->partialMock(PasskeyRegistrationService::class, function (MockInterface $mock): void {
+        $this->partialMock(PasskeyRegistrationContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('verifyAndSave')
                 ->andThrow(new AuthenticatorResponseVerificationException('Verification failed.'));
         });
@@ -169,7 +172,7 @@ final class PasskeyRegistrationTest extends TestCase
 
         $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL);
 
-        $this->partialMock(PasskeyRegistrationService::class, function (MockInterface $mock): void {
+        $this->partialMock(PasskeyRegistrationContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('verifyAndSave')
                 ->andThrow(new \RuntimeException('Unexpected error.'));
         });
@@ -187,16 +190,19 @@ final class PasskeyRegistrationTest extends TestCase
 
         $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL);
 
-        $this->partialMock(PasskeyRegistrationService::class, function (MockInterface $mock) use ($passkey): void {
-            $mock->shouldReceive('verifyAndSave')
-                ->with(
-                    Mockery::any(),
-                    Mockery::any(),
-                    Mockery::on(fn (string $name): bool => $name === __('app.passkey_default_name')),
-                    Mockery::any(),
-                )
-                ->andReturn($passkey);
-        });
+        $this->partialMock(
+            PasskeyRegistrationContract::class,
+            function (MockInterface $mock) use ($passkey): void {
+                $mock->shouldReceive('verifyAndSave')
+                    ->with(
+                        Mockery::any(),
+                        Mockery::any(),
+                        Mockery::on(fn (string $name): bool => $name === __('app.passkey_default_name')),
+                        Mockery::any(),
+                    )
+                    ->andReturn($passkey);
+            },
+        );
 
         $this->actingAs($user)
             ->postJson(self::REGISTER_URL, [], ['Content-Type' => 'application/json'])
@@ -210,16 +216,19 @@ final class PasskeyRegistrationTest extends TestCase
 
         $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL);
 
-        $this->partialMock(PasskeyRegistrationService::class, function (MockInterface $mock) use ($passkey): void {
-            $mock->shouldReceive('verifyAndSave')
-                ->with(
-                    Mockery::any(),
-                    Mockery::any(),
-                    Mockery::on(fn (string $name): bool => $name === __('app.passkey_default_name')),
-                    Mockery::any(),
-                )
-                ->andReturn($passkey);
-        });
+        $this->partialMock(
+            PasskeyRegistrationContract::class,
+            function (MockInterface $mock) use ($passkey): void {
+                $mock->shouldReceive('verifyAndSave')
+                    ->with(
+                        Mockery::any(),
+                        Mockery::any(),
+                        Mockery::on(fn (string $name): bool => $name === __('app.passkey_default_name')),
+                        Mockery::any(),
+                    )
+                    ->andReturn($passkey);
+            },
+        );
 
         $this->actingAs($user)
             ->postJson(self::REGISTER_URL, ['name' => '   '], ['Content-Type' => 'application/json'])
