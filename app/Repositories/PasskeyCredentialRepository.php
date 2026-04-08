@@ -122,7 +122,7 @@ final class PasskeyCredentialRepository
      */
     public function delete(PasskeyCredential $model): void
     {
-        $model->delete();
+        $model->deleteOrFail();
     }
 
     // ──────────────────────────────────────────────────────────────────────────

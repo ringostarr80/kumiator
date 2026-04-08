@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\PasskeyCredential;
 use App\Models\User;
+use App\Repositories\PasskeyCredentialRepository;
 use App\Services\WebAuthn\PasskeyRegistrationService;
 use App\Services\WebAuthn\WebAuthnServerService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -36,6 +37,7 @@ class PasskeyRegistrationController extends Controller
     public function __construct(
         private readonly PasskeyRegistrationService $registrationService,
         private readonly WebAuthnServerService $serverService,
+        private readonly PasskeyCredentialRepository $repository,
     ) {
     }
 
@@ -128,7 +130,7 @@ class PasskeyRegistrationController extends Controller
     {
         $this->authorize('delete', $passkeyCredential);
 
-        $passkeyCredential->deleteOrFail();
+        $this->repository->delete($passkeyCredential);
 
         return response()->json(null, Response::HTTP_NO_CONTENT);
     }

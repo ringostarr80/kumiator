@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Profile;
 
 use App\Models\PasskeyCredential;
+use App\Repositories\PasskeyCredentialRepository;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Response;
@@ -24,6 +25,13 @@ class PasskeyManagerForm extends Component
      * @var \Illuminate\Database\Eloquent\Collection<int, PasskeyCredential>
      */
     public Collection $passkeys;
+
+    private PasskeyCredentialRepository $repository;
+
+    public function boot(PasskeyCredentialRepository $repository): void
+    {
+        $this->repository = $repository;
+    }
 
     public function mount(): void
     {
@@ -45,7 +53,7 @@ class PasskeyManagerForm extends Component
             ->where('user_id', $user->id)
             ->firstOrFail();
 
-        $passkey->delete();
+        $this->repository->delete($passkey);
 
         $this->loadPasskeys();
 
