@@ -140,6 +140,8 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
                 attestationType: 'none',
                 trustPath: new EmptyTrustPath(),
                 aaguid: Uuid::fromString('00000000-0000-0000-0000-000000000000'),
+                // 77 bytes ≈ minimum CBOR-encoded size of an ES256 (EC2/P-256) COSE public key.
+                // The value is intentionally invalid; the verification is designed to fail anyway.
                 credentialPublicKey: random_bytes(77),
                 userHandle: random_bytes(16),
                 counter: 0,

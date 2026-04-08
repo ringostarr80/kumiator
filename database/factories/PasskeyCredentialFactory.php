@@ -37,7 +37,11 @@ class PasskeyCredentialFactory extends Factory
             attestationType: 'none',
             trustPath: new EmptyTrustPath(),
             aaguid: Uuid::fromString('00000000-0000-0000-0000-000000000000'),
-            credentialPublicKey: random_bytes(77), // fake COSE key bytes
+            // 77 bytes ≈ minimum CBOR-encoded size of an ES256 (EC2/P-256) COSE public key:
+            // 1 byte map header + 5 key-value pairs (kty, alg, crv, x[32], y[32]).
+            // The value is never cryptographically verified in tests; any non-empty byte
+            // string of plausible length is sufficient for the serializer to round-trip.
+            credentialPublicKey: random_bytes(77),
             userHandle: (string) fake()->uuid(),
             counter: 0,
         );
