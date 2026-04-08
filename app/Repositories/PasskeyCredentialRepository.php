@@ -26,6 +26,15 @@ final class PasskeyCredentialRepository
     }
 
     /**
+     * Find a stored credential by its UUID primary key.
+     * Throws ModelNotFoundException when no matching record exists.
+     */
+    public function findByIdOrFail(string $id): PasskeyCredential
+    {
+        return PasskeyCredential::findOrFail($id);
+    }
+
+    /**
      * Find a stored credential by its Base64URL-encoded credential ID.
      * Returns null when no matching record exists.
      */
@@ -56,7 +65,9 @@ final class PasskeyCredentialRepository
      */
     public function findAllForUser(User $user): Collection
     {
-        return PasskeyCredential::where('user_id', $user->id)->get();
+        return PasskeyCredential::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
     }
 
     /**

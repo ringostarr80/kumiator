@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Profile;
 
-use App\Models\PasskeyCredential;
 use App\Repositories\PasskeyCredentialRepository;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -23,7 +22,7 @@ use Livewire\Component;
 class PasskeyManagerForm extends Component
 {
     /**
-     * @var \Illuminate\Database\Eloquent\Collection<int, PasskeyCredential>
+     * @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\PasskeyCredential>
      */
     public Collection $passkeys;
 
@@ -44,7 +43,7 @@ class PasskeyManagerForm extends Component
      */
     public function deletePasskey(string $passkeyId): void
     {
-        $passkey = PasskeyCredential::findOrFail($passkeyId);
+        $passkey = $this->repository->findByIdOrFail($passkeyId);
 
         Gate::authorize('delete', $passkey);
 
@@ -68,8 +67,6 @@ class PasskeyManagerForm extends Component
             abort(Response::HTTP_UNAUTHORIZED);
         }
 
-        $this->passkeys = PasskeyCredential::where('user_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $this->passkeys = $this->repository->findAllForUser($user);
     }
 }
