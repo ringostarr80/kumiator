@@ -89,6 +89,20 @@ final class PasskeyManagerFormTest extends TestCase
             ->assertCount('passkeys', 0); // @phpstan-ignore method.nonObject
     }
 
+    public function testPasskeyRegisteredEventRefreshesPasskeyList(): void
+    {
+        $user = User::factory()->create();
+
+        $component = Livewire::actingAs($user)
+            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->assertCount('passkeys', 0);
+
+        PasskeyCredential::factory()->for($user)->create();
+
+        $component->dispatch('passkey-registered') // @phpstan-ignore method.nonObject
+            ->assertCount('passkeys', 1); // @phpstan-ignore method.nonObject
+    }
+
     public function testOtherUserCannotDeletePasskey(): void
     {
         $owner = User::factory()->create();

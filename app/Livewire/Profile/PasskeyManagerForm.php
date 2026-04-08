@@ -10,14 +10,16 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
  * Livewire component that lists a user's passkeys and handles deletion.
  *
  * Registration is initiated client-side via JavaScript (passkeys.js) and
- * completed via the JSON API endpoints. After registration the page is
- * reloaded via JS so this component automatically re-renders with the new list.
+ * completed via the JSON API endpoints. After registration the JS dispatches
+ * a "passkey-registered" browser event, which triggers onPasskeyRegistered()
+ * to refresh the list without a full page reload.
  */
 class PasskeyManagerForm extends Component
 {
@@ -34,6 +36,12 @@ class PasskeyManagerForm extends Component
     }
 
     public function mount(): void
+    {
+        $this->loadPasskeys();
+    }
+
+    #[On('passkey-registered')]
+    public function onPasskeyRegistered(): void
     {
         $this->loadPasskeys();
     }

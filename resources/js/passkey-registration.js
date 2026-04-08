@@ -18,8 +18,8 @@ globalThis.passkeyRegistration = function (defaultName, successMessage, defaultE
                 this.successMessage = successMessage;
                 this.showForm = false;
                 this.credentialName = '';
-                // Reload the page so the Livewire component picks up the new passkey
-                globalThis.location.reload();
+                // Notify the Livewire PasskeyManagerForm to refresh its list
+                globalThis.Livewire.dispatch('passkey-registered');
             } catch (err) {
                 this.errorMessage = err.response?.data?.message ?? err.message ?? defaultErrorMessage;
             } finally {
