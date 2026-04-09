@@ -20,6 +20,7 @@ use Webauthn\PublicKeyCredentialUserEntity;
 final class WebAuthnCeremonySessionTest extends TestCase
 {
     private const SESSION_KEY = 'webauthn.test.options';
+    private const string TEST_USER_EMAIL = 'user@test.com';
 
     private WebAuthnCeremonySession $ceremonySession;
 
@@ -89,7 +90,7 @@ final class WebAuthnCeremonySessionTest extends TestCase
     {
         $original = PublicKeyCredentialCreationOptions::create(
             rp: PublicKeyCredentialRpEntity::create('Test App', 'localhost'),
-            user: PublicKeyCredentialUserEntity::create('user@test.com', random_bytes(16), 'user@test.com'),
+            user: PublicKeyCredentialUserEntity::create(self::TEST_USER_EMAIL, random_bytes(16), self::TEST_USER_EMAIL),
             challenge: random_bytes(32),
             pubKeyCredParams: [PublicKeyCredentialParameters::create('public-key', ES256::ID)],
         );
@@ -103,6 +104,20 @@ final class WebAuthnCeremonySessionTest extends TestCase
         );
 
         $this->assertInstanceOf(PublicKeyCredentialCreationOptions::class, $result);
+    }
+
+    public function testPullOptionsReturnsNullForCorruptedJson(): void
+    {
+        $request = $this->makeRequestWithSession();
+        $request->session()->put(self::SESSION_KEY, 'this-is-not-valid-json{{{');
+
+        $result = $this->ceremonySession->pullOptions(
+            self::SESSION_KEY,
+            PublicKeyCredentialRequestOptions::class,
+            $request,
+        );
+
+        $this->assertNull($result);
     }
 
     public function testPullOptionsConsumesSessionEntry(): void

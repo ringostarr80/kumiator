@@ -39,10 +39,8 @@ final class WebAuthnCeremonySession
      * Pull the serialized options from the session and deserialize them.
      *
      * Returns null when the session entry is missing (e.g. expired or never set),
-     * so the caller can return the appropriate 422 response.
-     *
-     * Throws \UnexpectedValueException when the session data cannot be deserialized
-     * to the expected class (corrupted or tampered session).
+     * when the stored data cannot be deserialized (e.g. corrupted or tampered session),
+     * or when the deserialized value is not an instance of the expected class.
      *
      * @template T of object
      * @param class-string<T> $class
@@ -56,13 +54,15 @@ final class WebAuthnCeremonySession
             return null;
         }
 
-        $result = $this->serverService->getSerializer()->deserialize($json, $class, 'json');
+        try {
+            $result = $this->serverService->getSerializer()->deserialize($json, $class, 'json');
+        } catch (\Throwable) {
+            return null;
+        }
 
         if (!($result instanceof $class)) {
             // @codeCoverageIgnoreStart
-            throw new \UnexpectedValueException(
-                "WebAuthn session data is corrupted: expected {$class}, got " . get_debug_type($result),
-            );
+            return null;
             // @codeCoverageIgnoreEnd
         }
 
