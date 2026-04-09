@@ -9,6 +9,7 @@ use App\Http\Requests\PasskeyAuthenticateOptionsRequest;
 use App\Models\User;
 use App\Services\WebAuthn\PasskeyAuthenticationContract;
 use App\Services\WebAuthn\WebAuthnConfig;
+use App\Services\WebAuthn\WebAuthnJsonNormalizer;
 use App\Services\WebAuthn\WebAuthnServerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,8 +27,6 @@ use Webauthn\PublicKeyCredentialRequestOptions;
  */
 final class PasskeyAuthenticationController extends Controller
 {
-    use NormalizesWebAuthnJson;
-
     /** Session key used to store the pending request options. */
     private const SESSION_KEY = 'webauthn.authentication.options';
 
@@ -64,7 +63,7 @@ final class PasskeyAuthenticationController extends Controller
 
         $request->session()->put(self::SESSION_KEY, $json);
 
-        return response()->json(self::stripNulls(json_decode($json, true)));
+        return response()->json(WebAuthnJsonNormalizer::stripNulls(json_decode($json, true)));
     }
 
     /**
