@@ -25,6 +25,20 @@ final class WebAuthnConfig
             : 'AssociationManager';
     }
 
+    /**
+     * Returns the explicitly configured RP ID (effective domain), or null when unset.
+     *
+     * SECURITY: The RP ID **must** be the effective domain (or a registrable
+     * suffix of it) from which the app is served. For example, if the app runs
+     * on `app.example.com`, valid RP IDs are `app.example.com` or `example.com`.
+     *
+     * Origin / RP ID validation is delegated to webauthn-lib. A misconfigured
+     * RP ID will cause all ceremonies to fail (safe), but an overly broad RP ID
+     * (e.g. a shared parent domain) could allow sibling subdomains to replay
+     * assertions. Set `WEBAUTHN_RP_ID` in `.env` to the narrowest domain that
+     * covers all app origins. Leave unset to auto-derive from `APP_URL` via
+     * {@see self::effectiveHost()}.
+     */
     public static function rpId(): ?string
     {
         $value = config('webauthn.relying_party.id');
