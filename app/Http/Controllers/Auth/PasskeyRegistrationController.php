@@ -125,6 +125,8 @@ final class PasskeyRegistrationController extends Controller
             );
         }
 
+        $request->session()->regenerate();
+
         return response()->json([
             'id' => $passkeyCredential->id,
             'name' => $passkeyCredential->name,
