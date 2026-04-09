@@ -10,7 +10,11 @@ Die Sprache der Ausgaben richtet sich nach der in `.env` gesetzten `APP_LOCALE`.
 - [Benutzerverwaltung](#benutzerverwaltung)
   - [Benutzer anlegen (`user:create`)](#benutzer-anlegen-usercreate)
   - [Benutzer auflisten (`user:list`)](#benutzer-auflisten-userlist)
+  - [Benutzer freischalten (`user:approve`)](#benutzer-freischalten-userapprove)
   - [Benutzer verifizieren (`user:verify`)](#benutzer-verifizieren-userverify)
+  - [Passwort zurücksetzen (`user:reset-password`)](#passwort-zurücksetzen-userreset-password)
+  - [2FA aktivieren (`user:enable-2fa`)](#2fa-aktivieren-userenable-2fa)
+  - [2FA deaktivieren (`user:disable-2fa`)](#2fa-deaktivieren-userdisable-2fa)
   - [Benutzer löschen (`user:delete`)](#benutzer-löschen-userdelete)
 - [Rollenverwaltung](#rollenverwaltung)
   - [Rolle anlegen (`role:create`)](#rolle-anlegen-rolecreate)
@@ -55,11 +59,11 @@ php artisan user:list
 ```
 
 ```
-+----------------+----------------------+-------+------------------+
-| Name           | E-Mail               | Rolle | Erstellt am      |
-+----------------+----------------------+-------+------------------+
-| Max Mustermann | max@example.com      | admin | 19.03.2026 10:00 |
-+----------------+----------------------+-------+------------------+
++----------------+-----------------+-------+------------+---------------+------------------+
+| Name           | E-Mail          | Rolle | Verifiziert| Freigeschaltet| Erstellt am      |
++----------------+-----------------+-------+------------+---------------+------------------+
+| Max Mustermann | max@example.com | admin | ✓          | ✓             | 19.03.2026 10:00 |
++----------------+-----------------+-------+------------+---------------+------------------+
 Gesamt: 1 Benutzer
 ```
 
@@ -79,6 +83,107 @@ Benutzer verifizieren
 
 Benutzer "Max Mustermann" (max@example.com) wurde erfolgreich verifiziert.
 ```
+
+## Benutzer freischalten (`user:approve`)
+
+Schaltet einen registrierten Benutzer frei, ohne dass dieser auf einen Bestätigungslink
+warten muss. Nützlich wenn die Applikation so konfiguriert ist, dass neue Benutzer erst
+nach manueller Freischaltung Zugang erhalten:
+
+```bash
+php artisan user:approve
+```
+
+```
+Benutzer freischalten
+---------------------
+ E-Mail: max@example.com
+
+Benutzer "Max Mustermann" (max@example.com) wurde erfolgreich freigeschaltet.
+```
+
+Ist der Benutzer bereits freigeschaltet, gibt das Kommando eine Warnung aus und endet
+erfolgreich ohne eine erneute Änderung vorzunehmen.
+
+## Passwort zurücksetzen (`user:reset-password`)
+
+Setzt das Passwort eines Benutzers direkt über die Kommandozeile zurück. Das neue
+Passwort muss mindestens 8 Zeichen lang sein und wird zur Bestätigung zweimal abgefragt:
+
+```bash
+php artisan user:reset-password
+```
+
+```
+Passwort zurücksetzen
+---------------------
+ E-Mail: max@example.com
+ Neues Passwort:
+ Neues Passwort bestätigen:
+
+Das Passwort für Benutzer "Max Mustermann" (max@example.com) wurde erfolgreich zurückgesetzt.
+```
+
+## 2FA aktivieren (`user:enable-2fa`)
+
+Aktiviert die Zwei-Faktor-Authentifizierung (TOTP) für einen Benutzer. Der Befehl zeigt
+einen QR-Code sowie das TOTP-Secret an, damit die Authenticator-App eingerichtet werden
+kann. Anschließend muss zur Bestätigung ein gültiger Code eingegeben werden. Bei Erfolg
+werden die Wiederherstellungscodes angezeigt – diese sollten sicher aufbewahrt werden:
+
+```bash
+php artisan user:enable-2fa
+```
+
+```
+Zwei-Faktor-Authentifizierung aktivieren
+-----------------------------------------
+ E-Mail: max@example.com
+
+TOTP-URL (zum Einrichten in einer Authenticator-App):
+█████████████████████████████
+█ ▄▄▄▄▄ █▀█ █▄█▀▀▄ █ ▄▄▄▄▄ █
+█ █   █ █▀▀▀█▀▄▄   █ █   █ █
+  ... (QR-Code) ...
+
+TOTP-Secret:
+JBSWY3DPEHPK3PXP
+
+ Bitte den 6-stelligen Code aus der Authenticator-App eingeben: 123456
+
+Zwei-Faktor-Authentifizierung für Benutzer "Max Mustermann" (max@example.com) wurde erfolgreich aktiviert.
+
+Wiederherstellungscodes:
+  xxxx-xxxx
+  xxxx-xxxx
+  ...
+```
+
+Ist die 2FA für den Benutzer bereits aktiv, gibt das Kommando eine Warnung aus und
+endet ohne Änderung. Wird ein ungültiger Code eingegeben, wird der 2FA-Setup
+rückgängig gemacht und das Kommando endet mit einem Fehler.
+
+## 2FA deaktivieren (`user:disable-2fa`)
+
+Deaktiviert die Zwei-Faktor-Authentifizierung für einen Benutzer nach Bestätigung:
+
+```bash
+php artisan user:disable-2fa
+```
+
+```
+Zwei-Faktor-Authentifizierung deaktivieren
+-------------------------------------------
+ E-Mail: max@example.com
+
+Benutzer gefunden: Max Mustermann (max@example.com)
+ Soll die Zwei-Faktor-Authentifizierung wirklich deaktiviert werden? (yes/no) [no]: yes
+
+Zwei-Faktor-Authentifizierung für Benutzer "Max Mustermann" (max@example.com) wurde erfolgreich deaktiviert.
+```
+
+Hat der Benutzer die 2FA nicht aktiviert, gibt das Kommando eine Warnung aus und endet
+erfolgreich ohne Änderung.
 
 ## Benutzer löschen (`user:delete`)
 
