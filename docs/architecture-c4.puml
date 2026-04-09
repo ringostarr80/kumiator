@@ -1,0 +1,39 @@
+@startuml AssociationManager - C4 Container Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title AssociationManager – C4 Container Diagram (Level 2)
+
+Person(vereinsverwalter, "Vereinsverwalter", "Eingeloggter Nutzer, verwaltet den Verein")
+Person(admin, "Administrator", "Legt Nutzer & Rollen per CLI an")
+
+System_Boundary(app, "AssociationManager Web Application") {
+
+    Container(browser, "Browser", "Login (Username/Password, 2FA, Passkey)", "Rendert die UI")
+
+    Container(webapp, "Laravel Web App", "PHP 8.4, Laravel 13", "Verarbeitet HTTP-Requests, steuert Auth-Flows, liefert Blade-Views und Livewire-Komponenten aus")
+
+    Container(cli, "Artisan CLI", "Laravel Console, PHP", "Verwaltung von Nutzern und Rollen außerhalb der Web-UI")
+
+    ContainerDb(db, "Datenbank", "SQLite (dev) / kompatibel", "Speichert Nutzer, Passkey-Credentials, Rollen, Sessions, Jobs")
+}
+
+System_Ext(mailserver, "Mail-Server", "Versendet Verifikations- und Benachrichtigungs-E-Mails")
+System_Ext(authenticator, "Authenticator App / Passkey-Gerät", "TOTP-Codes (2FA) oder Passkey-Geste (Biometrie, PIN)")
+
+' --- Beziehungen ---
+
+Rel(vereinsverwalter, browser, "Nutzt die Web-App", "HTTPS")
+Rel(admin, cli, "Führt Artisan-Kommandos aus", "SSH / Terminal")
+
+Rel(browser, webapp, "HTTP-Requests (Blade, Livewire, JSON)", "HTTPS")
+Rel(browser, authenticator, "WebAuthn-Ceremony (Assertion / Attestation)", "Browser-API")
+
+Rel(webapp, db, "Liest und schreibt", "PDO / Eloquent ORM")
+Rel(webapp, mailserver, "Sendet E-Mails", "SMTP / API")
+
+
+Rel(cli, db, "Liest und schreibt (User/Role-Management)", "PDO / Eloquent ORM")
+
+@enduml
