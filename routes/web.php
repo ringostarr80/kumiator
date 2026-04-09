@@ -25,7 +25,7 @@ Route::middleware('guest')->group(static function (): void {
 
     // Verifies the assertion and logs the user in
     Route::post('/passkeys/authenticate', [PasskeyAuthenticationController::class, 'authenticate'])
-        ->middleware('throttle:passkey-authenticate')
+        ->middleware(['throttle:passkey-authenticate', 'max.json.body'])
         ->name('passkeys.authenticate');
 });
 
@@ -46,6 +46,7 @@ Route::middleware([
 
         // Verifies the attestation and stores the new passkey
         Route::post('/user/passkeys/register', [PasskeyRegistrationController::class, 'store'])
+            ->middleware('max.json.body')
             ->name('passkeys.register');
 
         // Removes a passkey

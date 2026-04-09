@@ -195,6 +195,7 @@ return [
     'passkey_empty_request' => 'Empty request body.',
     'passkey_authentication_failed' => 'Authentication failed.',
     'passkey_registration_failed' => 'Passkey registration failed.',
+    'request_payload_too_large' => 'Request payload too large.',
 
     // Welcome Component (Jetstream Dashboard)
     'welcome_jetstream' => 'Welcome to your Jetstream application!',
