@@ -111,7 +111,9 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
         $user = $passkeyModel->user;
 
         if ($user === null) {
-            throw new \LogicException(__('app.passkey_orphaned_credential'));
+            throw new AuthenticatorResponseVerificationException(
+                __('app.passkey_credential_not_found'),
+            );
         }
 
         return $user;
