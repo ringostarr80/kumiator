@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
 use App\Services\WebAuthn\WebAuthnServerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Uid\Uuid;
 use Tests\TestCase;
 use Webauthn\PublicKeyCredentialSource;
@@ -94,6 +95,20 @@ final class PasskeyCredentialRepositoryTest extends TestCase
         $model->refresh();
         $this->assertSame(42, $model->counter);
         $this->assertNotNull($model->last_used_at);
+    }
+
+    public function testGetPublicKeyCredentialSourceReturnsDeserializedSource(): void
+    {
+        $user = User::factory()->create();
+        $model = $this->repository->saveNewCredential($user, $this->buildPublicKeyCredentialSource(), 'Key');
+
+        $result = $this->repository->getPublicKeyCredentialSource($model);
+
+        $this->assertInstanceOf(PublicKeyCredentialSource::class, $result);
+        $this->assertSame(
+            $model->credential_id,
+            Base64UrlSafe::encodeUnpadded($result->publicKeyCredentialId),
+        );
     }
 
     public function testDeleteRemovesModel(): void

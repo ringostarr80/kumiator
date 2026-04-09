@@ -111,6 +111,15 @@ final class PasskeyCredentialRepository
     }
 
     /**
+     * Deserialise the stored PublicKeyCredentialSource from a PasskeyCredential model.
+     * Centralises deserialization so that no other layer needs to know the storage format.
+     */
+    public function getPublicKeyCredentialSource(PasskeyCredential $model): PublicKeyCredentialSource
+    {
+        return $this->deserializePublicKeyCredentialSource($model->credential_public_key);
+    }
+
+    /**
      * Delete a passkey credential by model instance.
      */
     public function delete(PasskeyCredential $model): void

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\WebAuthn;
 
-use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
 use ParagonIE\ConstantTime\Base64UrlSafe;
@@ -94,7 +93,7 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
         $credentialId = Base64UrlSafe::encodeUnpadded($publicKeyCredential->rawId);
         $passkeyModel = $this->repository->findByCredentialId($credentialId);
         $credentialRecord = $passkeyModel !== null
-            ? $this->resolvePublicKeyCredentialSource($passkeyModel)
+            ? $this->repository->getPublicKeyCredentialSource($passkeyModel)
             : null;
 
         if ($passkeyModel === null || $credentialRecord === null) {
@@ -173,12 +172,5 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
             // rethrow. The caller denies access regardless.
             report($e);
         }
-    }
-
-    private function resolvePublicKeyCredentialSource(PasskeyCredential $model): PublicKeyCredentialSource
-    {
-        $serializer = $this->serverService->getSerializer();
-
-        return $serializer->deserialize($model->credential_public_key, PublicKeyCredentialSource::class, 'json');
     }
 }
