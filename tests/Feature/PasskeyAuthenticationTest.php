@@ -118,6 +118,29 @@ final class PasskeyAuthenticationTest extends TestCase
         $response->assertUnprocessable();
     }
 
+    public function testAuthenticateReturns422WhenSessionHasExpired(): void
+    {
+        // Simulate a ceremony whose TTL has already elapsed.
+        $response = $this->withSession([
+            'webauthn.authentication.options' => [
+                'data' => '{"challenge":"dGVzdA"}',
+                'expires_at' => now()->subMinutes(5)->timestamp,
+            ],
+        ])->postJson(self::AUTHENTICATE_URL, ['data' => 'test']);
+
+        $response->assertUnprocessable();
+    }
+
+    public function testAuthenticateReturns422WhenSessionDataIsCorrupted(): void
+    {
+        // A non-array value in the session key must be treated as missing/invalid.
+        $response = $this->withSession([
+            'webauthn.authentication.options' => 'corrupted-session-string',
+        ])->postJson(self::AUTHENTICATE_URL, ['data' => 'test']);
+
+        $response->assertUnprocessable();
+    }
+
     public function testAuthenticateReturns400WhenRequestBodyIsEmpty(): void
     {
         $this->getJson(self::AUTHENTICATE_OPTIONS_URL);

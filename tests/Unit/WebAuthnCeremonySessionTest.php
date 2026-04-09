@@ -110,6 +110,54 @@ final class WebAuthnCeremonySessionTest extends TestCase
         $this->assertInstanceOf(PublicKeyCredentialCreationOptions::class, $result);
     }
 
+    public function testPullOptionsReturnsNullWhenDataKeyIsMissing(): void
+    {
+        $request = $this->makeRequestWithSession();
+        $request->session()->put(self::SESSION_KEY, [
+            // 'data' key intentionally omitted
+            'expires_at' => now()->addMinutes(2)->timestamp,
+        ]);
+
+        $result = $this->ceremonySession->pullOptions(
+            self::SESSION_KEY,
+            PublicKeyCredentialRequestOptions::class,
+            $request,
+        );
+
+        $this->assertNull($result);
+    }
+
+    public function testPullOptionsReturnsNullWhenExpiresAtKeyIsMissing(): void
+    {
+        $request = $this->makeRequestWithSession();
+        $request->session()->put(self::SESSION_KEY, [
+            'data' => '{}',
+            // 'expires_at' key intentionally omitted
+        ]);
+
+        $result = $this->ceremonySession->pullOptions(
+            self::SESSION_KEY,
+            PublicKeyCredentialRequestOptions::class,
+            $request,
+        );
+
+        $this->assertNull($result);
+    }
+
+    public function testPullOptionsConsumesSessionEntryEvenWhenReturningNull(): void
+    {
+        // A failed pull (corrupted data) must still consume the session entry so
+        // that stale or tampered challenges cannot be retried.
+        $request = $this->makeRequestWithSession();
+        $request->session()->put(self::SESSION_KEY, 'corrupted');
+
+        $this->assertNotNull($request->session()->get(self::SESSION_KEY));
+
+        $this->ceremonySession->pullOptions(self::SESSION_KEY, PublicKeyCredentialRequestOptions::class, $request);
+
+        $this->assertNull($request->session()->get(self::SESSION_KEY));
+    }
+
     public function testPullOptionsReturnsNullForMalformedEnvelope(): void
     {
         $request = $this->makeRequestWithSession();
@@ -190,6 +238,46 @@ final class WebAuthnCeremonySessionTest extends TestCase
             $request,
         );
         $this->assertNull($second);
+    }
+
+    public function testStoreOptionsRespectsConfiguredTtl(): void
+    {
+        config(['webauthn.ceremony_session_ttl' => 30]);
+
+        $options = PublicKeyCredentialRequestOptions::create(random_bytes(32));
+        $request = $this->makeRequestWithSession();
+
+        $lowerBound = now()->addSeconds(29)->timestamp;
+        $this->ceremonySession->storeOptions($options, self::SESSION_KEY, $request);
+        $upperBound = now()->addSeconds(31)->timestamp;
+
+        $stored = $request->session()->get(self::SESSION_KEY);
+
+        $this->assertIsArray($stored);
+        $this->assertIsInt($stored['expires_at']);
+        $this->assertGreaterThanOrEqual($lowerBound, $stored['expires_at']);
+        $this->assertLessThanOrEqual($upperBound, $stored['expires_at']);
+    }
+
+    public function testStoreOptionsFallsBackToDefaultTtlForNonIntegerConfig(): void
+    {
+        // The runtime guard (`is_int($ttlRaw) ? $ttlRaw : 120`) protects against
+        // a misconfigured non-integer value being passed to addSeconds().
+        config(['webauthn.ceremony_session_ttl' => 'not-an-integer']);
+
+        $options = PublicKeyCredentialRequestOptions::create(random_bytes(32));
+        $request = $this->makeRequestWithSession();
+
+        $lowerBound = now()->addSeconds(119)->timestamp;
+        $this->ceremonySession->storeOptions($options, self::SESSION_KEY, $request);
+        $upperBound = now()->addSeconds(121)->timestamp;
+
+        $stored = $request->session()->get(self::SESSION_KEY);
+
+        $this->assertIsArray($stored);
+        $this->assertIsInt($stored['expires_at']);
+        $this->assertGreaterThanOrEqual($lowerBound, $stored['expires_at']);
+        $this->assertLessThanOrEqual($upperBound, $stored['expires_at']);
     }
 
     protected function setUp(): void

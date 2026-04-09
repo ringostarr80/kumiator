@@ -35,7 +35,9 @@ final class WebAuthnCeremonySession
         $json = $this->serverService->getSerializer()->serialize($options, 'json');
 
         $ttlRaw = config('webauthn.ceremony_session_ttl', 120);
-        $ttl = is_int($ttlRaw) ? $ttlRaw : 120;
+        $ttl = is_int($ttlRaw)
+            ? $ttlRaw
+            : 120;
 
         $request->session()->put($sessionKey, [
             'data' => $json,

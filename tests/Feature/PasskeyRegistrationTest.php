@@ -84,6 +84,18 @@ final class PasskeyRegistrationTest extends TestCase
         $response->assertJsonCount(2, 'excludeCredentials');
     }
 
+    public function testSubsequentOptionsRequestsProduceFreshChallenges(): void
+    {
+        // Each call to the options endpoint must generate a new random challenge.
+        // A repeated challenge would allow replay attacks.
+        $user = User::factory()->create();
+
+        $first = $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL)->json('challenge');
+        $second = $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL)->json('challenge');
+
+        $this->assertNotSame($first, $second, 'Each options request must produce a unique challenge.');
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     // Store endpoint
     // ──────────────────────────────────────────────────────────────────────────
@@ -102,6 +114,35 @@ final class PasskeyRegistrationTest extends TestCase
         $response = $this->actingAs($user)
             ->withSession([])
             ->postJson(self::REGISTER_URL, [], ['Content-Type' => self::CONTENT_TYPE_JSON]);
+
+        $response->assertUnprocessable();
+    }
+
+    public function testStoreEndpointReturns422WhenSessionHasExpired(): void
+    {
+        $user = User::factory()->create();
+
+        // Simulate a ceremony whose TTL has already elapsed.
+        $response = $this->actingAs($user)
+            ->withSession([
+                'webauthn.registration.options' => [
+                    'data' => '{"challenge":"dGVzdA"}',
+                    'expires_at' => now()->subMinutes(5)->timestamp,
+                ],
+            ])->postJson(self::REGISTER_URL, [], ['Content-Type' => self::CONTENT_TYPE_JSON]);
+
+        $response->assertUnprocessable();
+    }
+
+    public function testStoreEndpointReturns422WhenSessionDataIsCorrupted(): void
+    {
+        $user = User::factory()->create();
+
+        // A non-array value in the session key must be treated as missing/invalid.
+        $response = $this->actingAs($user)
+            ->withSession([
+                'webauthn.registration.options' => 'corrupted-session-string',
+            ])->postJson(self::REGISTER_URL, [], ['Content-Type' => self::CONTENT_TYPE_JSON]);
 
         $response->assertUnprocessable();
     }
