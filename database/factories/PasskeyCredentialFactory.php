@@ -20,6 +20,40 @@ class PasskeyCredentialFactory extends Factory
 {
     protected $model = PasskeyCredential::class;
 
+    public function configure(): static
+    {
+        return $this->afterCreating(function (PasskeyCredential $credential): void {
+            $user = $credential->user()->firstOrFail();
+            $serializer = app(WebAuthnServerService::class)->getSerializer();
+
+            $source = $serializer->deserialize(
+                $credential->credential_public_key,
+                PublicKeyCredentialSource::class,
+                'json',
+            );
+
+            $corrected = PublicKeyCredentialSource::create(
+                publicKeyCredentialId: $source->publicKeyCredentialId,
+                type: $source->type,
+                transports: $source->transports,
+                attestationType: $source->attestationType,
+                trustPath: $source->trustPath,
+                aaguid: $source->aaguid,
+                credentialPublicKey: $source->credentialPublicKey,
+                userHandle: $user->getWebAuthnUserHandle(),
+                counter: $source->counter,
+                otherUI: $source->otherUI,
+                backupEligible: $source->backupEligible,
+                backupStatus: $source->backupStatus,
+                uvInitialized: $source->uvInitialized,
+            );
+
+            $credential->updateQuietly([
+                'credential_public_key' => $serializer->serialize($corrected, 'json'),
+            ]);
+        });
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -42,7 +76,7 @@ class PasskeyCredentialFactory extends Factory
             // The value is never cryptographically verified in tests; any non-empty byte
             // string of plausible length is sufficient for the serializer to round-trip.
             credentialPublicKey: random_bytes(77),
-            userHandle: (string) fake()->uuid(),
+            userHandle: '0', // placeholder – overwritten by afterCreating() with the real user ID
             counter: 0,
         );
 
