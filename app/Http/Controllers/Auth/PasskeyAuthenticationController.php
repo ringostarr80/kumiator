@@ -9,7 +9,6 @@ use App\Http\Requests\PasskeyAuthenticateOptionsRequest;
 use App\Models\User;
 use App\Services\WebAuthn\PasskeyAuthenticationContract;
 use App\Services\WebAuthn\WebAuthnConfig;
-use App\Services\WebAuthn\WebAuthnJsonNormalizer;
 use App\Services\WebAuthn\WebAuthnServerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -63,7 +62,7 @@ final class PasskeyAuthenticationController extends Controller
 
         $request->session()->put(self::SESSION_KEY, $json);
 
-        return response()->json(WebAuthnJsonNormalizer::stripNulls(json_decode($json, true)));
+        return response()->json($this->serverService->normalizeOptionsJson($json));
     }
 
     /**

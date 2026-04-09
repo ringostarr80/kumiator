@@ -46,6 +46,32 @@ final class WebAuthnServerService
     }
 
     /**
+     * Normalise a serialised WebAuthn options JSON string into a clean PHP
+     * array suitable for JSON responses.
+     *
+     * The webauthn-lib serializer emits null for optional fields that are not
+     * configured. The browser's parseCreationOptionsFromJSON /
+     * parseRequestOptionsFromJSON coerces null to the string "null" via WebIDL,
+     * causing RP ID mismatches and other ceremony errors. This method strips
+     * those nulls before the array leaves the server.
+     *
+     * Pass the same JSON string that was stored in the session to avoid
+     * serialising the options object twice.
+     *
+     * @return array<mixed>
+     */
+    public function normalizeOptionsJson(string $json): array
+    {
+        $decoded = json_decode($json, true);
+
+        $stripped = WebAuthnJsonNormalizer::stripNulls(is_array($decoded) ? $decoded : []);
+
+        return is_array($stripped)
+            ? $stripped
+            : [];
+    }
+
+    /**
      * Build a validator for the registration (attestation) ceremony.
      * A new instance is created each time because it is lightweight.
      */

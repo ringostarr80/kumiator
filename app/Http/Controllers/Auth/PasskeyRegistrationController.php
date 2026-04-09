@@ -11,7 +11,6 @@ use App\Models\User;
 use App\Repositories\PasskeyCredentialRepositoryContract;
 use App\Services\WebAuthn\PasskeyRegistrationContract;
 use App\Services\WebAuthn\WebAuthnConfig;
-use App\Services\WebAuthn\WebAuthnJsonNormalizer;
 use App\Services\WebAuthn\WebAuthnServerService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -66,7 +65,7 @@ final class PasskeyRegistrationController extends Controller
         // challenge.  We store the serialised JSON and deserialise on the way back.
         $request->session()->put(self::SESSION_KEY, $json);
 
-        return response()->json(WebAuthnJsonNormalizer::stripNulls(json_decode($json, true)));
+        return response()->json($this->serverService->normalizeOptionsJson($json));
     }
 
     /**

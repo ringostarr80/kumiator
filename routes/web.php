@@ -13,6 +13,12 @@ Route::get('/', static fn () => view('welcome'));
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Passkey authentication (guests only)
+//
+// Note: Although these endpoints accept JSON, they are registered under the
+// "web" middleware group (via routes/web.php) and therefore covered by
+// VerifyCsrfToken. Axios sends the X-XSRF-TOKEN header automatically, so
+// CSRF protection is fully active. The JSON Content-Type also prevents
+// plain HTML form submissions from cross-origin sites.
 // ──────────────────────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(static function (): void {
     // Returns PublicKeyCredentialRequestOptions JSON for the browser.
