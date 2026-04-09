@@ -132,6 +132,12 @@ final class PasskeyAuthenticationTest extends TestCase
         $response->assertBadRequest();
     }
 
+    // The following tests mock PasskeyAuthenticationContract::verify() because a real
+    // WebAuthn assertion requires a valid cryptographic signature produced by an actual
+    // authenticator. Reproducing such a response in an automated test environment is not
+    // practically possible, so mocking the verification boundary is the accepted exception
+    // to the project's "avoid mocks" guideline for these specific controller code paths.
+
     public function testAuthenticateReturns422WhenVerificationFails(): void
     {
         $this->getJson(self::AUTHENTICATE_OPTIONS_URL);

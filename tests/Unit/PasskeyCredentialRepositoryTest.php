@@ -8,6 +8,7 @@ use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
 use App\Services\WebAuthn\WebAuthnServerService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Uid\Uuid;
@@ -20,6 +21,22 @@ final class PasskeyCredentialRepositoryTest extends TestCase
     use RefreshDatabase;
 
     private PasskeyCredentialRepository $repository;
+
+    public function testFindByIdOrFailReturnsModelForKnownId(): void
+    {
+        $model = PasskeyCredential::factory()->create();
+
+        $result = $this->repository->findByIdOrFail($model->id);
+
+        $this->assertSame($model->id, $result->id);
+    }
+
+    public function testFindByIdOrFailThrowsForUnknownId(): void
+    {
+        $this->expectException(ModelNotFoundException::class);
+
+        $this->repository->findByIdOrFail('00000000-0000-0000-0000-000000000000');
+    }
 
     public function testFindByCredentialIdReturnsNullForUnknownId(): void
     {
@@ -51,6 +68,19 @@ final class PasskeyCredentialRepositoryTest extends TestCase
         $this->assertCount(2, $result);
     }
 
+    public function testFindAllForUserReturnsNewestFirst(): void
+    {
+        $user = User::factory()->create();
+        $old = PasskeyCredential::factory()->for($user)->create(['created_at' => now()->subDay()]);
+        $new = PasskeyCredential::factory()->for($user)->create();
+
+        $result = $this->repository->findAllForUser($user);
+
+        $this->assertCount(2, $result);
+        $this->assertSame($new->id, $result->get(0)?->id);
+        $this->assertSame($old->id, $result->get(1)?->id);
+    }
+
     public function testSaveNewCredentialPersistsRecord(): void
     {
         $user = User::factory()->create();
@@ -78,6 +108,21 @@ final class PasskeyCredentialRepositoryTest extends TestCase
         $model->refresh();
         $this->assertSame(42, $model->counter);
         $this->assertNotNull($model->last_used_at);
+    }
+
+    public function testUpdateAfterAuthenticationUpdatesBackupState(): void
+    {
+        $user = User::factory()->create();
+        $credentialRecord = $this->buildPublicKeyCredentialSource(backupStatus: false);
+
+        $model = $this->repository->saveNewCredential($user, $credentialRecord, 'Key');
+        $this->assertFalse($model->backup_state);
+
+        $credentialRecord->backupStatus = true;
+        $this->repository->updateAfterAuthentication($model, $credentialRecord);
+
+        $model->refresh();
+        $this->assertTrue($model->backup_state);
     }
 
     public function testGetPublicKeyCredentialSourceReturnsDeserializedSource(): void
@@ -116,7 +161,7 @@ final class PasskeyCredentialRepositoryTest extends TestCase
     // Helper
     // ──────────────────────────────────────────────────────────────────────────
 
-    private function buildPublicKeyCredentialSource(): PublicKeyCredentialSource
+    private function buildPublicKeyCredentialSource(bool $backupStatus = false): PublicKeyCredentialSource
     {
         return PublicKeyCredentialSource::create(
             publicKeyCredentialId: random_bytes(32),
@@ -128,6 +173,7 @@ final class PasskeyCredentialRepositoryTest extends TestCase
             credentialPublicKey: random_bytes(77),
             userHandle: 'test-user-handle',
             counter: 0,
+            backupStatus: $backupStatus,
         );
     }
 }

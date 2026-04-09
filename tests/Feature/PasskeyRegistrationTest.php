@@ -105,6 +105,13 @@ final class PasskeyRegistrationTest extends TestCase
         $response->assertUnprocessable();
     }
 
+    // The following tests mock PasskeyRegistrationContract::verifyAndSave() because a real
+    // WebAuthn attestation requires a valid authenticator response with correct CBOR-encoded
+    // data signed by the authenticator's private key. Reproducing such a response in an
+    // automated test environment is not practically possible, so mocking the verification
+    // boundary is the accepted exception to the project's "avoid mocks" guideline for these
+    // specific controller code paths.
+
     public function testStoreEndpointPersistsCredentialOnSuccess(): void
     {
         $user = User::factory()->create();
