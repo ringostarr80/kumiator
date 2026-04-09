@@ -110,6 +110,60 @@ final class PasskeyCredentialRepositoryTest extends TestCase
         $this->assertNotNull($model->last_used_at);
     }
 
+    public function testUpdateAfterAuthenticationPersistsCounterInSerializedJson(): void
+    {
+        $user = User::factory()->create();
+        $credentialRecord = $this->buildPublicKeyCredentialSource();
+        $model = $this->repository->saveNewCredential($user, $credentialRecord, 'Key');
+
+        $credentialRecord->counter = 99;
+        $this->repository->updateAfterAuthentication($model, $credentialRecord);
+
+        // The counter must also be updated in the serialised credential_public_key blob,
+        // not only in the dedicated counter column. The webauthn-lib reads the counter
+        // from the deserialised PublicKeyCredentialSource on every subsequent login, so
+        // a stale blob would cause the non-monotonic-counter check to compare against the
+        // wrong baseline and wrongly accept cloned credentials.
+        $model->refresh();
+        $deserialised = $this->repository->getPublicKeyCredentialSource($model);
+        $this->assertSame(99, $deserialised->counter);
+    }
+
+    public function testUpdateAfterAuthenticationSetsLastUsedAtToCurrentTime(): void
+    {
+        $user = User::factory()->create();
+        $model = $this->repository->saveNewCredential($user, $this->buildPublicKeyCredentialSource(), 'Key');
+        $this->assertNull($model->last_used_at);
+
+        $before = now()->floorSeconds();
+        $credentialRecord = $this->repository->getPublicKeyCredentialSource($model);
+        $this->repository->updateAfterAuthentication($model, $credentialRecord);
+        $after = now()->ceilSeconds();
+
+        $model->refresh();
+        $this->assertNotNull($model->last_used_at);
+        $this->assertTrue(
+            $model->last_used_at->between($before, $after),
+            "last_used_at ({$model->last_used_at}) is not between {$before} and {$after}",
+        );
+    }
+
+    public function testUpdateAfterAuthenticationDoesNotChangeBackupEligible(): void
+    {
+        $user = User::factory()->create();
+        $credentialRecord = $this->buildPublicKeyCredentialSource(backupEligible: true);
+        $model = $this->repository->saveNewCredential($user, $credentialRecord, 'Key');
+        $this->assertTrue($model->backup_eligible);
+
+        // backup_eligible is a registration-time property and must never be altered
+        // by a subsequent authentication, even if the library returns a different value.
+        $credentialRecord->backupEligible = false;
+        $this->repository->updateAfterAuthentication($model, $credentialRecord);
+
+        $model->refresh();
+        $this->assertTrue($model->backup_eligible);
+    }
+
     public function testUpdateAfterAuthenticationUpdatesBackupState(): void
     {
         $user = User::factory()->create();
@@ -161,8 +215,10 @@ final class PasskeyCredentialRepositoryTest extends TestCase
     // Helper
     // ──────────────────────────────────────────────────────────────────────────
 
-    private function buildPublicKeyCredentialSource(bool $backupStatus = false): PublicKeyCredentialSource
-    {
+    private function buildPublicKeyCredentialSource(
+        bool $backupStatus = false,
+        bool $backupEligible = false,
+    ): PublicKeyCredentialSource {
         return PublicKeyCredentialSource::create(
             publicKeyCredentialId: random_bytes(32),
             type: 'public-key',
@@ -174,6 +230,7 @@ final class PasskeyCredentialRepositoryTest extends TestCase
             userHandle: 'test-user-handle',
             counter: 0,
             backupStatus: $backupStatus,
+            backupEligible: $backupEligible,
         );
     }
 }
