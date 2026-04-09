@@ -8,7 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\PasskeyStoreRequest;
 use App\Models\PasskeyCredential;
 use App\Models\User;
-use App\Repositories\PasskeyCredentialRepository;
+use App\Repositories\PasskeyCredentialRepositoryContract;
 use App\Services\WebAuthn\PasskeyRegistrationContract;
 use App\Services\WebAuthn\WebAuthnConfig;
 use App\Services\WebAuthn\WebAuthnServerService;
@@ -39,7 +39,7 @@ final class PasskeyRegistrationController extends Controller
     public function __construct(
         private readonly PasskeyRegistrationContract $registrationService,
         private readonly WebAuthnServerService $serverService,
-        private readonly PasskeyCredentialRepository $repository,
+        private readonly PasskeyCredentialRepositoryContract $repository,
     ) {
     }
 

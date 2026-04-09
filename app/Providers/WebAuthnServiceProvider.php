@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Repositories\PasskeyCredentialRepository;
+use App\Repositories\PasskeyCredentialRepositoryContract;
 use App\Services\WebAuthn\PasskeyAuthenticationContract;
 use App\Services\WebAuthn\PasskeyAuthenticationService;
 use App\Services\WebAuthn\PasskeyRegistrationContract;
@@ -26,8 +27,8 @@ final class WebAuthnServiceProvider extends ServiceProvider
         $this->app->singleton(WebAuthnServerService::class);
 
         $this->app->bind(
-            PasskeyCredentialRepository::class,
-            fn (): PasskeyCredentialRepository => new PasskeyCredentialRepository(
+            PasskeyCredentialRepositoryContract::class,
+            fn (): PasskeyCredentialRepositoryContract => new PasskeyCredentialRepository(
                 $this->app->make(WebAuthnServerService::class)->getSerializer(),
             ),
         );
@@ -36,7 +37,7 @@ final class WebAuthnServiceProvider extends ServiceProvider
             PasskeyRegistrationContract::class,
             fn (): PasskeyRegistrationService => new PasskeyRegistrationService(
                 $this->app->make(WebAuthnServerService::class),
-                $this->app->make(PasskeyCredentialRepository::class),
+                $this->app->make(PasskeyCredentialRepositoryContract::class),
             ),
         );
 
@@ -44,7 +45,7 @@ final class WebAuthnServiceProvider extends ServiceProvider
             PasskeyAuthenticationContract::class,
             fn (): PasskeyAuthenticationService => new PasskeyAuthenticationService(
                 $this->app->make(WebAuthnServerService::class),
-                $this->app->make(PasskeyCredentialRepository::class),
+                $this->app->make(PasskeyCredentialRepositoryContract::class),
             ),
         );
     }

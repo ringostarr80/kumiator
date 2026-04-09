@@ -19,7 +19,7 @@ use Webauthn\PublicKeyCredentialSource;
  * The PublicKeyCredentialSource is serialised to JSON for storage so that we remain
  * decoupled from any future structural changes inside the library.
  */
-final class PasskeyCredentialRepository
+final class PasskeyCredentialRepository implements PasskeyCredentialRepositoryContract
 {
     public function __construct(private readonly SerializerInterface $serializer)
     {

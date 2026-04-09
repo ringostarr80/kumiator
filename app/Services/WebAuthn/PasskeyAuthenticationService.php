@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\WebAuthn;
 
 use App\Models\User;
-use App\Repositories\PasskeyCredentialRepository;
+use App\Repositories\PasskeyCredentialRepositoryContract;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Uid\Uuid;
 use Webauthn\AuthenticatorAssertionResponse;
@@ -29,7 +29,7 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
 {
     public function __construct(
         private readonly WebAuthnServerService $serverService,
-        private readonly PasskeyCredentialRepository $repository,
+        private readonly PasskeyCredentialRepositoryContract $repository,
     ) {
     }
 

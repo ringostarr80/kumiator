@@ -6,7 +6,7 @@ namespace App\Services\WebAuthn;
 
 use App\Models\PasskeyCredential;
 use App\Models\User;
-use App\Repositories\PasskeyCredentialRepository;
+use App\Repositories\PasskeyCredentialRepositoryContract;
 use Cose\Algorithm\Signature\ECDSA\ES256;
 use Cose\Algorithm\Signature\RSA\RS256;
 use Webauthn\AuthenticatorAttestationResponse;
@@ -32,7 +32,7 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
 {
     public function __construct(
         private readonly WebAuthnServerService $serverService,
-        private readonly PasskeyCredentialRepository $repository,
+        private readonly PasskeyCredentialRepositoryContract $repository,
     ) {
     }
 
