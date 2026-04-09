@@ -24,13 +24,23 @@ final class WebAuthnCeremonySession
      * Serialize $options, persist the JSON in the session under $sessionKey,
      * and return the null-stripped array ready for a JSON response.
      *
+     * The stored value is wrapped with an `expires_at` Unix timestamp so that
+     * stale challenges are rejected independently of the Laravel session lifetime.
+     * The TTL is configured via `webauthn.ceremony_session_ttl` (seconds).
+     *
      * @return array<mixed>
      */
     public function storeOptions(object $options, string $sessionKey, Request $request): array
     {
         $json = $this->serverService->getSerializer()->serialize($options, 'json');
 
-        $request->session()->put($sessionKey, $json);
+        $ttlRaw = config('webauthn.ceremony_session_ttl', 120);
+        $ttl = is_int($ttlRaw) ? $ttlRaw : 120;
+
+        $request->session()->put($sessionKey, [
+            'data' => $json,
+            'expires_at' => now()->addSeconds($ttl)->timestamp,
+        ]);
 
         return $this->serverService->normalizeOptionsJson($json);
     }
@@ -38,9 +48,11 @@ final class WebAuthnCeremonySession
     /**
      * Pull the serialized options from the session and deserialize them.
      *
-     * Returns null when the session entry is missing (e.g. expired or never set),
-     * when the stored data cannot be deserialized (e.g. corrupted or tampered session),
-     * or when the deserialized value is not an instance of the expected class.
+     * Returns null when:
+     * - the session entry is missing (never set or already consumed),
+     * - the stored envelope is malformed (corrupted or tampered session),
+     * - the challenge has expired (see `webauthn.ceremony_session_ttl`),
+     * - the JSON cannot be deserialized into the expected class.
      *
      * @template T of object
      * @param class-string<T> $class
@@ -48,24 +60,24 @@ final class WebAuthnCeremonySession
      */
     public function pullOptions(string $sessionKey, string $class, Request $request): ?object
     {
-        $json = $request->session()->pull($sessionKey);
+        $stored = $request->session()->pull($sessionKey);
 
-        if ($json === null) {
+        if (
+            !is_array($stored)
+            || !isset($stored['data'], $stored['expires_at'])
+            || now()->timestamp > $stored['expires_at']
+        ) {
             return null;
         }
 
         try {
-            $result = $this->serverService->getSerializer()->deserialize($json, $class, 'json');
+            $result = $this->serverService->getSerializer()->deserialize($stored['data'], $class, 'json');
         } catch (\Throwable) {
             return null;
         }
 
-        if (!($result instanceof $class)) {
-            // @codeCoverageIgnoreStart
-            return null;
-            // @codeCoverageIgnoreEnd
-        }
-
-        return $result;
+        return $result instanceof $class
+            ? $result
+            : null; // @codeCoverageIgnore
     }
 }

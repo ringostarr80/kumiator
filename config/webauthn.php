@@ -34,6 +34,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Ceremony Session TTL
+    |--------------------------------------------------------------------------
+    |
+    | How long (in seconds) the server-side ceremony options remain valid in
+    | the session. If the user does not complete the WebAuthn gesture within
+    | this window, the stored challenge is treated as expired and the ceremony
+    | must be restarted. Should be slightly longer than `timeout` (ms above)
+    | to account for network latency.
+    |
+    */
+
+    'ceremony_session_ttl' => (int) env('WEBAUTHN_CEREMONY_SESSION_TTL', 120),
+
+    /*
+    |--------------------------------------------------------------------------
     | Attestation Conveyance
     |--------------------------------------------------------------------------
     |

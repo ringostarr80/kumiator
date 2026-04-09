@@ -24,7 +24,7 @@ final class WebAuthnCeremonySessionTest extends TestCase
 
     private WebAuthnCeremonySession $ceremonySession;
 
-    public function testStoreOptionsWritesJsonToSession(): void
+    public function testStoreOptionsWritesEnvelopeToSession(): void
     {
         $options = PublicKeyCredentialRequestOptions::create(random_bytes(32));
         $request = $this->makeRequestWithSession();
@@ -33,8 +33,12 @@ final class WebAuthnCeremonySessionTest extends TestCase
 
         $this->assertTrue($request->session()->has(self::SESSION_KEY));
         $stored = $request->session()->get(self::SESSION_KEY);
-        $this->assertIsString($stored);
-        $this->assertJson($stored);
+        $this->assertIsArray($stored);
+        $this->assertArrayHasKey('data', $stored);
+        $this->assertArrayHasKey('expires_at', $stored);
+        $this->assertIsString($stored['data']);
+        $this->assertJson($stored['data']);
+        $this->assertGreaterThan(now()->timestamp, $stored['expires_at']);
     }
 
     public function testStoreOptionsReturnsArrayWithoutNullValues(): void
@@ -106,10 +110,54 @@ final class WebAuthnCeremonySessionTest extends TestCase
         $this->assertInstanceOf(PublicKeyCredentialCreationOptions::class, $result);
     }
 
+    public function testPullOptionsReturnsNullForMalformedEnvelope(): void
+    {
+        $request = $this->makeRequestWithSession();
+        // Plain string instead of the expected ['data' => ..., 'expires_at' => ...] array
+        $request->session()->put(self::SESSION_KEY, 'this-is-not-the-expected-envelope');
+
+        $result = $this->ceremonySession->pullOptions(
+            self::SESSION_KEY,
+            PublicKeyCredentialRequestOptions::class,
+            $request,
+        );
+
+        $this->assertNull($result);
+    }
+
     public function testPullOptionsReturnsNullForCorruptedJson(): void
     {
         $request = $this->makeRequestWithSession();
-        $request->session()->put(self::SESSION_KEY, 'this-is-not-valid-json{{{');
+        $request->session()->put(self::SESSION_KEY, [
+            'data' => 'this-is-not-valid-json{{{',
+            'expires_at' => now()->addSeconds(120)->timestamp,
+        ]);
+
+        $result = $this->ceremonySession->pullOptions(
+            self::SESSION_KEY,
+            PublicKeyCredentialRequestOptions::class,
+            $request,
+        );
+
+        $this->assertNull($result);
+    }
+
+    public function testPullOptionsReturnsNullWhenCeremonyExpired(): void
+    {
+        $options = PublicKeyCredentialRequestOptions::create(random_bytes(32));
+        $request = $this->makeRequestWithSession();
+
+        $this->ceremonySession->storeOptions($options, self::SESSION_KEY, $request);
+
+        // Overwrite expires_at with a timestamp in the past
+        $stored = $request->session()->get(self::SESSION_KEY);
+
+        if (!is_array($stored)) {
+            $this->fail('Expected session to contain an array envelope.');
+        }
+
+        $stored['expires_at'] = now()->subSecond()->timestamp;
+        $request->session()->put(self::SESSION_KEY, $stored);
 
         $result = $this->ceremonySession->pullOptions(
             self::SESSION_KEY,
