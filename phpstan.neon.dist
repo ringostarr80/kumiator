@@ -1,6 +1,7 @@
 parameters:
     paths:
         - app
+        - config
         - database
         - lang
         - routes
@@ -12,3 +13,9 @@ parameters:
         - bootstrap/cache
 
     level: max
+
+services:
+    -
+        class: Tests\Architecture\ModelsDependOnlyOnModelsTest
+        tags:
+            - phpat.test

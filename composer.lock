@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "59a34084f1f4eaa1a08644afee43c68d",
+    "content-hash": "8c73d29d5f4485260b1a92bcfcec4c81",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -7804,16 +7804,16 @@
         },
         {
             "name": "webmozart/assert",
-            "version": "2.1.6",
+            "version": "2.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/webmozarts/assert.git",
-                "reference": "ff31ad6efc62e66e518fbab1cde3453d389bcdc8"
+                "reference": "1b99650e7ffcad232624a260bc7fbdec2ffc407c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/webmozarts/assert/zipball/ff31ad6efc62e66e518fbab1cde3453d389bcdc8",
-                "reference": "ff31ad6efc62e66e518fbab1cde3453d389bcdc8",
+                "url": "https://api.github.com/repos/webmozarts/assert/zipball/1b99650e7ffcad232624a260bc7fbdec2ffc407c",
+                "reference": "1b99650e7ffcad232624a260bc7fbdec2ffc407c",
                 "shasum": ""
             },
             "require": {
@@ -7860,9 +7860,9 @@
             ],
             "support": {
                 "issues": "https://github.com/webmozarts/assert/issues",
-                "source": "https://github.com/webmozarts/assert/tree/2.1.6"
+                "source": "https://github.com/webmozarts/assert/tree/2.2.0"
             },
-            "time": "2026-02-27T10:28:38+00:00"
+            "time": "2026-04-09T16:54:47+00:00"
         }
     ],
     "packages-dev": [
@@ -8843,6 +8843,63 @@
                 "source": "https://github.com/php-parallel-lint/PHP-Parallel-Lint/tree/v1.4.0"
             },
             "time": "2024-03-27T12:14:49+00:00"
+        },
+        {
+            "name": "phpat/phpat",
+            "version": "0.12.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/carlosas/phpat.git",
+                "reference": "5319264270c335f548451209bb0f32b55aa59924"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/carlosas/phpat/zipball/5319264270c335f548451209bb0f32b55aa59924",
+                "reference": "5319264270c335f548451209bb0f32b55aa59924",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.1",
+                "phpstan/phpstan": "^2.1"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.87",
+                "kubawerlos/php-cs-fixer-custom-fixers": "3.32.*",
+                "phpunit/phpunit": "^10.5",
+                "vimeo/psalm": "^6.13"
+            },
+            "type": "phpstan-extension",
+            "extra": {
+                "phpstan": {
+                    "includes": [
+                        "extension.neon"
+                    ]
+                }
+            },
+            "autoload": {
+                "files": [
+                    "helpers.php"
+                ],
+                "psr-4": {
+                    "PHPat\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Carlos Alandete Sastre",
+                    "email": "carlos.alandete@gmail.com"
+                }
+            ],
+            "description": "PHP Architecture Tester",
+            "support": {
+                "issues": "https://github.com/carlosas/phpat/issues",
+                "source": "https://github.com/carlosas/phpat/tree/0.12.4"
+            },
+            "time": "2026-03-17T16:47:43+00:00"
         },
         {
             "name": "phpstan/extension-installer",
