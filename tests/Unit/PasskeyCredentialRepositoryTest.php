@@ -38,23 +38,6 @@ final class PasskeyCredentialRepositoryTest extends TestCase
         $this->assertSame($passkey->id, $result->id);
     }
 
-    public function testFindPublicKeyCredentialSourceByCredentialIdReturnsNullForUnknownId(): void
-    {
-        $result = $this->repository->findPublicKeyCredentialSourceByCredentialId('unknown-id');
-
-        $this->assertNull($result);
-    }
-
-    public function testFindPublicKeyCredentialSourceByCredentialIdReturnsSource(): void
-    {
-        $user = User::factory()->create();
-        $model = $this->repository->saveNewCredential($user, $this->buildPublicKeyCredentialSource(), 'Key');
-
-        $result = $this->repository->findPublicKeyCredentialSourceByCredentialId($model->credential_id);
-
-        $this->assertInstanceOf(PublicKeyCredentialSource::class, $result);
-    }
-
     public function testFindAllForUserReturnsOnlyUserCredentials(): void
     {
         $user = User::factory()->create();

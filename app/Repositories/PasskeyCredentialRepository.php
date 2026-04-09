@@ -44,21 +44,6 @@ final class PasskeyCredentialRepository
     }
 
     /**
-     * Deserialise and return the PublicKeyCredentialSource for a given credential ID.
-     * Returns null when no matching record exists.
-     */
-    public function findPublicKeyCredentialSourceByCredentialId(string $credentialId): ?PublicKeyCredentialSource
-    {
-        $model = $this->findByCredentialId($credentialId);
-
-        if ($model === null) {
-            return null;
-        }
-
-        return $this->deserializePublicKeyCredentialSource($model->credential_public_key);
-    }
-
-    /**
      * Return all PasskeyCredential models belonging to a user.
      *
      * @return \Illuminate\Database\Eloquent\Collection<int, PasskeyCredential>
