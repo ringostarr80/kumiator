@@ -10,8 +10,8 @@ use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\PasskeyCredentialRepositoryContract;
 use App\Services\WebAuthn\PasskeyRegistrationContract;
+use App\Services\WebAuthn\WebAuthnCeremonySession;
 use App\Services\WebAuthn\WebAuthnConfig;
-use App\Services\WebAuthn\WebAuthnServerService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,7 +37,7 @@ final class PasskeyRegistrationController extends Controller
 
     public function __construct(
         private readonly PasskeyRegistrationContract $registrationService,
-        private readonly WebAuthnServerService $serverService,
+        private readonly WebAuthnCeremonySession $ceremonySession,
         private readonly PasskeyCredentialRepositoryContract $repository,
     ) {
     }
@@ -56,16 +56,7 @@ final class PasskeyRegistrationController extends Controller
 
         $options = $this->registrationService->createOptions($user);
 
-        // Serialise with the WebAuthn serializer so that binary fields are
-        // properly Base64URL-encoded and the JSON matches the W3C spec.
-        $serializer = $this->serverService->getSerializer();
-        $json = $serializer->serialize($options, 'json');
-
-        // Persist the options in the session so that verify() can compare the
-        // challenge.  We store the serialised JSON and deserialise on the way back.
-        $request->session()->put(self::SESSION_KEY, $json);
-
-        return response()->json($this->serverService->normalizeOptionsJson($json));
+        return response()->json($this->ceremonySession->storeOptions($options, self::SESSION_KEY, $request));
     }
 
     /**
@@ -73,9 +64,13 @@ final class PasskeyRegistrationController extends Controller
      */
     public function store(PasskeyStoreRequest $request): JsonResponse
     {
-        $optionsJson = $request->session()->pull(self::SESSION_KEY);
+        $storedOptions = $this->ceremonySession->pullOptions(
+            self::SESSION_KEY,
+            PublicKeyCredentialCreationOptions::class,
+            $request,
+        );
 
-        if ($optionsJson === null) {
+        if ($storedOptions === null) {
             return response()->json(
                 ['message' => __('app.passkey_registration_session_expired')],
                 Response::HTTP_UNPROCESSABLE_ENTITY,
@@ -95,9 +90,6 @@ final class PasskeyRegistrationController extends Controller
         }
 
         try {
-            $serializer = $this->serverService->getSerializer();
-            $storedOptions = $serializer->deserialize($optionsJson, PublicKeyCredentialCreationOptions::class, 'json');
-
             $nameRaw = $request->validated('name');
             $nameInput = is_string($nameRaw)
                 ? trim($nameRaw)

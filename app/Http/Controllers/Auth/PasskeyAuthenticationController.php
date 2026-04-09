@@ -8,8 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\PasskeyAuthenticateOptionsRequest;
 use App\Models\User;
 use App\Services\WebAuthn\PasskeyAuthenticationContract;
+use App\Services\WebAuthn\WebAuthnCeremonySession;
 use App\Services\WebAuthn\WebAuthnConfig;
-use App\Services\WebAuthn\WebAuthnServerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -31,7 +31,7 @@ final class PasskeyAuthenticationController extends Controller
 
     public function __construct(
         private readonly PasskeyAuthenticationContract $authenticationService,
-        private readonly WebAuthnServerService $serverService,
+        private readonly WebAuthnCeremonySession $ceremonySession,
     ) {
     }
 
@@ -57,12 +57,8 @@ final class PasskeyAuthenticationController extends Controller
         }
 
         $options = $this->authenticationService->createOptions($user);
-        $serializer = $this->serverService->getSerializer();
-        $json = $serializer->serialize($options, 'json');
 
-        $request->session()->put(self::SESSION_KEY, $json);
-
-        return response()->json($this->serverService->normalizeOptionsJson($json));
+        return response()->json($this->ceremonySession->storeOptions($options, self::SESSION_KEY, $request));
     }
 
     /**
@@ -73,9 +69,13 @@ final class PasskeyAuthenticationController extends Controller
      */
     public function authenticate(Request $request): JsonResponse
     {
-        $optionsJson = $request->session()->pull(self::SESSION_KEY);
+        $storedOptions = $this->ceremonySession->pullOptions(
+            self::SESSION_KEY,
+            PublicKeyCredentialRequestOptions::class,
+            $request,
+        );
 
-        if ($optionsJson === null) {
+        if ($storedOptions === null) {
             return response()->json(
                 ['message' => __('app.passkey_session_expired')],
                 Response::HTTP_UNPROCESSABLE_ENTITY,
@@ -89,9 +89,6 @@ final class PasskeyAuthenticationController extends Controller
         }
 
         try {
-            $serializer = $this->serverService->getSerializer();
-            $storedOptions = $serializer->deserialize($optionsJson, PublicKeyCredentialRequestOptions::class, 'json');
-
             $user = $this->authenticationService->verify(
                 rawResponse: $rawResponse,
                 storedOptions: $storedOptions,
