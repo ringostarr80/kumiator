@@ -30,6 +30,14 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(PasskeyCredential::class, PasskeyCredentialPolicy::class);
 
+        // Passkey authentication options (guests): IP-based, 20 requests per minute.
+        // Limits e-mail enumeration via the allowCredentials field without impacting
+        // legitimate UX (a real user needs at most one options call per login attempt).
+        RateLimiter::for(
+            'passkey-authenticate-options',
+            static fn (Request $request): Limit => Limit::perMinute(20)->by($request->ip()),
+        );
+
         // Passkey authentication (guests): IP-based, 5 attempts per minute.
         // Protects against credential enumeration and brute-force via the public endpoint.
         RateLimiter::for(

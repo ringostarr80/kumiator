@@ -16,11 +16,9 @@ Route::get('/', static fn () => view('welcome'));
 // ──────────────────────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(static function (): void {
     // Returns PublicKeyCredentialRequestOptions JSON for the browser.
-    // Intentionally not rate-limited: the endpoint performs only a read-only DB lookup
-    // (email → allowCredentials) and returns identical JSON for both known and unknown
-    // e-mail addresses, so there is no meaningful information gain for an attacker.
-    // The POST /passkeys/authenticate endpoint carries the rate limit that matters.
+    // Rate-limited to slow down e-mail enumeration via the allowCredentials field.
     Route::get('/passkeys/authenticate/options', [PasskeyAuthenticationController::class, 'options'])
+        ->middleware('throttle:passkey-authenticate-options')
         ->name('passkeys.authenticate.options');
 
     // Verifies the assertion and logs the user in
