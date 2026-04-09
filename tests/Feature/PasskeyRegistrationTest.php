@@ -20,6 +20,7 @@ final class PasskeyRegistrationTest extends TestCase
 
     private const string REGISTER_OPTIONS_URL = '/user/passkeys/register/options';
     private const string REGISTER_URL = '/user/passkeys/register';
+    private const string CONTENT_TYPE_JSON = 'application/json';
 
     public function testRegistrationEndpointsAreRateLimited(): void
     {
@@ -100,7 +101,7 @@ final class PasskeyRegistrationTest extends TestCase
 
         $response = $this->actingAs($user)
             ->withSession([])
-            ->postJson(self::REGISTER_URL, [], ['Content-Type' => 'application/json']);
+            ->postJson(self::REGISTER_URL, [], ['Content-Type' => self::CONTENT_TYPE_JSON]);
 
         $response->assertUnprocessable();
     }
@@ -133,7 +134,7 @@ final class PasskeyRegistrationTest extends TestCase
         );
 
         $response = $this->actingAs($user)
-            ->postJson(self::REGISTER_URL, ['name' => 'Test Passkey'], ['Content-Type' => 'application/json']);
+            ->postJson(self::REGISTER_URL, ['name' => 'Test Passkey'], ['Content-Type' => self::CONTENT_TYPE_JSON]);
 
         $response->assertCreated();
         $response->assertJsonStructure(['id', 'name', 'created_at']);
@@ -148,7 +149,7 @@ final class PasskeyRegistrationTest extends TestCase
         $response = $this->call(
             'POST',
             self::REGISTER_URL,
-            server: ['HTTP_ACCEPT' => 'application/json'],
+            server: ['HTTP_ACCEPT' => 'application/json', 'CONTENT_TYPE' => self::CONTENT_TYPE_JSON],
             content: '',
         );
 
@@ -167,7 +168,7 @@ final class PasskeyRegistrationTest extends TestCase
         });
 
         $response = $this->actingAs($user)
-            ->postJson(self::REGISTER_URL, ['data' => 'test'], ['Content-Type' => 'application/json']);
+            ->postJson(self::REGISTER_URL, ['data' => 'test'], ['Content-Type' => self::CONTENT_TYPE_JSON]);
 
         $response->assertUnprocessable();
         $response->assertJson(['message' => 'Verification failed.']);
@@ -185,7 +186,7 @@ final class PasskeyRegistrationTest extends TestCase
         });
 
         $response = $this->actingAs($user)
-            ->postJson(self::REGISTER_URL, ['data' => 'test'], ['Content-Type' => 'application/json']);
+            ->postJson(self::REGISTER_URL, ['data' => 'test'], ['Content-Type' => self::CONTENT_TYPE_JSON]);
 
         $response->assertInternalServerError();
     }
@@ -213,7 +214,7 @@ final class PasskeyRegistrationTest extends TestCase
         );
 
         $this->actingAs($user)
-            ->postJson(self::REGISTER_URL, [], ['Content-Type' => 'application/json'])
+            ->postJson(self::REGISTER_URL, [], ['Content-Type' => self::CONTENT_TYPE_JSON])
             ->assertCreated();
     }
 
@@ -240,7 +241,7 @@ final class PasskeyRegistrationTest extends TestCase
         );
 
         $this->actingAs($user)
-            ->postJson(self::REGISTER_URL, ['name' => '   '], ['Content-Type' => 'application/json'])
+            ->postJson(self::REGISTER_URL, ['name' => '   '], ['Content-Type' => self::CONTENT_TYPE_JSON])
             ->assertCreated();
     }
 

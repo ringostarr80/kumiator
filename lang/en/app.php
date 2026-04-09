@@ -195,6 +195,7 @@ return [
     'passkey_empty_request' => 'Empty request body.',
     'passkey_authentication_failed' => 'Authentication failed.',
     'passkey_registration_failed' => 'Passkey registration failed.',
+    'unsupported_media_type' => 'Unsupported Media Type.',
     'request_payload_too_large' => 'Request payload too large.',
 
     // Welcome Component (Jetstream Dashboard)

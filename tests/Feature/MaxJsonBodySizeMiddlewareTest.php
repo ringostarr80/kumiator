@@ -41,6 +41,40 @@ final class MaxJsonBodySizeMiddlewareTest extends TestCase
             ->assertJson(['message' => __('app.request_payload_too_large')]);
     }
 
+    public function testAuthenticateEndpointRejects415ForNonJsonContentType(): void
+    {
+        $this->call('POST', self::AUTHENTICATE_URL, [], [], [], ['CONTENT_TYPE' => 'text/plain'], '{}')
+            ->assertStatus(Response::HTTP_UNSUPPORTED_MEDIA_TYPE)
+            ->assertJson(['message' => __('app.unsupported_media_type')]);
+    }
+
+    public function testRegisterEndpointRejects415ForNonJsonContentType(): void
+    {
+        $user = User::factory()->create(['approved_at' => now()]);
+
+        $this->actingAs($user)
+            ->call(
+                'POST',
+                self::REGISTER_URL,
+                [],
+                [],
+                [],
+                ['CONTENT_TYPE' => 'application/x-www-form-urlencoded'],
+                'foo=bar',
+            )
+            ->assertStatus(Response::HTTP_UNSUPPORTED_MEDIA_TYPE)
+            ->assertJson(['message' => __('app.unsupported_media_type')]);
+    }
+
+    public function testAuthenticateEndpointRejects415WhenContentTypeIsMissing(): void
+    {
+        $this->call('POST', self::AUTHENTICATE_URL, [], [], [], [], '{}')
+            ->assertStatus(Response::HTTP_UNSUPPORTED_MEDIA_TYPE)
+            ->assertJson([
+                'message' => __('app.unsupported_media_type'),
+            ]);
+    }
+
     public function testAuthenticateEndpointAllowsBodyAtExactLimit(): void
     {
         $atLimit = str_repeat('x', 65_536);

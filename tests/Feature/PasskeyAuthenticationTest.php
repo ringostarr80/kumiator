@@ -125,7 +125,7 @@ final class PasskeyAuthenticationTest extends TestCase
         $response = $this->call(
             'POST',
             self::AUTHENTICATE_URL,
-            server: ['HTTP_ACCEPT' => 'application/json'],
+            server: ['HTTP_ACCEPT' => 'application/json', 'CONTENT_TYPE' => 'application/json'],
             content: '',
         );
 

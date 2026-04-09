@@ -27,6 +27,13 @@ final class MaxJsonBodySize
      */
     public function handle(Request $request, Closure $next, int $maxBytes = self::DEFAULT_MAX_BYTES): Response
     {
+        if (!$request->isJson()) {
+            return response()->json(
+                ['message' => __('app.unsupported_media_type')],
+                Response::HTTP_UNSUPPORTED_MEDIA_TYPE,
+            );
+        }
+
         if (strlen($request->getContent()) > $maxBytes) {
             return response()->json(
                 ['message' => __('app.request_payload_too_large')],
