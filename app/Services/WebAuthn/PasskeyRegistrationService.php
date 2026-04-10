@@ -73,11 +73,7 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
 
         // Exclude already-registered credentials so that the same authenticator
         // cannot be registered twice for the same user.
-        $excludeCredentials = [];
-
-        foreach ($this->repository->findAllForUser($user) as $existing) {
-            $excludeCredentials[] = $existing->getDescriptor();
-        }
+        $excludeCredentials = $this->repository->getDescriptorsForUser($user);
 
         $timeout = WebAuthnConfig::timeoutMs();
 

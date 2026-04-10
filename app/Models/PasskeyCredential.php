@@ -8,8 +8,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use ParagonIE\ConstantTime\Base64UrlSafe;
-use Webauthn\PublicKeyCredentialDescriptor;
 
 /**
  * Represents a registered WebAuthn / Passkey credential for a user.
@@ -70,19 +68,6 @@ final class PasskeyCredential extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    /**
-     * Build the PublicKeyCredentialDescriptor for this credential.
-     * Used to populate allowCredentials / excludeCredentials in WebAuthn options.
-     */
-    public function getDescriptor(): PublicKeyCredentialDescriptor
-    {
-        return PublicKeyCredentialDescriptor::create(
-            type: 'public-key',
-            id: Base64UrlSafe::decodeNoPadding($this->credential_id),
-            transports: $this->transports ?? [],
-        );
     }
 
     /**

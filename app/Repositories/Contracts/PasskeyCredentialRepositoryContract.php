@@ -54,6 +54,15 @@ interface PasskeyCredentialRepositoryContract
     public function getPublicKeyCredentialSource(PasskeyCredential $model): PublicKeyCredentialSource;
 
     /**
+     * Return the PublicKeyCredentialDescriptors for all credentials of a user.
+     *
+     * Used to populate allowCredentials / excludeCredentials in WebAuthn options.
+     *
+     * @return list<\Webauthn\PublicKeyCredentialDescriptor>
+     */
+    public function getDescriptorsForUser(User $user): array;
+
+    /**
      * Delete a passkey credential by model instance.
      */
     public function delete(PasskeyCredential $model): void;

@@ -50,13 +50,9 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
      */
     public function createOptions(?User $user = null): PublicKeyCredentialRequestOptions
     {
-        $allowCredentials = [];
-
-        if ($user !== null) {
-            foreach ($this->repository->findAllForUser($user) as $credential) {
-                $allowCredentials[] = $credential->getDescriptor();
-            }
-        }
+        $allowCredentials = $user !== null
+            ? $this->repository->getDescriptorsForUser($user)
+            : [];
 
         $timeout = WebAuthnConfig::timeoutMs();
 

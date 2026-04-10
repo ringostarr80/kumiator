@@ -10,6 +10,7 @@ use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use Illuminate\Database\Eloquent\Collection;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
+use Webauthn\PublicKeyCredentialDescriptor;
 use Webauthn\PublicKeyCredentialSource;
 
 /**
@@ -106,6 +107,22 @@ final class PasskeyCredentialRepository implements PasskeyCredentialRepositoryCo
     }
 
     /**
+     * Return the PublicKeyCredentialDescriptors for all credentials of a user.
+     *
+     * @return list<PublicKeyCredentialDescriptor>
+     */
+    public function getDescriptorsForUser(User $user): array
+    {
+        return array_values(
+            $this->findAllForUser($user)
+                ->map(
+                    fn (PasskeyCredential $credential) => $this->buildDescriptor($credential),
+                )
+                ->all(),
+        );
+    }
+
+    /**
      * Delete a passkey credential by model instance.
      */
     public function delete(PasskeyCredential $model): void
@@ -116,6 +133,15 @@ final class PasskeyCredentialRepository implements PasskeyCredentialRepositoryCo
     // ──────────────────────────────────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────────────────────────────────
+
+    private function buildDescriptor(PasskeyCredential $credential): PublicKeyCredentialDescriptor
+    {
+        return PublicKeyCredentialDescriptor::create(
+            type: 'public-key',
+            id: Base64UrlSafe::decodeNoPadding($credential->credential_id),
+            transports: $credential->transports ?? [],
+        );
+    }
 
     private function serializePublicKeyCredentialSource(PublicKeyCredentialSource $credentialRecord): string
     {

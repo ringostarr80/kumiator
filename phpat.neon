@@ -27,3 +27,7 @@ services:
         class: Tests\Architecture\NoCrossLayerDependenciesTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\DomainVendorIsolationTest
+        tags:
+            - phpat.test
