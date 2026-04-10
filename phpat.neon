@@ -23,3 +23,7 @@ services:
         class: Tests\Architecture\ConfigIsIndependentTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\NoCrossLayerDependenciesTest
+        tags:
+            - phpat.test
