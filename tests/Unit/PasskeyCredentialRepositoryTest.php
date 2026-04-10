@@ -4,17 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\DataTransferObjects\NewPasskeyCredentialData;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use ParagonIE\ConstantTime\Base64UrlSafe;
-use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Uid\Uuid;
 use Tests\TestCase;
-use Webauthn\PublicKeyCredentialSource;
-use Webauthn\TrustPath\EmptyTrustPath;
 
 final class PasskeyCredentialRepositoryTest extends TestCase
 {
@@ -84,60 +80,72 @@ final class PasskeyCredentialRepositoryTest extends TestCase
     public function testSaveNewCredentialPersistsRecord(): void
     {
         $user = User::factory()->create();
-        $credentialRecord = $this->buildPublicKeyCredentialSource();
+        $data = $this->buildNewCredentialData();
 
-        $model = $this->repository->saveNewCredential($user, $credentialRecord, 'My Key');
+        $model = $this->repository->saveNewCredential($user, $data, 'My Key');
 
         $this->assertInstanceOf(PasskeyCredential::class, $model);
         $this->assertSame($user->id, $model->user_id);
         $this->assertSame('My Key', $model->name);
+        $this->assertSame($data->credentialId, $model->credential_id);
+        $this->assertSame($data->counter, $model->counter);
+        $this->assertSame($data->transports, $model->transports);
+        $this->assertSame($data->backupEligible, $model->backup_eligible);
+        $this->assertSame($data->backupState, $model->backup_state);
+        $this->assertSame($data->aaguid, $model->aaguid);
         $this->assertDatabaseHas('passkey_credentials', ['user_id' => $user->id]);
+    }
+
+    public function testSaveNewCredentialStoresSerializedJson(): void
+    {
+        $user = User::factory()->create();
+        $data = $this->buildNewCredentialData();
+
+        $model = $this->repository->saveNewCredential($user, $data, 'Key');
+
+        $this->assertSame(
+            $data->serializedCredentialSource,
+            $this->repository->getSerializedCredentialSource($model),
+        );
     }
 
     public function testUpdateAfterAuthenticationUpdatesCounter(): void
     {
         $user = User::factory()->create();
-        $credentialRecord = $this->buildPublicKeyCredentialSource();
-
-        $model = $this->repository->saveNewCredential($user, $credentialRecord, 'Key');
+        $data = $this->buildNewCredentialData();
+        $model = $this->repository->saveNewCredential($user, $data, 'Key');
         $this->assertSame(0, $model->counter);
 
-        $credentialRecord->counter = 42;
-        $this->repository->updateAfterAuthentication($model, $credentialRecord);
+        $this->repository->updateAfterAuthentication($model, '{"updated":true}', 42, false);
 
         $model->refresh();
         $this->assertSame(42, $model->counter);
         $this->assertNotNull($model->last_used_at);
     }
 
-    public function testUpdateAfterAuthenticationPersistsCounterInSerializedJson(): void
+    public function testUpdateAfterAuthenticationUpdatesSerializedJson(): void
     {
         $user = User::factory()->create();
-        $credentialRecord = $this->buildPublicKeyCredentialSource();
-        $model = $this->repository->saveNewCredential($user, $credentialRecord, 'Key');
+        $data = $this->buildNewCredentialData();
+        $model = $this->repository->saveNewCredential($user, $data, 'Key');
 
-        $credentialRecord->counter = 99;
-        $this->repository->updateAfterAuthentication($model, $credentialRecord);
+        $updatedJson = '{"counter":99}';
+        $this->repository->updateAfterAuthentication($model, $updatedJson, 99, false);
 
-        // The counter must also be updated in the serialised credential_public_key blob,
-        // not only in the dedicated counter column. The webauthn-lib reads the counter
-        // from the deserialised PublicKeyCredentialSource on every subsequent login, so
-        // a stale blob would cause the non-monotonic-counter check to compare against the
-        // wrong baseline and wrongly accept cloned credentials.
         $model->refresh();
-        $deserialised = $this->repository->getPublicKeyCredentialSource($model);
-        $this->assertSame(99, $deserialised->counter);
+        $this->assertSame($updatedJson, $this->repository->getSerializedCredentialSource($model));
     }
 
     public function testUpdateAfterAuthenticationSetsLastUsedAtToCurrentTime(): void
     {
         $user = User::factory()->create();
-        $model = $this->repository->saveNewCredential($user, $this->buildPublicKeyCredentialSource(), 'Key');
+        $data = $this->buildNewCredentialData();
+        $model = $this->repository->saveNewCredential($user, $data, 'Key');
         $this->assertNull($model->last_used_at);
 
         $before = now()->floorSeconds();
-        $credentialRecord = $this->repository->getPublicKeyCredentialSource($model);
-        $this->repository->updateAfterAuthentication($model, $credentialRecord);
+        $serialized = $this->repository->getSerializedCredentialSource($model);
+        $this->repository->updateAfterAuthentication($model, $serialized, 0, false);
         $after = now()->ceilSeconds();
 
         $model->refresh();
@@ -151,14 +159,14 @@ final class PasskeyCredentialRepositoryTest extends TestCase
     public function testUpdateAfterAuthenticationDoesNotChangeBackupEligible(): void
     {
         $user = User::factory()->create();
-        $credentialRecord = $this->buildPublicKeyCredentialSource(backupEligible: true);
-        $model = $this->repository->saveNewCredential($user, $credentialRecord, 'Key');
+        $data = $this->buildNewCredentialData(backupEligible: true);
+        $model = $this->repository->saveNewCredential($user, $data, 'Key');
         $this->assertTrue($model->backup_eligible);
 
         // backup_eligible is a registration-time property and must never be altered
-        // by a subsequent authentication, even if the library returns a different value.
-        $credentialRecord->backupEligible = false;
-        $this->repository->updateAfterAuthentication($model, $credentialRecord);
+        // by a subsequent authentication.
+        $serialized = $this->repository->getSerializedCredentialSource($model);
+        $this->repository->updateAfterAuthentication($model, $serialized, 1, false);
 
         $model->refresh();
         $this->assertTrue($model->backup_eligible);
@@ -167,30 +175,26 @@ final class PasskeyCredentialRepositoryTest extends TestCase
     public function testUpdateAfterAuthenticationUpdatesBackupState(): void
     {
         $user = User::factory()->create();
-        $credentialRecord = $this->buildPublicKeyCredentialSource(backupStatus: false);
-
-        $model = $this->repository->saveNewCredential($user, $credentialRecord, 'Key');
+        $data = $this->buildNewCredentialData(backupState: false);
+        $model = $this->repository->saveNewCredential($user, $data, 'Key');
         $this->assertFalse($model->backup_state);
 
-        $credentialRecord->backupStatus = true;
-        $this->repository->updateAfterAuthentication($model, $credentialRecord);
+        $serialized = $this->repository->getSerializedCredentialSource($model);
+        $this->repository->updateAfterAuthentication($model, $serialized, 0, true);
 
         $model->refresh();
         $this->assertTrue($model->backup_state);
     }
 
-    public function testGetPublicKeyCredentialSourceReturnsDeserializedSource(): void
+    public function testGetSerializedCredentialSourceReturnsStoredJson(): void
     {
         $user = User::factory()->create();
-        $model = $this->repository->saveNewCredential($user, $this->buildPublicKeyCredentialSource(), 'Key');
+        $data = $this->buildNewCredentialData();
+        $model = $this->repository->saveNewCredential($user, $data, 'Key');
 
-        $result = $this->repository->getPublicKeyCredentialSource($model);
+        $result = $this->repository->getSerializedCredentialSource($model);
 
-        $this->assertInstanceOf(PublicKeyCredentialSource::class, $result);
-        $this->assertSame(
-            $model->credential_id,
-            Base64UrlSafe::encodeUnpadded($result->publicKeyCredentialId),
-        );
+        $this->assertSame($data->serializedCredentialSource, $result);
     }
 
     public function testDeleteRemovesModel(): void
@@ -206,31 +210,25 @@ final class PasskeyCredentialRepositoryTest extends TestCase
     {
         parent::setUp();
 
-        $this->repository = new PasskeyCredentialRepository(
-            app(SerializerInterface::class),
-        );
+        $this->repository = new PasskeyCredentialRepository();
     }
 
     // ──────────────────────────────────────────────────────────────────────────
     // Helper
     // ──────────────────────────────────────────────────────────────────────────
 
-    private function buildPublicKeyCredentialSource(
-        bool $backupStatus = false,
+    private function buildNewCredentialData(
+        bool $backupState = false,
         bool $backupEligible = false,
-    ): PublicKeyCredentialSource {
-        return PublicKeyCredentialSource::create(
-            publicKeyCredentialId: random_bytes(32),
-            type: 'public-key',
-            transports: ['internal'],
-            attestationType: 'none',
-            trustPath: new EmptyTrustPath(),
-            aaguid: Uuid::fromString('00000000-0000-0000-0000-000000000000'),
-            credentialPublicKey: random_bytes(77),
-            userHandle: 'test-user-handle',
+    ): NewPasskeyCredentialData {
+        return new NewPasskeyCredentialData(
+            credentialId: 'dGVzdC1jcmVkZW50aWFsLWlk',
+            serializedCredentialSource: '{"type":"public-key","id":"dGVzdA"}',
             counter: 0,
-            backupStatus: $backupStatus,
+            transports: ['internal'],
             backupEligible: $backupEligible,
+            backupState: $backupState,
+            aaguid: '00000000-0000-0000-0000-000000000000',
         );
     }
 }

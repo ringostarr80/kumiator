@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\WebAuthn;
 
 use App\Config\WebAuthnConfig;
+use App\DataTransferObjects\NewPasskeyCredentialData;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
@@ -12,6 +13,7 @@ use App\Services\WebAuthn\Contracts\PasskeyRegistrationContract;
 use App\Services\WebAuthn\Contracts\WebAuthnValidatorFactoryContract;
 use Cose\Algorithm\Signature\ECDSA\ES256;
 use Cose\Algorithm\Signature\RSA\RS256;
+use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
 use Webauthn\AuthenticatorAttestationResponse;
 use Webauthn\AuthenticatorSelectionCriteria;
@@ -20,6 +22,7 @@ use Webauthn\PublicKeyCredential;
 use Webauthn\PublicKeyCredentialCreationOptions;
 use Webauthn\PublicKeyCredentialParameters;
 use Webauthn\PublicKeyCredentialRpEntity;
+use Webauthn\PublicKeyCredentialSource;
 use Webauthn\PublicKeyCredentialUserEntity;
 
 /**
@@ -73,7 +76,9 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
 
         // Exclude already-registered credentials so that the same authenticator
         // cannot be registered twice for the same user.
-        $excludeCredentials = $this->repository->getDescriptorsForUser($user);
+        $excludeCredentials = PasskeyDescriptorBuilder::fromCollection(
+            $this->repository->findAllForUser($user),
+        );
 
         $timeout = WebAuthnConfig::timeoutMs();
 
@@ -119,6 +124,27 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
         $validator = $this->validatorFactory->buildAttestationValidator(WebAuthnConfig::appUrl());
         $credentialRecord = $validator->check($response, $storedOptions, $host);
 
-        return $this->repository->saveNewCredential($user, $credentialRecord, $credentialName);
+        return $this->repository->saveNewCredential(
+            $user,
+            $this->buildNewCredentialData($credentialRecord),
+            $credentialName,
+        );
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private function buildNewCredentialData(PublicKeyCredentialSource $record): NewPasskeyCredentialData
+    {
+        return new NewPasskeyCredentialData(
+            credentialId: Base64UrlSafe::encodeUnpadded($record->publicKeyCredentialId),
+            serializedCredentialSource: $this->serializer->serialize($record, 'json'),
+            counter: $record->counter,
+            transports: $record->transports,
+            backupEligible: $record->backupEligible ?? false,
+            backupState: $record->backupStatus ?? false,
+            aaguid: $record->aaguid->toRfc4122(),
+        );
     }
 }

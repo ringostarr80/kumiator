@@ -4,29 +4,21 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\DataTransferObjects\NewPasskeyCredentialData;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use Illuminate\Database\Eloquent\Collection;
-use ParagonIE\ConstantTime\Base64UrlSafe;
-use Symfony\Component\Serializer\SerializerInterface;
-use Webauthn\PublicKeyCredentialDescriptor;
-use Webauthn\PublicKeyCredentialSource;
 
 /**
- * Persists and retrieves WebAuthn PublicKeyCredentialSources using Eloquent.
+ * Persists and retrieves WebAuthn passkey credentials using Eloquent.
  *
- * The library itself does not mandate any repository interface in v5.x, so this
- * class defines its own contract that is consumed by the application services.
- * The PublicKeyCredentialSource is serialised to JSON for storage so that we remain
- * decoupled from any future structural changes inside the library.
+ * This repository is deliberately free of WebAuthn library types.
+ * Serialisation and domain-specific type conversions are handled by
+ * the service layer, which passes only primitives and DTOs here.
  */
 final class PasskeyCredentialRepository implements PasskeyCredentialRepositoryContract
 {
-    public function __construct(private readonly SerializerInterface $serializer)
-    {
-    }
-
     /**
      * Find a stored credential by its UUID primary key.
      * Throws ModelNotFoundException when no matching record exists.
@@ -58,68 +50,47 @@ final class PasskeyCredentialRepository implements PasskeyCredentialRepositoryCo
     }
 
     /**
-     * Persist a new PublicKeyCredentialSource after a successful registration ceremony.
+     * Persist a new passkey credential after a successful registration ceremony.
      */
-    public function saveNewCredential(
-        User $user,
-        PublicKeyCredentialSource $credentialRecord,
-        string $name,
-    ): PasskeyCredential {
-        $credentialId = Base64UrlSafe::encodeUnpadded($credentialRecord->publicKeyCredentialId);
-        $serialized = $this->serializePublicKeyCredentialSource($credentialRecord);
-
+    public function saveNewCredential(User $user, NewPasskeyCredentialData $data, string $name): PasskeyCredential
+    {
         return PasskeyCredential::create([
             'user_id' => $user->id,
-            'credential_id' => $credentialId,
-            'credential_public_key' => $serialized,
-            'counter' => $credentialRecord->counter,
-            'transports' => $credentialRecord->transports,
-            'backup_eligible' => $credentialRecord->backupEligible ?? false,
-            'backup_state' => $credentialRecord->backupStatus ?? false,
-            'aaguid' => $credentialRecord->aaguid->toRfc4122(),
+            'credential_id' => $data->credentialId,
+            'credential_public_key' => $data->serializedCredentialSource,
+            'counter' => $data->counter,
+            'transports' => $data->transports,
+            'backup_eligible' => $data->backupEligible,
+            'backup_state' => $data->backupState,
+            'aaguid' => $data->aaguid,
             'name' => $name,
         ]);
     }
 
     /**
-     * Update a PublicKeyCredentialSource after a successful authentication ceremony
+     * Update credential data after a successful authentication ceremony
      * (counter and backup flags may have changed).
      */
     public function updateAfterAuthentication(
         PasskeyCredential $model,
-        PublicKeyCredentialSource $credentialRecord,
+        string $serializedCredentialSource,
+        int $counter,
+        bool $backupState,
     ): void {
         $model->update([
-            'credential_public_key' => $this->serializePublicKeyCredentialSource($credentialRecord),
-            'counter' => $credentialRecord->counter,
-            'backup_state' => $credentialRecord->backupStatus ?? false,
+            'credential_public_key' => $serializedCredentialSource,
+            'counter' => $counter,
+            'backup_state' => $backupState,
             'last_used_at' => now(),
         ]);
     }
 
     /**
-     * Deserialise the stored PublicKeyCredentialSource from a PasskeyCredential model.
-     * Centralises deserialization so that no other layer needs to know the storage format.
+     * Return the serialised credential source JSON for a given model.
      */
-    public function getPublicKeyCredentialSource(PasskeyCredential $model): PublicKeyCredentialSource
+    public function getSerializedCredentialSource(PasskeyCredential $model): string
     {
-        return $this->deserializePublicKeyCredentialSource($model->credential_public_key);
-    }
-
-    /**
-     * Return the PublicKeyCredentialDescriptors for all credentials of a user.
-     *
-     * @return list<PublicKeyCredentialDescriptor>
-     */
-    public function getDescriptorsForUser(User $user): array
-    {
-        return array_values(
-            $this->findAllForUser($user)
-                ->map(
-                    fn (PasskeyCredential $credential) => $this->buildDescriptor($credential),
-                )
-                ->all(),
-        );
+        return $model->credential_public_key;
     }
 
     /**
@@ -128,28 +99,5 @@ final class PasskeyCredentialRepository implements PasskeyCredentialRepositoryCo
     public function delete(PasskeyCredential $model): void
     {
         $model->deleteOrFail();
-    }
-
-    // ──────────────────────────────────────────────────────────────────────────
-    // Helpers
-    // ──────────────────────────────────────────────────────────────────────────
-
-    private function buildDescriptor(PasskeyCredential $credential): PublicKeyCredentialDescriptor
-    {
-        return PublicKeyCredentialDescriptor::create(
-            type: 'public-key',
-            id: Base64UrlSafe::decodeNoPadding($credential->credential_id),
-            transports: $credential->transports ?? [],
-        );
-    }
-
-    private function serializePublicKeyCredentialSource(PublicKeyCredentialSource $credentialRecord): string
-    {
-        return $this->serializer->serialize($credentialRecord, 'json');
-    }
-
-    private function deserializePublicKeyCredentialSource(string $json): PublicKeyCredentialSource
-    {
-        return $this->serializer->deserialize($json, PublicKeyCredentialSource::class, 'json');
     }
 }

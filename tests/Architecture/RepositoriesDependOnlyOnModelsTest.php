@@ -18,12 +18,14 @@ final class RepositoriesDependOnlyOnModelsTest
             ->dependOn()
             ->classes(Selector::inNamespace('App'))
             ->excluding(
+                Selector::inNamespace('App\\DataTransferObjects'),
                 Selector::inNamespace('App\\Models'),
                 Selector::inNamespace('App\\Repositories\\Contracts'),
             )
             ->because(
                 'Repositories bilden die Persistenz-Schicht direkt über den Models und dürfen nur von '
-                . 'App\\Models und ihren eigenen Contracts (App\\Repositories\\Contracts) abhängen.',
+                . 'App\\DataTransferObjects, App\\Models und ihren eigenen Contracts '
+                . '(App\\Repositories\\Contracts) abhängen.',
                 'Konkrete Repositories dürfen keine Abhängigkeiten untereinander haben — wenn mehrere '
                 . 'Repositories orchestriert werden müssen, gehört das in einen Service.',
                 'Abhängigkeiten zu Http, Livewire, Console, Services oder anderen höheren Schichten '

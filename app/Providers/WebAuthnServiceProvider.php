@@ -48,12 +48,7 @@ final class WebAuthnServiceProvider extends ServiceProvider
             ),
         );
 
-        $this->app->bind(
-            PasskeyCredentialRepositoryContract::class,
-            fn (): PasskeyCredentialRepository => new PasskeyCredentialRepository(
-                $this->app->make(SerializerInterface::class),
-            ),
-        );
+        $this->app->bind(PasskeyCredentialRepositoryContract::class, PasskeyCredentialRepository::class);
 
         $this->app->bind(
             PasskeyRegistrationContract::class,

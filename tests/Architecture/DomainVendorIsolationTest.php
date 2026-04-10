@@ -41,19 +41,16 @@ final class DomainVendorIsolationTest
             ->dependOn()
             ->classes(Selector::all())
             ->excluding(
-                // App-intern (durch Regel 2 eingeschränkt auf App\Models + App\Repositories\Contracts)
+                // App-intern (durch Regel 2 eingeschränkt)
                 Selector::inNamespace('App'),
                 // Laravel-Kern
                 Selector::inNamespace('Illuminate'),
-                // Erlaubte Vendor-Pakete
-                Selector::inNamespace('ParagonIE\\ConstantTime'),
-                Selector::inNamespace('Symfony\\Component\\Serializer'),
-                Selector::inNamespace('Webauthn'),
             )
             ->because(
-                'Repositories dürfen nur von explizit freigegebenen Vendor-Paketen abhängen.',
-                'Neue externe Abhängigkeiten in der Repository-Schicht müssen bewusst entschieden und hier '
-                . 'in der Allowlist eingetragen werden, um unkontrollierte Kopplung zu vermeiden.',
+                'Repositories dürfen keine externen Vendor-Pakete direkt nutzen.',
+                'Die gesamte Vendor-spezifische Logik (Serialisierung, WebAuthn-Typen) '
+                . 'gehört in die Service-Schicht. Repositories arbeiten nur mit '
+                . 'Eloquent, DTOs und primitiven Typen.',
             );
     }
 }

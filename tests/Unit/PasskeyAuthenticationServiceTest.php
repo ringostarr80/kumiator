@@ -129,7 +129,7 @@ final class PasskeyAuthenticationServiceTest extends TestCase
 
         $this->service = new PasskeyAuthenticationService(
             new WebAuthnValidatorFactory(),
-            new PasskeyCredentialRepository($serializer),
+            new PasskeyCredentialRepository(),
             $serializer,
         );
     }

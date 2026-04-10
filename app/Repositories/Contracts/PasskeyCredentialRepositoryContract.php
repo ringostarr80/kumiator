@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
 
+use App\DataTransferObjects\NewPasskeyCredentialData;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
-use Webauthn\PublicKeyCredentialSource;
 
 interface PasskeyCredentialRepositoryContract
 {
@@ -31,36 +31,25 @@ interface PasskeyCredentialRepositoryContract
     public function findAllForUser(User $user): Collection;
 
     /**
-     * Persist a new PublicKeyCredentialSource after a successful registration ceremony.
+     * Persist a new passkey credential after a successful registration ceremony.
      */
-    public function saveNewCredential(
-        User $user,
-        PublicKeyCredentialSource $credentialRecord,
-        string $name,
-    ): PasskeyCredential;
+    public function saveNewCredential(User $user, NewPasskeyCredentialData $data, string $name): PasskeyCredential;
 
     /**
-     * Update a PublicKeyCredentialSource after a successful authentication ceremony
+     * Update credential data after a successful authentication ceremony
      * (counter and backup flags may have changed).
      */
     public function updateAfterAuthentication(
         PasskeyCredential $model,
-        PublicKeyCredentialSource $credentialRecord,
+        string $serializedCredentialSource,
+        int $counter,
+        bool $backupState,
     ): void;
 
     /**
-     * Deserialise the stored PublicKeyCredentialSource from a PasskeyCredential model.
+     * Return the serialised credential source JSON for a given model.
      */
-    public function getPublicKeyCredentialSource(PasskeyCredential $model): PublicKeyCredentialSource;
-
-    /**
-     * Return the PublicKeyCredentialDescriptors for all credentials of a user.
-     *
-     * Used to populate allowCredentials / excludeCredentials in WebAuthn options.
-     *
-     * @return list<\Webauthn\PublicKeyCredentialDescriptor>
-     */
-    public function getDescriptorsForUser(User $user): array;
+    public function getSerializedCredentialSource(PasskeyCredential $model): string;
 
     /**
      * Delete a passkey credential by model instance.

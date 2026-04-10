@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\WebAuthn;
 
 use App\Config\WebAuthnConfig;
+use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
@@ -51,7 +52,7 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
     public function createOptions(?User $user = null): PublicKeyCredentialRequestOptions
     {
         $allowCredentials = $user !== null
-            ? $this->repository->getDescriptorsForUser($user)
+            ? PasskeyDescriptorBuilder::fromCollection($this->repository->findAllForUser($user))
             : [];
 
         $timeout = WebAuthnConfig::timeoutMs();
@@ -91,8 +92,9 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
         // Resolve the credential by its ID (Base64URL-encoded in the browser response)
         $credentialId = Base64UrlSafe::encodeUnpadded($publicKeyCredential->rawId);
         $passkeyModel = $this->repository->findByCredentialId($credentialId);
+
         $credentialRecord = $passkeyModel !== null
-            ? $this->repository->getPublicKeyCredentialSource($passkeyModel)
+            ? $this->deserializeCredentialSource($passkeyModel)
             : null;
 
         if ($passkeyModel === null || $credentialRecord === null) {
@@ -105,7 +107,12 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
         $updatedRecord = $validator->check($credentialRecord, $response, $storedOptions, $host, $userHandle);
 
         // Persist updated counter and backup flags
-        $this->repository->updateAfterAuthentication($passkeyModel, $updatedRecord);
+        $this->repository->updateAfterAuthentication(
+            $passkeyModel,
+            $this->serializer->serialize($updatedRecord, 'json'),
+            $updatedRecord->counter,
+            $updatedRecord->backupStatus ?? false,
+        );
 
         $user = $passkeyModel->user;
 
@@ -136,6 +143,13 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
     // ──────────────────────────────────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────────────────────────────────
+
+    private function deserializeCredentialSource(PasskeyCredential $model): PublicKeyCredentialSource
+    {
+        $json = $this->repository->getSerializedCredentialSource($model);
+
+        return $this->serializer->deserialize($json, PublicKeyCredentialSource::class, 'json');
+    }
 
     /**
      * Perform a deliberately failing verification with a fake credential to
