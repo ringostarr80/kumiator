@@ -31,3 +31,7 @@ services:
         class: Tests\Architecture\DomainVendorIsolationTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\FormRequestsAreIndependentTest
+        tags:
+            - phpat.test
