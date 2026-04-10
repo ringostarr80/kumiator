@@ -1,0 +1,21 @@
+services:
+    -
+        class: Tests\Architecture\ModelsDependOnlyOnModelsTest
+        tags:
+            - phpat.test
+    -
+        class: Tests\Architecture\RepositoriesDependOnlyOnModelsTest
+        tags:
+            - phpat.test
+    -
+        class: Tests\Architecture\ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
+        tags:
+            - phpat.test
+    -
+        class: Tests\Architecture\ControllersAndLivewireDependOnContractsTest
+        tags:
+            - phpat.test
+    -
+        class: Tests\Architecture\ConsoleCommandsDependOnContractsTest
+        tags:
+            - phpat.test
