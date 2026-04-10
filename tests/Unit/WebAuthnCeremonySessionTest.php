@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Services\WebAuthn\WebAuthnCeremonySession;
-use App\Services\WebAuthn\WebAuthnServerService;
 use Cose\Algorithm\Signature\ECDSA\ES256;
 use Illuminate\Http\Request;
 use Illuminate\Session\ArraySessionHandler;
 use Illuminate\Session\Store;
+use Symfony\Component\Serializer\SerializerInterface;
 use Tests\TestCase;
 use Webauthn\PublicKeyCredentialCreationOptions;
 use Webauthn\PublicKeyCredentialParameters;
@@ -284,7 +284,7 @@ final class WebAuthnCeremonySessionTest extends TestCase
     {
         parent::setUp();
 
-        $this->ceremonySession = new WebAuthnCeremonySession(new WebAuthnServerService());
+        $this->ceremonySession = new WebAuthnCeremonySession(app(SerializerInterface::class));
     }
 
     // ──────────────────────────────────────────────────────────────────────────

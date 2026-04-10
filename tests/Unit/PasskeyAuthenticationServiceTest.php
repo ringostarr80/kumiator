@@ -8,9 +8,10 @@ use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
 use App\Services\WebAuthn\PasskeyAuthenticationService;
-use App\Services\WebAuthn\WebAuthnServerService;
+use App\Services\WebAuthn\WebAuthnValidatorFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use ParagonIE\ConstantTime\Base64UrlSafe;
+use Symfony\Component\Serializer\SerializerInterface;
 use Tests\TestCase;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
 use Webauthn\PublicKeyCredentialRequestOptions;
@@ -124,11 +125,12 @@ final class PasskeyAuthenticationServiceTest extends TestCase
     {
         parent::setUp();
 
-        $serverService = app(WebAuthnServerService::class);
+        $serializer = app(SerializerInterface::class);
 
         $this->service = new PasskeyAuthenticationService(
-            $serverService,
-            new PasskeyCredentialRepository($serverService->getSerializer()),
+            new WebAuthnValidatorFactory(),
+            new PasskeyCredentialRepository($serializer),
+            $serializer,
         );
     }
 }

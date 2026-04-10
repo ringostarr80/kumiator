@@ -6,7 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\PasskeyCredential;
 use App\Models\User;
-use App\Services\WebAuthn\PasskeyRegistrationContract;
+use App\Services\WebAuthn\Contracts\PasskeyRegistrationContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Mockery;

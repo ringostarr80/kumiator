@@ -9,8 +9,8 @@ use App\Http\Requests\PasskeyStoreRequest;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
-use App\Services\WebAuthn\PasskeyRegistrationContract;
-use App\Services\WebAuthn\WebAuthnCeremonySession;
+use App\Services\WebAuthn\Contracts\PasskeyRegistrationContract;
+use App\Services\WebAuthn\Contracts\WebAuthnCeremonySessionContract;
 use App\Services\WebAuthn\WebAuthnConfig;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -37,7 +37,7 @@ final class PasskeyRegistrationController extends Controller
 
     public function __construct(
         private readonly PasskeyRegistrationContract $registrationService,
-        private readonly WebAuthnCeremonySession $ceremonySession,
+        private readonly WebAuthnCeremonySessionContract $ceremonySession,
         private readonly PasskeyCredentialRepositoryContract $repository,
     ) {
     }

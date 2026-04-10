@@ -7,8 +7,11 @@ namespace App\Services\WebAuthn;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
+use App\Services\WebAuthn\Contracts\PasskeyRegistrationContract;
+use App\Services\WebAuthn\Contracts\WebAuthnValidatorFactoryContract;
 use Cose\Algorithm\Signature\ECDSA\ES256;
 use Cose\Algorithm\Signature\RSA\RS256;
+use Symfony\Component\Serializer\SerializerInterface;
 use Webauthn\AuthenticatorAttestationResponse;
 use Webauthn\AuthenticatorSelectionCriteria;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
@@ -31,8 +34,9 @@ use Webauthn\PublicKeyCredentialUserEntity;
 final class PasskeyRegistrationService implements PasskeyRegistrationContract
 {
     public function __construct(
-        private readonly WebAuthnServerService $serverService,
+        private readonly WebAuthnValidatorFactoryContract $validatorFactory,
         private readonly PasskeyCredentialRepositoryContract $repository,
+        private readonly SerializerInterface $serializer,
     ) {
     }
 
@@ -107,9 +111,7 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
         string $credentialName,
         string $host,
     ): PasskeyCredential {
-        $serializer = $this->serverService->getSerializer();
-
-        $publicKeyCredential = $serializer->deserialize($rawResponse, PublicKeyCredential::class, 'json');
+        $publicKeyCredential = $this->serializer->deserialize($rawResponse, PublicKeyCredential::class, 'json');
 
         $response = $publicKeyCredential->response;
 
@@ -117,7 +119,7 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
             throw new AuthenticatorResponseVerificationException(__('app.passkey_invalid_response_type'));
         }
 
-        $validator = $this->serverService->buildAttestationValidator(WebAuthnConfig::appUrl());
+        $validator = $this->validatorFactory->buildAttestationValidator(WebAuthnConfig::appUrl());
         $credentialRecord = $validator->check($response, $storedOptions, $host);
 
         return $this->repository->saveNewCredential($user, $credentialRecord, $credentialName);

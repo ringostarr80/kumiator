@@ -78,4 +78,27 @@ final class WebAuthnJsonNormalizerTest extends TestCase
             ],
         ], $result);
     }
+
+    public function testNormalizeOptionsJsonDecodesAndStripsNulls(): void
+    {
+        $json = (string) json_encode(['rp' => ['name' => 'App', 'id' => null], 'timeout' => 60_000]);
+
+        $result = WebAuthnJsonNormalizer::normalizeOptionsJson($json);
+
+        $this->assertSame(['rp' => ['name' => 'App'], 'timeout' => 60_000], $result);
+    }
+
+    public function testNormalizeOptionsJsonReturnsEmptyArrayForInvalidJson(): void
+    {
+        $result = WebAuthnJsonNormalizer::normalizeOptionsJson('not-valid-json{{{');
+
+        $this->assertSame([], $result);
+    }
+
+    public function testNormalizeOptionsJsonReturnsEmptyArrayForNonObjectJson(): void
+    {
+        $result = WebAuthnJsonNormalizer::normalizeOptionsJson('"just a string"');
+
+        $this->assertSame([], $result);
+    }
 }

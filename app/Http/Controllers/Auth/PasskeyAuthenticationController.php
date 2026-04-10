@@ -7,8 +7,8 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PasskeyAuthenticateOptionsRequest;
 use App\Models\User;
-use App\Services\WebAuthn\PasskeyAuthenticationContract;
-use App\Services\WebAuthn\WebAuthnCeremonySession;
+use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
+use App\Services\WebAuthn\Contracts\WebAuthnCeremonySessionContract;
 use App\Services\WebAuthn\WebAuthnConfig;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,7 +31,7 @@ final class PasskeyAuthenticationController extends Controller
 
     public function __construct(
         private readonly PasskeyAuthenticationContract $authenticationService,
-        private readonly WebAuthnCeremonySession $ceremonySession,
+        private readonly WebAuthnCeremonySessionContract $ceremonySession,
     ) {
     }
 

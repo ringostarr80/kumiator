@@ -7,10 +7,10 @@ namespace Tests\Unit;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
-use App\Services\WebAuthn\WebAuthnServerService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use ParagonIE\ConstantTime\Base64UrlSafe;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
 use Tests\TestCase;
 use Webauthn\PublicKeyCredentialSource;
@@ -207,7 +207,7 @@ final class PasskeyCredentialRepositoryTest extends TestCase
         parent::setUp();
 
         $this->repository = new PasskeyCredentialRepository(
-            app(WebAuthnServerService::class)->getSerializer(),
+            app(SerializerInterface::class),
         );
     }
 

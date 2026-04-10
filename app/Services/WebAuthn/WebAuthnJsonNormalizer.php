@@ -17,6 +17,23 @@ namespace App\Services\WebAuthn;
 final class WebAuthnJsonNormalizer
 {
     /**
+     * Decode a serialised WebAuthn options JSON string, strip null values,
+     * and return the resulting array for a JSON response.
+     *
+     * @return array<mixed>
+     */
+    public static function normalizeOptionsJson(string $json): array
+    {
+        $decoded = json_decode($json, true);
+
+        $stripped = self::stripNulls(is_array($decoded) ? $decoded : []);
+
+        return is_array($stripped)
+            ? $stripped
+            : [];
+    }
+
+    /**
      * Recursively remove null values from a decoded JSON structure.
      *
      * @param mixed $data Decoded JSON value (array, scalar, or null)

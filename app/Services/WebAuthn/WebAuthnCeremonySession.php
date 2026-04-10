@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\WebAuthn;
 
+use App\Services\WebAuthn\Contracts\WebAuthnCeremonySessionContract;
 use Illuminate\Http\Request;
+use Symfony\Component\Serializer\SerializerInterface;
 
 /**
  * Handles the session-based state shared across both WebAuthn ceremony steps.
@@ -14,9 +16,9 @@ use Illuminate\Http\Request;
  * → verify response. This service centralises that session I/O so the controllers
  * stay thin and the logic is tested in one place.
  */
-final class WebAuthnCeremonySession
+final class WebAuthnCeremonySession implements WebAuthnCeremonySessionContract
 {
-    public function __construct(private readonly WebAuthnServerService $serverService)
+    public function __construct(private readonly SerializerInterface $serializer)
     {
     }
 
@@ -32,7 +34,7 @@ final class WebAuthnCeremonySession
      */
     public function storeOptions(object $options, string $sessionKey, Request $request): array
     {
-        $json = $this->serverService->getSerializer()->serialize($options, 'json');
+        $json = $this->serializer->serialize($options, 'json');
 
         $ttlRaw = config('webauthn.ceremony_session_ttl', 120);
         $ttl = is_int($ttlRaw)
@@ -44,7 +46,7 @@ final class WebAuthnCeremonySession
             'expires_at' => now()->addSeconds($ttl)->timestamp,
         ]);
 
-        return $this->serverService->normalizeOptionsJson($json);
+        return WebAuthnJsonNormalizer::normalizeOptionsJson($json);
     }
 
     /**
@@ -73,7 +75,7 @@ final class WebAuthnCeremonySession
         }
 
         try {
-            $result = $this->serverService->getSerializer()->deserialize($stored['data'], $class, 'json');
+            $result = $this->serializer->deserialize($stored['data'], $class, 'json');
         } catch (\Throwable) {
             return null;
         }

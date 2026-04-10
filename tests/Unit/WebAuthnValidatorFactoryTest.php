@@ -4,31 +4,25 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\Services\WebAuthn\WebAuthnServerService;
-use Symfony\Component\Serializer\SerializerInterface;
+use App\Services\WebAuthn\WebAuthnValidatorFactory;
 use Tests\TestCase;
 use Webauthn\AuthenticatorAssertionResponseValidator;
 use Webauthn\AuthenticatorAttestationResponseValidator;
 
-final class WebAuthnServerServiceTest extends TestCase
+final class WebAuthnValidatorFactoryTest extends TestCase
 {
-    private WebAuthnServerService $service;
-
-    public function testGetSerializerReturnsSerializer(): void
-    {
-        $this->assertInstanceOf(SerializerInterface::class, $this->service->getSerializer());
-    }
+    private WebAuthnValidatorFactory $factory;
 
     public function testBuildAttestationValidatorReturnsValidator(): void
     {
-        $validator = $this->service->buildAttestationValidator('https://localhost:8443');
+        $validator = $this->factory->buildAttestationValidator('https://localhost:8443');
 
         $this->assertInstanceOf(AuthenticatorAttestationResponseValidator::class, $validator);
     }
 
     public function testBuildAssertionValidatorReturnsValidator(): void
     {
-        $validator = $this->service->buildAssertionValidator('https://localhost:8443');
+        $validator = $this->factory->buildAssertionValidator('https://localhost:8443');
 
         $this->assertInstanceOf(AuthenticatorAssertionResponseValidator::class, $validator);
     }
@@ -37,6 +31,6 @@ final class WebAuthnServerServiceTest extends TestCase
     {
         parent::setUp();
 
-        $this->service = new WebAuthnServerService();
+        $this->factory = new WebAuthnValidatorFactory();
     }
 }

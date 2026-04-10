@@ -6,7 +6,7 @@ namespace Database\Factories;
 
 use App\Models\PasskeyCredential;
 use App\Models\User;
-use App\Services\WebAuthn\WebAuthnServerService;
+use Symfony\Component\Serializer\SerializerInterface;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Uid\Uuid;
@@ -24,7 +24,7 @@ class PasskeyCredentialFactory extends Factory
     {
         return $this->afterCreating(function (PasskeyCredential $credential): void {
             $user = $credential->user()->firstOrFail();
-            $serializer = app(WebAuthnServerService::class)->getSerializer();
+            $serializer = app(SerializerInterface::class);
 
             $source = $serializer->deserialize(
                 $credential->credential_public_key,
@@ -80,7 +80,7 @@ class PasskeyCredentialFactory extends Factory
             counter: 0,
         );
 
-        $serializer = app(WebAuthnServerService::class)->getSerializer();
+        $serializer = app(SerializerInterface::class);
         $serialisedRecord = $serializer->serialize($credentialRecord, 'json');
 
         return [

@@ -23,3 +23,7 @@ services:
         class: Tests\Architecture\RepositoriesDependOnlyOnModelsTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
+        tags:
+            - phpat.test

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\WebAuthn;
+namespace App\Services\WebAuthn\Contracts;
 
 use App\Models\PasskeyCredential;
 use App\Models\User;

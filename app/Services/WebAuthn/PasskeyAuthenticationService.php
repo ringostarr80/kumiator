@@ -6,7 +6,10 @@ namespace App\Services\WebAuthn;
 
 use App\Models\User;
 use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
+use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
+use App\Services\WebAuthn\Contracts\WebAuthnValidatorFactoryContract;
 use ParagonIE\ConstantTime\Base64UrlSafe;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
 use Webauthn\AuthenticatorAssertionResponse;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
@@ -28,8 +31,9 @@ use Webauthn\TrustPath\EmptyTrustPath;
 final class PasskeyAuthenticationService implements PasskeyAuthenticationContract
 {
     public function __construct(
-        private readonly WebAuthnServerService $serverService,
+        private readonly WebAuthnValidatorFactoryContract $validatorFactory,
         private readonly PasskeyCredentialRepositoryContract $repository,
+        private readonly SerializerInterface $serializer,
     ) {
     }
 
@@ -77,9 +81,7 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
      */
     public function verify(string $rawResponse, PublicKeyCredentialRequestOptions $storedOptions, string $host): User
     {
-        $serializer = $this->serverService->getSerializer();
-
-        $publicKeyCredential = $serializer->deserialize($rawResponse, PublicKeyCredential::class, 'json');
+        $publicKeyCredential = $this->serializer->deserialize($rawResponse, PublicKeyCredential::class, 'json');
 
         $response = $publicKeyCredential->response;
 
@@ -102,7 +104,7 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
         }
 
         $userHandle = $response->userHandle;
-        $validator = $this->serverService->buildAssertionValidator(WebAuthnConfig::appUrl());
+        $validator = $this->validatorFactory->buildAssertionValidator(WebAuthnConfig::appUrl());
         $updatedRecord = $validator->check($credentialRecord, $response, $storedOptions, $host, $userHandle);
 
         // Persist updated counter and backup flags
@@ -163,7 +165,7 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
                 counter: 0,
             );
 
-            $validator = $this->serverService->buildAssertionValidator(WebAuthnConfig::appUrl());
+            $validator = $this->validatorFactory->buildAssertionValidator(WebAuthnConfig::appUrl());
             $validator->check($fakeSource, $response, $storedOptions, $host, null);
             // If we reach here, the fake verification unexpectedly succeeded.
             // This is safe: the caller still throws credential_not_found.
