@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use App\Repositories\PasskeyCredentialRepository;
-use App\Repositories\PasskeyCredentialRepositoryContract;
 use App\Services\WebAuthn\PasskeyAuthenticationContract;
 use App\Services\WebAuthn\PasskeyAuthenticationService;
 use App\Services\WebAuthn\PasskeyRegistrationContract;

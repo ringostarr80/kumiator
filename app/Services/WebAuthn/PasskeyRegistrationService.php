@@ -6,7 +6,7 @@ namespace App\Services\WebAuthn;
 
 use App\Models\PasskeyCredential;
 use App\Models\User;
-use App\Repositories\PasskeyCredentialRepositoryContract;
+use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use Cose\Algorithm\Signature\ECDSA\ES256;
 use Cose\Algorithm\Signature\RSA\RS256;
 use Webauthn\AuthenticatorAttestationResponse;

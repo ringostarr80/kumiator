@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\WebAuthn;
 
 use App\Models\User;
-use App\Repositories\PasskeyCredentialRepositoryContract;
+use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Uid\Uuid;
 use Webauthn\AuthenticatorAssertionResponse;

@@ -8,7 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\PasskeyStoreRequest;
 use App\Models\PasskeyCredential;
 use App\Models\User;
-use App\Repositories\PasskeyCredentialRepositoryContract;
+use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use App\Services\WebAuthn\PasskeyRegistrationContract;
 use App\Services\WebAuthn\WebAuthnCeremonySession;
 use App\Services\WebAuthn\WebAuthnConfig;

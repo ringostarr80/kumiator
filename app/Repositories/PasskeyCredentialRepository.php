@@ -6,6 +6,7 @@ namespace App\Repositories;
 
 use App\Models\PasskeyCredential;
 use App\Models\User;
+use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use Illuminate\Database\Eloquent\Collection;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;

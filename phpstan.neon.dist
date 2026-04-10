@@ -19,3 +19,7 @@ services:
         class: Tests\Architecture\ModelsDependOnlyOnModelsTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\RepositoriesDependOnlyOnModelsTest
+        tags:
+            - phpat.test

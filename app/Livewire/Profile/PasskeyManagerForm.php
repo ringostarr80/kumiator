@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Profile;
 
 use App\Models\User;
-use App\Repositories\PasskeyCredentialRepositoryContract;
+use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Response;
