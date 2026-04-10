@@ -19,3 +19,7 @@ services:
         class: Tests\Architecture\ConsoleCommandsDependOnContractsTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\ConfigIsIndependentTest
+        tags:
+            - phpat.test
