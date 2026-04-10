@@ -31,3 +31,7 @@ services:
         class: Tests\Architecture\ControllersAndLivewireDependOnContractsTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\ConsoleCommandsDependOnContractsTest
+        tags:
+            - phpat.test
