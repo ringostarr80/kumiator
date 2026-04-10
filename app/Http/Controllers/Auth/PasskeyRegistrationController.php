@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Config\WebAuthnConfig;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PasskeyStoreRequest;
 use App\Models\PasskeyCredential;
@@ -11,7 +12,6 @@ use App\Models\User;
 use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use App\Services\WebAuthn\Contracts\PasskeyRegistrationContract;
 use App\Services\WebAuthn\Contracts\WebAuthnCeremonySessionContract;
-use App\Services\WebAuthn\WebAuthnConfig;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

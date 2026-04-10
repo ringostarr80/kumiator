@@ -6,9 +6,9 @@ namespace Database\Factories;
 
 use App\Models\PasskeyCredential;
 use App\Models\User;
-use Symfony\Component\Serializer\SerializerInterface;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use ParagonIE\ConstantTime\Base64UrlSafe;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
 use Webauthn\PublicKeyCredentialSource;
 use Webauthn\TrustPath\EmptyTrustPath;

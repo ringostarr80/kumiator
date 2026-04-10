@@ -18,13 +18,14 @@ final class ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
             ->dependOn()
             ->classes(Selector::inNamespace('App'))
             ->excluding(
+                Selector::inNamespace('App\\Config'),
                 Selector::inNamespace('App\\Models'),
                 Selector::inNamespace('App\\Repositories\\Contracts'),
                 Selector::inNamespace('App\\Services'),
             )
             ->because(
-                'Services dürfen nur von App\\Models, App\\Repositories\\Contracts und anderen Services '
-                . '(inkl. eigener Contracts) abhängen — sie sollen framework-unabhängig bleiben.',
+                'Services dürfen nur von App\\Config, App\\Models, App\\Repositories\\Contracts und anderen '
+                . 'Services (inkl. eigener Contracts) abhängen — sie sollen framework-unabhängig bleiben.',
                 'Abhängigkeiten zu Http (Request/Response), Livewire, Console oder Providers würden die '
                 . 'Service-Schicht an die Infrastruktur koppeln und die Wiederverwendbarkeit einschränken.',
                 'Wenn ein Service HTTP- oder Session-Zugriff braucht, sollte der Controller die Daten '

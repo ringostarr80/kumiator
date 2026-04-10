@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\Services\WebAuthn\WebAuthnConfig;
+use App\Config\WebAuthnConfig;
 use Tests\TestCase;
 
 final class WebAuthnConfigTest extends TestCase

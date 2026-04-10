@@ -27,3 +27,7 @@ services:
         class: Tests\Architecture\ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\ControllersAndLivewireDependOnContractsTest
+        tags:
+            - phpat.test
