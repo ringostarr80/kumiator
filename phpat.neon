@@ -51,3 +51,7 @@ services:
         class: Tests\Architecture\ActionsDependOnlyOnModelsTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\ViewComponentsAreIndependentTest
+        tags:
+            - phpat.test
