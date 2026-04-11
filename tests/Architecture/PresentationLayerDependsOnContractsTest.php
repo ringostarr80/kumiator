@@ -8,14 +8,15 @@ use PHPat\Selector\Selector;
 use PHPat\Test\Builder\Rule;
 use PHPat\Test\PHPat;
 
-final class ControllersAndLivewireDependOnContractsTest
+final class PresentationLayerDependsOnContractsTest
 {
-    public function testControllersAndLivewireDoNotDependOnConcreteServicesOrRepositories(): Rule
+    public function testPresentationLayerDoesNotDependOnConcreteServicesOrRepositories(): Rule
     {
         return PHPat::rule()
             ->classes(
                 Selector::inNamespace('App\\Http\\Controllers'),
                 Selector::inNamespace('App\\Livewire'),
+                Selector::inNamespace('App\\Console'),
             )
             ->shouldNot()
             ->dependOn()
@@ -28,12 +29,13 @@ final class ControllersAndLivewireDependOnContractsTest
                 Selector::inNamespace('App\\Repositories\\Contracts'),
             )
             ->because(
-                'Controllers und Livewire-Komponenten dürfen nur gegen Contracts (Interfaces) aus '
-                . 'App\\Services\\*\\Contracts und App\\Repositories\\Contracts programmiert werden.',
+                'Controllers, Livewire-Komponenten und Console-Commands dürfen nur gegen '
+                . 'Contracts (Interfaces) aus App\\Services\\*\\Contracts und '
+                . 'App\\Repositories\\Contracts programmiert werden.',
                 'Konkrete Implementierungen werden über den ServiceProvider per DI verdrahtet — die '
                 . 'Präsentationsschicht kennt nur die Abstraktion, nicht die Implementierung.',
-                'Das ermöglicht es, Implementierungen auszutauschen, ohne Controller oder '
-                . 'Livewire-Komponenten ändern zu müssen (Dependency Inversion Principle).',
+                'Das ermöglicht es, Implementierungen auszutauschen, ohne die Präsentationsschicht '
+                . 'ändern zu müssen (Dependency Inversion Principle).',
             );
     }
 }

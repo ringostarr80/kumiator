@@ -12,11 +12,7 @@ services:
         tags:
             - phpat.test
     -
-        class: Tests\Architecture\ControllersAndLivewireDependOnContractsTest
-        tags:
-            - phpat.test
-    -
-        class: Tests\Architecture\ConsoleCommandsDependOnContractsTest
+        class: Tests\Architecture\PresentationLayerDependsOnContractsTest
         tags:
             - phpat.test
     -
