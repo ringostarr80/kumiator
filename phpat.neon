@@ -47,3 +47,7 @@ services:
         class: Tests\Architecture\DtosAreIndependentTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\ActionsDependOnlyOnModelsTest
+        tags:
+            - phpat.test
