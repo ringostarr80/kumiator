@@ -35,3 +35,7 @@ services:
         class: Tests\Architecture\FormRequestsAreIndependentTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\PoliciesDependOnlyOnModelsTest
+        tags:
+            - phpat.test
