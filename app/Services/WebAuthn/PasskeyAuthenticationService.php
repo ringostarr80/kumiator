@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\WebAuthn;
 
-use App\Config\WebAuthnConfig;
+use App\Config\WebauthnConfig;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
@@ -55,13 +55,13 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
             ? PasskeyDescriptorBuilder::fromCollection($this->repository->findAllForUser($user))
             : [];
 
-        $timeout = WebAuthnConfig::timeoutMs();
+        $timeout = WebauthnConfig::timeoutMs();
 
         return PublicKeyCredentialRequestOptions::create(
             challenge: random_bytes(32),
-            rpId: WebAuthnConfig::rpId(),
+            rpId: WebauthnConfig::rpId(),
             allowCredentials: $allowCredentials,
-            userVerification: WebAuthnConfig::userVerification(),
+            userVerification: WebauthnConfig::userVerification(),
             timeout: $timeout,
         );
     }
@@ -103,7 +103,7 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
         }
 
         $userHandle = $response->userHandle;
-        $validator = $this->validatorFactory->buildAssertionValidator(WebAuthnConfig::appUrl());
+        $validator = $this->validatorFactory->buildAssertionValidator(WebauthnConfig::appUrl());
         $updatedRecord = $validator->check($credentialRecord, $response, $storedOptions, $host, $userHandle);
 
         // Persist updated counter and backup flags
@@ -176,7 +176,7 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
                 counter: 0,
             );
 
-            $validator = $this->validatorFactory->buildAssertionValidator(WebAuthnConfig::appUrl());
+            $validator = $this->validatorFactory->buildAssertionValidator(WebauthnConfig::appUrl());
             $validator->check($fakeSource, $response, $storedOptions, $host, null);
             // If we reach here, the fake verification unexpectedly succeeded.
             // This is safe: the caller still throws credential_not_found.

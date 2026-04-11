@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
-use App\Config\WebAuthnConfig;
+use App\Config\WebauthnConfig;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PasskeyStoreRequest;
 use App\Models\PasskeyCredential;
@@ -103,7 +103,7 @@ final class PasskeyRegistrationController extends Controller
                 rawResponse: $rawResponse,
                 storedOptions: $storedOptions,
                 credentialName: $credentialName,
-                host: WebAuthnConfig::effectiveHost(),
+                host: WebauthnConfig::effectiveHost(),
             );
         } catch (AuthenticatorResponseVerificationException $e) {
             return response()->json(['message' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);

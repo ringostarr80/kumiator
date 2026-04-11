@@ -14,7 +14,7 @@ use Webauthn\PublicKeyCredentialCreationOptions;
  * requires casts that PHPStan rejects at level max. Centralising the access
  * here keeps the services clean and the types explicit.
  */
-final class WebAuthnConfig
+final class WebauthnConfig
 {
     public static function rpName(): string
     {

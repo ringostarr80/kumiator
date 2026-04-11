@@ -10,23 +10,46 @@ use PHPat\Test\PHPat;
 
 final class ConfigIsIndependentTest
 {
-    public function testConfigDoesNotDependOnServicesRepositoriesOrHttpLayer(): Rule
+    /**
+     * Baseline: Config-Klassen dürfen standardmäßig nur von Illuminate
+     * abhängen. Config-Klassen mit Vendor-Bedarf werden hier excluded
+     * und erhalten unten eine eigene canOnly()-Regel.
+     *
+     * Neue Config-Klassen werden automatisch von dieser Regel erfasst.
+     * Braucht eine neue Klasse ein Vendor-Paket, schlägt diese Regel
+     * fehl und erzwingt eine explizite Ausnahme + eigene Regel.
+     */
+    public function testConfigClassesCanOnlyDependOnIlluminate(): Rule
     {
         return PHPat::rule()
             ->classes(Selector::inNamespace('App\\Config'))
-            ->shouldNot()
-            ->dependOn()
-            ->classes(Selector::inNamespace('App'))
             ->excluding(
-                Selector::inNamespace('App\\Config'),
+                Selector::classname('App\\Config\\WebauthnConfig'),
+            )
+            ->canOnly()
+            ->dependOn()
+            ->classes(Selector::inNamespace('Illuminate'))
+            ->because(
+                'Config-Klassen dürfen standardmäßig nur von Illuminate abhängen.',
+                'Braucht eine Config-Klasse ein Vendor-Paket, muss sie hier '
+                . 'excluded und mit einer eigenen Regel versehen werden.',
+            );
+    }
+
+    public function testWebauthnConfigCanOnlyDependOnWebauthn(): Rule
+    {
+        return PHPat::rule()
+            ->classes(Selector::classname('App\\Config\\WebauthnConfig'))
+            ->canOnly()
+            ->dependOn()
+            ->classes(
+                Selector::inNamespace('Illuminate'),
+                Selector::inNamespace('Webauthn'),
             )
             ->because(
-                'Config-Klassen in App\\Config sind eigenständige, typisierte Wrapper um config()-Werte '
-                . 'und dürfen von keiner anderen App-Schicht abhängen.',
-                'Abhängigkeiten zu Services, Repositories, Models oder Http würden zirkuläre Kopplungen '
-                . 'erzeugen, da diese Schichten ihrerseits von App\\Config abhängen dürfen.',
-                'Erlaubt sind ausschließlich Framework-Hilfsfunktionen (config(), env()) und '
-                . 'Vendor-Klassen für Typkonstanten.',
+                'WebauthnConfig darf nur von Illuminate und Webauthn abhängen.',
+                'Jede Config-Klasse darf ausschließlich das Vendor-Paket '
+                . 'nutzen, das sie konfiguriert.',
             );
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\WebAuthn;
 
-use App\Config\WebAuthnConfig;
+use App\Config\WebauthnConfig;
 use App\DataTransferObjects\NewPasskeyCredentialData;
 use App\Models\PasskeyCredential;
 use App\Models\User;
@@ -55,8 +55,8 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
     public function createOptions(User $user): PublicKeyCredentialCreationOptions
     {
         $rpEntity = PublicKeyCredentialRpEntity::create(
-            name: WebAuthnConfig::rpName(),
-            id: WebAuthnConfig::rpId(),
+            name: WebauthnConfig::rpName(),
+            id: WebauthnConfig::rpId(),
         );
 
         // The user handle must be a stable, opaque identifier – NOT the e-mail
@@ -80,7 +80,7 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
             $this->repository->findAllForUser($user),
         );
 
-        $timeout = WebAuthnConfig::timeoutMs();
+        $timeout = WebauthnConfig::timeoutMs();
 
         return PublicKeyCredentialCreationOptions::create(
             rp: $rpEntity,
@@ -89,9 +89,9 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
             pubKeyCredParams: $pubKeyCredParams,
             authenticatorSelection: AuthenticatorSelectionCriteria::create(
                 residentKey: AuthenticatorSelectionCriteria::RESIDENT_KEY_REQUIREMENT_PREFERRED,
-                userVerification: WebAuthnConfig::userVerification(),
+                userVerification: WebauthnConfig::userVerification(),
             ),
-            attestation: WebAuthnConfig::attestationConveyance(),
+            attestation: WebauthnConfig::attestationConveyance(),
             excludeCredentials: $excludeCredentials,
             timeout: $timeout,
         );
@@ -121,7 +121,7 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
             throw new AuthenticatorResponseVerificationException(__('app.passkey_invalid_response_type'));
         }
 
-        $validator = $this->validatorFactory->buildAttestationValidator(WebAuthnConfig::appUrl());
+        $validator = $this->validatorFactory->buildAttestationValidator(WebauthnConfig::appUrl());
         $credentialRecord = $validator->check($response, $storedOptions, $host);
 
         return $this->repository->saveNewCredential(
