@@ -39,3 +39,7 @@ services:
         class: Tests\Architecture\PoliciesDependOnlyOnModelsTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\ProvidersContainNoBusinessLogicTest
+        tags:
+            - phpat.test
