@@ -43,3 +43,7 @@ services:
         class: Tests\Architecture\ProvidersContainNoBusinessLogicTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\DtosAreIndependentTest
+        tags:
+            - phpat.test
