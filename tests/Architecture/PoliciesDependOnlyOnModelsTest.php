@@ -14,16 +14,15 @@ final class PoliciesDependOnlyOnModelsTest
     {
         return PHPat::rule()
             ->classes(Selector::inNamespace('App\\Policies'))
-            ->shouldNot()
+            ->canOnly()
             ->dependOn()
-            ->classes(Selector::inNamespace('App'))
-            ->excluding(
+            ->classes(
                 Selector::inNamespace('App\\Models'),
                 Selector::inNamespace('App\\Policies'),
             )
             ->because(
-                'Policies dürfen innerhalb von App\\ nur von Models und '
-                . 'anderen Policies abhängen.',
+                'Policies dürfen nur von Models, anderen Policies und '
+                . 'Illuminate abhängen.',
                 'Sie sind ausschließlich für Autorisierungslogik zuständig. '
                 . 'Geschäftslogik gehört in die Service-Schicht.',
             );

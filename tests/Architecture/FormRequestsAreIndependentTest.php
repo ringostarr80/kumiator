@@ -27,14 +27,14 @@ final class FormRequestsAreIndependentTest
     {
         return PHPat::rule()
             ->classes(Selector::inNamespace('App\\Http\\Requests'))
-            ->shouldNot()
+            ->canOnly()
             ->dependOn()
-            ->classes(Selector::inNamespace('App'))
-            ->excluding(
+            ->classes(
                 Selector::inNamespace('App\\Http\\Requests'),
+                Selector::inNamespace('Illuminate'),
             )
             ->because(
-                'FormRequests dürfen innerhalb von App\\ nur von sich selbst abhängen.',
+                'FormRequests dürfen nur von sich selbst und Illuminate abhängen.',
                 'Sie sind ausschließlich für Validierung und Autorisierung zuständig. '
                 . 'Geschäftslogik gehört in die Service-Schicht — der Controller übergibt '
                 . 'die validierten Daten an den Service.',
