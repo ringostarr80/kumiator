@@ -8,9 +8,9 @@ use PHPat\Selector\Selector;
 use PHPat\Test\Builder\Rule;
 use PHPat\Test\PHPat;
 
-final class ActionsDependOnlyOnModelsTest
+final class ActionsDependOnFrameworkAndModelsTest
 {
-    public function testActionsDependOnlyOnModelsAndActions(): Rule
+    public function testActionsDependOnlyOnFrameworkAndModels(): Rule
     {
         return PHPat::rule()
             ->classes(Selector::inNamespace('App\\Actions'))

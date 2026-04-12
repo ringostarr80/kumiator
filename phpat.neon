@@ -44,7 +44,7 @@ services:
         tags:
             - phpat.test
     -
-        class: Tests\Architecture\ActionsDependOnlyOnModelsTest
+        class: Tests\Architecture\ActionsDependOnFrameworkAndModelsTest
         tags:
             - phpat.test
     -
