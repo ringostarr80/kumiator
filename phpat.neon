@@ -59,3 +59,7 @@ services:
         class: Tests\Architecture\ControllersExtendBaseControllerTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\CommandsExtendBaseCommandTest
+        tags:
+            - phpat.test
