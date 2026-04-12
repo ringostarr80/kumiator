@@ -21,8 +21,7 @@ final class PoliciesDependOnlyOnModelsTest
                 Selector::inNamespace('App\\Policies'),
             )
             ->because(
-                'Policies dürfen nur von Models, anderen Policies und '
-                . 'Illuminate abhängen.',
+                'Policies dürfen nur von Models und anderen Policies abhängen.',
                 'Sie sind ausschließlich für Autorisierungslogik zuständig. '
                 . 'Geschäftslogik gehört in die Service-Schicht.',
             );
