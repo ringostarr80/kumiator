@@ -24,4 +24,30 @@ final class DtosAreIndependentTest
                 . 'arbeiten nur mit primitiven Typen und anderen DTOs.',
             );
     }
+
+    public function testDtosMustBeReadonly(): Rule
+    {
+        return PHPat::rule()
+            ->classes(Selector::inNamespace('App\\DataTransferObjects'))
+            ->should()
+            ->beReadonly()
+            ->because(
+                'DTOs müssen readonly sein, um Immutability zu garantieren.',
+                'Nachträgliche Mutationen würden die Semantik eines reinen '
+                . 'Datenträgers brechen und zu schwer auffindbaren Bugs führen.',
+            );
+    }
+
+    public function testDtosMustBeFinal(): Rule
+    {
+        return PHPat::rule()
+            ->classes(Selector::inNamespace('App\\DataTransferObjects'))
+            ->should()
+            ->beFinal()
+            ->because(
+                'DTOs müssen final sein — Vererbung ist bei reinen Datenträgern '
+                . 'kein legitimes Gestaltungsmittel.',
+                'Wird eine Variante benötigt, sollte ein eigener DTO erstellt werden.',
+            );
+    }
 }
