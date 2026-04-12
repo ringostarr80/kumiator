@@ -55,3 +55,7 @@ services:
         class: Tests\Architecture\MiddlewareIsIndependentTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\ControllersExtendBaseControllerTest
+        tags:
+            - phpat.test
