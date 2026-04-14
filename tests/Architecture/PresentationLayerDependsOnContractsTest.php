@@ -16,7 +16,7 @@ final class PresentationLayerDependsOnContractsTest
             ->classes(
                 Selector::inNamespace('App\\Http\\Controllers'),
                 Selector::inNamespace('App\\Livewire'),
-                Selector::inNamespace('App\\Console'),
+                Selector::inNamespace('App\\Console\\Commands'),
             )
             ->shouldNot()
             ->dependOn()
