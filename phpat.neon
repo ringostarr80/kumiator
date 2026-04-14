@@ -40,7 +40,7 @@ services:
         tags:
             - phpat.test
     -
-        class: Tests\Architecture\ActionsDependOnFrameworkAndModelsTest
+        class: Tests\Architecture\ActionsAreIndependentTest
         tags:
             - phpat.test
     -

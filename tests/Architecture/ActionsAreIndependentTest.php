@@ -8,9 +8,9 @@ use PHPat\Selector\Selector;
 use PHPat\Test\Builder\Rule;
 use PHPat\Test\PHPat;
 
-final class ActionsDependOnFrameworkAndModelsTest
+final class ActionsAreIndependentTest
 {
-    public function testActionsDependOnlyOnFrameworkAndModels(): Rule
+    public function testActionsDependOnlyOnAllowedNamespaces(): Rule
     {
         return PHPat::rule()
             ->classes(Selector::inNamespace('App\\Actions'))
