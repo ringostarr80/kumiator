@@ -22,11 +22,14 @@ final class MiddlewareIsIndependentTest
                 Selector::classname(\Closure::class),
             )
             ->because(
-                'Middleware darf nur von sich selbst, Illuminate und '
-                . 'Symfony abhängen.',
-                'Middleware ist reine Infrastruktur für Request/Response-Verarbeitung. '
-                . 'Abhängigkeiten zu Models, Services oder Config deuten auf '
-                . 'fehlplatzierte Geschäftslogik hin.',
+                'Middleware darf nur von Illuminate, Symfony und Closure '
+                . 'abhängen.',
+                'Middleware ist reine Infrastruktur für Request/Response-Verarbeitung '
+                . 'und bildet eigenständige, voneinander unabhängige Bausteine. '
+                . 'Abhängigkeiten zu anderen Middleware-Klassen, Models, Services '
+                . 'oder Config deuten auf fehlplatzierte Geschäftslogik hin — '
+                . 'gemeinsame Logik gehört in einen Service, ein Trait oder eine '
+                . 'Helper-Klasse, nicht in eine weitere Middleware.',
             );
     }
 }
