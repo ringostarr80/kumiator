@@ -24,10 +24,6 @@ services:
         tags:
             - phpat.test
     -
-        class: Tests\Architecture\DomainVendorIsolationTest
-        tags:
-            - phpat.test
-    -
         class: Tests\Architecture\FormRequestsAreIndependentTest
         tags:
             - phpat.test
@@ -61,5 +57,17 @@ services:
             - phpat.test
     -
         class: Tests\Architecture\CommandsExtendBaseCommandTest
+        tags:
+            - phpat.test
+    -
+        class: Tests\Architecture\LivewireComponentsAreIndependentTest
+        tags:
+            - phpat.test
+    -
+        class: Tests\Architecture\ProvidersExtendServiceProviderTest
+        tags:
+            - phpat.test
+    -
+        class: Tests\Architecture\NamingConventionsTest
         tags:
             - phpat.test
