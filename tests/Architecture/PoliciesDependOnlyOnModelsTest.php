@@ -18,11 +18,16 @@ final class PoliciesDependOnlyOnModelsTest
             ->dependOn()
             ->classes(
                 Selector::inNamespace('App\\Models'),
+                Selector::inNamespace('Illuminate\\Auth\\Access'),
+                Selector::inNamespace('Illuminate\\Contracts\\Auth'),
             )
             ->because(
-                'Policies dürfen nur von Models abhängen.',
+                'Policies dürfen nur von Models und dem Laravel-Policy-Pattern '
+                . '(Illuminate\\Auth\\Access, Illuminate\\Contracts\\Auth) abhängen.',
                 'Jede Policy ist eine eigenständige Autorisierungs-Einheit pro Model. '
-                . 'Gemeinsame Logik gehört in ein Trait oder einen Service.',
+                . 'Gemeinsame Logik gehört in ein Trait oder einen Service. Erlaubt '
+                . 'sind nur Bordmittel des Policy-Patterns selbst: Response, '
+                . 'HandlesAuthorization und Authenticatable-Contract.',
             );
     }
 }
