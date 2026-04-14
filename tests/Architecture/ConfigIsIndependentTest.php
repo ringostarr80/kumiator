@@ -11,35 +11,35 @@ use PHPat\Test\PHPat;
 final class ConfigIsIndependentTest
 {
     /**
-     * Baseline: Config-Klassen dürfen standardmäßig nur von Illuminate
-     * abhängen. Config-Klassen mit Vendor-Bedarf werden hier excluded
-     * und erhalten unten eine eigene canOnly()-Regel.
+     * Baseline: Nicht-Vendor-Config-Klassen dürfen nur von Illuminate
+     * abhängen. Alles unterhalb von App\Config\Vendor\* ist ausgenommen
+     * und erhält eigene Regeln (eine pro Vendor-Sub-Namespace).
      *
-     * Neue Config-Klassen werden automatisch von dieser Regel erfasst.
-     * Braucht eine neue Klasse ein Vendor-Paket, schlägt diese Regel
-     * fehl und erzwingt eine explizite Ausnahme + eigene Regel.
+     * Neue Nicht-Vendor-Configs werden automatisch erfasst. Neue Vendor-
+     * Configs werden unter App\Config\Vendor\{VendorName}\ angelegt und
+     * brauchen lediglich eine weitere canOnly()-Regel unten — kein
+     * Per-Klasse-Exclude mehr.
      */
-    public function testConfigClassesCanOnlyDependOnIlluminate(): Rule
+    public function testNonVendorConfigClassesCanOnlyDependOnIlluminate(): Rule
     {
         return PHPat::rule()
             ->classes(Selector::inNamespace('App\\Config'))
-            ->excluding(
-                Selector::classname('App\\Config\\WebauthnConfig'),
-            )
+            ->excluding(Selector::inNamespace('App\\Config\\Vendor'))
             ->canOnly()
             ->dependOn()
             ->classes(Selector::inNamespace('Illuminate'))
             ->because(
-                'Config-Klassen dürfen standardmäßig nur von Illuminate abhängen.',
-                'Braucht eine Config-Klasse ein Vendor-Paket, muss sie hier '
-                . 'excluded und mit einer eigenen Regel versehen werden.',
+                'Nicht-Vendor-Config-Klassen dürfen nur von Illuminate abhängen.',
+                'Braucht eine Config-Klasse ein Vendor-Paket, gehört sie unter '
+                . 'App\\Config\\Vendor\\{VendorName}\\ und bekommt dort eine '
+                . 'eigene canOnly()-Regel.',
             );
     }
 
-    public function testWebauthnConfigCanOnlyDependOnWebauthn(): Rule
+    public function testWebauthnVendorConfigCanOnlyDependOnWebauthn(): Rule
     {
         return PHPat::rule()
-            ->classes(Selector::classname('App\\Config\\WebauthnConfig'))
+            ->classes(Selector::inNamespace('App\\Config\\Vendor\\Webauthn'))
             ->canOnly()
             ->dependOn()
             ->classes(
@@ -47,9 +47,10 @@ final class ConfigIsIndependentTest
                 Selector::inNamespace('Webauthn'),
             )
             ->because(
-                'WebauthnConfig darf nur von Illuminate und Webauthn abhängen.',
-                'Jede Config-Klasse darf ausschließlich das Vendor-Paket '
-                . 'nutzen, das sie konfiguriert.',
+                'Config-Klassen unter App\\Config\\Vendor\\Webauthn dürfen nur '
+                . 'von Illuminate und Webauthn abhängen.',
+                'Jeder Vendor-Sub-Namespace darf ausschließlich das Vendor-Paket '
+                . 'nutzen, das er konfiguriert.',
             );
     }
 }

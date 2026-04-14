@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\WebAuthn;
 
-use App\Config\WebauthnConfig;
+use App\Config\Vendor\Webauthn\WebauthnConfig;
 use App\DataTransferObjects\NewPasskeyCredentialData;
 use App\Models\PasskeyCredential;
 use App\Models\User;

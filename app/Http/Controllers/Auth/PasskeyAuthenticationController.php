@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
-use App\Config\WebauthnConfig;
+use App\Config\Vendor\Webauthn\WebauthnConfig;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PasskeyAuthenticateOptionsRequest;
 use App\Models\User;

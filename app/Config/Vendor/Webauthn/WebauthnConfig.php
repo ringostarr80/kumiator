@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Config;
+namespace App\Config\Vendor\Webauthn;
 
 use Webauthn\AuthenticatorSelectionCriteria;
 use Webauthn\PublicKeyCredentialCreationOptions;
