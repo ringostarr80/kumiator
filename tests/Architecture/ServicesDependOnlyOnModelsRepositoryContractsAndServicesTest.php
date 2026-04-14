@@ -10,28 +10,31 @@ use PHPat\Test\PHPat;
 
 final class ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
 {
-    public function testServicesDependOnlyOnModelsRepositoryContractsAndServices(): Rule
+    public function testServicesDependOnlyOnAllowedNamespaces(): Rule
     {
         return PHPat::rule()
             ->classes(Selector::inNamespace('App\\Services'))
-            ->shouldNot()
+            ->canOnly()
             ->dependOn()
-            ->classes(Selector::inNamespace('App'))
-            ->excluding(
+            ->classes(
                 Selector::inNamespace('App\\Config'),
                 Selector::inNamespace('App\\DataTransferObjects'),
                 Selector::inNamespace('App\\Models'),
                 Selector::inNamespace('App\\Repositories\\Contracts'),
                 Selector::inNamespace('App\\Services'),
+                Selector::inNamespace('Illuminate'),
+                Selector::inNamespace('Webauthn'),
+                Selector::inNamespace('Cose'),
+                Selector::inNamespace('ParagonIE'),
+                Selector::inNamespace('Symfony'),
+                Selector::classname(\Throwable::class),
             )
             ->because(
-                'Services dürfen nur von App\\Config, App\\DataTransferObjects, App\\Models, '
-                . 'App\\Repositories\\Contracts und anderen Services (inkl. eigener Contracts) abhängen '
-                . '— sie sollen framework-unabhängig bleiben.',
-                'Abhängigkeiten zu Http (Request/Response), Livewire, Console oder Providers würden die '
-                . 'Service-Schicht an die Infrastruktur koppeln und die Wiederverwendbarkeit einschränken.',
-                'Wenn ein Service HTTP- oder Session-Zugriff braucht, sollte der Controller die Daten '
-                . 'extrahieren und als einfache Parameter an den Service übergeben.',
+                'Services dürfen nur von Config, DTOs, Models, Repository-Contracts, '
+                . 'anderen Services und den freigegebenen Vendor-Paketen abhängen.',
+                'Abhängigkeiten zur Präsentationsschicht würden die Service-Schicht an '
+                . 'die Infrastruktur koppeln. Neue Vendor-Pakete müssen bewusst in die '
+                . 'Allowlist eingetragen werden.',
             );
     }
 
