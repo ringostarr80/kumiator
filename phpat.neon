@@ -52,11 +52,11 @@ services:
         tags:
             - phpat.test
     -
-        class: Tests\Architecture\ControllersExtendBaseControllerTest
+        class: Tests\Architecture\ControllersAreIndependentTest
         tags:
             - phpat.test
     -
-        class: Tests\Architecture\CommandsExtendBaseCommandTest
+        class: Tests\Architecture\ConsoleCommandsAreIndependentTest
         tags:
             - phpat.test
     -
