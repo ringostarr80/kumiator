@@ -10,7 +10,7 @@ use PHPat\Test\PHPat;
 
 final class PoliciesDependOnlyOnModelsTest
 {
-    public function testPoliciesDependOnlyOnModelsAndPolicies(): Rule
+    public function testPoliciesDependOnlyOnModels(): Rule
     {
         return PHPat::rule()
             ->classes(Selector::inNamespace('App\\Policies'))
@@ -18,12 +18,11 @@ final class PoliciesDependOnlyOnModelsTest
             ->dependOn()
             ->classes(
                 Selector::inNamespace('App\\Models'),
-                Selector::inNamespace('App\\Policies'),
             )
             ->because(
-                'Policies dürfen nur von Models und anderen Policies abhängen.',
-                'Sie sind ausschließlich für Autorisierungslogik zuständig. '
-                . 'Geschäftslogik gehört in die Service-Schicht.',
+                'Policies dürfen nur von Models abhängen.',
+                'Jede Policy ist eine eigenständige Autorisierungs-Einheit pro Model. '
+                . 'Gemeinsame Logik gehört in ein Trait oder einen Service.',
             );
     }
 }
