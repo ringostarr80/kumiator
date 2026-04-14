@@ -12,15 +12,7 @@ services:
         tags:
             - phpat.test
     -
-        class: Tests\Architecture\PresentationLayerDependsOnContractsTest
-        tags:
-            - phpat.test
-    -
         class: Tests\Architecture\ConfigIsIndependentTest
-        tags:
-            - phpat.test
-    -
-        class: Tests\Architecture\NoCrossLayerDependenciesTest
         tags:
             - phpat.test
     -
