@@ -1,6 +1,3 @@
-includes:
-    - phpat.neon
-
 parameters:
     paths:
         - app

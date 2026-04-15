@@ -66,6 +66,7 @@
         "dev:analyze:phpstan": "@dev:analyze:phpstan-8.4",
         "dev:analyze:phpstan-8.4": "vendor/bin/phpstan analyse --configuration=phpstan-8.4.neon --memory-limit=512M",
         "dev:analyze:phpstan-8.5": "vendor/bin/phpstan analyse --configuration=phpstan-8.5.neon --memory-limit=512M",
+        "dev:analyze:phpat": "vendor/bin/phpstan analyse --configuration=phpstan-arch.neon --memory-limit=512M",
         "dev:lint": [
             "@dev:lint:php",
             "@dev:lint:phpcs"
