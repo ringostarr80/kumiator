@@ -74,6 +74,8 @@ final class UserSoftDeleteTest extends TestCase
 
     public function testSelfDeleteHardDeletesUserIncludingPasskeysAndSessions(): void
     {
+        config(['session.driver' => 'database']);
+
         $user = User::factory()->create();
         PasskeyCredential::factory()->create(['user_id' => $user->getKey()]);
         DB::table('sessions')->insert([
@@ -94,6 +96,8 @@ final class UserSoftDeleteTest extends TestCase
 
     public function testConsoleDeleteCommandSoftDeletesUserAndPurgesSessions(): void
     {
+        config(['session.driver' => 'database']);
+
         $user = User::factory()->create(['email' => 'admin-delete@example.com']);
         DB::table('sessions')->insert([
             'id' => 'admin-session-id',
