@@ -63,6 +63,19 @@ final class UserActivityLogTest extends TestCase
         $this->assertNull($activity, 'Änderungen an 2FA-Secret oder Recovery-Codes dürfen nicht geloggt werden.');
     }
 
+    public function testRememberTokenChangeIsNotLogged(): void
+    {
+        $user = User::factory()->create();
+        Activity::query()->delete();
+
+        $user->setRememberToken('neuer-remember-token');
+        $user->saveOrFail();
+
+        $activity = Activity::query()->where('log_name', 'user')->latest('id')->first();
+
+        $this->assertNull($activity, 'Änderungen am remember_token dürfen keinen Activity-Log-Eintrag erzeugen.');
+    }
+
     public function testActivityLogNeverContainsSecretFields(): void
     {
         $user = User::factory()->create();
