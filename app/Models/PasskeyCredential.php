@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * Represents a registered WebAuthn / Passkey credential for a user.
@@ -50,6 +52,7 @@ final class PasskeyCredential extends Model
     /** @use HasFactory<\Database\Factories\PasskeyCredentialFactory> */
     use HasFactory;
     use HasUuids;
+    use LogsActivity;
 
     protected $fillable = [
         'user_id',
@@ -68,6 +71,22 @@ final class PasskeyCredential extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Activity-Log-Konfiguration.
+     *
+     * Es werden nur Meta-Informationen geloggt — Schlüsselmaterial (credential_id,
+     * credential_public_key, counter, transports, backup_eligible, backup_state)
+     * bleibt ausschließlich in der `passkey_credentials`-Tabelle.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'aaguid', 'last_used_at'])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges()
+            ->useLogName('passkey');
     }
 
     /**

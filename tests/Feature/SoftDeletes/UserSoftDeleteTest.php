@@ -1,0 +1,120 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\SoftDeletes;
+
+use App\Actions\Jetstream\DeleteUser;
+use App\Models\PasskeyCredential;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Testing\PendingCommand;
+use Tests\TestCase;
+
+final class UserSoftDeleteTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private const string EMAIL_TAKEN = 'taken@example.com';
+
+    public function testSoftDeletedUserIsExcludedFromDefaultQueries(): void
+    {
+        $user = User::factory()->create();
+        $user->deleteOrFail();
+
+        $this->assertNull(User::query()->find($user->getKey()));
+        $this->assertNotNull(User::query()->withTrashed()->find($user->getKey()));
+        $this->assertTrue($user->trashed());
+    }
+
+    public function testSoftDeletedUserCannotLogIn(): void
+    {
+        $user = User::factory()->create(['email' => 'deleted@example.com']);
+        $user->deleteOrFail();
+
+        $response = $this->post('/login', [
+            'email' => 'deleted@example.com',
+            'password' => 'password',
+        ]);
+
+        $this->assertGuest();
+        $response->assertSessionHasErrors();
+    }
+
+    public function testSoftDeletedEmailCannotBeReusedForNewRegistration(): void
+    {
+        $user = User::factory()->create(['email' => self::EMAIL_TAKEN]);
+        $user->deleteOrFail();
+
+        $response = $this->post('/register', [
+            'name' => 'Neu',
+            'email' => self::EMAIL_TAKEN,
+            'password' => 'Password!1234',
+            'password_confirmation' => 'Password!1234',
+            'terms' => true,
+        ]);
+
+        $response->assertSessionHasErrors('email');
+        $this->assertSame(1, User::query()->withTrashed()->where('email', self::EMAIL_TAKEN)->count());
+    }
+
+    public function testSoftDeletedUserCanBeRestored(): void
+    {
+        $user = User::factory()->create();
+        $user->deleteOrFail();
+        $this->assertTrue($user->trashed());
+
+        $user->restore();
+
+        $restored = $user->fresh();
+        $this->assertNotNull($restored);
+        $this->assertFalse($restored->trashed());
+    }
+
+    public function testSelfDeleteHardDeletesUserIncludingPasskeysAndSessions(): void
+    {
+        $user = User::factory()->create();
+        PasskeyCredential::factory()->create(['user_id' => $user->getKey()]);
+        DB::table('sessions')->insert([
+            'id' => 'test-session-id',
+            'user_id' => $user->getKey(),
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'phpunit',
+            'payload' => '',
+            'last_activity' => time(),
+        ]);
+
+        app(DeleteUser::class)->delete($user);
+
+        $this->assertSame(0, User::query()->withTrashed()->where('id', $user->getKey())->count());
+        $this->assertSame(0, PasskeyCredential::query()->where('user_id', $user->getKey())->count());
+        $this->assertSame(0, DB::table('sessions')->where('user_id', $user->getKey())->count());
+    }
+
+    public function testConsoleDeleteCommandSoftDeletesUserAndPurgesSessions(): void
+    {
+        $user = User::factory()->create(['email' => 'admin-delete@example.com']);
+        DB::table('sessions')->insert([
+            'id' => 'admin-session-id',
+            'user_id' => $user->getKey(),
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'phpunit',
+            'payload' => '',
+            'last_activity' => time(),
+        ]);
+
+        $command = $this->artisan('user:delete');
+        assert($command instanceof PendingCommand);
+
+        $command
+            ->expectsQuestion(__('commands.common.ask_email'), 'admin-delete@example.com')
+            ->expectsConfirmation(__('commands.delete_user.confirm_delete'), 'yes')
+            ->assertSuccessful()
+            ->run();
+
+        $this->assertNull(User::query()->find($user->getKey()));
+        $this->assertNotNull(User::query()->withTrashed()->find($user->getKey()));
+        $this->assertSame(0, DB::table('sessions')->where('user_id', $user->getKey())->count());
+    }
+}

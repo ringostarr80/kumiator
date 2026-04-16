@@ -20,12 +20,13 @@ final class ModelsDependOnlyOnModelsTest
                 Selector::inNamespace('App\\Models'),
                 Selector::inNamespace('Illuminate'),
                 Selector::inNamespace('Laravel'),
+                Selector::inNamespace('Spatie\\Activitylog'),
                 Selector::inNamespace('Spatie\\Permission'),
             )
             ->because(
                 'Models bilden die unterste Schicht der Anwendung und dürfen nur von anderen Models, '
                 . 'Illuminate, Laravel und explizit freigegebenen Vendor-Paketen (aktuell '
-                . 'Spatie\\Permission) abhängen.',
+                . 'Spatie\\Activitylog und Spatie\\Permission) abhängen.',
                 'Abhängigkeiten zu höheren Schichten (Http, Livewire, Console, Services, Repositories, '
                 . 'Actions, ...) sind nicht erlaubt — wenn ein Model fachliche Logik braucht, gehört '
                 . 'diese in einen Service oder ein Repository, das das Model nutzt (nicht umgekehrt).',

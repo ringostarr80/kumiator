@@ -6,17 +6,21 @@ namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Permission\Traits\HasRoles;
 
 /**
  * @property int $id
  * @property ?\Illuminate\Support\Carbon $email_verified_at
  * @property ?\Illuminate\Support\Carbon $approved_at
+ * @property ?\Illuminate\Support\Carbon $deleted_at
  */
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -27,7 +31,9 @@ class User extends Authenticatable implements MustVerifyEmail
     use HasFactory;
 
     use HasProfilePhoto;
+    use LogsActivity;
     use Notifiable;
+    use SoftDeletes;
     use TwoFactorAuthenticatable;
 
     /**
@@ -69,6 +75,21 @@ class User extends Authenticatable implements MustVerifyEmail
     public function getWebAuthnUserHandle(): string
     {
         return (string)$this->id;
+    }
+
+    /**
+     * Activity-Log-Konfiguration.
+     *
+     * Geloggt werden nur fachlich relevante Felder — Secrets (Passwort, 2FA-Seed,
+     * Recovery-Codes, Remember-Token) erscheinen NIEMALS im Log.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'email', 'email_verified_at', 'approved_at', 'deleted_at'])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges()
+            ->useLogName('user');
     }
 
     /**

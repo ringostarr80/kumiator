@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 #[Signature('user:delete')]
 #[Description('Löscht einen bestehenden Benutzer')]
@@ -42,7 +43,10 @@ class Delete extends Command
             return self::SUCCESS;
         }
 
-        $user->deleteOrFail();
+        DB::transaction(static function () use ($user): void {
+            DB::table('sessions')->where('user_id', $user->getKey())->delete();
+            $user->deleteOrFail();
+        });
 
         $this->info(__('commands.delete_user.success', ['name' => $user->name, 'email' => $email]));
 

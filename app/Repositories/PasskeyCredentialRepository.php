@@ -77,7 +77,7 @@ final class PasskeyCredentialRepository implements PasskeyCredentialRepositoryCo
         int $counter,
         bool $backupState,
     ): void {
-        $model->update([
+        $model->updateOrFail([
             'credential_public_key' => $serializedCredentialSource,
             'counter' => $counter,
             'backup_state' => $backupState,

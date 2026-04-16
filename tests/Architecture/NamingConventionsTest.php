@@ -138,4 +138,18 @@ final class NamingConventionsTest
                 . 'einen Blick erkennbar und entspricht dem Namespace-Zweck.',
             );
     }
+
+    public function testListenersMustEndWithListenerSuffix(): Rule
+    {
+        return PHPat::rule()
+            ->classes(Selector::inNamespace('App\\Listeners'))
+            ->should()
+            ->beNamed('/Listener$/', true)
+            ->because(
+                'Alle Klassen in App\\Listeners müssen mit dem Suffix '
+                . '"Listener" enden.',
+                'Ein einheitlicher Suffix macht die Rolle einer Klasse auf '
+                . 'einen Blick erkennbar.',
+            );
+    }
 }

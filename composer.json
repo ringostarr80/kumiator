@@ -17,6 +17,7 @@
         "laravel/tinker": "^3.0",
         "livewire/livewire": "^4.2",
         "nyholm/psr7": "^1.8",
+        "spatie/laravel-activitylog": "^5.0",
         "spatie/laravel-permission": "^7.2",
         "symfony/psr-http-message-bridge": "^8.0",
         "web-auth/webauthn-lib": "^5.2"

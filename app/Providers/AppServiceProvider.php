@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Listeners\LogRoleChangeListener;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Policies\PasskeyCredentialPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Spatie\Permission\Events\RoleAttachedEvent;
+use Spatie\Permission\Events\RoleDetachedEvent;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -29,6 +33,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(PasskeyCredential::class, PasskeyCredentialPolicy::class);
+
+        Event::listen(RoleAttachedEvent::class, [LogRoleChangeListener::class, 'handleAttached']);
+        Event::listen(RoleDetachedEvent::class, [LogRoleChangeListener::class, 'handleDetached']);
 
         // Passkey authentication options (guests): IP-based, 20 requests per minute.
         // Limits e-mail enumeration via the allowCredentials field without impacting
