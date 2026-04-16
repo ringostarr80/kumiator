@@ -83,6 +83,9 @@ final class LogRoleChangeListener
             }
         }
 
-        return array_values(array_unique($names));
+        $names = array_values(array_unique($names));
+        sort($names);
+
+        return $names;
     }
 }
