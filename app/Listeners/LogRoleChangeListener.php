@@ -6,6 +6,7 @@ namespace App\Listeners;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Spatie\Activitylog\Facades\Activity;
 use Spatie\Permission\Contracts\Role as RoleContract;
 use Spatie\Permission\Events\RoleAttachedEvent;
 use Spatie\Permission\Events\RoleDetachedEvent;
@@ -39,7 +40,7 @@ final class LogRoleChangeListener
             return;
         }
 
-        activity('role')
+        Activity::useLog('role')
             ->performedOn($subject)
             ->withProperties(['roles' => $roleNames])
             ->event($event)
