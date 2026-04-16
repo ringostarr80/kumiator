@@ -42,6 +42,16 @@ final class UserSoftDeleteTest extends TestCase
         $response->assertSessionHasErrors();
     }
 
+    /**
+     * Bewusste Festlegung: Die Email einer soft-deleted Person bleibt belegt.
+     *
+     * Der Wiedereintritt eines Mitglieds soll über `restore()` laufen, damit die
+     * fachliche Verknüpfung (Beitragshistorie, Activity-Log-Subjects, Rollen)
+     * erhalten bleibt — *nicht* über eine Neuregistrierung mit derselben Email.
+     * Wer dieses Verhalten ändern möchte, muss zuerst klären, wie Restore-Pfad
+     * und Re-Registrierung sauber koexistieren (Pseudonymisierung der alten
+     * Email beim Soft-Delete? Welche Email gilt nach Restore?).
+     */
     public function testSoftDeletedEmailCannotBeReusedForNewRegistration(): void
     {
         $user = User::factory()->create(['email' => self::EMAIL_TAKEN]);
