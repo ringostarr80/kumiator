@@ -119,7 +119,7 @@ final class UserSoftDeleteTest extends TestCase
         ]);
 
         $command = $this->artisan('user:delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), 'admin-delete@example.com')
