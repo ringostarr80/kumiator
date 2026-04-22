@@ -20,9 +20,12 @@ use Illuminate\Support\Facades\DB;
  * um die fachliche Historie — und insbesondere die Activity-Log-Verweise
  * auf den gelöschten User — zu erhalten.
  *
- * Sessions werden trotzdem hart entfernt: Eine bestehende Browser-Session
- * würde dem soft-deleted User sonst weiterhin Zugriff geben, weil das Cookie
- * gültig bleibt.
+ * Sessions **und** Passkey-Credentials werden trotzdem hart entfernt: Beide
+ * sind aktive Zugriffsmittel, die dem soft-deleted User sonst weiterhin Zugang
+ * verschaffen würden (Cookie bleibt gültig, Passkey bleibt kryptographisch
+ * gültig). Anders als beim Self-Delete laufen die Passkey-Löschungen hier
+ * **mit** Eloquent-Events durch — die Widerrufe sollen im Activity-Log des
+ * Admin-Pfads dokumentiert bleiben (Causer = handelnder Admin).
  */
 #[Signature('user:delete')]
 #[Description('Löscht einen bestehenden Benutzer')]
@@ -63,6 +66,8 @@ class Delete extends Command
                     ->where('user_id', $user->getKey())
                     ->delete();
             }
+
+            $user->passkeyCredentials->each->deleteOrFail();
 
             $user->deleteOrFail();
         });

@@ -28,6 +28,26 @@ final class UserSoftDeleteTest extends TestCase
         $this->assertTrue($user->trashed());
     }
 
+    /**
+     * Sicherheitsrelevante Invariante: Der PasskeyCredential->user-Zugriff MUSS
+     * für soft-deleted User `null` liefern. Auf genau diese Garantie verlässt sich
+     * PasskeyAuthenticationService::verify() (dort Zeile 117-123), um den
+     * Passkey-Login für administrativ gelöschte User zu blockieren. Würde jemand
+     * die Relation später auf `->withTrashed()` umbauen, wäre der Login-Schutz
+     * still und heimlich gebrochen — dieser Test schlägt dann an.
+     */
+    public function testSoftDeletedUserIsUnreachableViaPasskeyCredentialRelation(): void
+    {
+        $user = User::factory()->create();
+        $credential = PasskeyCredential::factory()->for($user)->create();
+
+        $user->deleteOrFail();
+
+        $fresh = PasskeyCredential::query()->whereKey($credential->getKey())->firstOrFail();
+
+        $this->assertNull($fresh->user);
+    }
+
     public function testSoftDeletedUserCannotLogIn(): void
     {
         $user = User::factory()->create(['email' => 'deleted@example.com']);
@@ -104,11 +124,12 @@ final class UserSoftDeleteTest extends TestCase
         $this->assertSame(0, DB::table('sessions')->where('user_id', $user->getKey())->count());
     }
 
-    public function testConsoleDeleteCommandSoftDeletesUserAndPurgesSessions(): void
+    public function testConsoleDeleteCommandSoftDeletesUserAndPurgesSessionsAndPasskeys(): void
     {
         config(['session.driver' => 'database']);
 
         $user = User::factory()->create(['email' => 'admin-delete@example.com']);
+        PasskeyCredential::factory()->for($user)->count(2)->create();
         DB::table('sessions')->insert([
             'id' => 'admin-session-id',
             'user_id' => $user->getKey(),
@@ -130,5 +151,6 @@ final class UserSoftDeleteTest extends TestCase
         $this->assertNull(User::query()->find($user->getKey()));
         $this->assertNotNull(User::query()->withTrashed()->find($user->getKey()));
         $this->assertSame(0, DB::table('sessions')->where('user_id', $user->getKey())->count());
+        $this->assertSame(0, PasskeyCredential::query()->where('user_id', $user->getKey())->count());
     }
 }
