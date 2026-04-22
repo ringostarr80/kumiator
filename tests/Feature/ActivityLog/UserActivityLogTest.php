@@ -36,6 +36,27 @@ final class UserActivityLogTest extends TestCase
         $this->assertSame('Alt', $changes['old']['name'] ?? null);
     }
 
+    public function testUpdatingUserAsAuthenticatedActorRecordsCauser(): void
+    {
+        $actor = User::factory()->create();
+        $subject = User::factory()->create(['name' => 'Alt']);
+
+        $this->actingAs($actor);
+        $subject->updateOrFail(['name' => 'Neu']);
+
+        $activity = Activity::query()
+            ->where('log_name', 'user')
+            ->where('subject_type', $subject->getMorphClass())
+            ->where('subject_id', $subject->getKey())
+            ->where('event', 'updated')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame($actor->getMorphClass(), $activity->causer_type);
+        $this->assertSame($actor->getKey(), $activity->causer_id);
+    }
+
     public function testPasswordChangeIsNotLogged(): void
     {
         $user = User::factory()->create();

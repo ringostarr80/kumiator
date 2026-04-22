@@ -59,6 +59,51 @@ final class RoleChangeActivityLogTest extends TestCase
         $this->assertContains('admin', $properties['roles']);
     }
 
+    public function testAssigningRoleAsAuthenticatedActorRecordsCauser(): void
+    {
+        $actor = User::factory()->create();
+        $subject = User::factory()->create();
+        Activity::query()->delete();
+
+        $this->actingAs($actor);
+        $subject->assignRole('admin');
+
+        $activity = Activity::query()
+            ->where('log_name', 'role')
+            ->where('event', 'role_attached')
+            ->where('subject_type', $subject->getMorphClass())
+            ->where('subject_id', $subject->getKey())
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame($actor->getMorphClass(), $activity->causer_type);
+        $this->assertSame($actor->getKey(), $activity->causer_id);
+    }
+
+    public function testRemovingRoleAsAuthenticatedActorRecordsCauser(): void
+    {
+        $actor = User::factory()->create();
+        $subject = User::factory()->create();
+        $subject->assignRole('admin');
+        Activity::query()->delete();
+
+        $this->actingAs($actor);
+        $subject->removeRole('admin');
+
+        $activity = Activity::query()
+            ->where('log_name', 'role')
+            ->where('event', 'role_detached')
+            ->where('subject_type', $subject->getMorphClass())
+            ->where('subject_id', $subject->getKey())
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame($actor->getMorphClass(), $activity->causer_type);
+        $this->assertSame($actor->getKey(), $activity->causer_id);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

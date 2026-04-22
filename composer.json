@@ -82,6 +82,12 @@
             "@php artisan config:clear --ansi",
             "@php artisan test --coverage"
         ],
+        "test:debug": [
+            "@putenv XDEBUG_MODE=debug",
+            "@putenv XDEBUG_TRIGGER=1",
+            "@putenv PCOV_ENABLED=0",
+            "@php artisan test"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
