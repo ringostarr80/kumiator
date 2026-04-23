@@ -131,6 +131,47 @@ final class RoleChangeActivityLogTest extends TestCase
         $this->assertSame($actor->getKey(), $activity->causer_id);
     }
 
+    /**
+     * Bewusste Festlegung: `syncRoles()` erzeugt auch dann ein detach+attach-Paar,
+     * wenn die fachlich gesetzte Rolle identisch zur vorherigen ist. Spatie feuert
+     * `RoleDetachedEvent` für alle bisherigen Rollen und `RoleAttachedEvent` für
+     * das neue Set — ohne Diff (vendor/spatie/laravel-permission/src/Traits/HasRoles.php
+     * syncRoles()). Der Listener spiegelt dieses Verhalten 1:1 ins Activity-Log.
+     *
+     * Für den einzigen produktiven Call-Site (`role:assign`, Single-Role-Semantik)
+     * ist das akzeptables Rauschen im Log. Sobald Multi-Role-Sync eingeführt wird
+     * (z. B. über ein UI-Formular mit mehreren gleichzeitig wählbaren Rollen),
+     * sollte ein UserRoleService die echten Δadd/Δremove berechnen — dieser Test
+     * bricht dann und erzwingt die bewusste Neubewertung.
+     */
+    public function testSyncingSameRoleLogsDetachAndAttachPair(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('admin');
+        Activity::query()->delete();
+
+        $user->syncRoles('admin');
+
+        $detached = Activity::query()
+            ->where('log_name', 'role')
+            ->where('event', 'role_detached')
+            ->where('subject_type', $user->getMorphClass())
+            ->where('subject_id', $user->getKey())
+            ->get();
+
+        $attached = Activity::query()
+            ->where('log_name', 'role')
+            ->where('event', 'role_attached')
+            ->where('subject_type', $user->getMorphClass())
+            ->where('subject_id', $user->getKey())
+            ->get();
+
+        $this->assertCount(1, $detached);
+        $this->assertCount(1, $attached);
+        $this->assertEqualsCanonicalizing(['admin'], $detached->first()?->properties?->toArray()['roles'] ?? []);
+        $this->assertEqualsCanonicalizing(['admin'], $attached->first()?->properties?->toArray()['roles'] ?? []);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
