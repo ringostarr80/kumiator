@@ -30,11 +30,6 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(PasskeyCredential::class, PasskeyCredentialPolicy::class);
 
-        // Hinweis: LogRoleChangeListener wird von Laravels Event-Auto-Discovery
-        // erfasst (handle*-Methoden mit Event-Typ-Hint in app/Listeners/). Eine
-        // zusätzliche explizite Event::listen()-Registrierung würde den Listener
-        // doppelt aufrufen — jede Rollenänderung landet sonst zweimal im Activity-Log.
-
         // Passkey authentication options (guests): IP-based, 20 requests per minute.
         // Limits e-mail enumeration via the allowCredentials field without impacting
         // legitimate UX (a real user needs at most one options call per login attempt).
