@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\PendingCommand;
+use Laravel\Sanctum\PersonalAccessToken;
 use Tests\TestCase;
 
 final class UserSoftDeleteTest extends TestCase
@@ -102,12 +103,13 @@ final class UserSoftDeleteTest extends TestCase
         $this->assertFalse($restored->trashed());
     }
 
-    public function testSelfDeleteHardDeletesUserIncludingPasskeysAndSessions(): void
+    public function testSelfDeleteHardDeletesUserIncludingTokensPasskeysAndSessions(): void
     {
         config(['session.driver' => 'database']);
 
         $user = User::factory()->create();
         PasskeyCredential::factory()->create(['user_id' => $user->getKey()]);
+        $user->createToken('test');
         DB::table('sessions')->insert([
             'id' => 'test-session-id',
             'user_id' => $user->getKey(),
@@ -122,14 +124,22 @@ final class UserSoftDeleteTest extends TestCase
         $this->assertSame(0, User::query()->withTrashed()->where('id', $user->getKey())->count());
         $this->assertSame(0, PasskeyCredential::query()->where('user_id', $user->getKey())->count());
         $this->assertSame(0, DB::table('sessions')->where('user_id', $user->getKey())->count());
+        $this->assertSame(
+            0,
+            PersonalAccessToken::query()
+                ->where('tokenable_type', $user->getMorphClass())
+                ->where('tokenable_id', $user->getKey())
+                ->count(),
+        );
     }
 
-    public function testConsoleDeleteCommandSoftDeletesUserAndPurgesSessionsAndPasskeys(): void
+    public function testConsoleDeleteCommandSoftDeletesUserAndPurgesSessionsPasskeysAndTokens(): void
     {
         config(['session.driver' => 'database']);
 
         $user = User::factory()->create(['email' => 'admin-delete@example.com']);
         PasskeyCredential::factory()->for($user)->count(2)->create();
+        $user->createToken('admin-delete-token');
         DB::table('sessions')->insert([
             'id' => 'admin-session-id',
             'user_id' => $user->getKey(),
@@ -152,5 +162,12 @@ final class UserSoftDeleteTest extends TestCase
         $this->assertNotNull(User::query()->withTrashed()->find($user->getKey()));
         $this->assertSame(0, DB::table('sessions')->where('user_id', $user->getKey())->count());
         $this->assertSame(0, PasskeyCredential::query()->where('user_id', $user->getKey())->count());
+        $this->assertSame(
+            0,
+            PersonalAccessToken::query()
+                ->where('tokenable_type', $user->getMorphClass())
+                ->where('tokenable_id', $user->getKey())
+                ->count(),
+        );
     }
 }

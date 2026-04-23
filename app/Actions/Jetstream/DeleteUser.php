@@ -16,10 +16,18 @@ class DeleteUser implements DeletesUsers
      * Delete the given user.
      *
      * Self-Delete ist bewusst ein Hard-Delete: DSGVO-konformes „Recht auf Vergessen".
-     * Dadurch werden auch Passkeys und Sessions hart entfernt, damit nach dem
-     * Löschen kein Zugriffsmittel mehr existiert. Administrative Löschungen
-     * laufen separat über den Console-Command `user:delete` und verwenden einen
-     * Soft-Delete, um die fachliche Historie zu erhalten.
+     * Dadurch werden auch Sanctum-Tokens, Passkeys und Sessions hart entfernt,
+     * damit nach dem Löschen kein Zugriffsmittel mehr existiert. Administrative
+     * Löschungen laufen separat über den Console-Command `user:delete` und
+     * verwenden einen Soft-Delete, um die fachliche Historie zu erhalten.
+     *
+     * Hinweis zum Session-Treiber: Die explizite Session-Löschung wirkt nur bei
+     * `session.driver = database` (aktueller Projekt-Default). Bei Redis/File/
+     * Cookie bleiben Session-Payloads im Backend liegen, bis ihre TTL abläuft.
+     * Für den Auth-Schutz reicht das, weil der User hart gelöscht ist und
+     * `EloquentUserProvider::retrieveById()` keinen User mehr liefert. Wird der
+     * Treiber gewechselt, muss diese Annahme neu bewertet werden (ggf. treiber-
+     * spezifisches Purge, DSGVO-Sicht auf Session-Payloads).
      */
     public function delete(User $user): void
     {
