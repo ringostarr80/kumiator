@@ -59,6 +59,33 @@ final class RoleChangeActivityLogTest extends TestCase
         $this->assertContains('admin', $properties['roles']);
     }
 
+    /**
+     * Spatie Permission feuert `RoleAttachedEvent` genau einmal pro `assignRole()`-Aufruf,
+     * mit allen Rollen im Payload. Der Listener fasst das zu **einem** Activity-Log-Eintrag
+     * mit allen Rollen-Namen zusammen — doppelte Einträge wären ein Hinweis auf doppelte
+     * Listener-Registrierung (z. B. Auto-Discovery + explizites `Event::listen()`).
+     */
+    public function testAssigningMultipleRolesAtOnceLogsSingleEntryWithAllRoleNames(): void
+    {
+        $user = User::factory()->create();
+        Activity::query()->delete();
+
+        $user->assignRole('admin', 'member');
+
+        $activities = Activity::query()
+            ->where('log_name', 'role')
+            ->where('event', 'role_attached')
+            ->where('subject_type', $user->getMorphClass())
+            ->where('subject_id', $user->getKey())
+            ->get();
+
+        $this->assertCount(1, $activities);
+        $properties = $activities->first()?->properties?->toArray() ?? [];
+        $this->assertArrayHasKey('roles', $properties);
+        $this->assertIsArray($properties['roles']);
+        $this->assertEqualsCanonicalizing(['admin', 'member'], $properties['roles']);
+    }
+
     public function testAssigningRoleAsAuthenticatedActorRecordsCauser(): void
     {
         $actor = User::factory()->create();
