@@ -223,4 +223,14 @@ return [
     'authentication_description' => 'Authentication and registration views are included with Laravel Jetstream,'
         . ' as well as support for user email verification and resetting forgotten passwords. So, you\'re free to'
         . ' get started with what matters most: building your application.',
+
+    // Activity log (admin)
+    'activity_log' => 'Activity log',
+    'activity_log_empty' => 'No entries in the activity log yet.',
+    'activity_log_when' => 'When',
+    'activity_log_log_name' => 'Category',
+    'activity_log_event' => 'Event',
+    'activity_log_causer' => 'Triggered by',
+    'activity_log_subject' => 'Subject',
+    'activity_log_description' => 'Description',
 ];

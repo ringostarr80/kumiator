@@ -8,3 +8,7 @@ Zwei-Faktor-Authentifizierung (2FA).
 ## CLI-Kommandos zur Benutzerverwaltung
 
 Siehe [docs/cli-commands.md](docs/cli-commands.md).
+
+## Production-Deployment
+
+Siehe [docs/deployment.md](docs/deployment.md).

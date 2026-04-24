@@ -57,4 +57,17 @@ Route::middleware([
         Route::delete('/user/passkeys/{passkeyCredential}', [PasskeyRegistrationController::class, 'destroy'])
             ->name('passkeys.destroy');
     });
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Admin area
+    //
+    // Access is gated by granular permissions (via spatie/laravel-permission).
+    // The `can:<permission>` middleware leverages Laravel's Gate — Spatie
+    // permissions register themselves as Gate abilities automatically.
+    // ──────────────────────────────────────────────────────────────────────────
+    Route::prefix('admin')->name('admin.')->group(static function (): void {
+        Route::get('/activity-log', static fn () => view('admin.activity-log'))
+            ->middleware('can:activity-log.view')
+            ->name('activity-log');
+    });
 });

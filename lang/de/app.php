@@ -227,4 +227,14 @@ return [
         . ' enthalten, ebenso wie die Unterstützung für E-Mail-Verifizierung und das Zurücksetzen vergessener'
         . ' Passwörter. So kannst du direkt mit dem Wichtigsten beginnen: dem Erstellen deiner Anwendung.',
 
+    // Activity-Log (Admin)
+    'activity_log' => 'Aktivitätsprotokoll',
+    'activity_log_empty' => 'Es sind keine Einträge im Aktivitätsprotokoll vorhanden.',
+    'activity_log_when' => 'Zeitpunkt',
+    'activity_log_log_name' => 'Kategorie',
+    'activity_log_event' => 'Ereignis',
+    'activity_log_causer' => 'Ausgelöst von',
+    'activity_log_subject' => 'Betroffener Datensatz',
+    'activity_log_description' => 'Beschreibung',
+
 ];
