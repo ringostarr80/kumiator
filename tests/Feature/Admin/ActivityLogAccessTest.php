@@ -45,6 +45,27 @@ final class ActivityLogAccessTest extends TestCase
         $response->assertOk();
     }
 
+    /**
+     * Defense-in-depth: Wird die Komponente direkt gemountet (z. B. weil sie
+     * jemals außerhalb der `/admin/activity-log`-Route eingebettet wird), muss
+     * der eigene `authorize()`-Aufruf in `mount()` greifen — auch dann, wenn
+     * die umgebende Route die Permission nicht prüft.
+     */
+    public function testMountingComponentWithoutPermissionIsForbidden(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->assertForbidden();
+    }
+
+    public function testMountingComponentAsGuestIsForbidden(): void
+    {
+        Livewire::test(ActivityLogTable::class)
+            ->assertForbidden();
+    }
+
     public function testComponentRendersExistingActivityEntries(): void
     {
         $user = $this->makeAdmin();

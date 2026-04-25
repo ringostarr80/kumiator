@@ -7,20 +7,34 @@ namespace App\Livewire\Admin;
 use App\Models\Activity;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
  * Read-only Übersicht des Activity-Logs für Administratoren.
  *
- * Zugriffsschutz erfolgt auf Route-Ebene (Middleware `can:activity-log.view`),
- * die Komponente selbst trifft keine Autorisierungsentscheidung mehr.
+ * Zugriffsschutz erfolgt zweistufig:
+ *  - Primär über Route-Middleware `can:activity-log.view` (siehe routes/web.php),
+ *    die den Request bereits vor dem Rendern der View abbricht und damit auch
+ *    eventuelle Geschwister-Komponenten auf derselben Seite mit-schützt.
+ *  - Defense-in-depth über `$this->authorize(...)` in `mount()`: greift, falls
+ *    die Komponente jemals außerhalb der dedizierten Route eingebettet wird
+ *    (eigene Route, andere Parent-Komponente) und der dort gesetzte Schutz
+ *    versehentlich fehlt. Spatie-Permissions sind als Gate-Abilities registriert,
+ *    die Prüfung ist deshalb identisch zur Route-Middleware.
  */
 final class ActivityLogTable extends Component
 {
+    use AuthorizesRequests;
     use WithPagination;
 
     private const int PER_PAGE = 25;
+
+    public function mount(): void
+    {
+        $this->authorize('activity-log.view');
+    }
 
     public function render(): View
     {
