@@ -233,4 +233,9 @@ return [
     'activity_log_causer' => 'Triggered by',
     'activity_log_subject' => 'Subject',
     'activity_log_description' => 'Description',
+    'activity_log_deleted_record' => ':type (deleted)',
+
+    // Morph types (display names for the morph map registered in AppServiceProvider)
+    'morph_user' => 'User',
+    'morph_passkey' => 'Passkey',
 ];

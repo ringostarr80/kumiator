@@ -236,5 +236,10 @@ return [
     'activity_log_causer' => 'Ausgelöst von',
     'activity_log_subject' => 'Betroffener Datensatz',
     'activity_log_description' => 'Beschreibung',
+    'activity_log_deleted_record' => ':type (gelöscht)',
+
+    // Morph-Typen (Anzeigenamen für die in AppServiceProvider registrierte Morph-Map)
+    'morph_user' => 'Benutzer',
+    'morph_passkey' => 'Passkey',
 
 ];
