@@ -6,6 +6,7 @@ namespace Tests\Feature\ActivityLog;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
@@ -62,7 +63,7 @@ final class UserActivityLogTest extends TestCase
         $user = User::factory()->create();
         Activity::query()->delete();
 
-        $user->forceFill(['password' => bcrypt('neuesgeheimnis')])->save();
+        $user->forceFill(['password' => Hash::make('neuesgeheimnis')])->saveOrFail();
 
         $activity = Activity::query()->where('log_name', 'user')->latest('id')->first();
 
@@ -77,7 +78,7 @@ final class UserActivityLogTest extends TestCase
         $user->forceFill([
             'two_factor_secret' => 'geheim',
             'two_factor_recovery_codes' => 'rec',
-        ])->save();
+        ])->saveOrFail();
 
         $activity = Activity::query()->where('log_name', 'user')->latest('id')->first();
 
