@@ -8,6 +8,7 @@ use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Policies\PasskeyCredentialPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -28,6 +29,21 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Stabile Aliase für polymorphe Beziehungen — primär für den Activity-Log,
+        // damit `subject_type` / `causer_type` keine FQCN enthalten (refactor-sicher,
+        // entkoppelt DB-Daten von Klassen-Namen, übersetzbar im UI).
+        //
+        // `enforceMorphMap` (statt `morphMap`) wirft eine `ClassMorphViolationException`,
+        // sobald ein Model mit polymorpher Beziehung NICHT in der Map steht. Das ist
+        // beabsichtigt: bei einem neuen Loggable-Model fliegt der Fehler sofort beim
+        // ersten Schreibversuch, statt jahrelang stille FQCN in die DB zu schreiben.
+        // Der Architektur-Test `tests/Feature/ActivityLog/MorphMapTest.php` schützt
+        // zusätzlich gegen vergessene Einträge.
+        Relation::enforceMorphMap([
+            'user' => User::class,
+            'passkey' => PasskeyCredential::class,
+        ]);
+
         Gate::policy(PasskeyCredential::class, PasskeyCredentialPolicy::class);
 
         // Passkey authentication options (guests): IP-based, 20 requests per minute.
