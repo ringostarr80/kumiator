@@ -41,15 +41,19 @@
                                 {{ $activity->event ?? '—' }}
                             </td>
                             <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-200 whitespace-nowrap">
-                                @if ($activity->causer_type && $activity->causer_id)
-                                    {{ $activity->causer_type }}#{{ $activity->causer_id }}
+                                @if ($activity->causer)
+                                    {{ $activity->causer->name }}
+                                @elseif ($activity->causer_type && $activity->causer_id)
+                                    {{ __('app.activity_log_deleted_record', ['type' => __('app.morph_' . $activity->causer_type)]) }}
                                 @else
                                     —
                                 @endif
                             </td>
                             <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-200 whitespace-nowrap">
-                                @if ($activity->subject_type && $activity->subject_id)
-                                    {{ $activity->subject_type }}#{{ $activity->subject_id }}
+                                @if ($activity->subject)
+                                    {{ $activity->subject->name }}
+                                @elseif ($activity->subject_type && $activity->subject_id)
+                                    {{ __('app.activity_log_deleted_record', ['type' => __('app.morph_' . $activity->subject_type)]) }}
                                 @else
                                     —
                                 @endif

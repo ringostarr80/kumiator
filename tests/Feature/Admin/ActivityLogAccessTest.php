@@ -85,6 +85,73 @@ final class ActivityLogAccessTest extends TestCase
             ->assertSee($activity->description);
     }
 
+    public function testRenderedTableShowsCauserAndSubjectNamesInsteadOfFqcn(): void
+    {
+        $actor = User::factory()->create(['name' => 'Acting Admin']);
+        $subject = User::factory()->create(['name' => 'Subject User']);
+
+        $this->actingAs($actor);
+        $subject->updateOrFail(['name' => 'Subject Renamed']);
+
+        $admin = $this->makeAdmin();
+
+        Livewire::actingAs($admin)
+            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->assertOk()
+            ->assertSee('Acting Admin')
+            ->assertSee('Subject Renamed');
+    }
+
+    /**
+     * Regression-Schutz für die Refaktorierung weg von rohen FQCN im UI:
+     * Im gerenderten Table dürfen weder `App\Models\User` noch
+     * `App\Models\PasskeyCredential` (oder andere App-Models) als sichtbare
+     * Zeichenkette auftauchen — stattdessen wird der echte `name` des Subjects/
+     * Causers oder das übersetzte Fallback-Label gezeigt.
+     */
+    public function testRenderedTableContainsNoFqcn(): void
+    {
+        $actor = User::factory()->create(['name' => 'Acting Admin']);
+        $subject = User::factory()->create(['name' => 'Subject User']);
+
+        $this->actingAs($actor);
+        $subject->updateOrFail(['name' => 'Subject Renamed']);
+
+        $admin = $this->makeAdmin();
+
+        Livewire::actingAs($admin)
+            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->assertOk()
+            ->assertDontSee('App\\Models\\User')
+            ->assertDontSee('App\\Models\\PasskeyCredential');
+    }
+
+    /**
+     * Wird der Subject-Datensatz nach Erstellung eines Activity-Eintrags
+     * gelöscht (hier: soft-deleted, was die `morphTo`-Relation durch den
+     * SoftDeletes-Scope auf `null` fallen lässt), zeigt das UI das übersetzte
+     * Fallback-Label (`activity_log_deleted_record`) statt eines leeren oder
+     * FQCN-haltigen Werts.
+     */
+    public function testRenderedTableShowsTranslatedFallbackForDeletedSubject(): void
+    {
+        $actor = User::factory()->create(['name' => 'Acting Admin']);
+        $subject = User::factory()->create(['name' => 'Soon Deleted']);
+
+        $this->actingAs($actor);
+        $subject->updateOrFail(['name' => 'Final Name']);
+        $subject->deleteOrFail();
+
+        $admin = $this->makeAdmin();
+
+        Livewire::actingAs($admin)
+            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->assertOk()
+            ->assertSee(__('app.activity_log_deleted_record', [
+                'type' => __('app.morph_user'),
+            ]));
+    }
+
     private function makeAdmin(): User
     {
         $permission = Permission::findOrCreate('activity-log.view');
