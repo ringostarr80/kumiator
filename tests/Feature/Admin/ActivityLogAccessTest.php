@@ -19,6 +19,8 @@ final class ActivityLogAccessTest extends TestCase
     use RefreshDatabase;
 
     private const string ACTIVITY_LOG_URL = '/admin/activity-log';
+    private const string ACTOR_NAME = 'Acting Admin';
+    private const string SUBJECT_RENAMED = 'Subject Renamed';
 
     public function testGuestsAreRedirectedToLogin(): void
     {
@@ -87,19 +89,19 @@ final class ActivityLogAccessTest extends TestCase
 
     public function testRenderedTableShowsCauserAndSubjectNamesInsteadOfFqcn(): void
     {
-        $actor = User::factory()->create(['name' => 'Acting Admin']);
+        $actor = User::factory()->create(['name' => self::ACTOR_NAME]);
         $subject = User::factory()->create(['name' => 'Subject User']);
 
         $this->actingAs($actor);
-        $subject->updateOrFail(['name' => 'Subject Renamed']);
+        $subject->updateOrFail(['name' => self::SUBJECT_RENAMED]);
 
         $admin = $this->makeAdmin();
 
         Livewire::actingAs($admin)
             ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
             ->assertOk()
-            ->assertSee('Acting Admin')
-            ->assertSee('Subject Renamed');
+            ->assertSee(self::ACTOR_NAME)
+            ->assertSee(self::SUBJECT_RENAMED);
     }
 
     /**
@@ -111,11 +113,11 @@ final class ActivityLogAccessTest extends TestCase
      */
     public function testRenderedTableContainsNoFqcn(): void
     {
-        $actor = User::factory()->create(['name' => 'Acting Admin']);
+        $actor = User::factory()->create(['name' => self::ACTOR_NAME]);
         $subject = User::factory()->create(['name' => 'Subject User']);
 
         $this->actingAs($actor);
-        $subject->updateOrFail(['name' => 'Subject Renamed']);
+        $subject->updateOrFail(['name' => self::SUBJECT_RENAMED]);
 
         $admin = $this->makeAdmin();
 
@@ -135,7 +137,7 @@ final class ActivityLogAccessTest extends TestCase
      */
     public function testRenderedTableShowsTranslatedFallbackForDeletedSubject(): void
     {
-        $actor = User::factory()->create(['name' => 'Acting Admin']);
+        $actor = User::factory()->create(['name' => self::ACTOR_NAME]);
         $subject = User::factory()->create(['name' => 'Soon Deleted']);
 
         $this->actingAs($actor);
