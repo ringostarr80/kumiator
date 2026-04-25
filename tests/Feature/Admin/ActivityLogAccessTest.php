@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin;
 
 use App\Livewire\Admin\ActivityLogTable;
+use App\Models\PasskeyCredential;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Activitylog\Facades\Activity as ActivityFacade;
 use Spatie\Activitylog\Models\Activity;
@@ -152,6 +154,58 @@ final class ActivityLogAccessTest extends TestCase
             ->assertSee(__('app.activity_log_deleted_record', [
                 'type' => __('app.morph_user'),
             ]));
+    }
+
+    /**
+     * Schützt die im PHPDoc von `ActivityLogTable::loadActivities()` festgehaltene
+     * Performance-Charakteristik (1 Pagination + je 1 Query pro distinct Morph-Typ
+     * für `subject` und `causer`, kein N+1).
+     *
+     * Setup: Eine volle Page mit gemischten Subject-Typen (User + Passkey) und
+     * mindestens einem User-Causer. Erwarteter Query-Bedarf für das eigentliche
+     * Laden: 1 Pagination-Count + 1 Pagination-Select + 1× User-Subjects +
+     * 1× Passkey-Subjects + 1× User-Causer = 5. Plus Authentifizierungs-/
+     * Permission-Lookups durch Livewire & Spatie.
+     *
+     * Die Schwelle (12) ist bewusst großzügig — kleinere Schwankungen durch
+     * Framework-/Spatie-Updates sollen den Test nicht aufschrecken; ein echtes
+     * N+1 (z. B. eine Query pro Row) würde die Schwelle dagegen weit reißen.
+     */
+    public function testRenderingPageStaysWithinQueryBudget(): void
+    {
+        $admin = $this->makeAdmin();
+        $actor = User::factory()->create();
+
+        // Eine Mischung aus User- und Passkey-Subjects sowie einem Causer-User —
+        // damit die Page wirklich mehrere distinct Morph-Typen enthält.
+        $this->actingAs($actor);
+
+        for ($i = 0; $i < 5; $i++) {
+            $subject = User::factory()->create();
+            $subject->updateOrFail(['name' => 'Renamed ' . $i]);
+        }
+
+        for ($i = 0; $i < 5; $i++) {
+            PasskeyCredential::factory()->create();
+        }
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        Livewire::actingAs($admin)
+            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->assertOk();
+
+        $queryCount = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $this->assertLessThanOrEqual(
+            12,
+            $queryCount,
+            "Die Activity-Log-Page sollte ≤ 12 Queries auslösen, hat aber {$queryCount} ausgelöst. "
+            . 'Das deutet auf ein N+1 (z. B. fehlendes Eager-Loading) oder eine '
+            . 'lazy geladene Relation im Blade-Template hin.',
+        );
     }
 
     private function makeAdmin(): User

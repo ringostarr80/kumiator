@@ -44,6 +44,22 @@ final class ActivityLogTable extends Component
     }
 
     /**
+     * Lädt die paginierte Activity-Liste mit Eager-Loading für `subject` & `causer`.
+     *
+     * Performance-Charakteristik:
+     *  - 1 Query für die Pagination (Count + Select).
+     *  - Pro distinct `subject_type` auf der Seite **eine zusätzliche** `whereIn`-
+     *    Query (anders als ein normales `belongsTo` ist `morphTo` typ-abhängig:
+     *    Eloquent gruppiert die Page-Rows nach Morph-Typ und feuert pro Typ eine
+     *    eigene Query gegen die jeweilige Tabelle).
+     *  - Pro distinct `causer_type` analog eine weitere Query.
+     *
+     * Bei aktuell zwei Loggable-Modellen (`user`, `passkey`) ergibt das im
+     * Worst-Case ~5 Queries pro Seite, **unabhängig von der Anzahl der Rows** —
+     * kein N+1. Der Test `testRenderingPageStaysWithinQueryBudget` schützt
+     * gegen versehentliche Regressionen (z. B. wenn jemand das `with()` entfernt
+     * oder im Blade-Template eine weitere Relation lazy lädt).
+     *
      * @return LengthAwarePaginator<int, Activity>
      */
     private function loadActivities(): LengthAwarePaginator
