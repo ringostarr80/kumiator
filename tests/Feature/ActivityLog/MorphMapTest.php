@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\Relations\Relation;
-use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Lang;
 use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionClass;
 use ReflectionMethod;
@@ -77,6 +77,11 @@ final class MorphMapTest extends TestCase
      * Provider laufen vor dem Boot und sähen eine leere Map. Deshalb hier
      * keine Provider-Variante, sondern eine einzelne Test-Methode mit
      * Innenschleife.
+     *
+     * Nutzt `Lang::get($key, [], $locale)` mit explizitem Locale-Parameter
+     * statt `App::setLocale()` + `__()` — vermeidet eine globale State-
+     * Mutation, die bei einem Failure innerhalb der Schleife auf dem
+     * letzten Wert stehen bliebe.
      */
     public function testEveryMorphAliasHasTranslationInBothLocales(): void
     {
@@ -88,11 +93,9 @@ final class MorphMapTest extends TestCase
             $key = 'app.morph_' . $alias;
 
             foreach (['de', 'en'] as $locale) {
-                App::setLocale($locale);
-
                 $this->assertNotSame(
                     $key,
-                    __($key),
+                    Lang::get($key, [], $locale),
                     sprintf(
                         "Für den Morph-Alias '%s' fehlt der Übersetzungs-Schlüssel '%s' "
                         . "in der Locale '%s'. Bitte in lang/%s/app.php ergänzen — sonst "
