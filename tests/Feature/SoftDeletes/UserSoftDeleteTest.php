@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\PendingCommand;
 use Laravel\Sanctum\PersonalAccessToken;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -174,6 +175,104 @@ final class UserSoftDeleteTest extends TestCase
             DB::table('model_has_roles')
                 ->where('model_type', $user->getMorphClass())
                 ->where('model_id', $user->getKey())
+                ->count(),
+        );
+    }
+
+    /**
+     * DSGVO-Symmetrie zum Token-/Passkey-/Session-Bypass: Nach dem Self-Delete
+     * darf in `activity_log` kein Eintrag mehr existieren, der den gelöschten
+     * User als Subject referenziert — weder durch Alt-Einträge (z. B. das
+     * Profil-Update-Log einer früheren Namensänderung) noch durch finale
+     * Einträge, die `forceDelete()` selbst auslösen würde (`event=deleted`,
+     * `event=role_detached` durch `LogRoleChangeListener`).
+     */
+    public function testSelfDeletePurgesActivityLogEntriesWithUserAsSubject(): void
+    {
+        $user = User::factory()->create(['name' => 'Vor Löschung']);
+        Role::findOrCreate('member');
+        $user->assignRole('member');
+        $user->updateOrFail(['name' => 'Nach Umbenennung']);
+
+        $this->assertGreaterThan(
+            0,
+            Activity::query()
+                ->where('subject_type', $user->getMorphClass())
+                ->where('subject_id', $user->getKey())
+                ->count(),
+            'Setup-Annahme verletzt: es sollten Subject-Einträge existieren, sonst testet die Assertion nichts.',
+        );
+
+        app(DeleteUser::class)->delete($user);
+
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('subject_type', $user->getMorphClass())
+                ->where('subject_id', $user->getKey())
+                ->count(),
+        );
+    }
+
+    /**
+     * Auch Causer-Referenzen müssen weg: Wenn der zu löschende User vorher
+     * selbst als handelnder Akteur in Activity-Einträgen aufgetaucht ist
+     * (z. B. weil er einer anderen Person eine Rolle zugewiesen hat),
+     * verbleiben sonst seine ID und ggf. der Name in `properties`.
+     */
+    public function testSelfDeletePurgesActivityLogEntriesWithUserAsCauser(): void
+    {
+        $actor = User::factory()->create();
+        $other = User::factory()->create();
+        Role::findOrCreate('member');
+
+        $this->actingAs($actor);
+        $other->assignRole('member');
+
+        $this->assertGreaterThan(
+            0,
+            Activity::query()
+                ->where('causer_type', $actor->getMorphClass())
+                ->where('causer_id', $actor->getKey())
+                ->count(),
+            'Setup-Annahme verletzt: es sollten Causer-Einträge auf $actor existieren.',
+        );
+
+        app(DeleteUser::class)->delete($actor);
+
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('causer_type', $actor->getMorphClass())
+                ->where('causer_id', $actor->getKey())
+                ->count(),
+        );
+    }
+
+    /**
+     * Negativ-Test: Activity-Einträge **anderer** User dürfen vom Self-Delete
+     * NICHT angefasst werden. Sonst wäre der Purge ein versehentliches
+     * Massen-Löschen fremder Audit-Daten.
+     */
+    public function testSelfDeleteLeavesActivityLogEntriesOfOtherUsersUntouched(): void
+    {
+        $deleter = User::factory()->create();
+        $bystander = User::factory()->create(['name' => 'Bystander']);
+        $bystander->updateOrFail(['name' => 'Bystander Renamed']);
+
+        $bystanderActivityCountBefore = Activity::query()
+            ->where('subject_type', $bystander->getMorphClass())
+            ->where('subject_id', $bystander->getKey())
+            ->count();
+        $this->assertGreaterThan(0, $bystanderActivityCountBefore);
+
+        app(DeleteUser::class)->delete($deleter);
+
+        $this->assertSame(
+            $bystanderActivityCountBefore,
+            Activity::query()
+                ->where('subject_type', $bystander->getMorphClass())
+                ->where('subject_id', $bystander->getKey())
                 ->count(),
         );
     }
