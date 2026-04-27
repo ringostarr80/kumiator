@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\ActivityLog;
 
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\App;
 use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionClass;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
@@ -49,6 +50,47 @@ final class MorphMapTest extends TestCase
                 $class,
             ),
         );
+    }
+
+    /**
+     * Schützt die UI-Lesbarkeit der Morph-Aliase: Das Blade-Template
+     * `livewire/admin/activity-log-table.blade.php` rendert für gelöschte
+     * Subjects/Causer das übersetzte Fallback `morph_<alias>`. Fehlt der
+     * Schlüssel in einer Locale, würde Laravel den Key selbst zurückgeben
+     * und der rohe Alias landet sichtbar im UI.
+     *
+     * Die Morph-Map wird in `AppServiceProvider::boot()` registriert; Data
+     * Provider laufen vor dem Boot und sähen eine leere Map. Deshalb hier
+     * keine Provider-Variante, sondern eine einzelne Test-Methode mit
+     * Innenschleife.
+     */
+    public function testEveryMorphAliasHasTranslationInBothLocales(): void
+    {
+        $aliases = array_keys(Relation::morphMap());
+
+        $this->assertNotSame([], $aliases, 'Morph-Map ist leer — `AppServiceProvider::boot()` nicht gelaufen?');
+
+        foreach ($aliases as $alias) {
+            $key = 'app.morph_' . $alias;
+
+            foreach (['de', 'en'] as $locale) {
+                App::setLocale($locale);
+
+                $this->assertNotSame(
+                    $key,
+                    __($key),
+                    sprintf(
+                        "Für den Morph-Alias '%s' fehlt der Übersetzungs-Schlüssel '%s' "
+                        . "in der Locale '%s'. Bitte in lang/%s/app.php ergänzen — sonst "
+                        . "rendert das Activity-Log-UI den rohen Alias.",
+                        $alias,
+                        $key,
+                        $locale,
+                        $locale,
+                    ),
+                );
+            }
+        }
     }
 
     /**

@@ -1,3 +1,4 @@
+@php($th = 'px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300')
 <div>
     @if ($activities->isEmpty())
         <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -8,22 +9,22 @@
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead class="bg-gray-50 dark:bg-gray-900">
                     <tr>
-                        <th scope="col" class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">
+                        <th scope="col" class="{{ $th }}">
                             {{ __('app.activity_log_when') }}
                         </th>
-                        <th scope="col" class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">
+                        <th scope="col" class="{{ $th }}">
                             {{ __('app.activity_log_log_name') }}
                         </th>
-                        <th scope="col" class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">
+                        <th scope="col" class="{{ $th }}">
                             {{ __('app.activity_log_event') }}
                         </th>
-                        <th scope="col" class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">
+                        <th scope="col" class="{{ $th }}">
                             {{ __('app.activity_log_causer') }}
                         </th>
-                        <th scope="col" class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">
+                        <th scope="col" class="{{ $th }}">
                             {{ __('app.activity_log_subject') }}
                         </th>
-                        <th scope="col" class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">
+                        <th scope="col" class="{{ $th }}">
                             {{ __('app.activity_log_description') }}
                         </th>
                     </tr>
@@ -32,7 +33,7 @@
                     @foreach ($activities as $activity)
                         <tr wire:key="activity-{{ $activity->id }}">
                             <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-200 whitespace-nowrap">
-                                {{ optional($activity->created_at)->format('d.m.Y H:i:s') }}
+                                {{ $activity->created_at?->isoFormat('L LTS') }}
                             </td>
                             <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-200 whitespace-nowrap">
                                 {{ $activity->log_name ?? '—' }}

@@ -6,6 +6,7 @@ namespace App\Listeners;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Spatie\Activitylog\Facades\Activity;
 use Spatie\Permission\Contracts\Role as RoleContract;
 use Spatie\Permission\Events\RoleAttachedEvent;
@@ -86,7 +87,22 @@ final class LogRoleChangeListener
         }
 
         if ($ids !== []) {
-            foreach (Role::query()->whereIn('id', $ids)->get() as $role) {
+            $found = Role::query()->whereIn('id', $ids)->get();
+
+            // Drift sichtbar machen: Spatie liefert die `$rolesOrIds`-Liste
+            // unbearbeitet weiter — wenn dort eine ID steht, die in der
+            // `roles`-Tabelle nicht (mehr) existiert, würde der Name sonst
+            // still aus dem Activity-Log fallen. Ein Log::warning surface-t
+            // das, ohne den Activity-Log-Schreibvorgang abzubrechen.
+            $missing = array_values(array_diff($ids, $found->modelKeys()));
+
+            if ($missing !== []) {
+                Log::warning('LogRoleChangeListener: unknown role IDs received', [
+                    'missing_ids' => $missing,
+                ]);
+            }
+
+            foreach ($found as $role) {
                 $names[] = $role->name;
             }
         }

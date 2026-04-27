@@ -32,10 +32,10 @@ final class UserSoftDeleteTest extends TestCase
     /**
      * Sicherheitsrelevante Invariante: Der PasskeyCredential->user-Zugriff MUSS
      * für soft-deleted User `null` liefern. Auf genau diese Garantie verlässt sich
-     * PasskeyAuthenticationService::verify() (dort Zeile 117-123), um den
-     * Passkey-Login für administrativ gelöschte User zu blockieren. Würde jemand
-     * die Relation später auf `->withTrashed()` umbauen, wäre der Login-Schutz
-     * still und heimlich gebrochen — dieser Test schlägt dann an.
+     * `PasskeyAuthenticationService::verify()`, um den Passkey-Login für
+     * administrativ gelöschte User zu blockieren. Würde jemand die Relation
+     * später auf `->withTrashed()` umbauen, wäre der Login-Schutz still und
+     * heimlich gebrochen — dieser Test schlägt dann an.
      */
     public function testSoftDeletedUserIsUnreachableViaPasskeyCredentialRelation(): void
     {

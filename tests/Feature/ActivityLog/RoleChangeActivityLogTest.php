@@ -4,9 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature\ActivityLog;
 
+use App\Listeners\LogRoleChangeListener;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Log\Logger;
+use Illuminate\Support\Facades\Log;
+use Monolog\Handler\TestHandler;
+use Monolog\Level;
+use Monolog\Logger as MonologLogger;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\Permission\Events\RoleAttachedEvent;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -170,6 +177,104 @@ final class RoleChangeActivityLogTest extends TestCase
         $this->assertCount(1, $attached);
         $this->assertEqualsCanonicalizing(['admin'], $detached->first()?->properties?->toArray()['roles'] ?? []);
         $this->assertEqualsCanonicalizing(['admin'], $attached->first()?->properties?->toArray()['roles'] ?? []);
+    }
+
+    /**
+     * Schützt den Early-Return-Pfad in `LogRoleChangeListener::log()`: Wird
+     * der Listener mit einer leeren `$rolesOrIds`-Liste aufgerufen, darf
+     * **kein** Activity-Log-Eintrag entstehen — sonst hätten wir leere
+     * `roles: []`-Einträge ohne fachlichen Wert.
+     */
+    public function testListenerSkipsLoggingWhenNoRolesProvided(): void
+    {
+        $user = User::factory()->create();
+        Activity::query()->delete();
+
+        (new LogRoleChangeListener())->handleAttached(new RoleAttachedEvent($user, []));
+
+        $this->assertSame(0, Activity::query()->where('log_name', 'role')->count());
+    }
+
+    /**
+     * Spatie liefert `$rolesOrIds` heterogen — Mischformen aus `RoleContract`-
+     * Instanzen und IDs sind dokumentierter Bestandteil des Vertrags. Der
+     * Listener muss beide Pfade in `resolveRoleNames()` zusammenführen und
+     * im Activity-Log einen einzigen Eintrag mit allen Rollen-Namen erzeugen.
+     */
+    public function testListenerHandlesMixedRoleObjectsAndIds(): void
+    {
+        $user = User::factory()->create();
+        $admin = Role::findByName('admin');
+        $member = Role::findByName('member');
+        Activity::query()->delete();
+
+        (new LogRoleChangeListener())->handleAttached(
+            new RoleAttachedEvent($user, [$admin, $member->id]),
+        );
+
+        $activity = Activity::query()
+            ->where('log_name', 'role')
+            ->where('event', 'role_attached')
+            ->where('subject_id', $user->getKey())
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertEqualsCanonicalizing(['admin', 'member'], $properties['roles'] ?? []);
+    }
+
+    /**
+     * Drift-Sichtbarkeit: Wird der Listener mit einer ID aufgerufen, zu der
+     * keine Rolle (mehr) existiert, fällt der Name still aus dem Log. Ein
+     * `Log::warning` muss das surfacen, damit Operatoren den Vorfall nicht
+     * übersehen — der Activity-Log-Eintrag bleibt für die übrigen Rollen
+     * trotzdem bestehen.
+     */
+    public function testListenerLogsWarningForUnknownRoleIds(): void
+    {
+        $user = User::factory()->create();
+        $admin = Role::findByName('admin');
+        Activity::query()->delete();
+
+        $handler = new TestHandler();
+        Log::swap(new Logger(new MonologLogger('test', [$handler])));
+
+        (new LogRoleChangeListener())->handleAttached(
+            new RoleAttachedEvent($user, [$admin->id, 99_999]),
+        );
+
+        $this->assertTrue(
+            $handler->hasWarningThatContains('LogRoleChangeListener: unknown role IDs received'),
+            'Erwartetes Warning für unbekannte Role-IDs wurde nicht ins Log geschrieben.',
+        );
+
+        $warningRecord = null;
+
+        foreach ($handler->getRecords() as $record) {
+            if ($record['level'] === Level::Warning->value) {
+                $warningRecord = $record;
+                break;
+            }
+        }
+
+        $this->assertNotNull($warningRecord);
+        $context = $warningRecord['context'] ?? [];
+        $this->assertIsArray($context);
+        $this->assertSame([99_999], $context['missing_ids'] ?? null);
+
+        $activity = Activity::query()
+            ->where('log_name', 'role')
+            ->where('event', 'role_attached')
+            ->where('subject_id', $user->getKey())
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertEqualsCanonicalizing(
+            ['admin'],
+            $activity->properties?->toArray()['roles'] ?? [],
+        );
     }
 
     protected function setUp(): void
