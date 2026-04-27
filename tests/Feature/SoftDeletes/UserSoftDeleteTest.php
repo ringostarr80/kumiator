@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\PendingCommand;
 use Laravel\Sanctum\PersonalAccessToken;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 final class UserSoftDeleteTest extends TestCase
@@ -108,6 +109,8 @@ final class UserSoftDeleteTest extends TestCase
         config(['session.driver' => 'database']);
 
         $user = User::factory()->create();
+        Role::findOrCreate('member');
+        $user->assignRole('member');
         PasskeyCredential::factory()->create(['user_id' => $user->getKey()]);
         $user->createToken('test');
         DB::table('sessions')->insert([
@@ -119,6 +122,14 @@ final class UserSoftDeleteTest extends TestCase
             'last_activity' => time(),
         ]);
 
+        $this->assertSame(
+            1,
+            DB::table('model_has_roles')
+                ->where('model_type', $user->getMorphClass())
+                ->where('model_id', $user->getKey())
+                ->count(),
+        );
+
         app(DeleteUser::class)->delete($user);
 
         $this->assertSame(0, User::query()->withTrashed()->where('id', $user->getKey())->count());
@@ -129,6 +140,40 @@ final class UserSoftDeleteTest extends TestCase
             PersonalAccessToken::query()
                 ->where('tokenable_type', $user->getMorphClass())
                 ->where('tokenable_id', $user->getKey())
+                ->count(),
+        );
+        // Spatie\Permission räumt Rollen-Pivots beim Hard-Delete via Eloquent-
+        // `deleting`-Event auf. Sollte ein zukünftiges Spatie-Update dieses
+        // Verhalten ändern oder der Listener ausgehängt werden, wäre der hart
+        // gelöschte User unauffindbar, seine Rollen-Zuweisungen würden aber als
+        // verwaiste Pivot-Zeilen weiterleben — DSGVO-relevant.
+        $this->assertSame(
+            0,
+            DB::table('model_has_roles')
+                ->where('model_type', $user->getMorphClass())
+                ->where('model_id', $user->getKey())
+                ->count(),
+        );
+    }
+
+    /**
+     * Komplement zum Hard-Delete-Test: Beim Soft-Delete dürfen Rollen-Pivots
+     * NICHT gelöscht werden — sonst wäre ein späteres `restore()` ein stiller
+     * Privilegien-Verlust für den wiederhergestellten User.
+     */
+    public function testSoftDeleteKeepsRoleAssignmentsForLaterRestore(): void
+    {
+        $user = User::factory()->create();
+        Role::findOrCreate('member');
+        $user->assignRole('member');
+
+        $user->deleteOrFail();
+
+        $this->assertSame(
+            1,
+            DB::table('model_has_roles')
+                ->where('model_type', $user->getMorphClass())
+                ->where('model_id', $user->getKey())
                 ->count(),
         );
     }

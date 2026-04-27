@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Laravel\Jetstream\Contracts\DeletesUsers;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class DeleteUser implements DeletesUsers
 {
@@ -32,13 +33,21 @@ class DeleteUser implements DeletesUsers
     public function delete(User $user): void
     {
         DB::transaction(static function () use ($user): void {
-            $user->tokens->each->deleteOrFail();
+            // Bewusster Bypass der Eloquent-Events via Query-Builder für ALLE
+            // Lösch-Aktionen dieses Pfads: Würde z. B. `tokens->each->deleteOrFail()`
+            // oder `passkeyCredentials->each->deleteOrFail()` laufen, würde der
+            // LogsActivity-Trait (bzw. zukünftige Observer auf Tokens) Activity-
+            // Log-Einträge mit Causer/Subject-Verweis auf den gleich danach hart
+            // gelöschten User erzeugen — das widerspricht dem DSGVO-konformen
+            // „Recht auf Vergessen" dieses Lösch-Pfads. Im Admin-Pfad (siehe
+            // `App\Console\Commands\User\Delete`) ist die Semantik bewusst
+            // umgekehrt: dort sollen die Widerrufe im Activity-Log dokumentiert
+            // bleiben.
+            PersonalAccessToken::query()
+                ->where('tokenable_type', $user->getMorphClass())
+                ->where('tokenable_id', $user->getKey())
+                ->delete();
 
-            // Bewusster Bypass der Eloquent-Events via Query-Builder: Würden wir
-            // hier `each->deleteOrFail()` nutzen, würde der LogsActivity-Trait für
-            // jeden Passkey einen Activity-Log-Eintrag mit Subject-Verweis auf den
-            // gleich danach hart gelöschten User erzeugen — das widerspricht dem
-            // DSGVO-konformen „Recht auf Vergessen" dieses Lösch-Pfads.
             PasskeyCredential::query()->where('user_id', $user->getKey())->delete();
 
             if (Config::string('session.driver') === 'database') {
