@@ -40,14 +40,13 @@ return new class () extends Migration {
 
     public function down(): void
     {
-        foreach (self::MORPH_MAP as $fqcn => $alias) {
-            DB::table('activity_log')
-                ->where('subject_type', $alias)
-                ->update(['subject_type' => $fqcn]);
-
-            DB::table('activity_log')
-                ->where('causer_type', $alias)
-                ->update(['causer_type' => $fqcn]);
-        }
+        // Bewusst leer: ein Roll-Back auf FQCN ist nicht zuverlässig möglich.
+        // Die Migration ist semantisch ein One-Way-Sweep — die Information
+        // „welcher FQCN gehörte zu Schreibzeitpunkt zu welchem Alias" steckt
+        // nirgendwo dauerhaft (Klassen können umbenannt, Aliase neu zugeordnet
+        // worden sein). Eine symmetrische Rück-Update-Logik würde nur einen
+        // bestimmten Snapshot der MORPH_MAP wiederherstellen und wäre damit
+        // historisch falsch. Wer wirklich auf Pre-Morph-Map-Zustand muss,
+        // braucht ein DB-Backup von vor `up()`.
     }
 };

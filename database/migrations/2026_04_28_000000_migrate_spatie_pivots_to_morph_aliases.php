@@ -46,12 +46,11 @@ return new class () extends Migration {
 
     public function down(): void
     {
-        foreach (self::TABLES as $table) {
-            foreach (self::MORPH_MAP as $fqcn => $alias) {
-                DB::table($table)
-                    ->where('model_type', $alias)
-                    ->update(['model_type' => $fqcn]);
-            }
-        }
+        // Bewusst leer (gleicher Grund wie in der Vorgänger-Migration
+        // `2026_04_25_000000_migrate_activity_log_to_morph_aliases`):
+        // ein Roll-Back auf FQCN ist nicht zuverlässig möglich, da die
+        // historische FQCN→Alias-Zuordnung nirgendwo dauerhaft hinterlegt
+        // ist. Wer auf Pre-Morph-Map-Zustand zurück muss, nutzt ein
+        // DB-Backup von vor dem `up()`-Lauf.
     }
 };
