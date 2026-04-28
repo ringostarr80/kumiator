@@ -235,6 +235,9 @@ return [
     'activity_log_description' => 'Description',
     'activity_log_deleted_record' => ':type (deleted)',
 
+    // Activity log: domain-specific event descriptions
+    'activity_passkey_login_succeeded' => 'Passkey login succeeded',
+
     // Morph types (display names for the morph map registered in AppServiceProvider)
     'morph_user' => 'User',
     'morph_passkey' => 'Passkey',

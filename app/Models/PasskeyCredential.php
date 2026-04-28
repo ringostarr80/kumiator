@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Facades\Activity;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -74,19 +75,58 @@ final class PasskeyCredential extends Model
     }
 
     /**
-     * Activity-Log-Konfiguration.
+     * Activity-Log-Konfiguration für die automatischen Eloquent-Lifecycle-Events
+     * (created/updated/deleted). Geloggt werden ausschließlich `name` und
+     * `aaguid` — Schlüsselmaterial (`credential_id`, `credential_public_key`,
+     * `counter`, `transports`, `backup_eligible`, `backup_state`) bleibt ohne
+     * Ausnahme in der `passkey_credentials`-Tabelle.
      *
-     * Es werden nur Meta-Informationen geloggt — Schlüsselmaterial (credential_id,
-     * credential_public_key, counter, transports, backup_eligible, backup_state)
-     * bleibt ausschließlich in der `passkey_credentials`-Tabelle.
+     * `last_used_at` ist bewusst NICHT in `logOnly`: Login-Updates bestehen
+     * im Wesentlichen aus Secret-Feldern + `last_used_at` und sollen nicht
+     * den generischen `event=updated`-Pfad triggern. Stattdessen schreibt
+     * `recordSuccessfulLoginActivity()` einen dedizierten Eintrag mit
+     * fachlichem `event`-Code (`passkey_login_succeeded`) und übersetzter
+     * Description.
      */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'aaguid', 'last_used_at'])
+            ->logOnly(['name', 'aaguid'])
             ->logOnlyDirty()
             ->dontLogEmptyChanges()
             ->useLogName('passkey');
+    }
+
+    /**
+     * Schreibt einen dedizierten Activity-Log-Eintrag für eine erfolgreiche
+     * Passkey-Anmeldung. Aufzurufen aus `PasskeyAuthenticationService::verify()`,
+     * unmittelbar nachdem `PasskeyCredentialRepository::updateAfterAuthentication()`
+     * den Counter & `last_used_at` persistiert hat.
+     *
+     * Warum hier explizit (statt über den `LogsActivity`-Trait):
+     *  - `event` wird auf `passkey_login_succeeded` gesetzt — der Eloquent-
+     *    `updated` ist ein Implementierungsdetail, fachlich passiert ein Login.
+     *    Der spezifische Code erlaubt scharfes Filtern/Reporting.
+     *  - `description` ist übersetzt — die Activity-Log-UI zeigt damit
+     *    "Passkey-Anmeldung erfolgreich" statt eines generischen "updated".
+     *  - `causedBy($this->user)` umgeht das Pre-Auth-Causer-Problem: zum
+     *    Zeitpunkt der Verifikation ist `Auth::login()` noch nicht gelaufen,
+     *    `auth()->user()` wäre `null`. Der Owner der Credential ist der
+     *    eindeutige Akteur und wird hier explizit gesetzt.
+     */
+    public function recordSuccessfulLoginActivity(): void
+    {
+        $owner = $this->user;
+
+        if ($owner === null) {
+            return;
+        }
+
+        Activity::useLog('passkey')
+            ->event('passkey_login_succeeded')
+            ->causedBy($owner)
+            ->performedOn($this)
+            ->log(__('app.activity_passkey_login_succeeded'));
     }
 
     /**

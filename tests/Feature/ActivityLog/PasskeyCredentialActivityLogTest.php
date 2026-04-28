@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\ActivityLog;
 
 use App\Models\PasskeyCredential;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
@@ -86,13 +87,15 @@ final class PasskeyCredentialActivityLogTest extends TestCase
     }
 
     /**
-     * Regressionsschutz für die reale Call-Site `PasskeyCredentialRepository::updateAfterAuthentication()`:
-     * Ein erfolgreicher Passkey-Login schreibt gleichzeitig Secret-Felder (`credential_public_key`,
-     * `counter`, `backup_state`) und ein Meta-Feld (`last_used_at`) in die DB. Der Activity-Log
-     * darf nur das Meta-Feld enthalten — weder in `attributes` noch in `old` dürfen Secrets
-     * auftauchen, auch nicht in ihren Vorgängerwerten.
+     * Schützt die Trennung zwischen automatischem Trait-Logging und der
+     * dedizierten Login-Aktivität: Ein `updateOrFail` mit ausschließlich
+     * Secret-Feldern + `last_used_at` darf KEINEN Trait-Eintrag erzeugen
+     * (`last_used_at` ist bewusst aus `logOnly` heraus), und ohne den
+     * expliziten `recordSuccessfulLoginActivity()`-Aufruf entsteht auch
+     * sonst nichts. So kann nichts mehr versehentlich „mitgeschrieben"
+     * werden, was den Login-Trail aufweicht.
      */
-    public function testUpdateWithMixedFieldsOnlyLogsAllowlistedAttributes(): void
+    public function testUpdatingSecretAndLastUsedFieldsProducesNoTraitLogEntry(): void
     {
         $credential = PasskeyCredential::factory()->create([
             'name' => 'MixedUpdate',
@@ -108,34 +111,15 @@ final class PasskeyCredentialActivityLogTest extends TestCase
             'last_used_at' => now(),
         ]);
 
-        $activity = Activity::query()
-            ->where('log_name', 'passkey')
-            ->where('event', 'updated')
-            ->where('subject_id', $credential->getKey())
-            ->latest('id')
-            ->first();
-
-        $this->assertNotNull($activity);
-        $changes = $activity->attribute_changes?->toArray() ?? [];
-        $attributes = $changes['attributes'] ?? [];
-        $old = $changes['old'] ?? [];
-        $this->assertIsArray($attributes);
-        $this->assertIsArray($old);
-
-        $this->assertArrayHasKey('last_used_at', $attributes);
-
-        foreach (self::SECRET_FIELDS as $forbidden) {
-            $this->assertArrayNotHasKey(
-                $forbidden,
-                $attributes,
-                "Das Feld '{$forbidden}' darf weder in 'attributes' noch in 'old' geloggt werden.",
-            );
-            $this->assertArrayNotHasKey(
-                $forbidden,
-                $old,
-                "Das Feld '{$forbidden}' darf weder in 'attributes' noch in 'old' geloggt werden.",
-            );
-        }
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('log_name', 'passkey')
+                ->where('subject_id', $credential->getKey())
+                ->count(),
+            'Login-typische Felder dürfen den `LogsActivity`-Trait nicht mehr triggern '
+            . '— der dedizierte Eintrag entsteht ausschließlich über recordSuccessfulLoginActivity().',
+        );
     }
 
     /**
@@ -167,6 +151,58 @@ final class PasskeyCredentialActivityLogTest extends TestCase
         $this->assertNull(
             $activity,
             'Ein Update, das nur Secret-Felder ändert, darf keinen Activity-Log-Eintrag erzeugen.',
+        );
+    }
+
+    /**
+     * Schreibt `recordSuccessfulLoginActivity()` einen Eintrag mit dem
+     * fachlichen Event-Code `passkey_login_succeeded`, übersetzter
+     * Description und dem Owner als Causer? Diese Methode ist die einzige
+     * legitime Quelle des Login-Logs (siehe `PasskeyAuthenticationService`).
+     */
+    public function testRecordSuccessfulLoginActivityWritesDedicatedEntry(): void
+    {
+        $owner = User::factory()->create();
+        $credential = PasskeyCredential::factory()->for($owner)->create(['name' => 'LoginKey']);
+        Activity::query()->delete();
+
+        $credential->recordSuccessfulLoginActivity();
+
+        $activity = Activity::query()
+            ->where('log_name', 'passkey')
+            ->where('subject_id', $credential->getKey())
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame('passkey_login_succeeded', $activity->event);
+        $this->assertSame(__('app.activity_passkey_login_succeeded'), $activity->description);
+        $this->assertSame($owner->getMorphClass(), $activity->causer_type);
+        $this->assertSame($owner->getKey(), $activity->causer_id);
+    }
+
+    /**
+     * Wenn die Credential keinen zugeordneten Owner mehr hat (z. B. weil die
+     * Belongs-To-Relation `null` liefert), schreibt
+     * `recordSuccessfulLoginActivity()` keinen halbvollständigen Eintrag.
+     * Die Relation wird hier lokal mit einer leeren Collection geprimed,
+     * damit `$this->user` deterministisch `null` zurückgibt — ohne den
+     * Foreign-Key der DB anzufassen.
+     */
+    public function testRecordSuccessfulLoginActivityNoopsWhenOwnerMissing(): void
+    {
+        $credential = PasskeyCredential::factory()->create();
+        $credential->setRelation('user', null);
+        Activity::query()->delete();
+
+        $credential->recordSuccessfulLoginActivity();
+
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('log_name', 'passkey')
+                ->where('event', 'passkey_login_succeeded')
+                ->count(),
         );
     }
 }

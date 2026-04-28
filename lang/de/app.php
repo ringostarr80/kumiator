@@ -238,6 +238,9 @@ return [
     'activity_log_description' => 'Beschreibung',
     'activity_log_deleted_record' => ':type (gelöscht)',
 
+    // Activity-Log: fachliche Ereignis-Beschreibungen
+    'activity_passkey_login_succeeded' => 'Passkey-Anmeldung erfolgreich',
+
     // Morph-Typen (Anzeigenamen für die in AppServiceProvider registrierte Morph-Map)
     'morph_user' => 'Benutzer',
     'morph_passkey' => 'Passkey',

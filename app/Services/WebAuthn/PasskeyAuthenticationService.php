@@ -114,6 +114,13 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
             $updatedRecord->backupStatus ?? false,
         );
 
+        // Fachlicher Activity-Log-Eintrag für die Anmeldung. Der `LogsActivity`-
+        // Trait würde lediglich einen generischen `updated`-Eintrag erzeugen
+        // (Counter/Backup-Flags); hier wollen wir den Login als eigenes Ereignis
+        // dokumentieren — mit übersetzter Beschreibung und dem Owner als Causer
+        // (`auth()->user()` ist zu diesem Zeitpunkt noch null).
+        $passkeyModel->recordSuccessfulLoginActivity();
+
         $user = $passkeyModel->user;
 
         if ($user === null) {
