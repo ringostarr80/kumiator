@@ -50,6 +50,36 @@ final class ActivityLogAccessTest extends TestCase
     }
 
     /**
+     * Discoverability-Schutz: Der Activity-Log-Bereich ist nur sinnvoll
+     * nutzbar, wenn Admins den Einsprung-Link in der Hauptnavigation sehen.
+     * Fehlt der Link, wird das Feature still „versteckt" (URL nur per
+     * Bookmark erreichbar).
+     */
+    public function testNavigationLinkIsVisibleForUsersWithPermission(): void
+    {
+        $admin = $this->makeAdmin();
+
+        $response = $this->actingAs($admin)->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee(route('admin.activity-log'));
+    }
+
+    /**
+     * Negativ-Komplement: User ohne `activity-log.view`-Permission dürfen
+     * den Link nicht sehen — sonst landeten sie beim Klick auf einer 403.
+     */
+    public function testNavigationLinkIsHiddenForUsersWithoutPermission(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertDontSee(route('admin.activity-log'));
+    }
+
+    /**
      * Defense-in-depth: Wird die Komponente direkt gemountet (z. B. weil sie
      * jemals außerhalb der `/admin/activity-log`-Route eingebettet wird), muss
      * der eigene `authorize()`-Aufruf in `mount()` greifen — auch dann, wenn
