@@ -7,13 +7,12 @@ namespace Tests\Feature\Admin;
 use App\Livewire\Admin\ActivityLogTable;
 use App\Models\PasskeyCredential;
 use App\Models\User;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Activitylog\Facades\Activity as ActivityFacade;
 use Spatie\Activitylog\Models\Activity;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 final class ActivityLogAccessTest extends TestCase
@@ -238,15 +237,23 @@ final class ActivityLogAccessTest extends TestCase
         );
     }
 
+    /**
+     * Speist Rollen + Permissions aus dem produktiven `RoleSeeder` statt sie
+     * inline anzulegen — wenn der Seeder später um eine Permission ergänzt
+     * wird, sehen die Tests sie automatisch. Sonst entstünde Drift zwischen
+     * Test-Setup und Production-State.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(RoleSeeder::class);
+    }
+
     private function makeAdmin(): User
     {
-        $permission = Permission::findOrCreate('activity-log.view');
-
-        $admin = Role::findOrCreate('admin');
-        $admin->givePermissionTo($permission);
-
         $user = User::factory()->create();
-        $user->assignRole($admin);
+        $user->assignRole('admin');
 
         return $user;
     }
