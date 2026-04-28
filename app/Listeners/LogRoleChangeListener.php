@@ -28,6 +28,15 @@ use Spatie\Permission\Models\Role;
  * Rollenänderung landet zweimal im Activity-Log. Der Regressionstest
  * `RoleChangeActivityLogTest::testAssigningMultipleRolesAtOnceLogsSingleEntryWithAllRoleNames`
  * deckt genau das ab.
+ *
+ * Single-Guard-Annahme: Die in `properties.roles` geloggten Namen tragen keine
+ * Guard-Information mit. Das ist heute eindeutig, weil das Projekt nur den
+ * `web`-Guard verwendet (siehe `config/auth.php`). In einem Multi-Guard-Setup
+ * (z. B. zusätzlicher `api`-Guard via Sanctum-Personal-Access-Tokens mit
+ * eigenen Spatie-Rollen) kann derselbe Rollen-Name in mehreren Guards
+ * existieren — der Log-Eintrag wäre dann forensisch nicht mehr eindeutig.
+ * Vor Einführung eines weiteren Guards muss dieser Listener so erweitert
+ * werden, dass `guard_name` mit ins Property-Set wandert.
  */
 final class LogRoleChangeListener
 {
