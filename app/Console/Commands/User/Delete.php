@@ -27,7 +27,9 @@ use Illuminate\Support\Facades\DB;
  * liegt unverändert in der `personal_access_tokens`-Tabelle). Anders als beim
  * Self-Delete laufen die Passkey-Löschungen hier **mit** Eloquent-Events durch
  * — die Widerrufe sollen im Activity-Log des Admin-Pfads dokumentiert bleiben
- * (Causer = handelnder Admin).
+ * (Causer = handelnder Admin); die dadurch entstehenden linearen DB-Roundtrips
+ * (`each->deleteOrFail()` statt Bulk-DELETE) sind der bewusste Preis für die
+ * Audit-Vollständigkeit.
  *
  * Hinweis zum Session-Treiber: Die explizite Session-Löschung wirkt nur bei
  * `session.driver = database` (aktueller Projekt-Default). Bei Redis/File/Cookie
