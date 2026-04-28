@@ -237,6 +237,8 @@ return [
 
     // Activity log: domain-specific event descriptions
     'activity_passkey_login_succeeded' => 'Passkey login succeeded',
+    'activity_role_attached' => 'Role assigned',
+    'activity_role_detached' => 'Role revoked',
 
     // Morph types (display names for the morph map registered in AppServiceProvider)
     'morph_user' => 'User',

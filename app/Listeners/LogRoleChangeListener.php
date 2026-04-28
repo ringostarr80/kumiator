@@ -58,11 +58,16 @@ final class LogRoleChangeListener
             return;
         }
 
+        // `event` bleibt der stabile Maschinen-Code (für Filter/Reports),
+        // `description` ist die übersetzte Klartext-Beschreibung für die UI.
+        // Die Übersetzungs-Schlüssel sind bewusst nach dem Schema
+        // `app.activity_<event>` benannt; Tests in
+        // `RoleChangeActivityLogTest` verifizieren ihre Existenz.
         Activity::useLog('role')
             ->performedOn($subject)
             ->withProperties(['roles' => $roleNames])
             ->event($event)
-            ->log($event);
+            ->log(__('app.activity_' . $event));
     }
 
     /**

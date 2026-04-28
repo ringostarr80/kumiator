@@ -8,6 +8,7 @@ use App\Listeners\LogRoleChangeListener;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Log\Logger;
+use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Log;
 use Monolog\Handler\TestHandler;
 use Monolog\Level;
@@ -275,6 +276,69 @@ final class RoleChangeActivityLogTest extends TestCase
             ['admin'],
             $activity->properties?->toArray()['roles'] ?? [],
         );
+    }
+
+    /**
+     * Sichert die Trennung zwischen Maschinen-Code (`event`) und Klartext
+     * (`description`): `event` bleibt der stabile Filter-Anker
+     * (`role_attached` / `role_detached`), die Description ist die
+     * übersetzte Beschreibung für die Activity-Log-UI. Schlägt an, falls
+     * jemand die Listener-Logik versehentlich auf den alten Modus
+     * zurückdreht (Description == Event).
+     */
+    public function testActivityDescriptionUsesTranslatedText(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('admin');
+
+        $attached = Activity::query()
+            ->where('log_name', 'role')
+            ->where('event', 'role_attached')
+            ->where('subject_id', $user->getKey())
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($attached);
+        $this->assertSame(__('app.activity_role_attached'), $attached->description);
+        $this->assertNotSame('role_attached', $attached->description);
+
+        $user->removeRole('admin');
+
+        $detached = Activity::query()
+            ->where('log_name', 'role')
+            ->where('event', 'role_detached')
+            ->where('subject_id', $user->getKey())
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($detached);
+        $this->assertSame(__('app.activity_role_detached'), $detached->description);
+        $this->assertNotSame('role_detached', $detached->description);
+    }
+
+    /**
+     * Schützt das Übersetzungs-Schema `app.activity_<event>`: ohne diese
+     * Schlüssel würde Laravel den Key wörtlich zurückgeben und der
+     * Maschinen-Code (`role_attached`) landete sichtbar in der UI. Beide
+     * Locales prüfen, damit weder DE noch EN still hinten runterfällt.
+     */
+    public function testTranslationKeysExistForBothRoleEventsInBothLocales(): void
+    {
+        foreach (['role_attached', 'role_detached'] as $event) {
+            $key = 'app.activity_' . $event;
+
+            foreach (['de', 'en'] as $locale) {
+                $this->assertNotSame(
+                    $key,
+                    Lang::get($key, [], $locale),
+                    sprintf(
+                        "Übersetzungs-Schlüssel '%s' fehlt in Locale '%s'.",
+                        $key,
+                        $locale,
+                    ),
+                );
+            }
+        }
     }
 
     protected function setUp(): void

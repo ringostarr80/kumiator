@@ -240,6 +240,8 @@ return [
 
     // Activity-Log: fachliche Ereignis-Beschreibungen
     'activity_passkey_login_succeeded' => 'Passkey-Anmeldung erfolgreich',
+    'activity_role_attached' => 'Rolle zugewiesen',
+    'activity_role_detached' => 'Rolle entzogen',
 
     // Morph-Typen (Anzeigenamen für die in AppServiceProvider registrierte Morph-Map)
     'morph_user' => 'Benutzer',
