@@ -29,6 +29,10 @@ class PasskeyManagerForm extends Component
      */
     public Collection $passkeys;
 
+    public ?string $editingPasskeyId = null;
+
+    public string $editingPasskeyName = '';
+
     private PasskeyCredentialRepositoryContract $repository;
 
     public function boot(PasskeyCredentialRepositoryContract $repository): void
@@ -45,6 +49,59 @@ class PasskeyManagerForm extends Component
     public function onPasskeyRegistered(): void
     {
         $this->loadPasskeys();
+    }
+
+    /**
+     * Switch the row of the given passkey into rename-edit mode and prefill
+     * the input with the current name.
+     */
+    public function startRenaming(string $passkeyId): void
+    {
+        $passkey = $this->repository->findByIdOrFail($passkeyId);
+
+        Gate::authorize('update', $passkey);
+
+        $this->editingPasskeyId = $passkey->id;
+        $this->editingPasskeyName = $passkey->name;
+        $this->resetValidation();
+    }
+
+    /**
+     * Leave rename-edit mode without persisting changes.
+     */
+    public function cancelRenaming(): void
+    {
+        $this->editingPasskeyId = null;
+        $this->editingPasskeyName = '';
+        $this->resetValidation();
+    }
+
+    /**
+     * Persist the new name for the currently-edited passkey. Authorization
+     * is delegated to PasskeyCredentialPolicy.
+     */
+    public function renamePasskey(): void
+    {
+        $this->validate([
+            'editingPasskeyName' => 'required|string|max:80',
+        ]);
+
+        if ($this->editingPasskeyId === null) {
+            return;
+        }
+
+        $passkey = $this->repository->findByIdOrFail($this->editingPasskeyId);
+
+        Gate::authorize('update', $passkey);
+
+        $this->repository->updateName($passkey, trim($this->editingPasskeyName));
+
+        $this->editingPasskeyId = null;
+        $this->editingPasskeyName = '';
+
+        $this->loadPasskeys();
+
+        session()->flash('passkey_renamed', true);
     }
 
     /**

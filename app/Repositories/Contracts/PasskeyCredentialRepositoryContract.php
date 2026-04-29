@@ -52,6 +52,11 @@ interface PasskeyCredentialRepositoryContract
     public function getSerializedCredentialSource(PasskeyCredential $model): string;
 
     /**
+     * Update the human-readable name of a passkey credential.
+     */
+    public function updateName(PasskeyCredential $model, string $name): void;
+
+    /**
      * Delete a passkey credential by model instance.
      */
     public function delete(PasskeyCredential $model): void;

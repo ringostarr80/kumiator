@@ -187,6 +187,8 @@ return [
     'passkey_added' => 'Passkey erfolgreich hinzugefügt.',
     'passkey_deleted' => 'Passkey gelöscht.',
     'passkey_delete_confirm' => 'Möchtest du diesen Passkey wirklich löschen?',
+    'passkey_rename' => 'Umbenennen',
+    'passkey_renamed' => 'Passkey umbenannt.',
     'passkey_registered_at' => 'Registriert am',
     'passkey_last_used' => 'Zuletzt verwendet',
     'passkey_never_used' => 'Noch nicht verwendet',

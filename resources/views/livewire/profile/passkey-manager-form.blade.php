@@ -14,6 +14,12 @@
             </div>
         @endif
 
+        @if (session('passkey_renamed'))
+            <div class="mb-4 font-medium text-sm text-green-600">
+                {{ __('app.passkey_renamed') }}
+            </div>
+        @endif
+
         {{-- List of registered passkeys --}}
         @if ($passkeys->isEmpty())
             <p class="text-sm text-gray-600">{{ __('app.passkeys_empty') }}</p>
@@ -22,25 +28,59 @@
                 @foreach ($passkeys as $passkey)
                     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                          wire:key="passkey-{{ $passkey->id }}">
-                        <div>
-                            <p class="font-medium text-sm text-gray-900">{{ $passkey->name }}</p>
-                            <p class="text-xs text-gray-500 mt-0.5">
-                                {{ __('app.passkey_registered_at') }}: {{ $passkey->created_at->format('d.m.Y') }}
-                                &nbsp;·&nbsp;
-                                @if ($passkey->last_used_at)
-                                    {{ __('app.passkey_last_used') }}: {{ $passkey->last_used_at->diffForHumans() }}
-                                @else
-                                    {{ __('app.passkey_never_used') }}
-                                @endif
-                            </p>
-                        </div>
-                        <x-danger-button
-                            size="sm"
-                            wire:click="deletePasskey('{{ $passkey->id }}')"
-                            wire:confirm="{{ __('app.passkey_delete_confirm') }}"
-                        >
-                            {{ __('app.delete') }}
-                        </x-danger-button>
+                        @if ($editingPasskeyId === $passkey->id)
+                            <div class="flex-1 mr-3">
+                                <x-input
+                                    type="text"
+                                    wire:model="editingPasskeyName"
+                                    maxlength="80"
+                                    wire:keydown.enter="renamePasskey"
+                                    wire:keydown.escape="cancelRenaming"
+                                    class="w-full"
+                                    autofocus
+                                />
+                                @error('editingPasskeyName')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <x-button type="button" wire:click="renamePasskey">
+                                    {{ __('app.save') }}
+                                </x-button>
+                                <x-secondary-button type="button" wire:click="cancelRenaming">
+                                    {{ __('app.cancel') }}
+                                </x-secondary-button>
+                            </div>
+                        @else
+                            <div>
+                                <p class="font-medium text-sm text-gray-900">{{ $passkey->name }}</p>
+                                <p class="text-xs text-gray-500 mt-0.5">
+                                    {{ __('app.passkey_registered_at') }}: {{ $passkey->created_at->format('d.m.Y') }}
+                                    &nbsp;·&nbsp;
+                                    @if ($passkey->last_used_at)
+                                        {{ __('app.passkey_last_used') }}: {{ $passkey->last_used_at->diffForHumans() }}
+                                    @else
+                                        {{ __('app.passkey_never_used') }}
+                                    @endif
+                                </p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <x-secondary-button
+                                    size="sm"
+                                    type="button"
+                                    wire:click="startRenaming('{{ $passkey->id }}')"
+                                >
+                                    {{ __('app.passkey_rename') }}
+                                </x-secondary-button>
+                                <x-danger-button
+                                    size="sm"
+                                    wire:click="deletePasskey('{{ $passkey->id }}')"
+                                    wire:confirm="{{ __('app.passkey_delete_confirm') }}"
+                                >
+                                    {{ __('app.delete') }}
+                                </x-danger-button>
+                            </div>
+                        @endif
                     </div>
                 @endforeach
             </div>

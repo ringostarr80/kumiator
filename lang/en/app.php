@@ -182,6 +182,8 @@ return [
     'passkey_added' => 'Passkey added successfully.',
     'passkey_deleted' => 'Passkey deleted.',
     'passkey_delete_confirm' => 'Are you sure you want to delete this passkey?',
+    'passkey_rename' => 'Rename',
+    'passkey_renamed' => 'Passkey renamed.',
     'passkey_registered_at' => 'Registered on',
     'passkey_last_used' => 'Last used',
     'passkey_never_used' => 'Never used',
