@@ -29,7 +29,7 @@
                     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                          wire:key="passkey-{{ $passkey->id }}">
                         @if ($editingPasskeyId === $passkey->id)
-                            <div class="flex-1 mr-3">
+                            <div class="flex-1 mr-3" wire:key="passkey-{{ $passkey->id }}-edit-input">
                                 <x-input
                                     type="text"
                                     wire:model="editingPasskeyName"
@@ -43,16 +43,16 @@
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
-                            <div class="flex items-center gap-2">
-                                <x-button type="button" wire:click="renamePasskey">
+                            <div class="flex items-center gap-2" wire:key="passkey-{{ $passkey->id }}-edit-actions">
+                                <x-button type="button" wire:click="renamePasskey" wire:key="passkey-{{ $passkey->id }}-save">
                                     {{ __('app.save') }}
                                 </x-button>
-                                <x-secondary-button type="button" wire:click="cancelRenaming">
+                                <x-secondary-button type="button" wire:click="cancelRenaming" wire:key="passkey-{{ $passkey->id }}-cancel">
                                     {{ __('app.cancel') }}
                                 </x-secondary-button>
                             </div>
                         @else
-                            <div>
+                            <div wire:key="passkey-{{ $passkey->id }}-info">
                                 <p class="font-medium text-sm text-gray-900">{{ $passkey->name }}</p>
                                 <p class="text-xs text-gray-500 mt-0.5">
                                     {{ __('app.passkey_registered_at') }}: {{ $passkey->created_at->format('d.m.Y') }}
@@ -64,11 +64,12 @@
                                     @endif
                                 </p>
                             </div>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2" wire:key="passkey-{{ $passkey->id }}-view-actions">
                                 <x-secondary-button
                                     size="sm"
                                     type="button"
                                     wire:click="startRenaming('{{ $passkey->id }}')"
+                                    wire:key="passkey-{{ $passkey->id }}-rename"
                                 >
                                     {{ __('app.passkey_rename') }}
                                 </x-secondary-button>
@@ -76,6 +77,7 @@
                                     size="sm"
                                     wire:click="deletePasskey('{{ $passkey->id }}')"
                                     wire:confirm="{{ __('app.passkey_delete_confirm') }}"
+                                    wire:key="passkey-{{ $passkey->id }}-delete"
                                 >
                                     {{ __('app.delete') }}
                                 </x-danger-button>
