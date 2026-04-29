@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
 use App\Services\WebAuthn\Contracts\WebAuthnValidatorFactoryContract;
+use Illuminate\Support\Facades\Auth;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -130,6 +131,31 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
         }
 
         return $user;
+    }
+
+    /**
+     * Schließt die Passkey-Anmeldung ab: Login im Web-Guard, gewrappt von
+     * `PasskeyLoginContext::markActive()`/`clear()`. Der Marker signalisiert
+     * dem `LogAuthenticationActivityListener::handleLogin()`, dass der gerade
+     * laufende `Login`-Event aus dem Passkey-Pfad stammt — der dedizierte
+     * Activity-Eintrag aus `verify()` (über `recordSuccessfulLoginActivity()`)
+     * würde sonst von einem zusätzlichen `password_login_succeeded`-Eintrag
+     * begleitet.
+     *
+     * `try/finally` stellt sicher, dass der Marker auch dann zurückgesetzt
+     * wird, wenn `Auth::login()` eine Exception wirft (z. B. SessionGuard-
+     * interner Fehler) — sonst würde der nächste echte Passwort-Login im
+     * selben Request still verschluckt.
+     */
+    public function loginAuthenticatedUser(User $user): void
+    {
+        PasskeyLoginContext::markActive();
+
+        try {
+            Auth::login($user);
+        } finally {
+            PasskeyLoginContext::clear();
+        }
     }
 
     /**

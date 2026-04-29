@@ -8,6 +8,7 @@ use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Mockery\MockInterface;
@@ -199,6 +200,14 @@ final class PasskeyAuthenticationTest extends TestCase
 
         $this->partialMock(PasskeyAuthenticationContract::class, function (MockInterface $mock) use ($user): void {
             $mock->shouldReceive('verify')->andReturn($user);
+            // `loginAuthenticatedUser` ist nun Teil des Contracts; im
+            // Test-Doppel muss es gegen das echte `Auth::login()` delegieren,
+            // damit `assertAuthenticatedAs()` greift.
+            $mock->shouldReceive('loginAuthenticatedUser')
+                ->with($user)
+                ->andReturnUsing(function (User $u): void {
+                    Auth::login($u);
+                });
         });
 
         $response = $this->postJson(self::AUTHENTICATE_URL, []);

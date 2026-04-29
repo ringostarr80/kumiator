@@ -13,7 +13,6 @@ use App\Services\WebAuthn\Contracts\WebAuthnCeremonySessionContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Auth;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
 use Webauthn\PublicKeyCredentialRequestOptions;
 
@@ -113,7 +112,11 @@ final class PasskeyAuthenticationController extends Controller
             );
         }
 
-        Auth::login($user);
+        // Service kapselt das `Auth::login()` zusammen mit dem
+        // Passkey-Login-Marker (verhindert Doppel-Logging im Activity-Log,
+        // siehe `LogAuthenticationActivityListener`). Session-Regeneration
+        // bleibt im Controller, weil Session-Handling Web-Layer-Sache ist.
+        $this->authenticationService->loginAuthenticatedUser($user);
         $request->session()->regenerate();
 
         return response()->json(['redirect' => config('fortify.home', '/dashboard')]);

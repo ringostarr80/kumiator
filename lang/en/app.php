@@ -237,6 +237,10 @@ return [
 
     // Activity log: domain-specific event descriptions
     'activity_passkey_login_succeeded' => 'Passkey login succeeded',
+    'activity_password_login_succeeded' => 'Password login succeeded',
+    'activity_logout' => 'Logout',
+    'activity_login_failed' => 'Login failed',
+    'activity_login_locked_out' => 'Login locked out (too many failed attempts)',
     'activity_role_attached' => 'Role assigned',
     'activity_role_detached' => 'Role revoked',
 

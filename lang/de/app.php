@@ -240,6 +240,10 @@ return [
 
     // Activity-Log: fachliche Ereignis-Beschreibungen
     'activity_passkey_login_succeeded' => 'Passkey-Anmeldung erfolgreich',
+    'activity_password_login_succeeded' => 'Passwort-Anmeldung erfolgreich',
+    'activity_logout' => 'Abmeldung',
+    'activity_login_failed' => 'Anmeldung fehlgeschlagen',
+    'activity_login_locked_out' => 'Anmeldung gesperrt (zu viele Fehlversuche)',
     'activity_role_attached' => 'Rolle zugewiesen',
     'activity_role_detached' => 'Rolle entzogen',
 
