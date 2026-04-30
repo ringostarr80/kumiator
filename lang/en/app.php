@@ -249,6 +249,7 @@ return [
     'activity_2fa_enabled' => 'Two-factor authentication enabled',
     'activity_2fa_confirmed' => 'Two-factor authentication confirmed',
     'activity_2fa_disabled' => 'Two-factor authentication disabled',
+    'activity_2fa_setup_aborted' => 'Two-factor setup aborted',
     'activity_2fa_recovery_codes_regenerated' => 'Recovery codes regenerated',
     'activity_2fa_recovery_code_used' => 'Recovery code used',
     'activity_2fa_failed' => 'Two-factor code invalid',

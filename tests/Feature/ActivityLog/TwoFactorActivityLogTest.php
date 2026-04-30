@@ -8,10 +8,10 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Lang;
+use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
 use Laravel\Fortify\Events\RecoveryCodeReplaced;
 use Laravel\Fortify\Events\RecoveryCodesGenerated;
 use Laravel\Fortify\Events\TwoFactorAuthenticationConfirmed;
-use Laravel\Fortify\Events\TwoFactorAuthenticationDisabled;
 use Laravel\Fortify\Events\TwoFactorAuthenticationEnabled;
 use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -48,14 +48,41 @@ final class TwoFactorActivityLogTest extends TestCase
         $this->assertActivityLogged($user, '2fa_confirmed', 'app.activity_2fa_confirmed');
     }
 
-    public function testDisablingTwoFactorIsLogged(): void
+    public function testDisablingConfirmedTwoFactorIsLoggedAsDisabled(): void
     {
         $user = User::factory()->create();
+        $user->forceFill([
+            'two_factor_secret' => 'irrelevant-secret',
+            'two_factor_recovery_codes' => 'irrelevant-codes',
+            'two_factor_confirmed_at' => now(),
+        ])->saveOrFail();
+        // `fresh()` lädt den User aus der DB neu, damit `two_factor_confirmed_at`
+        // im `original`-Snapshot des Models steht — Voraussetzung dafür, dass
+        // `wasChanged()` im Listener korrekt arbeitet (siehe Kommentar dort).
+        $user = $user->fresh();
+        $this->assertNotNull($user);
         Activity::query()->delete();
 
-        Event::dispatch(new TwoFactorAuthenticationDisabled($user));
+        app(DisableTwoFactorAuthentication::class)($user);
 
         $this->assertActivityLogged($user, '2fa_disabled', 'app.activity_2fa_disabled');
+    }
+
+    public function testCancellingUnconfirmedTwoFactorSetupIsLoggedAsSetupAborted(): void
+    {
+        $user = User::factory()->create();
+        $user->forceFill([
+            'two_factor_secret' => 'irrelevant-secret',
+            'two_factor_recovery_codes' => 'irrelevant-codes',
+            // `two_factor_confirmed_at` bleibt null — Setup wurde nie bestätigt.
+        ])->saveOrFail();
+        $user = $user->fresh();
+        $this->assertNotNull($user);
+        Activity::query()->delete();
+
+        app(DisableTwoFactorAuthentication::class)($user);
+
+        $this->assertActivityLogged($user, '2fa_setup_aborted', 'app.activity_2fa_setup_aborted');
     }
 
     public function testRegeneratingRecoveryCodesIsLogged(): void
@@ -118,6 +145,7 @@ final class TwoFactorActivityLogTest extends TestCase
         yield 'enabled' => ['app.activity_2fa_enabled'];
         yield 'confirmed' => ['app.activity_2fa_confirmed'];
         yield 'disabled' => ['app.activity_2fa_disabled'];
+        yield 'setup aborted' => ['app.activity_2fa_setup_aborted'];
         yield 'recovery codes regenerated' => ['app.activity_2fa_recovery_codes_regenerated'];
         yield 'recovery code used' => ['app.activity_2fa_recovery_code_used'];
         yield 'failed' => ['app.activity_2fa_failed'];

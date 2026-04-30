@@ -50,7 +50,29 @@ final class LogTwoFactorActivityListener
 
     public function handleDisabled(TwoFactorAuthenticationDisabled $event): void
     {
-        $this->logForUser($event->user, '2fa_disabled', __('app.activity_2fa_disabled'));
+        $user = $event->user;
+
+        // Fortify dispatcht dasselbe Event in zwei fachlich unterschiedlichen
+        // Situationen: (a) ein bereits bestätigtes 2FA wird entfernt, (b) ein
+        // angefangener, aber nie bestätigter Setup wird verworfen. Beides geht
+        // sicherheitstechnisch verschieden weit (Schutz tatsächlich gefallen
+        // vs. Aufräumen vor dem ersten Wirken). `wasChanged()` prüft direkt
+        // nach dem Save in der Fortify-Action: war `two_factor_confirmed_at`
+        // vor dem Disable belegt (Timestamp → null), ist es geändert → echte
+        // Deaktivierung. War es schon null (wird auf null „gesetzt"), kein
+        // Change → Setup-Abbruch.
+        //
+        // Voraussetzung: das User-Model muss `two_factor_confirmed_at` in
+        // seinem `original`-Snapshot kennen — das ist im Produktivpfad immer
+        // der Fall, weil der User vor dem Disable aus der DB geladen wird.
+        // In Tests ggf. `$user->fresh()` vor dem Disable aufrufen.
+        if ($user->wasChanged('two_factor_confirmed_at')) {
+            $this->logForUser($user, '2fa_disabled', __('app.activity_2fa_disabled'));
+
+            return;
+        }
+
+        $this->logForUser($user, '2fa_setup_aborted', __('app.activity_2fa_setup_aborted'));
     }
 
     public function handleRecoveryCodesGenerated(RecoveryCodesGenerated $event): void
