@@ -8,6 +8,7 @@ use App\Models\PasskeyCredential;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Lang;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
@@ -32,11 +33,12 @@ final class PasskeyCredentialActivityLogTest extends TestCase
             ->where('log_name', 'passkey')
             ->where('subject_type', $credential->getMorphClass())
             ->where('subject_id', $credential->getKey())
-            ->where('event', 'created')
+            ->where('event', 'passkey_registered')
             ->latest('id')
             ->first();
 
         $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_passkey_registered'), $activity->description);
         $changes = $activity->attribute_changes?->toArray() ?? [];
         $this->assertArrayHasKey('attributes', $changes);
         $this->assertIsArray($changes['attributes']);
@@ -50,16 +52,34 @@ final class PasskeyCredentialActivityLogTest extends TestCase
 
         $activity = Activity::query()
             ->where('log_name', 'passkey')
-            ->where('event', 'updated')
+            ->where('event', 'passkey_renamed')
             ->latest('id')
             ->first();
 
         $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_passkey_renamed'), $activity->description);
         $changes = $activity->attribute_changes?->toArray() ?? [];
         $this->assertIsArray($changes['attributes'] ?? null);
         $this->assertSame('Neu', $changes['attributes']['name'] ?? null);
         $this->assertIsArray($changes['old'] ?? null);
         $this->assertSame('Alt', $changes['old']['name'] ?? null);
+    }
+
+    public function testDeletingPasskeyCredentialCreatesActivityLogEntry(): void
+    {
+        $credential = PasskeyCredential::factory()->create(['name' => 'Bye']);
+        $subjectId = $credential->getKey();
+        $credential->deleteOrFail();
+
+        $activity = Activity::query()
+            ->where('log_name', 'passkey')
+            ->where('subject_id', $subjectId)
+            ->where('event', 'passkey_removed')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_passkey_removed'), $activity->description);
     }
 
     public function testActivityLogNeverContainsSecretFields(): void
@@ -69,7 +89,7 @@ final class PasskeyCredentialActivityLogTest extends TestCase
         $activity = Activity::query()
             ->where('log_name', 'passkey')
             ->where('subject_id', $credential->getKey())
-            ->where('event', 'created')
+            ->where('event', 'passkey_registered')
             ->latest('id')
             ->first();
 
@@ -145,7 +165,7 @@ final class PasskeyCredentialActivityLogTest extends TestCase
 
         $activity = Activity::query()
             ->where('log_name', 'passkey')
-            ->where('event', 'updated')
+            ->where('event', 'passkey_renamed')
             ->where('subject_id', $credential->getKey())
             ->first();
 
@@ -207,16 +227,9 @@ final class PasskeyCredentialActivityLogTest extends TestCase
         );
     }
 
-    /**
-     * Schützt den Übersetzungs-Schlüssel `app.activity_passkey_login_succeeded`:
-     * fehlt er, würde Laravel den Key wörtlich zurückgeben und der
-     * Maschinen-Code landete sichtbar in der UI. Beide Locales prüfen,
-     * damit weder DE noch EN still hinten runterfällt.
-     */
-    public function testTranslationKeyForLoginEventExistsInBothLocales(): void
+    #[DataProvider('passkeyEventTranslationKeyProvider')]
+    public function testTranslationKeyForPasskeyEventExistsInBothLocales(string $key): void
     {
-        $key = 'app.activity_passkey_login_succeeded';
-
         foreach (['de', 'en'] as $locale) {
             $this->assertNotSame(
                 $key,
@@ -228,5 +241,21 @@ final class PasskeyCredentialActivityLogTest extends TestCase
                 ),
             );
         }
+    }
+
+    /**
+     * Schützt die Übersetzungs-Schlüssel der fachlichen Passkey-Events:
+     * fehlt einer, würde Laravel den Key wörtlich zurückgeben und der
+     * Maschinen-Code landete sichtbar in der UI. Beide Locales prüfen,
+     * damit weder DE noch EN still hinten runterfällt.
+     *
+     * @return iterable<string, array{0: string}>
+     */
+    public static function passkeyEventTranslationKeyProvider(): iterable
+    {
+        yield 'login succeeded' => ['app.activity_passkey_login_succeeded'];
+        yield 'registered' => ['app.activity_passkey_registered'];
+        yield 'renamed' => ['app.activity_passkey_renamed'];
+        yield 'removed' => ['app.activity_passkey_removed'];
     }
 }

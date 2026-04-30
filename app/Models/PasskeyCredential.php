@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\Facades\Activity;
+use Spatie\Activitylog\Models\Activity as ActivityModel;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -94,7 +95,10 @@ final class PasskeyCredential extends Model
             ->logOnly(['name', 'aaguid'])
             ->logOnlyDirty()
             ->dontLogEmptyChanges()
-            ->useLogName('passkey');
+            ->useLogName('passkey')
+            ->setDescriptionForEvent(
+                fn (string $eventName): string => __('app.activity_passkey_' . self::mapLifecycleEventName($eventName)),
+            );
     }
 
     /**
@@ -130,6 +134,41 @@ final class PasskeyCredential extends Model
     }
 
     /**
+     * Mappt das generische Eloquent-Event eines Passkey-Activity-Eintrags
+     * (created/updated/deleted) auf einen fachlichen Code
+     * (passkey_registered/passkey_renamed/passkey_removed), bevor der Eintrag
+     * gespeichert wird. Aufgerufen aus einem `Activity::saving`-Listener im
+     * {@see \App\Providers\AppServiceProvider}.
+     *
+     * Hintergrund: Der `LogsActivity`-Trait dieser Spatie-Version hat keinen
+     * `tapActivity`-Hook (anders als ältere Versionen suggerieren) — der Trait
+     * persistiert das Event direkt via `ActivityLogger::event()`. Ein globaler
+     * `saving`-Listener auf dem Activity-Model ist der einzige Weg, den
+     * Wert nach Spatie-eigenem Setup, aber vor dem Insert, anzupassen. Die
+     * Mapping-Logik bleibt hier in der Domain, der Listener hängt nur dran.
+     */
+    public static function applyEventLabelToActivity(ActivityModel $activity): void
+    {
+        if ($activity->log_name !== 'passkey') {
+            return;
+        }
+
+        $event = $activity->event;
+
+        if (!is_string($event)) {
+            return;
+        }
+
+        $mapped = self::mapLifecycleEventName($event);
+
+        if ($mapped === $event) {
+            return;
+        }
+
+        $activity->event = 'passkey_' . $mapped;
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -142,5 +181,22 @@ final class PasskeyCredential extends Model
             'counter' => 'integer',
             'last_used_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Mappt die generischen Eloquent-Lifecycle-Event-Namen auf fachliche
+     * Suffixe für Translation-Keys und Event-Codes. Da `aaguid` post-create
+     * unveränderlich ist, kann ein `updated` realistisch nur durch eine
+     * Namensänderung ausgelöst werden — `renamed` ist daher die korrekte
+     * Bezeichnung.
+     */
+    private static function mapLifecycleEventName(string $eventName): string
+    {
+        return match ($eventName) {
+            'created' => 'registered',
+            'updated' => 'renamed',
+            'deleted' => 'removed',
+            default => $eventName,
+        };
     }
 }

@@ -238,6 +238,9 @@ return [
     'activity_log_deleted_record' => ':type (deleted)',
 
     // Activity log: domain-specific event descriptions
+    'activity_passkey_registered' => 'Passkey registered',
+    'activity_passkey_renamed' => 'Passkey renamed',
+    'activity_passkey_removed' => 'Passkey deleted',
     'activity_passkey_login_succeeded' => 'Passkey login succeeded',
     'activity_password_login_succeeded' => 'Password login succeeded',
     'activity_logout' => 'Logout',

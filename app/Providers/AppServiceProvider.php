@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Spatie\Activitylog\Models\Activity;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -45,6 +46,17 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         Gate::policy(PasskeyCredential::class, PasskeyCredentialPolicy::class);
+
+        // Vor dem Persistieren eines Passkey-Activity-Log-Eintrags den
+        // generischen Eloquent-Event-Namen (created/updated/deleted) auf
+        // einen fachlichen Code umlabeln (passkey_registered/_renamed/
+        // _removed). Spatie's `LogsActivity`-Trait dieser Version bietet
+        // keinen `tapActivity`-Hook; ein `saving`-Listener auf dem Activity-
+        // Model ist der einzige stabile Punkt zwischen Trait-Setup und Insert.
+        // Die Mapping-Logik bleibt im Domain-Model (PasskeyCredential), hier
+        // hängt nur der Listener dran — `boot()` läuft genau einmal pro
+        // Application-Lifetime, daher keine Doppel-Registrierung.
+        Activity::saving(static fn (Activity $activity) => PasskeyCredential::applyEventLabelToActivity($activity));
 
         // Passkey authentication options (guests): IP-based, 20 requests per minute.
         // Limits e-mail enumeration via the allowCredentials field without impacting

@@ -241,6 +241,9 @@ return [
     'activity_log_deleted_record' => ':type (gelöscht)',
 
     // Activity-Log: fachliche Ereignis-Beschreibungen
+    'activity_passkey_registered' => 'Passkey registriert',
+    'activity_passkey_renamed' => 'Passkey umbenannt',
+    'activity_passkey_removed' => 'Passkey gelöscht',
     'activity_passkey_login_succeeded' => 'Passkey-Anmeldung erfolgreich',
     'activity_password_login_succeeded' => 'Passwort-Anmeldung erfolgreich',
     'activity_logout' => 'Abmeldung',
