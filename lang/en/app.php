@@ -246,6 +246,12 @@ return [
     'activity_logout' => 'Logout',
     'activity_login_failed' => 'Login failed',
     'activity_login_locked_out' => 'Login locked out (too many failed attempts)',
+    'activity_2fa_enabled' => 'Two-factor authentication enabled',
+    'activity_2fa_confirmed' => 'Two-factor authentication confirmed',
+    'activity_2fa_disabled' => 'Two-factor authentication disabled',
+    'activity_2fa_recovery_codes_regenerated' => 'Recovery codes regenerated',
+    'activity_2fa_recovery_code_used' => 'Recovery code used',
+    'activity_2fa_failed' => 'Two-factor code invalid',
     'activity_role_attached' => 'Role assigned',
     'activity_role_detached' => 'Role revoked',
 
