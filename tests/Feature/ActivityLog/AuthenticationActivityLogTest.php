@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\ActivityLog;
 
+use App\Livewire\Profile\LogoutOtherBrowserSessionsForm;
 use App\Models\User;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use Illuminate\Auth\Events\Failed;
@@ -14,9 +15,11 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\GenericUser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Lang;
 use Laravel\Fortify\Events\PasswordUpdatedViaController;
+use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
@@ -290,6 +293,41 @@ final class AuthenticationActivityLogTest extends TestCase
         $this->assertSame($user->getKey(), $activity->subject_id);
     }
 
+    /**
+     * Den Database-Driver-Pfad (Happy + Wrong-Password) lässt sich hier nicht
+     * sinnvoll durch `Livewire::test` simulieren: Livewire erstellt intern
+     * einen eigenen Request, dem die Session-Middleware nichts zuweist, weil
+     * `phpunit.xml` `SESSION_DRIVER=array` erzwingt. Eine vollständige Setup-
+     * Reproduktion wäre brüchig. Der Happy-Path ist produktiv über
+     * `profile/show.blade.php` plus Code-Review abgedeckt; hier prüfen wir die
+     * sicherheitsrelevante Negativ-Garantie: bei nicht-DB-Driver darf KEIN
+     * Activity-Eintrag entstehen.
+     */
+    public function testLogoutOtherBrowserSessionsWithArrayDriverDoesNotLog(): void
+    {
+        // Mit array-Driver terminiert der Parent gar keine Session — daher
+        // darf auch kein Activity-Eintrag entstehen.
+        Config::set('session.driver', 'array');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Activity::query()->delete();
+
+        Livewire::test(LogoutOtherBrowserSessionsForm::class)
+            ->set('password', 'password')
+            ->call('logoutOtherBrowserSessions')
+            ->assertSuccessful();
+
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('log_name', 'auth')
+                ->where('event', 'other_sessions_logged_out')
+                ->count(),
+        );
+    }
+
     public function testPasswordUpdateWithNonEloquentAuthenticatableIsSilentlySkipped(): void
     {
         Activity::query()->delete();
@@ -318,6 +356,7 @@ final class AuthenticationActivityLogTest extends TestCase
             'app.activity_login_locked_out',
             'app.activity_password_updated',
             'app.activity_password_reset',
+            'app.activity_other_sessions_logged_out',
         ];
 
         foreach ($keys as $key) {

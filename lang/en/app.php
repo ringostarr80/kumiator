@@ -248,6 +248,7 @@ return [
     'activity_login_locked_out' => 'Login locked out (too many failed attempts)',
     'activity_password_updated' => 'Password changed',
     'activity_password_reset' => 'Password reset via reset link',
+    'activity_other_sessions_logged_out' => 'Other browser sessions logged out',
     'activity_2fa_enabled' => 'Two-factor authentication enabled',
     'activity_2fa_confirmed' => 'Two-factor authentication confirmed',
     'activity_2fa_disabled' => 'Two-factor authentication disabled',

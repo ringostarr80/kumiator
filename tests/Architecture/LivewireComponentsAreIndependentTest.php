@@ -39,10 +39,19 @@ final class LivewireComponentsAreIndependentTest
                 Selector::inNamespace('/^App\\\\Services\\\\.*\\\\Contracts$/', true),
                 Selector::inNamespace('Illuminate'),
                 Selector::inNamespace('Livewire'),
+                // Erweiterung von Jetstream-Profilkomponenten ist erlaubt, damit
+                // wir Standard-Forms (z. B. LogoutOtherBrowserSessionsForm) um
+                // projekt-spezifisches Verhalten ergänzen können, ohne sie
+                // komplett neu zu implementieren.
+                Selector::inNamespace('Laravel\\Jetstream\\Http\\Livewire'),
+                // Activity-Logging direkt aus Komponenten für Sicherheits-Events
+                // ohne Framework-Hook (z. B. Jetstreams Form feuert kein Event).
+                Selector::inNamespace('Spatie\\Activitylog\\Facades'),
             )
             ->because(
                 'Livewire-Komponenten dürfen nur von Models, DTOs, Repository- '
-                . 'und Service-Contracts, Illuminate und Livewire abhängen.',
+                . 'und Service-Contracts, Illuminate, Livewire, Jetstream-Profil-'
+                . 'komponenten (zur Erweiterung) und der Activity-Facade abhängen.',
                 'Sie sind eine Präsentationsschicht und dürfen keine konkreten '
                 . 'Services oder Repositories kennen — DI erfolgt über Contracts. '
                 . 'Geschäftslogik gehört in die Service-Schicht.',
