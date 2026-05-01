@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
+use Laravel\Fortify\Events\PasswordUpdatedViaController;
 
 class UpdateUserPassword implements UpdatesUserPasswords
 {
@@ -30,6 +31,11 @@ class UpdateUserPassword implements UpdatesUserPasswords
 
         $user->forceFill([
             'password' => Hash::make($input['password']),
-        ])->save();
+        ])->saveOrFail();
+
+        // Jetstreams `UpdatePasswordForm` ruft diese Action direkt auf und
+        // feuert das Fortify-Event nicht — also hier dispatchen, damit der
+        // `LogAuthenticationActivityListener` einen Eintrag schreibt.
+        event(new PasswordUpdatedViaController($user));
     }
 }
