@@ -10,11 +10,13 @@ use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\GenericUser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Lang;
+use Laravel\Fortify\Events\PasswordUpdatedViaController;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
@@ -250,6 +252,57 @@ final class AuthenticationActivityLogTest extends TestCase
         $this->assertArrayNotHasKey('email_hash', $properties);
     }
 
+    public function testPasswordUpdatedViaControllerIsLogged(): void
+    {
+        $user = User::factory()->create();
+        Activity::query()->delete();
+
+        Event::dispatch(new PasswordUpdatedViaController($user));
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'password_updated')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_password_updated'), $activity->description);
+        $this->assertSame($user->getKey(), $activity->causer_id);
+        $this->assertSame($user->getKey(), $activity->subject_id);
+    }
+
+    public function testPasswordResetIsLogged(): void
+    {
+        $user = User::factory()->create();
+        Activity::query()->delete();
+
+        Event::dispatch(new PasswordReset($user));
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'password_reset')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_password_reset'), $activity->description);
+        $this->assertSame($user->getKey(), $activity->causer_id);
+        $this->assertSame($user->getKey(), $activity->subject_id);
+    }
+
+    public function testPasswordUpdateWithNonEloquentAuthenticatableIsSilentlySkipped(): void
+    {
+        Activity::query()->delete();
+
+        $genericUser = new GenericUser(['id' => 1, 'email' => 'x@example.com']);
+        Event::dispatch(new PasswordReset($genericUser));
+
+        $this->assertSame(
+            0,
+            Activity::query()->where('log_name', 'auth')->count(),
+        );
+    }
+
     /**
      * Schützt die vier neuen Übersetzungs-Schlüssel: fehlt einer, würde
      * Laravel den Key wörtlich zurückgeben und der Maschinen-Code landete
@@ -263,6 +316,8 @@ final class AuthenticationActivityLogTest extends TestCase
             'app.activity_logout',
             'app.activity_login_failed',
             'app.activity_login_locked_out',
+            'app.activity_password_updated',
+            'app.activity_password_reset',
         ];
 
         foreach ($keys as $key) {

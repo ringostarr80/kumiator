@@ -9,7 +9,9 @@ use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Database\Eloquent\Model;
+use Laravel\Fortify\Events\PasswordUpdatedViaController;
 use Spatie\Activitylog\Facades\Activity;
 
 /**
@@ -102,6 +104,34 @@ final class LogAuthenticationActivityListener
             ->event('login_failed')
             ->withProperties($properties)
             ->log(__('app.activity_login_failed'));
+    }
+
+    public function handlePasswordUpdated(PasswordUpdatedViaController $event): void
+    {
+        // Fortify-Event: `$user` ist per PHPDoc als `App\Models\User` getypt,
+        // also immer ein Eloquent-Model — kein zusätzlicher Guard nötig.
+        $user = $event->user;
+
+        Activity::useLog(self::LOG_NAME)
+            ->event('password_updated')
+            ->causedBy($user)
+            ->performedOn($user)
+            ->log(__('app.activity_password_updated'));
+    }
+
+    public function handlePasswordReset(PasswordReset $event): void
+    {
+        $user = $event->user;
+
+        if (!$user instanceof Model) {
+            return;
+        }
+
+        Activity::useLog(self::LOG_NAME)
+            ->event('password_reset')
+            ->causedBy($user)
+            ->performedOn($user)
+            ->log(__('app.activity_password_reset'));
     }
 
     public function handleLockout(Lockout $event): void

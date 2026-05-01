@@ -246,6 +246,8 @@ return [
     'activity_logout' => 'Logout',
     'activity_login_failed' => 'Login failed',
     'activity_login_locked_out' => 'Login locked out (too many failed attempts)',
+    'activity_password_updated' => 'Password changed',
+    'activity_password_reset' => 'Password reset via reset link',
     'activity_2fa_enabled' => 'Two-factor authentication enabled',
     'activity_2fa_confirmed' => 'Two-factor authentication confirmed',
     'activity_2fa_disabled' => 'Two-factor authentication disabled',

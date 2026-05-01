@@ -249,6 +249,8 @@ return [
     'activity_logout' => 'Abmeldung',
     'activity_login_failed' => 'Anmeldung fehlgeschlagen',
     'activity_login_locked_out' => 'Anmeldung gesperrt (zu viele Fehlversuche)',
+    'activity_password_updated' => 'Passwort geändert',
+    'activity_password_reset' => 'Passwort über Reset-Link zurückgesetzt',
     'activity_2fa_enabled' => 'Zwei-Faktor-Authentifizierung aktiviert',
     'activity_2fa_confirmed' => 'Zwei-Faktor-Authentifizierung bestätigt',
     'activity_2fa_disabled' => 'Zwei-Faktor-Authentifizierung deaktiviert',
