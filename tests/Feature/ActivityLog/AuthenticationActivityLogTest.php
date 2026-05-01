@@ -163,6 +163,29 @@ final class AuthenticationActivityLogTest extends TestCase
         $this->assertSame('web', $properties['guard'] ?? null);
     }
 
+    /**
+     * DSGVO-Schutz: Wenn der ausloggende User-Datensatz nicht mehr in der DB
+     * existiert (Self-Delete-Flow: `DeleteUser::delete()` läuft, dann ruft
+     * `Auth::logout()` das `Logout`-Event auf), darf KEIN `logout`-Eintrag
+     * mit `causedBy`/`performedOn` auf diesen User entstehen — sonst landet
+     * die Morph-Referenz auf den eben gelöschten User wieder im Log und
+     * untergräbt den vorausgegangenen Activity-Log-Purge.
+     */
+    public function testLogoutOfAlreadyDeletedUserIsNotLogged(): void
+    {
+        $user = User::factory()->create();
+        $user->forceDelete();
+
+        Activity::query()->delete();
+
+        Event::dispatch(new Logout('web', $user));
+
+        $this->assertSame(
+            0,
+            Activity::query()->where('log_name', 'auth')->where('event', 'logout')->count(),
+        );
+    }
+
     public function testFailedLoginStoresOnlyEmailHashNotPlaintext(): void
     {
         Activity::query()->delete();

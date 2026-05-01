@@ -81,6 +81,18 @@ final class LogAuthenticationActivityListener
             return;
         }
 
+        // DSGVO-Schutz für Lösch-Pfade (Self-Delete via `DeleteUser`,
+        // zukünftige Hard-Deletes): Jetstreams `DeleteUserForm` ruft nach
+        // `DeleteUser::delete()` noch `Auth::logout()` auf — würde hier ohne
+        // Guard ein `logout`-Eintrag mit `causedBy`/`performedOn` auf den
+        // bereits hart gelöschten User entstehen, hätten wir das gerade
+        // entfernte personenbezogene Restmaterial wieder im Log. Nach
+        // `forceDelete()` ist das `exists`-Flag des Models `false` — das ist
+        // der saubere Signal-Punkt, an dem wir das Logging unterdrücken.
+        if (!$user->exists) {
+            return;
+        }
+
         Activity::useLog(self::LOG_NAME)
             ->event('logout')
             ->causedBy($user)
