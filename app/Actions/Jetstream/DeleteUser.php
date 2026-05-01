@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Laravel\Jetstream\Contracts\DeletesUsers;
 use Laravel\Sanctum\PersonalAccessToken;
+use Spatie\Activitylog\Facades\Activity;
 
 class DeleteUser implements DeletesUsers
 {
@@ -34,6 +35,15 @@ class DeleteUser implements DeletesUsers
      * Im Admin-Pfad (siehe `App\Console\Commands\User\Delete`) ist die Semantik
      * bewusst umgekehrt: dort sollen die Einträge als Audit-Trail bestehen
      * bleiben, der Soft-Delete erlaubt zudem ein späteres `restore()`.
+     *
+     * Anonymisierter Audit-Eintrag (DSGVO Art. 32 vs. Art. 17):
+     * Damit der Vorgang „Account selbst gelöscht" nachvollziehbar bleibt — ohne
+     * dem „Recht auf Vergessen" zu widersprechen — schreiben wir EINEN Eintrag
+     * `event=account_self_deleted` ganz **ohne** `causedBy`/`performedOn` und
+     * ohne personenbezogene Properties. Da `subject_id`/`causer_id` `NULL`
+     * sind, lässt der Purge-Block diesen Eintrag unberührt. Übrig bleibt nur
+     * die Information „zu Zeitpunkt X wurde irgendein Konto gelöscht" — kein
+     * Personenbezug, aber ausreichend für statistische Audit-Auswertungen.
      *
      * Hinweis zum Session-Treiber: Die explizite Session-Löschung wirkt nur bei
      * `session.driver = database` (aktueller Projekt-Default). Bei Redis/File/
@@ -101,6 +111,21 @@ class DeleteUser implements DeletesUsers
                         ->where('causer_id', $user->getKey());
                 })
                 ->delete();
+
+            // Anonymisierter Audit-Eintrag NACH dem Purge: ohne Causer/Subject,
+            // damit der vorhergehende Purge ihn nicht miterwischt und der
+            // `LogsActivity`-Trait des Users (bereits via `disableLogging()`
+            // deaktiviert) keinen weiteren Eintrag mehr produziert.
+            //
+            // `causedByAnonymous()` ist hier kritisch: Spatie würde sonst über
+            // den `CauserResolver` automatisch den noch im `Auth::user()`-Cache
+            // liegenden — gerade hart gelöschten — User als Causer eintragen
+            // und damit ausgerechnet die personenbezogene Spur erzeugen, die
+            // wir vermeiden wollen.
+            Activity::useLog('auth')
+                ->event('account_self_deleted')
+                ->causedByAnonymous()
+                ->log(__('app.activity_account_self_deleted'));
         });
 
         $user->deleteProfilePhoto();

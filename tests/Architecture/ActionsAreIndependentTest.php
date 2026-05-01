@@ -23,10 +23,16 @@ final class ActionsAreIndependentTest
                 Selector::inNamespace('/^App\\\\Services\\\\.*\\\\Contracts$/', true),
                 Selector::inNamespace('Illuminate'),
                 Selector::inNamespace('Laravel'),
+                // Activity-Logging direkt aus Actions für DSGVO-relevante
+                // Lösch-Pfade (z. B. `DeleteUser` schreibt einen anonymisierten
+                // Audit-Eintrag, der den Purge-Block überlebt). Kein generelles
+                // Logging-Pattern — eng begrenzt auf die Spatie-Facade.
+                Selector::inNamespace('Spatie\\Activitylog\\Facades'),
             )
             ->because(
                 'Actions dürfen nur von Models, DTOs, Service-Contracts, '
-                . 'anderen Actions, Illuminate und Laravel abhängen.',
+                . 'anderen Actions, Illuminate, Laravel und der Activity-'
+                . 'Facade abhängen.',
                 'Sie sind von Fortify/Jetstream vorgegebene Einstiegspunkte '
                 . 'für Benutzeraktionen. Model-Abhängigkeiten sind erlaubt, '
                 . 'weil Fortify/Jetstream Models als Eingabeparameter '

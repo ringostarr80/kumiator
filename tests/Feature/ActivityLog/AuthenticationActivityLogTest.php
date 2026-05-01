@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\ActivityLog;
 
+use App\Actions\Jetstream\DeleteUser;
 use App\Livewire\Profile\LogoutOtherBrowserSessionsForm;
 use App\Models\User;
 use App\Services\WebAuthn\PasskeyLoginContext;
@@ -328,6 +329,76 @@ final class AuthenticationActivityLogTest extends TestCase
         );
     }
 
+    /**
+     * Self-Delete schreibt einen anonymisierten Audit-Eintrag (DSGVO-Symmetrie:
+     * Art. 32 vs. Art. 17). Form: log_name=auth, event=account_self_deleted,
+     * KEIN Causer, KEIN Subject, keine personenbezogenen Properties — sonst
+     * würde der Purge-Block in `DeleteUser` ihn mit erfassen.
+     */
+    public function testAccountSelfDeletionWritesAnonymisedAuditEntry(): void
+    {
+        $user = User::factory()->create();
+        Activity::query()->delete();
+
+        app(DeleteUser::class)->delete($user);
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'account_self_deleted')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_account_self_deleted'), $activity->description);
+        $this->assertNull($activity->causer_id);
+        $this->assertNull($activity->causer_type);
+        $this->assertNull($activity->subject_id);
+        $this->assertNull($activity->subject_type);
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame([], $properties);
+    }
+
+    /**
+     * Stellt sicher, dass der anonymisierte Audit-Eintrag den Purge-Block in
+     * `DeleteUser` überlebt — er ist die zentrale Brücke zwischen DSGVO Art. 17
+     * (Recht auf Vergessen) und Art. 32 (Nachvollziehbarkeit). Würde der Purge
+     * jemals zu aggressiv werden (z. B. ein blindes `WHERE log_name='auth'`),
+     * fiele dieser Test sofort aus.
+     */
+    public function testAccountSelfDeletionAuditEntrySurvivesPurge(): void
+    {
+        $user = User::factory()->create(['name' => 'Vor Löschung']);
+        $user->updateOrFail(['name' => 'Nach Umbenennung']);
+
+        $this->assertGreaterThan(
+            0,
+            Activity::query()
+                ->where('subject_type', $user->getMorphClass())
+                ->where('subject_id', $user->getKey())
+                ->count(),
+            'Setup-Annahme verletzt: es sollten Subject-Einträge existieren, sonst testet der Purge nichts.',
+        );
+
+        app(DeleteUser::class)->delete($user);
+
+        $this->assertSame(
+            1,
+            Activity::query()
+                ->where('log_name', 'auth')
+                ->where('event', 'account_self_deleted')
+                ->count(),
+        );
+
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('subject_type', $user->getMorphClass())
+                ->where('subject_id', $user->getKey())
+                ->count(),
+        );
+    }
+
     public function testPasswordUpdateWithNonEloquentAuthenticatableIsSilentlySkipped(): void
     {
         Activity::query()->delete();
@@ -357,6 +428,7 @@ final class AuthenticationActivityLogTest extends TestCase
             'app.activity_password_updated',
             'app.activity_password_reset',
             'app.activity_other_sessions_logged_out',
+            'app.activity_account_self_deleted',
         ];
 
         foreach ($keys as $key) {
