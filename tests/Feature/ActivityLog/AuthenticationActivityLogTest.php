@@ -170,15 +170,20 @@ final class AuthenticationActivityLogTest extends TestCase
      * mit `causedBy`/`performedOn` auf diesen User entstehen — sonst landet
      * die Morph-Referenz auf den eben gelöschten User wieder im Log und
      * untergräbt den vorausgegangenen Activity-Log-Purge.
+     *
+     * Reproduziert exakt Jetstreams `DeleteUserForm`: dort wird die `fresh()`-
+     * Kopie hart gelöscht, das anschließende `Logout`-Event bekommt aber die
+     * ORIGINAL Auth-Instanz mit `exists === true`. Eine in-memory-Prüfung
+     * würde hier durchrutschen — der Listener muss gegen die DB prüfen.
      */
     public function testLogoutOfAlreadyDeletedUserIsNotLogged(): void
     {
-        $user = User::factory()->create();
-        $user->forceDelete();
+        $original = User::factory()->create();
+        $original->fresh()?->forceDelete();
 
         Activity::query()->delete();
 
-        Event::dispatch(new Logout('web', $user));
+        Event::dispatch(new Logout('web', $original));
 
         $this->assertSame(
             0,

@@ -83,13 +83,16 @@ final class LogAuthenticationActivityListener
 
         // DSGVO-Schutz für Lösch-Pfade (Self-Delete via `DeleteUser`,
         // zukünftige Hard-Deletes): Jetstreams `DeleteUserForm` ruft nach
-        // `DeleteUser::delete()` noch `Auth::logout()` auf — würde hier ohne
-        // Guard ein `logout`-Eintrag mit `causedBy`/`performedOn` auf den
-        // bereits hart gelöschten User entstehen, hätten wir das gerade
-        // entfernte personenbezogene Restmaterial wieder im Log. Nach
-        // `forceDelete()` ist das `exists`-Flag des Models `false` — das ist
-        // der saubere Signal-Punkt, an dem wir das Logging unterdrücken.
-        if (!$user->exists) {
+        // `$deleter->delete(Auth::user()->fresh())` noch `Auth::logout()`
+        // auf. Im Logout-Event landet aber die ORIGINAL `Auth::user()`-
+        // Instanz — nicht die hart gelöschte Fresh-Kopie. Deren `exists`-
+        // Flag ist noch `true`, weshalb ein In-Memory-Check nicht greift.
+        // Wir prüfen daher direkt gegen die DB (ohne Scopes, damit wir
+        // genau zwischen „hart gelöscht — Zeile weg" und „soft-deleted —
+        // Zeile noch da" unterscheiden). Würde hier ein Eintrag entstehen,
+        // hätten wir das gerade durch den Activity-Log-Purge entfernte
+        // personenbezogene Restmaterial sofort wieder reinkippt.
+        if (!$user->newQueryWithoutScopes()->whereKey($user->getKey())->exists()) {
             return;
         }
 
