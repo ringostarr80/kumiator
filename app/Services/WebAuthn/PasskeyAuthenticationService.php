@@ -15,10 +15,10 @@ use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
 use Webauthn\AuthenticatorAssertionResponse;
+use Webauthn\CredentialRecord;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
 use Webauthn\PublicKeyCredential;
 use Webauthn\PublicKeyCredentialRequestOptions;
-use Webauthn\PublicKeyCredentialSource;
 use Webauthn\TrustPath\EmptyTrustPath;
 
 /**
@@ -177,11 +177,11 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
     // Helpers
     // ──────────────────────────────────────────────────────────────────────────
 
-    private function deserializeCredentialSource(PasskeyCredential $model): PublicKeyCredentialSource
+    private function deserializeCredentialSource(PasskeyCredential $model): CredentialRecord
     {
         $json = $this->repository->getSerializedCredentialSource($model);
 
-        return $this->serializer->deserialize($json, PublicKeyCredentialSource::class, 'json');
+        return $this->serializer->deserialize($json, CredentialRecord::class, 'json');
     }
 
     /**
@@ -195,7 +195,7 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
         string $host,
     ): void {
         try {
-            $fakeSource = PublicKeyCredentialSource::create(
+            $fakeSource = CredentialRecord::create(
                 publicKeyCredentialId: random_bytes(32),
                 type: 'public-key',
                 transports: [],

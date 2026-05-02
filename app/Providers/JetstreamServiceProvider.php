@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Actions\Jetstream\DeleteUser;
+use App\Livewire\Profile\ApiTokenManager;
 use App\Livewire\Profile\LogoutOtherBrowserSessionsForm;
 use App\Livewire\Profile\PasskeyManagerForm;
 use Illuminate\Support\ServiceProvider;
@@ -32,6 +33,7 @@ class JetstreamServiceProvider extends ServiceProvider
 
         Livewire::component('profile.passkey-manager-form', PasskeyManagerForm::class);
         Livewire::component('profile.logout-other-browser-sessions-form', LogoutOtherBrowserSessionsForm::class);
+        Livewire::component('api.api-token-manager', ApiTokenManager::class);
     }
 
     /**

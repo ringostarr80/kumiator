@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\ActivityLog;
 
 use App\Actions\Jetstream\DeleteUser;
+use App\Livewire\Profile\ApiTokenManager;
 use App\Livewire\Profile\LogoutOtherBrowserSessionsForm;
 use App\Models\User;
 use App\Services\WebAuthn\PasskeyLoginContext;
@@ -19,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Str;
 use Laravel\Fortify\Events\PasswordUpdatedViaController;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
@@ -427,6 +429,107 @@ final class AuthenticationActivityLogTest extends TestCase
         );
     }
 
+    /**
+     * API-Token-Erstellung wird als sicherheitsrelevanter Vorgang im
+     * Activity-Log erfasst (DSGVO Art. 32, Nachvollziehbarkeit von
+     * Anmeldeinformationen). Der Klartext-Token darf NICHT in den
+     * Properties landen — nur Name, ID und Abilities.
+     */
+    public function testApiTokenCreationIsLogged(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $this->actingAs($user);
+
+        Activity::query()->delete();
+
+        $component = Livewire::test(ApiTokenManager::class)
+            ->set(['createApiTokenForm' => [
+                'name' => 'Audit-Test-Token',
+                'permissions' => ['read', 'update'],
+            ]])
+            ->call('createApiToken');
+
+        // Der echte Klartext-Token-Wert, den der User einmalig in der UI sieht.
+        // Sanctum generiert ihn als 40-stellige Hex-Zeichenkette pro Aufruf —
+        // unmöglich, denselben Wert „zufällig" woanders im Eintrag zu finden.
+        $plainTextToken = $component->get('plainTextToken');
+        $this->assertIsString($plainTextToken);
+        $this->assertNotEmpty($plainTextToken);
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'api_token_created')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_api_token_created'), $activity->description);
+        $this->assertSame($user->getMorphClass(), $activity->causer_type);
+        $this->assertSame($user->getKey(), $activity->causer_id);
+        $this->assertSame($user->getMorphClass(), $activity->subject_type);
+        $this->assertSame($user->getKey(), $activity->subject_id);
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('Audit-Test-Token', $properties['token_name'] ?? null);
+        $this->assertIsInt($properties['token_id'] ?? null);
+        $this->assertSame(['read', 'update'], $properties['abilities'] ?? null);
+
+        // DSGVO-Härtetest: Der konkrete Klartext-Token-Wert darf NIRGENDS im
+        // serialisierten Eintrag stehen — weder in `properties`, `description`,
+        // `subject`/`causer`-Feldern noch in irgendeiner anderen Spalte. Der
+        // Vergleich auf den echten Wert (statt auf den Property-Namen) macht
+        // den Test echt: würde der Listener jemals versehentlich den Token
+        // ablegen, schlüge die Assertion sofort an.
+        $serialised = json_encode($activity->toArray(), JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString($plainTextToken, $serialised);
+
+        // Auch der Sanctum-Hash des Klartext-Tokens (`token`-Spalte auf
+        // `personal_access_tokens`) darf hier nicht auftauchen — sonst hätte
+        // ein Angreifer mit DB-Lese-Rechten den Hash UND den Audit-Eintrag,
+        // und damit die volle Information zur Token-Verifikation.
+        $tokenHash = hash('sha256', $plainTextToken);
+        $this->assertStringNotContainsString($tokenHash, $serialised);
+    }
+
+    /**
+     * API-Token-Widerruf wird mit allen für den Audit relevanten Snapshots
+     * geloggt — das passiert im Override VOR `parent::deleteApiToken()`,
+     * damit Name und Abilities trotz Delete erhalten bleiben.
+     */
+    public function testApiTokenRevocationIsLogged(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $this->actingAs($user);
+
+        $token = $user->tokens()->create([
+            'name' => 'Audit-Revoke-Token',
+            'token' => Str::random(40),
+            'abilities' => ['read', 'delete'],
+        ]);
+
+        Activity::query()->delete();
+
+        Livewire::test(ApiTokenManager::class)
+            ->set(['apiTokenIdBeingDeleted' => $token->id])
+            ->call('deleteApiToken');
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'api_token_revoked')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_api_token_revoked'), $activity->description);
+        $this->assertSame($user->getKey(), $activity->causer_id);
+        $this->assertSame($user->getKey(), $activity->subject_id);
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('Audit-Revoke-Token', $properties['token_name'] ?? null);
+        $this->assertSame($token->id, $properties['token_id'] ?? null);
+        $this->assertSame(['read', 'delete'], $properties['abilities'] ?? null);
+    }
+
     public function testPasswordUpdateWithNonEloquentAuthenticatableIsSilentlySkipped(): void
     {
         Activity::query()->delete();
@@ -457,6 +560,8 @@ final class AuthenticationActivityLogTest extends TestCase
             'app.activity_password_reset',
             'app.activity_other_sessions_logged_out',
             'app.activity_account_self_deleted',
+            'app.activity_api_token_created',
+            'app.activity_api_token_revoked',
         ];
 
         foreach ($keys as $key) {

@@ -250,6 +250,8 @@ return [
     'activity_password_reset' => 'Password reset via reset link',
     'activity_other_sessions_logged_out' => 'Other browser sessions logged out',
     'activity_account_self_deleted' => 'Account self-deleted by user (anonymised)',
+    'activity_api_token_created' => 'API token created',
+    'activity_api_token_revoked' => 'API token revoked',
     'activity_2fa_enabled' => 'Two-factor authentication enabled',
     'activity_2fa_confirmed' => 'Two-factor authentication confirmed',
     'activity_2fa_disabled' => 'Two-factor authentication disabled',

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
-use Webauthn\PublicKeyCredentialSource;
+use Webauthn\CredentialRecord;
 use Webauthn\TrustPath\EmptyTrustPath;
 
 /**
@@ -28,11 +28,11 @@ class PasskeyCredentialFactory extends Factory
 
             $source = $serializer->deserialize(
                 $credential->credential_public_key,
-                PublicKeyCredentialSource::class,
+                CredentialRecord::class,
                 'json',
             );
 
-            $corrected = PublicKeyCredentialSource::create(
+            $corrected = CredentialRecord::create(
                 publicKeyCredentialId: $source->publicKeyCredentialId,
                 type: $source->type,
                 transports: $source->transports,
@@ -64,7 +64,7 @@ class PasskeyCredentialFactory extends Factory
         $credentialId = Base64UrlSafe::encodeUnpadded($credentialIdBytes);
 
         // Build a minimal PublicKeyCredentialSource and serialise it for storage
-        $credentialRecord = PublicKeyCredentialSource::create(
+        $credentialRecord = CredentialRecord::create(
             publicKeyCredentialId: $credentialIdBytes,
             type: 'public-key',
             transports: ['internal'],

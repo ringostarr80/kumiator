@@ -17,12 +17,12 @@ use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
 use Webauthn\AuthenticatorAttestationResponse;
 use Webauthn\AuthenticatorSelectionCriteria;
+use Webauthn\CredentialRecord;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
 use Webauthn\PublicKeyCredential;
 use Webauthn\PublicKeyCredentialCreationOptions;
 use Webauthn\PublicKeyCredentialParameters;
 use Webauthn\PublicKeyCredentialRpEntity;
-use Webauthn\PublicKeyCredentialSource;
 use Webauthn\PublicKeyCredentialUserEntity;
 
 /**
@@ -135,7 +135,7 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
     // Helpers
     // ──────────────────────────────────────────────────────────────────────────
 
-    private function buildNewCredentialData(PublicKeyCredentialSource $record): NewPasskeyCredentialData
+    private function buildNewCredentialData(CredentialRecord $record): NewPasskeyCredentialData
     {
         return new NewPasskeyCredentialData(
             credentialId: Base64UrlSafe::encodeUnpadded($record->publicKeyCredentialId),
