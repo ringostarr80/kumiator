@@ -242,6 +242,7 @@ return [
     'activity_passkey_renamed' => 'Passkey renamed',
     'activity_passkey_removed' => 'Passkey deleted',
     'activity_passkey_login_succeeded' => 'Passkey login succeeded',
+    'activity_passkey_login_failed' => 'Passkey login failed',
     'activity_password_login_succeeded' => 'Password login succeeded',
     'activity_logout' => 'Logout',
     'activity_login_failed' => 'Login failed',

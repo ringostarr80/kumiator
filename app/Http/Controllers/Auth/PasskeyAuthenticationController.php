@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Auth;
 use App\Config\Vendor\Webauthn\WebauthnConfig;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PasskeyAuthenticateOptionsRequest;
+use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
 use App\Services\WebAuthn\Contracts\WebAuthnCeremonySessionContract;
@@ -94,9 +95,12 @@ final class PasskeyAuthenticationController extends Controller
                 host: WebauthnConfig::effectiveHost(),
             );
         } catch (AuthenticatorResponseVerificationException $e) {
+            PasskeyCredential::recordFailedLoginActivity('verification_failed', $rawResponse);
+
             return response()->json(['message' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (\Throwable $e) {
             report($e);
+            PasskeyCredential::recordFailedLoginActivity('internal_error', $rawResponse);
 
             return response()->json(
                 ['message' => __('app.passkey_authentication_failed')],

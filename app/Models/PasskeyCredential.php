@@ -134,6 +134,53 @@ final class PasskeyCredential extends Model
     }
 
     /**
+     * Schreibt einen Audit-Eintrag für einen fehlgeschlagenen Passkey-
+     * Anmelde-Versuch. Symmetrie zum `login_failed`-Pfad
+     * ({@see \App\Listeners\LogAuthenticationActivityListener::handleFailed}):
+     * unter `log_name=auth`, ohne Causer und ohne Subject (selbst bei
+     * gefundener Credential ist „Owner = Causer" forensisch falsch — ein
+     * Angreifer könnte die Credential-ID gestohlen haben).
+     *
+     * Datenminimierung (DSGVO Art. 5 Abs. 1 lit. c): Klartext-`credential_id`
+     * landet niemals im Log; stattdessen ein SHA-256-Hash über die vom
+     * Browser gemeldete `rawId`/`id`. Der Hash erlaubt Korrelation gleicher
+     * Angriffsversuche (z. B. wiederholte Counter-Mismatches als Hinweis
+     * auf einen geklonten Authenticator), ohne die Credential-Referenz zu
+     * duplizieren.
+     *
+     * Statisch, weil zum Failure-Zeitpunkt typischerweise gar keine
+     * Passkey-Instanz existiert (Credential nicht gefunden / Verification-
+     * Exception vor Resolve). Aufrufer: {@see \App\Http\Controllers\Auth\PasskeyAuthenticationController}.
+     *
+     * Resilient gegen Activity-Log-Ausfälle: ein Schreibfehler darf den
+     * Auth-Pfad des Aufrufers nicht beeinflussen — ein kaputter Audit-Pfad
+     * blockiert sonst die Auth-Antwort. Wir reporten still und kehren zurück.
+     *
+     * @param string $reason Stabiler Maschinen-Code des Fehlerpfads
+     *                       (`verification_failed`, `internal_error`).
+     * @param string $rawBody Roh-Body des Authenticate-Requests.
+     */
+    public static function recordFailedLoginActivity(string $reason, string $rawBody): void
+    {
+        $properties = ['failure_reason' => $reason];
+
+        $credentialIdHash = self::hashCredentialIdFromBody($rawBody);
+
+        if ($credentialIdHash !== null) {
+            $properties['credential_id_hash'] = $credentialIdHash;
+        }
+
+        try {
+            Activity::useLog('auth')
+                ->event('passkey_login_failed')
+                ->withProperties($properties)
+                ->log(__('app.activity_passkey_login_failed'));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
      * Mappt das generische Eloquent-Event eines Passkey-Activity-Eintrags
      * (created/updated/deleted) auf einen fachlichen Code
      * (passkey_registered/passkey_renamed/passkey_removed), bevor der Eintrag
@@ -198,5 +245,33 @@ final class PasskeyCredential extends Model
             'deleted' => 'removed',
             default => $eventName,
         };
+    }
+
+    /**
+     * Liefert einen SHA-256-Hash über die vom Browser gemeldete Credential-ID,
+     * sofern der Body als JSON parsebar ist und ein `rawId`- oder `id`-Feld
+     * enthält. Die Werte sind bereits Base64URL-codiert (WebAuthn-Norm), wir
+     * hashen die Repräsentation, nicht die Bytes — das reicht für Korrelation
+     * gleicher Versuche. Liefert `null`, wenn nichts Brauchbares extrahierbar ist.
+     */
+    private static function hashCredentialIdFromBody(string $rawBody): ?string
+    {
+        if ($rawBody === '') {
+            return null;
+        }
+
+        $decoded = json_decode($rawBody, associative: true);
+
+        if (!is_array($decoded)) {
+            return null;
+        }
+
+        $rawId = $decoded['rawId'] ?? $decoded['id'] ?? null;
+
+        if (!is_string($rawId) || $rawId === '') {
+            return null;
+        }
+
+        return hash('sha256', $rawId);
     }
 }
