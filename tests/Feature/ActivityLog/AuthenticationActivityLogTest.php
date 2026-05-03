@@ -8,6 +8,8 @@ use App\Actions\Jetstream\DeleteUser;
 use App\Livewire\Profile\ApiTokenManager;
 use App\Livewire\Profile\LogoutOtherBrowserSessionsForm;
 use App\Models\User;
+use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
+use App\Services\Auth\UnapprovedLoginContext;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
@@ -240,6 +242,163 @@ final class AuthenticationActivityLogTest extends TestCase
         $this->assertNotNull($activity);
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertArrayNotHasKey('email_hash', $properties);
+    }
+
+    /**
+     * Passwort-Login eines nicht freigeschalteten Users:
+     *   - genau ein `login_unapproved`-Eintrag mit Causer/Subject auf den User
+     *     und `email_hash` für Korrelations-Reports
+     *   - KEIN paralleler `login_failed`-Eintrag (Marker greift, sonst wäre der
+     *     Versuch unter zwei verschiedenen fachlichen Events doppelt gezählt)
+     *   - User bleibt ausgeloggt (Fortify-Closure liefert weiter `null`)
+     */
+    public function testUnapprovedPasswordLoginIsLoggedAsUnapprovedAndSuppressesLoginFailed(): void
+    {
+        $user = User::factory()->unapproved()->create([
+            'email' => 'unapproved@example.com',
+        ]);
+
+        Activity::query()->delete();
+
+        $response = $this->post('/login', [
+            'email' => 'unapproved@example.com',
+            'password' => 'password',
+        ]);
+
+        $this->assertGuest();
+        $response->assertSessionHasErrors();
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'login_unapproved')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_login_unapproved'), $activity->description);
+        $this->assertSame($user->getMorphClass(), $activity->causer_type);
+        $this->assertSame($user->getKey(), $activity->causer_id);
+        $this->assertSame($user->getMorphClass(), $activity->subject_type);
+        $this->assertSame($user->getKey(), $activity->subject_id);
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('web', $properties['guard'] ?? null);
+        $this->assertSame(
+            hash('sha256', 'unapproved@example.com'),
+            $properties['email_hash'] ?? null,
+        );
+        $this->assertArrayNotHasKey('email', $properties);
+        $this->assertArrayNotHasKey('password', $properties);
+
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('log_name', 'auth')
+                ->where('event', 'login_failed')
+                ->count(),
+            'Bei `login_unapproved` darf der Marker den parallelen `login_failed`-Eintrag '
+            . 'unterdrücken — sonst zählen Reports denselben Versuch unter zwei Events.',
+        );
+    }
+
+    /**
+     * Falsches Passwort für einen unapproved-User darf NICHT als
+     * `login_unapproved` durchgehen — sonst könnte ein Angreifer am Audit-Log
+     * ablesen, ob ein Account existiert UND dessen Status erraten. Erst nach
+     * erfolgreichem Hash-Check ist der `login_unapproved`-Pfad zulässig.
+     */
+    public function testWrongPasswordOnUnapprovedAccountFallsBackToGenericLoginFailed(): void
+    {
+        User::factory()->unapproved()->create([
+            'email' => 'unapproved@example.com',
+        ]);
+
+        Activity::query()->delete();
+
+        $this->post('/login', [
+            'email' => 'unapproved@example.com',
+            'password' => 'wrong-password',
+        ]);
+
+        $this->assertGuest();
+
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('log_name', 'auth')
+                ->where('event', 'login_unapproved')
+                ->count(),
+        );
+
+        $this->assertSame(
+            1,
+            Activity::query()
+                ->where('log_name', 'auth')
+                ->where('event', 'login_failed')
+                ->count(),
+        );
+    }
+
+    /**
+     * Passkey-Pfad: Symmetrie zum Passwort-Pfad. Wir rufen den Audit-Helfer
+     * direkt auf (so wie `PasskeyAuthenticationController::authenticate()` ihn
+     * vor dem 401 aufruft) und prüfen, dass der Eintrag mit Causer/Subject
+     * und gehashter Email entsteht.
+     */
+    public function testUnapprovedPasskeyLoginIsLoggedWithCauserAndEmailHash(): void
+    {
+        $user = User::factory()->unapproved()->create([
+            'email' => 'passkey-unapproved@example.com',
+        ]);
+
+        Activity::query()->delete();
+
+        app(UnapprovedLoginContextContract::class)->record($user, 'web', $user->email);
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'login_unapproved')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_login_unapproved'), $activity->description);
+        $this->assertSame($user->getMorphClass(), $activity->causer_type);
+        $this->assertSame($user->getKey(), $activity->causer_id);
+        $this->assertSame($user->getMorphClass(), $activity->subject_type);
+        $this->assertSame($user->getKey(), $activity->subject_id);
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('web', $properties['guard'] ?? null);
+        $this->assertSame(
+            hash('sha256', 'passkey-unapproved@example.com'),
+            $properties['email_hash'] ?? null,
+        );
+    }
+
+    /**
+     * Direktnachweis der Marker-Wirkung: ein nach `markActive()` gefeuertes
+     * `Failed`-Event darf KEINEN `login_failed`-Eintrag erzeugen.
+     */
+    public function testFailedEventIsSuppressedWhenUnapprovedMarkerActive(): void
+    {
+        Activity::query()->delete();
+
+        UnapprovedLoginContext::markActive();
+
+        try {
+            Event::dispatch(new Failed('web', null, ['email' => 'opfer@example.com']));
+        } finally {
+            UnapprovedLoginContext::clear();
+        }
+
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('log_name', 'auth')
+                ->where('event', 'login_failed')
+                ->count(),
+        );
     }
 
     public function testLockoutIsLogged(): void
@@ -555,6 +714,7 @@ final class AuthenticationActivityLogTest extends TestCase
             'app.activity_password_login_succeeded',
             'app.activity_logout',
             'app.activity_login_failed',
+            'app.activity_login_unapproved',
             'app.activity_login_locked_out',
             'app.activity_password_updated',
             'app.activity_password_reset',
@@ -579,8 +739,9 @@ final class AuthenticationActivityLogTest extends TestCase
     {
         parent::setUp();
 
-        // Marker zwischen Tests sauber halten — statisches Feld überlebt
+        // Marker zwischen Tests sauber halten — statische Felder überleben
         // sonst über die Test-Grenze hinweg.
         PasskeyLoginContext::clear();
+        UnapprovedLoginContext::clear();
     }
 }

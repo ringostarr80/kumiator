@@ -27,13 +27,16 @@ final class ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
                 Selector::inNamespace('Cose'),
                 Selector::inNamespace('ParagonIE'),
                 Selector::inNamespace('Symfony'),
+                Selector::inNamespace('Spatie\\Activitylog'),
                 Selector::classname(\Throwable::class),
             )
             ->because(
                 'Services dürfen nur von Config, DTOs, Models, Repository-Contracts, '
                 . 'anderen Services und den freigegebenen Vendor-Paketen abhängen.',
                 'Abhängigkeiten zur Präsentationsschicht würden die Service-Schicht an '
-                . 'die Infrastruktur koppeln. Neue Vendor-Pakete müssen bewusst in die '
+                . 'die Infrastruktur koppeln. Spatie\\Activitylog ist als Cross-Cutting-'
+                . 'Concern (Audit-Logging) freigegeben — symmetrisch zu Listenern, die '
+                . 'das Paket bereits nutzen. Neue Vendor-Pakete müssen bewusst in die '
                 . 'Allowlist eingetragen werden.',
             );
     }

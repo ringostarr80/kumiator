@@ -249,6 +249,7 @@ return [
     'activity_password_login_succeeded' => 'Passwort-Anmeldung erfolgreich',
     'activity_logout' => 'Abmeldung',
     'activity_login_failed' => 'Anmeldung fehlgeschlagen',
+    'activity_login_unapproved' => 'Anmeldung abgelehnt (Konto nicht freigeschaltet)',
     'activity_login_locked_out' => 'Anmeldung gesperrt (zu viele Fehlversuche)',
     'activity_password_updated' => 'Passwort geändert',
     'activity_password_reset' => 'Passwort über Reset-Link zurückgesetzt',

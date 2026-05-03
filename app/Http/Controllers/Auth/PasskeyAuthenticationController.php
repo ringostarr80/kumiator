@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\PasskeyAuthenticateOptionsRequest;
 use App\Models\PasskeyCredential;
 use App\Models\User;
+use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
 use App\Services\WebAuthn\Contracts\WebAuthnCeremonySessionContract;
 use Illuminate\Http\JsonResponse;
@@ -32,6 +33,7 @@ final class PasskeyAuthenticationController extends Controller
     public function __construct(
         private readonly PasskeyAuthenticationContract $authenticationService,
         private readonly WebAuthnCeremonySessionContract $ceremonySession,
+        private readonly UnapprovedLoginContextContract $unapprovedLoginContext,
     ) {
     }
 
@@ -108,8 +110,14 @@ final class PasskeyAuthenticationController extends Controller
             );
         }
 
-        // Respect the approval workflow: only approved users may log in
+        // Respect the approval workflow: only approved users may log in.
+        // Audit-Eintrag VOR dem 401: hier ist die Identität durch die
+        // WebAuthn-Verifikation eindeutig belegt (Counter geprüft, Credential
+        // dem User zugeordnet) — der Eintrag ist daher mit Causer/Subject
+        // belastbar, anders als bei `passkey_login_failed`.
         if ($user->approved_at === null) {
+            $this->unapprovedLoginContext->record($user, 'web', $user->email);
+
             return response()->json(
                 ['message' => __('auth.failed')],
                 Response::HTTP_UNAUTHORIZED,

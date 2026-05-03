@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Services\Audit\AuditEmailHasher;
+use App\Services\Auth\UnapprovedLoginContext;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
@@ -106,10 +108,20 @@ final class LogAuthenticationActivityListener
 
     public function handleFailed(Failed $event): void
     {
+        // Wenn `FortifyServiceProvider::authenticateUsing()` den Login wegen
+        // fehlender Freischaltung verworfen hat, ist bereits ein dedizierter
+        // `login_unapproved`-Eintrag geschrieben worden. Fortify feuert
+        // anschließend zusätzlich `Failed` — den blenden wir hier aus, damit
+        // pro unapproved-Versuch nur ein einziger, fachlich präziser Eintrag
+        // entsteht (sonst würden Reports doppelt zählen).
+        if (UnapprovedLoginContext::isActive()) {
+            return;
+        }
+
         $properties = ['guard' => $event->guard];
 
         $email = $event->credentials['email'] ?? null;
-        $emailHash = $this->hashEmail(is_string($email) ? $email : null);
+        $emailHash = AuditEmailHasher::hash(is_string($email) ? $email : null);
 
         if ($emailHash !== null) {
             $properties['email_hash'] = $emailHash;
@@ -154,7 +166,7 @@ final class LogAuthenticationActivityListener
         $properties = [];
 
         $email = $event->request->input('email');
-        $emailHash = $this->hashEmail(is_string($email) ? $email : null);
+        $emailHash = AuditEmailHasher::hash(is_string($email) ? $email : null);
 
         if ($emailHash !== null) {
             $properties['email_hash'] = $emailHash;
@@ -164,20 +176,5 @@ final class LogAuthenticationActivityListener
             ->event('login_locked_out')
             ->withProperties($properties)
             ->log(__('app.activity_login_locked_out'));
-    }
-
-    private function hashEmail(?string $email): ?string
-    {
-        if ($email === null) {
-            return null;
-        }
-
-        $normalised = mb_strtolower(trim($email));
-
-        if ($normalised === '') {
-            return null;
-        }
-
-        return hash('sha256', $normalised);
     }
 }
