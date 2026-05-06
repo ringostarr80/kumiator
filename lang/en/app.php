@@ -98,6 +98,14 @@ return [
         . ' in your profile settings.',
     'resend_verification_email' => 'Resend Verification Email',
     'edit_profile' => 'Edit Profile',
+    'email_already_verified_message' => 'Your email address was already verified.',
+    'email_verified_pending_approval_message' => 'Email address verified. We will notify you once an administrator'
+        . ' has approved your account.',
+
+    // Auth - Registration Pending
+    'registration_pending_title' => 'Account awaiting approval',
+    'registration_pending_message' => 'Thank you for registering. An administrator is reviewing your account and'
+        . ' will approve it shortly. You will be notified as soon as you can sign in.',
 
     // Auth - Registration
     'agree_terms' => 'I agree to the :terms_of_service and :privacy_policy',

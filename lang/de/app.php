@@ -101,6 +101,14 @@ return [
         . ' angegebene E-Mail-Adresse gesendet.',
     'resend_verification_email' => 'Bestätigungs-E-Mail erneut senden',
     'edit_profile' => 'Profil bearbeiten',
+    'email_already_verified_message' => 'Deine E-Mail-Adresse war bereits bestätigt.',
+    'email_verified_pending_approval_message' => 'E-Mail-Adresse bestätigt. Wir benachrichtigen dich, sobald'
+        . ' ein Administrator dein Konto freigeschaltet hat.',
+
+    // Auth - Registration Pending
+    'registration_pending_title' => 'Konto wartet auf Freischaltung',
+    'registration_pending_message' => 'Vielen Dank für deine Registrierung. Ein Administrator prüft dein Konto'
+        . ' und schaltet es zeitnah frei. Du erhältst eine Benachrichtigung, sobald du dich anmelden kannst.',
 
     // Auth - Registration
     'agree_terms' => 'Ich stimme den :terms_of_service und der :privacy_policy zu',

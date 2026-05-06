@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\EnsureUserIsApproved;
 use App\Http\Middleware\MaxJsonBodySize;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
@@ -18,7 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [SetLocale::class]);
 
-        $middleware->alias(['max.json.body' => MaxJsonBodySize::class]);
+        $middleware->alias([
+            'approved' => EnsureUserIsApproved::class,
+            'max.json.body' => MaxJsonBodySize::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

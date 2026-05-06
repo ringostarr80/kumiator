@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Contracts\MustBeApproved;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,7 +24,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property ?\Illuminate\Support\Carbon $approved_at
  * @property ?\Illuminate\Support\Carbon $deleted_at
  */
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
 {
     use HasApiTokens;
     use HasRoles;
@@ -76,6 +77,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function getWebAuthnUserHandle(): string
     {
         return (string)$this->id;
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->approved_at !== null;
     }
 
     /**

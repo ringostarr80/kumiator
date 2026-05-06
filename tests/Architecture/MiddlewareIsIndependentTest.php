@@ -17,19 +17,23 @@ final class MiddlewareIsIndependentTest
             ->canOnly()
             ->dependOn()
             ->classes(
+                Selector::inNamespace('App\\Models\\Contracts'),
                 Selector::inNamespace('Illuminate'),
                 Selector::inNamespace('Symfony'),
                 Selector::classname(\Closure::class),
             )
             ->because(
-                'Middleware darf nur von Illuminate, Symfony und Closure '
-                . 'abhängen.',
+                'Middleware darf nur von Illuminate, Symfony, Closure und '
+                . 'App\\Models\\Contracts abhängen.',
                 'Middleware ist reine Infrastruktur für Request/Response-Verarbeitung '
                 . 'und bildet eigenständige, voneinander unabhängige Bausteine. '
-                . 'Abhängigkeiten zu anderen Middleware-Klassen, Models, Services '
-                . 'oder Config deuten auf fehlplatzierte Geschäftslogik hin — '
+                . 'Abhängigkeiten zu anderen Middleware-Klassen, konkreten Models, '
+                . 'Services oder Config deuten auf fehlplatzierte Geschäftslogik hin — '
                 . 'gemeinsame Logik gehört in einen Service, ein Trait oder eine '
-                . 'Helper-Klasse, nicht in eine weitere Middleware.',
+                . 'Helper-Klasse, nicht in eine weitere Middleware. Model-Contracts '
+                . '(z.B. MustBeApproved) sind erlaubt, weil sie das Pendant zu '
+                . 'Illuminates eigenen Auth-Contracts (MustVerifyEmail) sind und '
+                . 'Middleware ohne sie keinen Zugriff auf den Auth-Status hätte.',
             );
     }
 }
