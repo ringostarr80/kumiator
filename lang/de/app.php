@@ -263,6 +263,7 @@ return [
     'activity_password_reset' => 'Passwort über Reset-Link zurückgesetzt',
     'activity_other_sessions_logged_out' => 'Andere Browser-Sessions abgemeldet',
     'activity_account_self_deleted' => 'Konto durch Nutzer selbst gelöscht (anonymisiert)',
+    'activity_account_admin_force_deleted' => 'Konto durch Administrator endgültig gelöscht (anonymisiert)',
     'activity_api_token_created' => 'API-Token erstellt',
     'activity_api_token_revoked' => 'API-Token widerrufen',
     'activity_2fa_enabled' => 'Zwei-Faktor-Authentifizierung aktiviert',

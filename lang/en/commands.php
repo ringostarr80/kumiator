@@ -27,6 +27,31 @@ return [
         'success' => 'User ":name" (:email) was successfully deleted.',
     ],
 
+    'restore_user' => [
+        'title' => 'Restore soft-deleted user',
+        'not_trashed' => 'User ":email" is not soft-deleted.',
+        'user_found' => 'Soft-deleted user found: :name (:email), deleted at :deleted_at',
+        'confirm_restore' => 'Do you really want to restore this user?',
+        'aborted' => 'Aborted.',
+        'hint' => 'Note: API tokens, passkeys and sessions were removed on deletion'
+            . ' and will not be restored. The user must log in again and re-register'
+            . ' their passkeys if applicable.',
+        'failed' => 'Restoring ":email" was aborted.',
+        'success' => 'User ":name" (:email) was successfully restored.',
+    ],
+
+    'force_delete_user' => [
+        'title' => 'Permanently delete soft-deleted user',
+        'not_trashed' => 'User ":email" must be soft-deleted via user:delete first'
+            . ' before it can be permanently deleted.',
+        'user_found' => 'Soft-deleted user found: :name (:email), deleted at :deleted_at',
+        'warning' => 'Warning: This action is GDPR-compliant and irreversible.'
+            . ' The user and all personal activity log entries will be deleted.',
+        'confirm_force_delete' => 'Do you really want to permanently delete this user?',
+        'aborted' => 'Aborted.',
+        'success' => 'User ":email" was permanently deleted.',
+    ],
+
     'list_users' => [
         'no_users' => 'No users found.',
         'header_name' => 'Name',

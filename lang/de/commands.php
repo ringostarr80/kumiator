@@ -27,6 +27,31 @@ return [
         'success' => 'Benutzer ":name" (:email) wurde erfolgreich gelöscht.',
     ],
 
+    'restore_user' => [
+        'title' => 'Soft-deleted Benutzer wiederherstellen',
+        'not_trashed' => 'Benutzer ":email" ist nicht soft-deleted.',
+        'user_found' => 'Soft-deleted Benutzer gefunden: :name (:email), gelöscht am :deleted_at',
+        'confirm_restore' => 'Soll dieser Benutzer wirklich wiederhergestellt werden?',
+        'aborted' => 'Abgebrochen.',
+        'hint' => 'Hinweis: API-Tokens, Passkeys und Sessions wurden beim Löschen entfernt'
+            . ' und werden nicht wiederhergestellt. Der Benutzer muss sich neu anmelden'
+            . ' und ggf. seine Passkeys neu registrieren.',
+        'failed' => 'Wiederherstellung von ":email" wurde abgebrochen.',
+        'success' => 'Benutzer ":name" (:email) wurde erfolgreich wiederhergestellt.',
+    ],
+
+    'force_delete_user' => [
+        'title' => 'Soft-deleted Benutzer endgültig löschen',
+        'not_trashed' => 'Benutzer ":email" muss erst per user:delete soft-deleted werden,'
+            . ' bevor er endgültig gelöscht werden kann.',
+        'user_found' => 'Soft-deleted Benutzer gefunden: :name (:email), gelöscht am :deleted_at',
+        'warning' => 'Achtung: Diese Aktion ist DSGVO-konform und unwiderruflich.'
+            . ' Der Benutzer und alle personenbezogenen Activity-Log-Einträge werden gelöscht.',
+        'confirm_force_delete' => 'Soll dieser Benutzer wirklich endgültig gelöscht werden?',
+        'aborted' => 'Abgebrochen.',
+        'success' => 'Benutzer ":email" wurde endgültig gelöscht.',
+    ],
+
     'list_users' => [
         'no_users' => 'Keine Benutzer vorhanden.',
         'header_name' => 'Name',

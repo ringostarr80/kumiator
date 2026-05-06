@@ -28,6 +28,7 @@ final class ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
                 Selector::inNamespace('ParagonIE'),
                 Selector::inNamespace('Symfony'),
                 Selector::inNamespace('Spatie\\Activitylog'),
+                Selector::inNamespace('Laravel\\Sanctum'),
                 Selector::classname(\Throwable::class),
             )
             ->because(
@@ -36,8 +37,11 @@ final class ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
                 'Abhängigkeiten zur Präsentationsschicht würden die Service-Schicht an '
                 . 'die Infrastruktur koppeln. Spatie\\Activitylog ist als Cross-Cutting-'
                 . 'Concern (Audit-Logging) freigegeben — symmetrisch zu Listenern, die '
-                . 'das Paket bereits nutzen. Neue Vendor-Pakete müssen bewusst in die '
-                . 'Allowlist eingetragen werden.',
+                . 'das Paket bereits nutzen. Laravel\\Sanctum ist freigegeben, weil das '
+                . '`PersonalAccessToken`-Model in DSGVO-Hard-Delete-Pfaden direkt '
+                . 'angesprochen werden muss (kein Repository-Wrapper sinnvoll, da '
+                . 'Sanctum sein Model selbst exponiert). Neue Vendor-Pakete müssen '
+                . 'bewusst in die Allowlist eingetragen werden.',
             );
     }
 
