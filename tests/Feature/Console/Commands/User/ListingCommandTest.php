@@ -14,7 +14,9 @@ final class ListingCommandTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const string ACTIVE_USER_NAME = 'Active User';
     private const string DATETIME_FORMAT = 'd.m.Y H:i';
+    private const string DELETED_USER_NAME = 'Deleted User';
 
     public function testUsersAreListed(): void
     {
@@ -157,6 +159,108 @@ final class ListingCommandTest extends TestCase
 
         $command
             ->expectsOutputToContain(__('commands.list_users.no_users'))
+            ->assertSuccessful()
+            ->run();
+    }
+
+    public function testSoftDeletedUsersAreHiddenByDefault(): void
+    {
+        User::factory()->create(['name' => self::ACTIVE_USER_NAME]);
+        $deleted = User::factory()->create(['name' => self::DELETED_USER_NAME]);
+        $deleted->deleteOrFail();
+
+        $command = $this->artisan('user:list');
+        assert($command instanceof PendingCommand);
+
+        $command
+            ->expectsOutputToContain(__('commands.list_users.total', ['count' => 1]))
+            ->doesntExpectOutputToContain(self::DELETED_USER_NAME)
+            ->assertSuccessful()
+            ->run();
+    }
+
+    public function testWithTrashedFlagShowsActiveAndDeletedUsers(): void
+    {
+        $active = User::factory()->create(['name' => self::ACTIVE_USER_NAME]);
+        $deleted = User::factory()->create(['name' => self::DELETED_USER_NAME]);
+        $deleted->deleteOrFail();
+        $deleted->refresh();
+
+        $command = $this->artisan('user:list', ['--with-trashed' => true]);
+        assert($command instanceof PendingCommand);
+
+        $command
+            ->expectsTable(
+                [
+                    __('commands.list_users.header_name'),
+                    __('commands.list_users.header_email'),
+                    __('commands.list_users.header_role'),
+                    __('commands.list_users.header_verified'),
+                    __('commands.list_users.header_approved'),
+                    __('commands.list_users.header_created_at'),
+                    __('commands.list_users.header_deleted_at'),
+                ],
+                [
+                    [
+                        self::ACTIVE_USER_NAME,
+                        $active->email,
+                        '—',
+                        '✓',
+                        '✓',
+                        $active->created_at?->format(self::DATETIME_FORMAT),
+                        '—',
+                    ],
+                    [
+                        '🗑 Deleted User',
+                        $deleted->email,
+                        '—',
+                        '✓',
+                        '✓',
+                        $deleted->created_at?->format(self::DATETIME_FORMAT),
+                        $deleted->deleted_at?->format(self::DATETIME_FORMAT),
+                    ],
+                ],
+            )
+            ->expectsOutputToContain(__('commands.list_users.total', ['count' => 2]))
+            ->assertSuccessful()
+            ->run();
+    }
+
+    public function testOnlyTrashedFlagShowsOnlyDeletedUsers(): void
+    {
+        User::factory()->create(['name' => self::ACTIVE_USER_NAME]);
+        $deleted = User::factory()->create(['name' => self::DELETED_USER_NAME]);
+        $deleted->deleteOrFail();
+        $deleted->refresh();
+
+        $command = $this->artisan('user:list', ['--only-trashed' => true]);
+        assert($command instanceof PendingCommand);
+
+        $command
+            ->expectsTable(
+                [
+                    __('commands.list_users.header_name'),
+                    __('commands.list_users.header_email'),
+                    __('commands.list_users.header_role'),
+                    __('commands.list_users.header_verified'),
+                    __('commands.list_users.header_approved'),
+                    __('commands.list_users.header_created_at'),
+                    __('commands.list_users.header_deleted_at'),
+                ],
+                [
+                    [
+                        '🗑 Deleted User',
+                        $deleted->email,
+                        '—',
+                        '✓',
+                        '✓',
+                        $deleted->created_at?->format(self::DATETIME_FORMAT),
+                        $deleted->deleted_at?->format(self::DATETIME_FORMAT),
+                    ],
+                ],
+            )
+            ->expectsOutputToContain(__('commands.list_users.total', ['count' => 1]))
+            ->doesntExpectOutputToContain(self::ACTIVE_USER_NAME)
             ->assertSuccessful()
             ->run();
     }

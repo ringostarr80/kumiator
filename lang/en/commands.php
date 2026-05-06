@@ -35,6 +35,7 @@ return [
         'header_verified' => 'Verified',
         'header_approved' => 'Approved',
         'header_created_at' => 'Created at',
+        'header_deleted_at' => 'Deleted at',
         'total' => 'Total: :count users',
     ],
 
