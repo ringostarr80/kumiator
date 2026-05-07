@@ -258,6 +258,8 @@ return [
     'activity_login_locked_out' => 'Login locked out (too many failed attempts)',
     'activity_password_updated' => 'Password changed',
     'activity_password_reset' => 'Password reset via reset link',
+    'activity_email_verified' => 'Email address verified',
+    'activity_email_verified_via_cli' => 'Email address verified by administrator via console',
     'activity_other_sessions_logged_out' => 'Other browser sessions logged out',
     'activity_account_self_deleted' => 'Account self-deleted by user (anonymised)',
     'activity_account_admin_force_deleted' => 'Account permanently deleted by administrator (anonymised)',

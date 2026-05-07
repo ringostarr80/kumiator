@@ -12,6 +12,7 @@ use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Database\Eloquent\Model;
 use Laravel\Fortify\Events\PasswordUpdatedViaController;
 use Spatie\Activitylog\Facades\Activity;
@@ -159,6 +160,33 @@ final class LogAuthenticationActivityListener
             ->causedBy($user)
             ->performedOn($user)
             ->log(__('app.activity_password_reset'));
+    }
+
+    /**
+     * Bestätigung der E-Mail-Adresse als fachlicher Audit-Eintrag im `auth`-Log
+     * — anstatt nur als generischer `user.updated` über `email_verified_at`.
+     * Das Field wurde deshalb bewusst aus `User::getActivitylogOptions()`
+     * entfernt; sonst entstünde derselbe Vorgang doppelt.
+     *
+     * `Verified::$user` ist per Docblock nur als `MustVerifyEmail` getypt —
+     * Spatie's Activity-Log braucht aber ein Eloquent-`Model` für
+     * `causedBy`/`performedOn`. Im Projekt ist `User` der einzige Träger
+     * dieser Schnittstelle, daher reicht der `Model`-Check zur Typ-Eingrenzung
+     * für PHPStan und als Schutz gegen einen exotischen Drittanbieter-Caller.
+     */
+    public function handleVerified(Verified $event): void
+    {
+        $user = $event->user;
+
+        if (!$user instanceof Model) {
+            return;
+        }
+
+        Activity::useLog(self::LOG_NAME)
+            ->event('email_verified')
+            ->causedBy($user)
+            ->performedOn($user)
+            ->log(__('app.activity_email_verified'));
     }
 
     public function handleLockout(Lockout $event): void

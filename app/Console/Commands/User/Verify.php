@@ -5,15 +5,28 @@ declare(strict_types=1);
 namespace App\Console\Commands\User;
 
 use App\Models\User;
+use App\Services\User\Contracts\UserEmailVerifierContract;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 
+/**
+ * Admin-initiierte E-Mail-Verifizierung über die Konsole.
+ *
+ * Die eigentliche Mechanik (Setzen von `email_verified_at`, anonymisierter
+ * Audit-Eintrag im `auth`-Log) liegt im `UserEmailVerifier`-Service. Der
+ * Command ist reine Presentation: Eingabe einlesen, Vorbedingungen prüfen,
+ * Service aufrufen, Ergebnis ausgeben.
+ */
 #[Signature('user:verify')]
 #[Description('Verifiziert die E-Mail-Adresse eines Benutzers')]
 class Verify extends Command
 {
+    public function __construct(private readonly UserEmailVerifierContract $verifier)
+    {
+        parent::__construct();
+    }
+
     /**
      * Execute the console command.
      */
@@ -41,8 +54,7 @@ class Verify extends Command
             return self::SUCCESS;
         }
 
-        $user->email_verified_at = Carbon::now();
-        $user->saveOrFail();
+        $this->verifier->verify($user);
 
         $this->info(__('commands.verify_user.success', ['name' => $user->name, 'email' => $email]));
 

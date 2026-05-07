@@ -16,6 +16,7 @@ use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\GenericUser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -483,6 +484,54 @@ final class AuthenticationActivityLogTest extends TestCase
         $this->assertSame($user->getKey(), $activity->subject_id);
     }
 
+    public function testEmailVerifiedIsLogged(): void
+    {
+        $user = User::factory()->unverified()->create();
+        Activity::query()->delete();
+
+        Event::dispatch(new Verified($user));
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'email_verified')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_email_verified'), $activity->description);
+        $this->assertSame($user->getMorphClass(), $activity->causer_type);
+        $this->assertSame($user->getKey(), $activity->causer_id);
+        $this->assertSame($user->getMorphClass(), $activity->subject_type);
+        $this->assertSame($user->getKey(), $activity->subject_id);
+    }
+
+    /**
+     * Sicherstellt, dass derselbe Vorgang nicht zusätzlich als generischer
+     * `user.updated`-Eintrag erscheint — `email_verified_at` wurde bewusst aus
+     * `User::getActivitylogOptions()` entfernt, der `auth`-Eintrag ist die
+     * einzige Quelle der Wahrheit für die Verifizierung.
+     */
+    public function testEmailVerificationDoesNotProduceGenericUserUpdatedEntry(): void
+    {
+        $user = User::factory()->unverified()->create();
+        Activity::query()->delete();
+
+        $user->markEmailAsVerified();
+        Event::dispatch(new Verified($user));
+
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('log_name', 'user')
+                ->where('subject_type', $user->getMorphClass())
+                ->where('subject_id', $user->getKey())
+                ->where('event', 'updated')
+                ->count(),
+            'Die E-Mail-Verifizierung darf nur als auth/email_verified erscheinen, '
+            . 'nicht zusätzlich als generischer user.updated-Eintrag.',
+        );
+    }
+
     /**
      * Den Database-Driver-Pfad (Happy + Wrong-Password) lässt sich hier nicht
      * sinnvoll durch `Livewire::test` simulieren: Livewire erstellt intern
@@ -718,6 +767,8 @@ final class AuthenticationActivityLogTest extends TestCase
             'app.activity_login_locked_out',
             'app.activity_password_updated',
             'app.activity_password_reset',
+            'app.activity_email_verified',
+            'app.activity_email_verified_via_cli',
             'app.activity_other_sessions_logged_out',
             'app.activity_account_self_deleted',
             'app.activity_api_token_created',

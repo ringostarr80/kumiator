@@ -7,7 +7,9 @@ namespace App\Providers;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Policies\PasskeyCredentialPolicy;
+use App\Services\User\Contracts\UserEmailVerifierContract;
 use App\Services\User\Contracts\UserHardDeleterContract;
+use App\Services\User\UserEmailVerifier;
 use App\Services\User\UserHardDeleter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -25,6 +27,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(UserHardDeleterContract::class, UserHardDeleter::class);
+        $this->app->bind(UserEmailVerifierContract::class, UserEmailVerifier::class);
     }
 
     /**

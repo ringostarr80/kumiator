@@ -97,11 +97,16 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
      *
      * Geloggt werden nur fachlich relevante Felder — Secrets (Passwort, 2FA-Seed,
      * Recovery-Codes, Remember-Token) erscheinen NIEMALS im Log.
+     *
+     * `email_verified_at` wird bewusst NICHT geloggt: die E-Mail-Verifizierung
+     * landet als dedizierter `email_verified`-Eintrag im `auth`-Log (siehe
+     * `LogAuthenticationActivityListener::handleVerified()`). Ein zusätzlicher
+     * generischer `user.updated`-Eintrag würde denselben Vorgang doppelt zählen.
      */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'email', 'email_verified_at', 'approved_at', 'deleted_at'])
+            ->logOnly(['name', 'email', 'approved_at', 'deleted_at'])
             ->logOnlyDirty()
             ->dontLogEmptyChanges()
             ->useLogName('user');
