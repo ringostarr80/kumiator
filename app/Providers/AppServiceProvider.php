@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Policies\PasskeyCredentialPolicy;
+use App\Services\Auth\SelfRegistrationContext;
 use App\Services\User\Contracts\UserEmailVerifierContract;
 use App\Services\User\Contracts\UserHardDeleterContract;
 use App\Services\User\UserEmailVerifier;
@@ -62,6 +63,38 @@ class AppServiceProvider extends ServiceProvider
         // hängt nur der Listener dran — `boot()` läuft genau einmal pro
         // Application-Lifetime, daher keine Doppel-Registrierung.
         Activity::saving(static fn (Activity $activity) => PasskeyCredential::applyEventLabelToActivity($activity));
+
+        // User-Self-Registration: der Web-Pfad (`RegisteredUserController` →
+        // `CreateNewUser::create()`) erzeugt durch das `LogsActivity`-Trait
+        // einen generischen `user.created`-Eintrag. Ohne Remap wäre er nicht
+        // vom Admin-CLI-Pfad (`user:create`) zu unterscheiden — fachlich aber
+        // zwei grundverschiedene Vorgänge (Public-Endpoint vs. interner
+        // Admin-Akt). `CreateNewUser` setzt vor `User::create()` einen
+        // request-scoped Marker, der hier ausgewertet wird; ist er aktiv,
+        // wird `event` auf `user_self_registered` umgelabelt und die
+        // Description auf den fachlichen Übersetzungs-Key gesetzt. Ohne
+        // Marker bleibt der Eintrag generisch (CLI/Tests/Seeder).
+        //
+        // Warum nicht im `User`-Model: `ModelsDependOnlyOnModelsTest`
+        // verbietet Models den Zugriff auf `App\Services`. Die Remap-Logik
+        // braucht aber den Marker-Zustand aus dem Service-Layer, daher
+        // gehört sie hier ins Bootstrapping.
+        Activity::saving(static function (Activity $activity): void {
+            if ($activity->log_name !== 'user') {
+                return;
+            }
+
+            if ($activity->event !== 'created') {
+                return;
+            }
+
+            if (!SelfRegistrationContext::isActiveStatically()) {
+                return;
+            }
+
+            $activity->event = 'user_self_registered';
+            $activity->description = __('app.activity_user_self_registered');
+        });
 
         // Passkey authentication options (guests): IP-based, 20 requests per minute.
         // Limits e-mail enumeration via the allowCredentials field without impacting

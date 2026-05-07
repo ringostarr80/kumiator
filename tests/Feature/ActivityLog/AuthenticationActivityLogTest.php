@@ -9,6 +9,7 @@ use App\Livewire\Profile\ApiTokenManager;
 use App\Livewire\Profile\LogoutOtherBrowserSessionsForm;
 use App\Models\User;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
+use App\Services\Auth\SelfRegistrationContext;
 use App\Services\Auth\UnapprovedLoginContext;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use Illuminate\Auth\Events\Failed;
@@ -794,5 +795,6 @@ final class AuthenticationActivityLogTest extends TestCase
         // sonst über die Test-Grenze hinweg.
         PasskeyLoginContext::clear();
         UnapprovedLoginContext::clear();
+        SelfRegistrationContext::clearStatically();
     }
 }

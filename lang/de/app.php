@@ -261,6 +261,7 @@ return [
     'activity_login_locked_out' => 'Anmeldung gesperrt (zu viele Fehlversuche)',
     'activity_password_updated' => 'Passwort geändert',
     'activity_password_reset' => 'Passwort über Reset-Link zurückgesetzt',
+    'activity_user_self_registered' => 'Konto durch Selbstregistrierung angelegt',
     'activity_email_verified' => 'E-Mail-Adresse bestätigt',
     'activity_email_verified_via_cli' => 'E-Mail-Adresse durch Administrator über die Konsole bestätigt',
     'activity_other_sessions_logged_out' => 'Andere Browser-Sessions abgemeldet',
