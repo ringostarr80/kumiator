@@ -8,10 +8,14 @@ use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Policies\PasskeyCredentialPolicy;
 use App\Services\Auth\SelfRegistrationContext;
+use App\Services\Console\ConsoleActorContext;
+use App\Services\Console\Contracts\ConsoleActorContextContract;
 use App\Services\User\Contracts\UserEmailVerifierContract;
 use App\Services\User\Contracts\UserHardDeleterContract;
+use App\Services\User\Contracts\UserPasswordResetterContract;
 use App\Services\User\UserEmailVerifier;
 use App\Services\User\UserHardDeleter;
+use App\Services\User\UserPasswordResetter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
@@ -29,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(UserHardDeleterContract::class, UserHardDeleter::class);
         $this->app->bind(UserEmailVerifierContract::class, UserEmailVerifier::class);
+        $this->app->bind(UserPasswordResetterContract::class, UserPasswordResetter::class);
+        $this->app->singleton(ConsoleActorContextContract::class, ConsoleActorContext::class);
     }
 
     /**
@@ -95,6 +101,14 @@ class AppServiceProvider extends ServiceProvider
             $activity->event = 'user_self_registered';
             $activity->description = __('app.activity_user_self_registered');
         });
+
+        // CLI-Actor & Event-Remap für Artisan-Commands. Hängt jedem während
+        // einer Command-Ausführung entstehenden Eintrag das `cli_actor`-
+        // Property an (OS-User/Hostname/Command) und labelt für eine
+        // kuratierte Liste von User-Lifecycle-Commands den generischen
+        // Eloquent-Event-Code auf einen fachlichen Code um — symmetrisch
+        // zum Self-Registration-Hook darüber.
+        Activity::saving(static fn (Activity $activity) => ConsoleActorContext::applyToActivity($activity));
 
         // Passkey authentication options (guests): IP-based, 20 requests per minute.
         // Limits e-mail enumeration via the allowCredentials field without impacting

@@ -5,16 +5,29 @@ declare(strict_types=1);
 namespace App\Console\Commands\User;
 
 use App\Models\User;
+use App\Services\User\Contracts\UserPasswordResetterContract;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * Admin-initiierter Passwort-Reset über die Konsole.
+ *
+ * Die eigentliche Mechanik (Hash, Persistenz, dedizierter
+ * `password_reset_via_cli`-Audit-Eintrag) liegt im `UserPasswordResetter`-
+ * Service. Der Command ist reine Presentation: Eingabe einlesen,
+ * Vorbedingungen prüfen, Service aufrufen, Ergebnis ausgeben.
+ */
 #[Signature('user:reset-password')]
 #[Description('Setzt das Passwort eines Benutzers neu')]
 class ResetPassword extends Command
 {
+    public function __construct(private readonly UserPasswordResetterContract $resetter)
+    {
+        parent::__construct();
+    }
+
     /**
      * Execute the console command.
      */
@@ -59,8 +72,7 @@ class ResetPassword extends Command
 
         assert(is_string($password));
 
-        $user->password = Hash::make($password);
-        $user->saveOrFail();
+        $this->resetter->reset($user, $password);
 
         $this->info(__('commands.reset_password.success', ['name' => $user->name, 'email' => $email]));
 
