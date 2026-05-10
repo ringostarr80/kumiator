@@ -285,6 +285,8 @@ return [
     'activity_role_detached' => 'Rolle entzogen',
     'activity_role_created' => 'Rolle angelegt',
     'activity_role_deleted' => 'Rolle gelöscht',
+    'activity_permission_attached' => 'Berechtigung zugewiesen',
+    'activity_permission_detached' => 'Berechtigung entzogen',
 
     // Morph-Typen (Anzeigenamen für die in AppServiceProvider registrierte Morph-Map)
     'morph_user' => 'Benutzer',

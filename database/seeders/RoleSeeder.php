@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Services\Permission\PermissionSeederContext;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -40,6 +41,18 @@ class RoleSeeder extends Seeder
         $activityLogView = Permission::findOrCreate('activity-log.view');
 
         $admin = Role::findOrCreate('admin');
-        $admin->givePermissionTo($activityLogView);
+
+        // Spatie's `givePermissionTo()` feuert `PermissionAttachedEvent`
+        // **unbedingt** — auch wenn der interne Attach ein No-Op ist
+        // (Permission war bereits an die Rolle gebunden). Ohne diesen
+        // Marker würde jeder Deploy einen falsch-positiven
+        // `permission_attached`-Eintrag im Activity-Log erzeugen.
+        PermissionSeederContext::markActive();
+
+        try {
+            $admin->givePermissionTo($activityLogView);
+        } finally {
+            PermissionSeederContext::clear();
+        }
     }
 }

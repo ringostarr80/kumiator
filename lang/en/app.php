@@ -282,6 +282,8 @@ return [
     'activity_role_detached' => 'Role revoked',
     'activity_role_created' => 'Role created',
     'activity_role_deleted' => 'Role deleted',
+    'activity_permission_attached' => 'Permission granted',
+    'activity_permission_detached' => 'Permission revoked',
 
     // Morph types (display names for the morph map registered in AppServiceProvider)
     'morph_user' => 'User',
