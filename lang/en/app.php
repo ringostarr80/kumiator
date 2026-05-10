@@ -280,8 +280,11 @@ return [
     'activity_2fa_failed' => 'Two-factor code invalid',
     'activity_role_attached' => 'Role assigned',
     'activity_role_detached' => 'Role revoked',
+    'activity_role_created' => 'Role created',
+    'activity_role_deleted' => 'Role deleted',
 
     // Morph types (display names for the morph map registered in AppServiceProvider)
     'morph_user' => 'User',
     'morph_passkey' => 'Passkey',
+    'morph_role' => 'Role',
 ];

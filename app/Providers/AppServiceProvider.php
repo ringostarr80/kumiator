@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Models\PasskeyCredential;
 use App\Models\User;
+use App\Observers\RoleLifecycleObserver;
 use App\Policies\PasskeyCredentialPolicy;
 use App\Services\Auth\SelfRegistrationContext;
 use App\Services\Console\ConsoleActorContext;
@@ -23,6 +24,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\Permission\Models\Role;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -55,6 +57,12 @@ class AppServiceProvider extends ServiceProvider
         Relation::enforceMorphMap([
             'user' => User::class,
             'passkey' => PasskeyCredential::class,
+            // `Spatie\Permission\Models\Role` ist ein Vendor-Model, taucht
+            // aber als `subject_type` im Activity-Log auf (siehe
+            // `RoleLifecycleObserver`). Ohne Alias würde `enforceMorphMap`
+            // jeden Schreibversuch mit `ClassMorphViolationException` brechen.
+            // Vendor-Models in der Map sind selten, hier aber zwingend.
+            'role' => Role::class,
         ]);
 
         Gate::policy(PasskeyCredential::class, PasskeyCredentialPolicy::class);
@@ -109,6 +117,16 @@ class AppServiceProvider extends ServiceProvider
         // Eloquent-Event-Code auf einen fachlichen Code um — symmetrisch
         // zum Self-Registration-Hook darüber.
         Activity::saving(static fn (Activity $activity) => ConsoleActorContext::applyToActivity($activity));
+
+        // Rollen-Lifecycle (Anlage/Löschung) ins Activity-Log spiegeln.
+        // `Spatie\Permission\Models\Role` ist ein Vendor-Model ohne
+        // `LogsActivity`-Trait; ein Observer hängt sich extern an die
+        // Eloquent-Lifecycle-Events und deckt damit alle Aufruf-Quellen
+        // (CLI, Seeder, künftiges Admin-UI) ab. Ein hier konfiguriertes
+        // Custom-Role-Wrapper-Model wäre der einzige Grund, statt der
+        // konkreten Vendor-Klasse `config('permission.models.role')`
+        // aufzulösen — das Projekt nutzt das Default-Model, daher direkt.
+        Role::observe(RoleLifecycleObserver::class);
 
         // Passkey authentication options (guests): IP-based, 20 requests per minute.
         // Limits e-mail enumeration via the allowCredentials field without impacting

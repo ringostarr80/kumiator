@@ -283,9 +283,12 @@ return [
     'activity_2fa_failed' => 'Zwei-Faktor-Code ungültig',
     'activity_role_attached' => 'Rolle zugewiesen',
     'activity_role_detached' => 'Rolle entzogen',
+    'activity_role_created' => 'Rolle angelegt',
+    'activity_role_deleted' => 'Rolle gelöscht',
 
     // Morph-Typen (Anzeigenamen für die in AppServiceProvider registrierte Morph-Map)
     'morph_user' => 'Benutzer',
     'morph_passkey' => 'Passkey',
+    'morph_role' => 'Rolle',
 
 ];
