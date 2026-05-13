@@ -11,9 +11,11 @@ use App\Policies\PasskeyCredentialPolicy;
 use App\Services\Auth\SelfRegistrationContext;
 use App\Services\Console\ConsoleActorContext;
 use App\Services\Console\Contracts\ConsoleActorContextContract;
+use App\Services\User\Contracts\UserEmailChangerContract;
 use App\Services\User\Contracts\UserEmailVerifierContract;
 use App\Services\User\Contracts\UserHardDeleterContract;
 use App\Services\User\Contracts\UserPasswordResetterContract;
+use App\Services\User\UserEmailChanger;
 use App\Services\User\UserEmailVerifier;
 use App\Services\User\UserHardDeleter;
 use App\Services\User\UserPasswordResetter;
@@ -35,6 +37,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(UserHardDeleterContract::class, UserHardDeleter::class);
         $this->app->bind(UserEmailVerifierContract::class, UserEmailVerifier::class);
+        $this->app->bind(UserEmailChangerContract::class, UserEmailChanger::class);
         $this->app->bind(UserPasswordResetterContract::class, UserPasswordResetter::class);
         $this->app->singleton(ConsoleActorContextContract::class, ConsoleActorContext::class);
     }
@@ -152,5 +155,15 @@ class AppServiceProvider extends ServiceProvider
                 ? Limit::perMinute(5)->by((string) $user->id)
                 : Limit::perMinute(5)->by($request->ip());
         });
+
+        // Deferred-Email-Change confirm/cancel endpoints (guests, IP-basiert):
+        // schützt gegen Token-Probieren auf den 64-Hex-Tokens. 10/min ist
+        // großzügig genug für legitime Mehrfach-Klicks (z. B. Antiviren-Prefetch
+        // + User-Klick) und eng genug, um Brute-Force-Versuche praktisch wertlos
+        // zu machen — der Suchraum ist ohnehin 2^256.
+        RateLimiter::for(
+            'email-change-link',
+            static fn (Request $request): Limit => Limit::perMinute(10)->by($request->ip()),
+        );
     }
 }

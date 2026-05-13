@@ -269,6 +269,9 @@ return [
     'activity_user_restored_via_cli' => 'Konto durch Administrator über die Konsole wiederhergestellt',
     'activity_email_verified' => 'E-Mail-Adresse bestätigt',
     'activity_email_verified_via_cli' => 'E-Mail-Adresse durch Administrator über die Konsole bestätigt',
+    'activity_email_change_requested' => 'E-Mail-Änderung beantragt',
+    'activity_email_changed' => 'E-Mail-Adresse geändert',
+    'activity_email_change_cancelled' => 'E-Mail-Änderung abgebrochen',
     'activity_other_sessions_logged_out' => 'Andere Browser-Sessions abgemeldet',
     'activity_account_self_deleted' => 'Konto durch Nutzer selbst gelöscht (anonymisiert)',
     'activity_account_admin_force_deleted' => 'Konto durch Administrator endgültig gelöscht (anonymisiert)',
@@ -292,5 +295,35 @@ return [
     'morph_user' => 'Benutzer',
     'morph_passkey' => 'Passkey',
     'morph_role' => 'Rolle',
+
+    // E-Mail-Änderung: Mail-Texte
+    'email_change_verify_subject' => 'Bestätige deine neue E-Mail-Adresse',
+    'email_change_verify_greeting' => 'Hallo :name,',
+    'email_change_verify_intro' => 'für dein Konto wurde eine Änderung der E-Mail-Adresse auf :email beantragt.'
+        . ' Klicke auf den folgenden Button, um die neue Adresse zu bestätigen — erst dann wird sie übernommen.',
+    'email_change_verify_action' => 'Neue E-Mail-Adresse bestätigen',
+    'email_change_verify_ttl' => 'Aus Sicherheitsgründen läuft dieser Link nach 60 Minuten ab.',
+    'email_change_verify_ignore' => 'Wenn du diese Änderung nicht angefragt hast, ignoriere diese E-Mail einfach.'
+        . ' Eine zusätzliche Hinweis-Mail mit Abbruch-Link wurde an deine alte Adresse gesendet.',
+    'email_change_requested_subject' => 'Sicherheitshinweis: Änderung deiner E-Mail-Adresse beantragt',
+    'email_change_requested_greeting' => 'Hallo :name,',
+    'email_change_requested_intro' => 'für dein Konto wurde eine Änderung der E-Mail-Adresse auf :email beantragt.'
+        . ' Diese Adresse erhält parallel eine Bestätigungs-Mail.',
+    'email_change_requested_warning' => 'Falls du diese Änderung NICHT selbst veranlasst hast, brich sie umgehend ab.'
+        . ' Bis zur Bestätigung über die neue Adresse bleibt diese aktuelle Adresse für deinen Login gültig.',
+    'email_change_requested_cancel_action' => 'Änderung abbrechen',
+    'email_change_requested_ttl' => 'Die Anfrage läuft nach 60 Minuten automatisch ab.',
+    'email_change_requested_self_hint' => 'Wenn du die Änderung selbst angestoßen hast, ist nichts weiter zu tun.',
+
+    // E-Mail-Änderung: View-Nachrichten
+    'email_change_confirmed_message' => 'Deine neue E-Mail-Adresse ist jetzt aktiv. Du kannst dich ab sofort mit'
+        . ' ihr anmelden.',
+    'email_change_expired_message' => 'Dieser Bestätigungslink ist abgelaufen. Bitte stoße die E-Mail-Änderung in'
+        . ' deinem Profil erneut an.',
+    'email_change_conflict_message' => 'Diese E-Mail-Adresse wird inzwischen von einem anderen Konto verwendet.'
+        . ' Bitte wähle eine andere Adresse und stoße die Änderung erneut an.',
+    'email_change_invalid_message' => 'Dieser Link ist ungültig.',
+    'email_change_cancelled_message' => 'Sofern eine offene E-Mail-Änderung zu diesem Link existierte, wurde sie'
+        . ' abgebrochen. Deine bestehende E-Mail-Adresse bleibt unverändert.',
 
 ];

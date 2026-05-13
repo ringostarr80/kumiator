@@ -20,6 +20,7 @@ final class ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
                 Selector::inNamespace('App\\Config'),
                 Selector::inNamespace('App\\DataTransferObjects'),
                 Selector::inNamespace('App\\Models'),
+                Selector::inNamespace('App\\Notifications'),
                 Selector::inNamespace('App\\Repositories\\Contracts'),
                 Selector::inNamespace('App\\Services'),
                 Selector::inNamespace('Illuminate'),
@@ -30,18 +31,27 @@ final class ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
                 Selector::inNamespace('Spatie\\Activitylog'),
                 Selector::inNamespace('Laravel\\Sanctum'),
                 Selector::classname(\Throwable::class),
+                Selector::isThrowable(),
             )
             ->because(
-                'Services dürfen nur von Config, DTOs, Models, Repository-Contracts, '
-                . 'anderen Services und den freigegebenen Vendor-Paketen abhängen.',
+                'Services dürfen nur von Config, DTOs, Models, Notifications, '
+                . 'Repository-Contracts, anderen Services und den freigegebenen '
+                . 'Vendor-Paketen abhängen.',
                 'Abhängigkeiten zur Präsentationsschicht würden die Service-Schicht an '
                 . 'die Infrastruktur koppeln. Spatie\\Activitylog ist als Cross-Cutting-'
                 . 'Concern (Audit-Logging) freigegeben — symmetrisch zu Listenern, die '
-                . 'das Paket bereits nutzen. Laravel\\Sanctum ist freigegeben, weil das '
-                . '`PersonalAccessToken`-Model in DSGVO-Hard-Delete-Pfaden direkt '
-                . 'angesprochen werden muss (kein Repository-Wrapper sinnvoll, da '
-                . 'Sanctum sein Model selbst exponiert). Neue Vendor-Pakete müssen '
-                . 'bewusst in die Allowlist eingetragen werden.',
+                . 'das Paket bereits nutzen. App\\Notifications ist aus demselben Grund '
+                . 'freigegeben: Notifications sind ausgehende Infrastruktur-Adapter '
+                . '(Mail-Versand) und keine Präsentationsschicht im engeren Sinn — '
+                . 'symmetrisch zur Activity-Log-Freigabe. Laravel\\Sanctum ist '
+                . 'freigegeben, weil das `PersonalAccessToken`-Model in DSGVO-Hard-'
+                . 'Delete-Pfaden direkt angesprochen werden muss (kein Repository-'
+                . 'Wrapper sinnvoll, da Sanctum sein Model selbst exponiert). Die '
+                . 'gesamte `\\Throwable`-Hierarchie ist freigegeben, damit Services '
+                . 'eigene Exception-Typen definieren können (z. B. fachliche Service-'
+                . 'Fehler unter `App\\Services\\*\\Exceptions\\`), ohne dass jede '
+                . 'Basisklasse separat aufgelistet werden muss. Neue Vendor-Pakete '
+                . 'müssen bewusst in die Allowlist eingetragen werden.',
             );
     }
 

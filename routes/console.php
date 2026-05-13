@@ -32,3 +32,16 @@ Schedule::command('activitylog:clean')
     ->dailyAt('03:30')
     ->onOneServer()
     ->withoutOverlapping();
+
+/*
+ * Cleanup abgelaufener E-Mail-Änderungs-Anfragen (Art. 5(1)(c) DSGVO —
+ * Datenminimierung; siehe `UserEmailChanger`-Doc).
+ *
+ * Stündliche Ausführung: die TTL beträgt 60 Minuten, häufiger als stündlich
+ * räumt nichts Zusätzliches. Off-Peak-Minute (`:07`) verteilt Last gegenüber
+ * Cron-Stunden-Spitzen.
+ */
+Schedule::command('user:cleanup-pending-email-changes')
+    ->hourlyAt(7)
+    ->onOneServer()
+    ->withoutOverlapping();

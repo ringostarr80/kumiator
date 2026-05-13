@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Auth\CancelEmailChangeController;
+use App\Http\Controllers\Auth\ConfirmEmailChangeController;
 use App\Http\Controllers\Auth\PasskeyAuthenticationController;
 use App\Http\Controllers\Auth\PasskeyRegistrationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
@@ -54,6 +56,21 @@ Route::middleware('guest')->group(static function (): void {
 Route::middleware(['signed', 'throttle:6,1'])
     ->get('/email/verify/{id}/{hash}', VerifyEmailController::class)
     ->name('verification.verify');
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Deferred email change (guest-zugänglich, Token IST die Berechtigung)
+//
+// Confirm-Link aus der Verifizierungs-Mail an die NEUE Adresse → Tausch.
+// Cancel-Link aus der Hinweis-Mail an die ALTE Adresse → Hijack-Schutz.
+// Beides via GET, analog zu Laravels Verify-Email-Pattern. IP-basiertes
+// Rate-Limit gegen Token-Probieren (siehe `AppServiceProvider`).
+// ──────────────────────────────────────────────────────────────────────────────
+Route::middleware('throttle:email-change-link')->group(static function (): void {
+    Route::get('/email/change/confirm/{token}', ConfirmEmailChangeController::class)
+        ->name('email.change.confirm');
+    Route::get('/email/change/cancel/{token}', CancelEmailChangeController::class)
+        ->name('email.change.cancel');
+});
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Registration-pending status page

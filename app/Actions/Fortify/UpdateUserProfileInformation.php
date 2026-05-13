@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Fortify;
 
 use App\Models\User;
+use App\Services\User\Contracts\UserEmailChangerContract;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -12,8 +13,18 @@ use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
 
 class UpdateUserProfileInformation implements UpdatesUserProfileInformation
 {
+    public function __construct(private readonly UserEmailChangerContract $emailChanger)
+    {
+    }
+
     /**
      * Validate and update the given user's profile information.
+     *
+     * Der Name wird unmittelbar gespeichert; ein E-Mail-Wechsel löst den
+     * zweistufigen Deferred-Flow im `UserEmailChanger`-Service aus — die
+     * `email`-Spalte am User wird erst beim Klick auf den Confirm-Link
+     * (Mail an die neue Adresse) getauscht. Bis dahin bleibt die alte
+     * Adresse für Login + Recovery aktiv (Hijack-Schutz, Tippfehler-Sicherheit).
      *
      * @param array<string, mixed> $input
      */
@@ -29,30 +40,20 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             $user->updateProfilePhoto($input['photo']);
         }
 
-        if ($input['email'] !== $user->email) {
-            // @phpstan-ignore argument.type
-            $this->updateVerifiedUser($user, $input);
-        } else {
-            $user->forceFill([
-                'name' => $input['name'],
-                'email' => $input['email'],
-            ])->save();
+        $name = $input['name'];
+        $email = $input['email'];
+
+        if (!is_string($name) || !is_string($email)) {
+            // Validierung oben erzwingt `string` für beide Felder; dieser
+            // Zweig dient ausschließlich der Typ-Eingrenzung gegenüber
+            // `array<string, mixed>`.
+            return;
         }
-    }
 
-    /**
-     * Update the given verified user's profile information.
-     *
-     * @param array<string, string> $input
-     */
-    protected function updateVerifiedUser(User $user, array $input): void
-    {
-        $user->forceFill([
-            'name' => $input['name'],
-            'email' => $input['email'],
-            'email_verified_at' => null,
-        ])->save();
+        $user->forceFill(['name' => $name])->saveOrFail();
 
-        $user->sendEmailVerificationNotification();
+        if ($email !== $user->email) {
+            $this->emailChanger->requestChange($user, $email);
+        }
     }
 }

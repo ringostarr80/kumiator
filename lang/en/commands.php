@@ -134,4 +134,9 @@ return [
         'success' => 'Password for user ":name" (:email) was successfully reset.',
     ],
 
+    'cleanup_pending_email_changes' => [
+        'none' => 'No expired email change requests to clean up.',
+        'success' => 'Cleaned up :count expired email change request(s).',
+    ],
+
 ];

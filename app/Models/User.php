@@ -20,7 +20,11 @@ use Spatie\Permission\Traits\HasRoles;
 
 /**
  * @property int $id
+ * @property string $email
  * @property ?\Illuminate\Support\Carbon $email_verified_at
+ * @property ?string $pending_email
+ * @property ?string $pending_email_token_hash
+ * @property ?\Illuminate\Support\Carbon $pending_email_sent_at
  * @property ?\Illuminate\Support\Carbon $approved_at
  * @property ?\Illuminate\Support\Carbon $deleted_at
  */
@@ -102,11 +106,24 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
      * landet als dedizierter `email_verified`-Eintrag im `auth`-Log (siehe
      * `LogAuthenticationActivityListener::handleVerified()`). Ein zusätzlicher
      * generischer `user.updated`-Eintrag würde denselben Vorgang doppelt zählen.
+     *
+     * `email` wird aus demselben Grund NICHT geloggt: der zweistufige
+     * Änderungsvorgang (Antrag → Bestätigung → Tausch) wird über drei
+     * dedizierte `auth`-Channel-Events dokumentiert
+     * (`email_change_requested`, `email_changed`, `email_change_cancelled`)
+     * — siehe `App\Services\User\UserEmailChanger`. Wer die `email`-Spalte
+     * außerhalb dieses Pfades direkt verändert, umgeht damit absichtlich den
+     * Audit-Pfad; das ist heute nur in Tests/Seedern der Fall.
+     *
+     * Die `pending_email*`-Spalten sind ebenfalls NICHT in `logOnly`: ihr
+     * Lebenszyklus ist vollständig über die `auth`-Events abgedeckt;
+     * Audit-Inhalte am `user`-Channel wären redundant und würden Konflikte
+     * mit der Hash-Speicherung des Tokens provozieren.
      */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'email', 'approved_at', 'deleted_at'])
+            ->logOnly(['name', 'approved_at', 'deleted_at'])
             ->logOnlyDirty()
             ->dontLogEmptyChanges()
             ->useLogName('user');
@@ -122,6 +139,7 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
         return [
             'id' => 'integer',
             'email_verified_at' => 'datetime',
+            'pending_email_sent_at' => 'datetime',
             'approved_at' => 'datetime',
             'password' => 'hashed',
         ];

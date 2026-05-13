@@ -42,17 +42,23 @@ final class ControllersAreIndependentTest
                 Selector::inNamespace('App\\Config\\Vendor\\Webauthn'),
                 Selector::inNamespace('App\\Repositories\\Contracts'),
                 Selector::inNamespace('/^App\\\\Services\\\\.*\\\\Contracts$/', true),
+                Selector::inNamespace('/^App\\\\Services\\\\.*\\\\Exceptions$/', true),
                 Selector::inNamespace('Illuminate'),
                 Selector::inNamespace('Webauthn'),
                 Selector::classname(\Throwable::class),
+                Selector::isThrowable(),
             )
             ->because(
                 'Controller dürfen nur von FormRequests, Models, DTOs, Vendor-Configs, '
-                . 'Repository- und Service-Contracts, Illuminate, Webauthn und '
-                . 'Throwable abhängen.',
+                . 'Repository- und Service-Contracts, Service-Exceptions, Illuminate, '
+                . 'Webauthn und der `\\Throwable`-Hierarchie abhängen.',
                 'Sie sind eine Präsentationsschicht und dürfen keine konkreten '
                 . 'Services oder Repositories kennen — DI erfolgt über Contracts. '
-                . 'Geschäftslogik gehört in die Service-Schicht.',
+                . 'Geschäftslogik gehört in die Service-Schicht. Fachliche Service-'
+                . 'Exceptions (`App\\Services\\*\\Exceptions\\`) sind freigegeben, '
+                . 'damit Controller Service-Aufrufe mit `catch` differenzieren können — '
+                . 'der einzige sinnvolle Weg, semantische Fehler eines Service-Calls '
+                . 'in unterschiedliche View-Antworten zu übersetzen.',
             );
     }
 }

@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Jetstream\Http\Livewire\UpdateProfileInformationForm;
 use Livewire\Livewire;
@@ -30,7 +31,11 @@ final class ProfileInformationTest extends TestCase
 
     public function testProfileInformationCanBeUpdated(): void
     {
-        $this->actingAs($user = User::factory()->create());
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create([
+            'name' => 'Original',
+            'email' => 'original@example.com',
+        ]));
 
         Livewire::test(UpdateProfileInformationForm::class)
             ->set('state', ['name' => 'Test Name', 'email' => 'test@example.com'])
@@ -39,8 +44,12 @@ final class ProfileInformationTest extends TestCase
         $refreshedUser = $user->fresh();
 
         $this->assertNotNull($refreshedUser);
+        // Name wird unmittelbar übernommen — keine Bestätigung nötig.
         $this->assertEquals('Test Name', $refreshedUser->name);
-        $this->assertEquals('test@example.com', $refreshedUser->email);
+        // E-Mail bleibt bis zur Bestätigung auf der alten Adresse (Deferred-Flow).
+        $this->assertEquals('original@example.com', $refreshedUser->email);
+        $this->assertEquals('test@example.com', $refreshedUser->pending_email);
+        $this->assertNotNull($refreshedUser->email_verified_at);
     }
 
     public function testProfileNameCanBeUpdatedWithoutChangingEmail(): void

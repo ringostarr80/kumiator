@@ -135,4 +135,9 @@ return [
         'success' => 'Das Passwort für Benutzer ":name" (:email) wurde erfolgreich zurückgesetzt.',
     ],
 
+    'cleanup_pending_email_changes' => [
+        'none' => 'Keine abgelaufenen E-Mail-Änderungsanfragen vorhanden.',
+        'success' => ':count abgelaufene E-Mail-Änderungsanfrage(n) bereinigt.',
+    ],
+
 ];

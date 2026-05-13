@@ -266,6 +266,9 @@ return [
     'activity_user_restored_via_cli' => 'Account restored by administrator via console',
     'activity_email_verified' => 'Email address verified',
     'activity_email_verified_via_cli' => 'Email address verified by administrator via console',
+    'activity_email_change_requested' => 'Email change requested',
+    'activity_email_changed' => 'Email address changed',
+    'activity_email_change_cancelled' => 'Email change cancelled',
     'activity_other_sessions_logged_out' => 'Other browser sessions logged out',
     'activity_account_self_deleted' => 'Account self-deleted by user (anonymised)',
     'activity_account_admin_force_deleted' => 'Account permanently deleted by administrator (anonymised)',
@@ -289,4 +292,33 @@ return [
     'morph_user' => 'User',
     'morph_passkey' => 'Passkey',
     'morph_role' => 'Role',
+
+    // Email change: mail texts
+    'email_change_verify_subject' => 'Confirm your new email address',
+    'email_change_verify_greeting' => 'Hello :name,',
+    'email_change_verify_intro' => 'A change of the email address for your account to :email has been requested.'
+        . ' Click the following button to confirm the new address — only then will it be applied.',
+    'email_change_verify_action' => 'Confirm new email address',
+    'email_change_verify_ttl' => 'For security reasons, this link expires after 60 minutes.',
+    'email_change_verify_ignore' => 'If you did not request this change, simply ignore this email.'
+        . ' An additional notice email with a cancel link has been sent to your previous address.',
+    'email_change_requested_subject' => 'Security notice: email address change requested',
+    'email_change_requested_greeting' => 'Hello :name,',
+    'email_change_requested_intro' => 'A change of the email address for your account to :email has been requested.'
+        . ' That address will receive a separate confirmation email.',
+    'email_change_requested_warning' => 'If you did NOT initiate this change, cancel it immediately.'
+        . ' Until the new address is confirmed, this current address remains valid for your login.',
+    'email_change_requested_cancel_action' => 'Cancel change',
+    'email_change_requested_ttl' => 'The request expires automatically after 60 minutes.',
+    'email_change_requested_self_hint' => 'If you initiated the change yourself, no further action is required.',
+
+    // Email change: view messages
+    'email_change_confirmed_message' => 'Your new email address is now active. You can log in with it from now on.',
+    'email_change_expired_message' => 'This confirmation link has expired. Please restart the email change from'
+        . ' your profile.',
+    'email_change_conflict_message' => 'This email address is now in use by another account. Please choose a'
+        . ' different address and restart the change.',
+    'email_change_invalid_message' => 'This link is invalid.',
+    'email_change_cancelled_message' => 'If a pending email change matched this link, it has been cancelled.'
+        . ' Your existing email address remains unchanged.',
 ];
