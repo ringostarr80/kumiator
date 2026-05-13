@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Profile;
 
+use App\Services\Auth\Contracts\OtherDeviceLogoutContextContract;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +24,19 @@ use Spatie\Activitylog\Facades\Activity;
  */
 final class LogoutOtherBrowserSessionsForm extends JetstreamLogoutOtherBrowserSessionsForm
 {
+    private OtherDeviceLogoutContextContract $logoutContext;
+
+    /**
+     * Livewire's `boot()` ist Container-aware und löst Type-Hints per DI auf —
+     * wir können den Parameter nicht in `logoutOtherBrowserSessions()` selbst
+     * deklarieren, weil ein zusätzlicher Pflichtparameter dort die Parent-
+     * Signatur brechen würde (LSP).
+     */
+    public function boot(OtherDeviceLogoutContextContract $logoutContext): void
+    {
+        $this->logoutContext = $logoutContext;
+    }
+
     public function logoutOtherBrowserSessions(StatefulGuard $guard): void
     {
         // Wenn die Session-Persistenz nicht über die Datenbank läuft, terminiert
@@ -39,7 +53,18 @@ final class LogoutOtherBrowserSessionsForm extends JetstreamLogoutOtherBrowserSe
         // dem Parent-Aufruf wären sie aus der Tabelle entfernt.
         $terminatedSessionCount = $this->countOtherSessions();
 
-        parent::logoutOtherBrowserSessions($guard);
+        // Parent ruft `$guard->logoutOtherDevices()` auf — das feuert nativ
+        // `OtherDeviceLogout`, das vom `LogAuthenticationActivityListener`
+        // verarbeitet würde. Im Form-Pfad schreiben wir aber selbst einen
+        // reicheren Eintrag mit `terminated_session_count`; der Marker drückt
+        // den allgemeinen Listener-Eintrag während dieses Aufrufs weg.
+        $this->logoutContext->markActive();
+
+        try {
+            parent::logoutOtherBrowserSessions($guard);
+        } finally {
+            $this->logoutContext->clear();
+        }
 
         // Parent wirft `ValidationException` bei falschem Passwort — kommen
         // wir hier an, war der Logout erfolgreich.

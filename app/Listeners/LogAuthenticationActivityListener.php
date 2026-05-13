@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Services\Audit\AuditEmailHasher;
+use App\Services\Auth\OtherDeviceLogoutContext;
 use App\Services\Auth\UnapprovedLoginContext;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Auth\Events\OtherDeviceLogout;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Database\Eloquent\Model;
@@ -187,6 +189,35 @@ final class LogAuthenticationActivityListener
             ->causedBy($user)
             ->performedOn($user)
             ->log(__('app.activity_email_verified'));
+    }
+
+    /**
+     * Native `Auth::logoutOtherDevices()`-Aufrufe sichtbar machen. Der
+     * Livewire-Form-Pfad schreibt einen reicheren `other_sessions_logged_out`-
+     * Eintrag mit `terminated_session_count` und setzt davor den
+     * `OtherDeviceLogoutContext`-Marker — den prüfen wir hier, um den
+     * Form-Pfad nicht doppelt zu loggen. Der eigene Event-Code
+     * `other_devices_logged_out` bleibt für native Aufrufe (eigene
+     * Controller, künftige API, CLI) reserviert.
+     */
+    public function handleOtherDeviceLogout(OtherDeviceLogout $event): void
+    {
+        if (OtherDeviceLogoutContext::isActive()) {
+            return;
+        }
+
+        $user = $event->user;
+
+        if (!$user instanceof Model) {
+            return;
+        }
+
+        Activity::useLog(self::LOG_NAME)
+            ->event('other_devices_logged_out')
+            ->causedBy($user)
+            ->performedOn($user)
+            ->withProperties(['guard' => $event->guard])
+            ->log(__('app.activity_other_devices_logged_out'));
     }
 
     public function handleLockout(Lockout $event): void

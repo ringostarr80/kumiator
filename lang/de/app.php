@@ -273,6 +273,7 @@ return [
     'activity_email_changed' => 'E-Mail-Adresse geändert',
     'activity_email_change_cancelled' => 'E-Mail-Änderung abgebrochen',
     'activity_other_sessions_logged_out' => 'Andere Browser-Sessions abgemeldet',
+    'activity_other_devices_logged_out' => 'Andere Geräte abgemeldet',
     'activity_account_self_deleted' => 'Konto durch Nutzer selbst gelöscht (anonymisiert)',
     'activity_account_admin_force_deleted' => 'Konto durch Administrator endgültig gelöscht (anonymisiert)',
     'activity_api_token_created' => 'API-Token erstellt',

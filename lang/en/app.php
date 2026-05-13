@@ -270,6 +270,7 @@ return [
     'activity_email_changed' => 'Email address changed',
     'activity_email_change_cancelled' => 'Email change cancelled',
     'activity_other_sessions_logged_out' => 'Other browser sessions logged out',
+    'activity_other_devices_logged_out' => 'Other devices logged out',
     'activity_account_self_deleted' => 'Account self-deleted by user (anonymised)',
     'activity_account_admin_force_deleted' => 'Account permanently deleted by administrator (anonymised)',
     'activity_api_token_created' => 'API token created',

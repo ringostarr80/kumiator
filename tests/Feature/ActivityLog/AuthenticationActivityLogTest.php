@@ -9,6 +9,7 @@ use App\Livewire\Profile\ApiTokenManager;
 use App\Livewire\Profile\LogoutOtherBrowserSessionsForm;
 use App\Models\User;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
+use App\Services\Auth\OtherDeviceLogoutContext;
 use App\Services\Auth\SelfRegistrationContext;
 use App\Services\Auth\UnapprovedLoginContext;
 use App\Services\WebAuthn\PasskeyLoginContext;
@@ -16,6 +17,7 @@ use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Auth\Events\OtherDeviceLogout;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\GenericUser;
@@ -569,6 +571,90 @@ final class AuthenticationActivityLogTest extends TestCase
     }
 
     /**
+     * Native `Auth::logoutOtherDevices()`-Aufrufe (eigene Controller, künftige
+     * API, Tinker) sollen über den `OtherDeviceLogout`-Listener im Audit-Log
+     * landen — der dedizierte Event-Code `other_devices_logged_out` ist
+     * bewusst vom Form-Eintrag (`other_sessions_logged_out`) getrennt, damit
+     * Reports beide Pfade unterscheiden können.
+     */
+    public function testNativeOtherDeviceLogoutEventIsLogged(): void
+    {
+        $user = User::factory()->create();
+        Activity::query()->delete();
+
+        Event::dispatch(new OtherDeviceLogout('web', $user));
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'other_devices_logged_out')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_other_devices_logged_out'), $activity->description);
+        $this->assertSame($user->getMorphClass(), $activity->causer_type);
+        $this->assertSame($user->getKey(), $activity->causer_id);
+        $this->assertSame($user->getMorphClass(), $activity->subject_type);
+        $this->assertSame($user->getKey(), $activity->subject_id);
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('web', $properties['guard'] ?? null);
+    }
+
+    /**
+     * Im Form-Pfad setzt `LogoutOtherBrowserSessionsForm` vor dem Parent-
+     * Aufruf den Marker, der Listener muss diesen Vorgang stumm bleiben —
+     * sonst entstünde derselbe Vorgang doppelt (einmal als
+     * `other_sessions_logged_out` aus dem Form, einmal als
+     * `other_devices_logged_out` aus dem Listener).
+     */
+    public function testOtherDeviceLogoutListenerIsSilencedWhenContextActive(): void
+    {
+        $user = User::factory()->create();
+        Activity::query()->delete();
+
+        (new OtherDeviceLogoutContext())->markActive();
+
+        try {
+            Event::dispatch(new OtherDeviceLogout('web', $user));
+        } finally {
+            OtherDeviceLogoutContext::clearStatically();
+        }
+
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('log_name', 'auth')
+                ->where('event', 'other_devices_logged_out')
+                ->count(),
+            'Bei aktivem OtherDeviceLogoutContext darf kein Listener-Eintrag '
+            . 'entstehen — der Form-Pfad schreibt seinen eigenen Eintrag.',
+        );
+    }
+
+    /**
+     * Wenn das `OtherDeviceLogout`-Event mit einem Nicht-Eloquent-Träger
+     * eintrifft (theoretisch möglich, z. B. exotische Custom-Guards), darf
+     * der Listener keinen Eintrag schreiben — analog zu `handleLogin`.
+     */
+    public function testOtherDeviceLogoutIsSkippedForNonEloquentUser(): void
+    {
+        Activity::query()->delete();
+
+        $nonEloquentUser = new GenericUser(['id' => 1]);
+
+        Event::dispatch(new OtherDeviceLogout('web', $nonEloquentUser));
+
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('log_name', 'auth')
+                ->where('event', 'other_devices_logged_out')
+                ->count(),
+        );
+    }
+
+    /**
      * Self-Delete schreibt einen anonymisierten Audit-Eintrag (DSGVO-Symmetrie:
      * Art. 32 vs. Art. 17). Form: log_name=auth, event=account_self_deleted,
      * KEIN Causer, KEIN Subject, keine personenbezogenen Properties — sonst
@@ -774,6 +860,7 @@ final class AuthenticationActivityLogTest extends TestCase
             'app.activity_email_changed',
             'app.activity_email_change_cancelled',
             'app.activity_other_sessions_logged_out',
+            'app.activity_other_devices_logged_out',
             'app.activity_account_self_deleted',
             'app.activity_api_token_created',
             'app.activity_api_token_revoked',
@@ -799,5 +886,6 @@ final class AuthenticationActivityLogTest extends TestCase
         PasskeyLoginContext::clear();
         UnapprovedLoginContext::clear();
         SelfRegistrationContext::clearStatically();
+        OtherDeviceLogoutContext::clearStatically();
     }
 }
