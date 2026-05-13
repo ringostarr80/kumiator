@@ -15,10 +15,12 @@ use App\Services\User\Contracts\UserEmailChangerContract;
 use App\Services\User\Contracts\UserEmailVerifierContract;
 use App\Services\User\Contracts\UserHardDeleterContract;
 use App\Services\User\Contracts\UserPasswordResetterContract;
+use App\Services\User\Contracts\UserSoftDeleterContract;
 use App\Services\User\UserEmailChanger;
 use App\Services\User\UserEmailVerifier;
 use App\Services\User\UserHardDeleter;
 use App\Services\User\UserPasswordResetter;
+use App\Services\User\UserSoftDeleter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
@@ -36,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(UserHardDeleterContract::class, UserHardDeleter::class);
+        $this->app->bind(UserSoftDeleterContract::class, UserSoftDeleter::class);
         $this->app->bind(UserEmailVerifierContract::class, UserEmailVerifier::class);
         $this->app->bind(UserEmailChangerContract::class, UserEmailChanger::class);
         $this->app->bind(UserPasswordResetterContract::class, UserPasswordResetter::class);
