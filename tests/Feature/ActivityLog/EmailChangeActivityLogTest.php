@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\ActivityLog;
 
+use App\Livewire\Profile\UpdateProfileInformationForm;
 use App\Models\User;
 use App\Notifications\EmailChangeRequestedNotification;
 use App\Notifications\VerifyEmailChangeNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Notification;
-use Laravel\Jetstream\Http\Livewire\UpdateProfileInformationForm;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;

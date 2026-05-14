@@ -48,6 +48,13 @@
                     </x-secondary-button>
                 @endif
 
+                <p class="text-sm mt-2 text-gray-600">
+                    {{ __('app.profile_photo_max_size', ['size' => \Illuminate\Support\Number::fileSize($this->photoUploadLimit->bytes)]) }}
+                    @if ($this->photoUploadLimit->constrainedByServer)
+                        <span class="text-gray-500">{{ __('app.profile_photo_limited_by_server') }}</span>
+                    @endif
+                </p>
+
                 <x-input-error for="photo" class="mt-2" />
             </div>
         @endif

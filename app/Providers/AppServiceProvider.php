@@ -11,6 +11,8 @@ use App\Policies\PasskeyCredentialPolicy;
 use App\Services\Auth\SelfRegistrationContext;
 use App\Services\Console\ConsoleActorContext;
 use App\Services\Console\Contracts\ConsoleActorContextContract;
+use App\Services\Upload\Contracts\UploadLimitResolverContract;
+use App\Services\Upload\UploadLimitResolver;
 use App\Services\User\Contracts\UserEmailChangerContract;
 use App\Services\User\Contracts\UserEmailVerifierContract;
 use App\Services\User\Contracts\UserHardDeleterContract;
@@ -42,6 +44,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UserEmailVerifierContract::class, UserEmailVerifier::class);
         $this->app->bind(UserEmailChangerContract::class, UserEmailChanger::class);
         $this->app->bind(UserPasswordResetterContract::class, UserPasswordResetter::class);
+        $this->app->bind(UploadLimitResolverContract::class, UploadLimitResolver::class);
         $this->app->singleton(ConsoleActorContextContract::class, ConsoleActorContext::class);
     }
 

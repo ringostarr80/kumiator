@@ -61,7 +61,7 @@ return [
 
     'features' => [
         // Features::termsAndPrivacyPolicy(),
-        // Features::profilePhotos(),
+        Features::profilePhotos(),
         Features::api(),
         // Features::teams(['invitations' => true]),
         Features::accountDeletion(),
@@ -79,5 +79,19 @@ return [
     */
 
     'profile_photo_disk' => 'public',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Profile Photo Maximum Size
+    |--------------------------------------------------------------------------
+    |
+    | Die app-seitige Obergrenze für Profilfoto-Uploads in Kilobytes. Der
+    | `UploadLimitResolver` verrechnet diesen Wert mit den PHP- und Livewire-
+    | Limits — der kleinere Wert gewinnt und steuert sowohl Validierung als
+    | auch die im Formular angezeigte Maximalgröße.
+    |
+    */
+
+    'profile_photo_max_kilobytes' => 8_192,
 
 ];

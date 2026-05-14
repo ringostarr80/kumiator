@@ -19,6 +19,11 @@ if [ ! -d public/build ]; then
     npm ci && npm run build
 fi
 
+# Ensure the public/storage symlink exists and is relative. A committed
+# absolute symlink (host path) is dead inside the container — `--relative`
+# resolves correctly regardless of mount path, `--force` repairs a wrong one.
+php artisan storage:link --relative --force
+
 # Run database migrations
 php artisan migrate --force
 
