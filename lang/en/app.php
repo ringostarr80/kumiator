@@ -284,6 +284,8 @@ return [
     'activity_email_change_requested' => 'Email change requested',
     'activity_email_changed' => 'Email address changed',
     'activity_email_change_cancelled' => 'Email change cancelled',
+    'activity_email_change_confirmation_rejected' => 'Email change confirmation rejected',
+    'activity_email_verification_failed' => 'Email verification failed',
     'activity_other_sessions_logged_out' => 'Other browser sessions logged out',
     'activity_other_devices_logged_out' => 'Other devices logged out',
     'activity_account_self_deleted' => 'Account self-deleted by user (anonymised)',

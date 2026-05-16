@@ -288,6 +288,8 @@ return [
     'activity_email_change_requested' => 'E-Mail-Änderung beantragt',
     'activity_email_changed' => 'E-Mail-Adresse geändert',
     'activity_email_change_cancelled' => 'E-Mail-Änderung abgebrochen',
+    'activity_email_change_confirmation_rejected' => 'E-Mail-Änderungs-Bestätigung abgelehnt',
+    'activity_email_verification_failed' => 'E-Mail-Bestätigung fehlgeschlagen',
     'activity_other_sessions_logged_out' => 'Andere Browser-Sessions abgemeldet',
     'activity_other_devices_logged_out' => 'Andere Geräte abgemeldet',
     'activity_account_self_deleted' => 'Konto durch Nutzer selbst gelöscht (anonymisiert)',

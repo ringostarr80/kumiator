@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Laravel\Fortify\Features;
+use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 final class EmailVerificationTest extends TestCase
@@ -111,6 +112,7 @@ final class EmailVerificationTest extends TestCase
         }
 
         $user = User::factory()->unverified()->create();
+        Activity::query()->delete();
 
         $verificationUrl = URL::temporarySignedRoute(
             'verification.verify',
@@ -122,6 +124,18 @@ final class EmailVerificationTest extends TestCase
 
         $response->assertForbidden();
         $this->assertFalse($user->fresh()?->hasVerifiedEmail());
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'email_verification_failed')
+            ->latest('id')
+            ->first();
+        $this->assertNotNull($activity);
+        $this->assertNull($activity->causer_id);
+        $this->assertSame($user->getKey(), $activity->subject_id);
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('hash_mismatch', $properties['reason'] ?? null);
     }
 
     public function testEmailCanNotVerifiedForNonExistentUser(): void
@@ -130,6 +144,8 @@ final class EmailVerificationTest extends TestCase
             $this->markTestSkipped(self::FEATURE_NOT_ENABLED_MESSAGE);
         }
 
+        Activity::query()->delete();
+
         $verificationUrl = URL::temporarySignedRoute(
             'verification.verify',
             now()->addMinutes(60),
@@ -137,6 +153,19 @@ final class EmailVerificationTest extends TestCase
         );
 
         $this->get($verificationUrl)->assertForbidden();
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'email_verification_failed')
+            ->latest('id')
+            ->first();
+        $this->assertNotNull($activity);
+        $this->assertNull($activity->causer_id);
+        $this->assertNull($activity->subject_id);
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('user_not_found', $properties['reason'] ?? null);
+        $this->assertSame(999_999, $properties['attempted_user_id'] ?? null);
     }
 
     public function testEmailCanNotVerifiedWithoutValidSignature(): void

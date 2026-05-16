@@ -60,22 +60,48 @@ final class UserEmailChanger implements UserEmailChangerContract
         $user = $this->resolveUserByToken($plainToken);
 
         if ($user === null) {
+            // Bewusst kein Audit-Eintrag: Ohne Causer, performedOn oder
+            // korrelierbare Property (anders als `login_failed` mit E-Mail-
+            // Hash) wäre der Eintrag forensisch wertlos und würde durch
+            // Bot-Scans nur Rauschen erzeugen. Brute-Force-Schutz gehört
+            // auf Rate-Limit-Ebene, nicht ins Activity-Log.
             throw new EmailChangeTokenInvalidException();
         }
 
         if ($this->isExpired($user)) {
-            $this->clearPendingFields($user);
+            // Konsolidiert auf `cancelChangeForUser()`: erzeugt einen
+            // `email_change_cancelled`-Eintrag mit `cancelled_via='expired_on_confirm'`
+            // (parallel zu `ttl_expired` aus dem cron-Pfad `cancelExpired()`).
+            // Damit ist die State-Mutation `clearPendingFields()` durchgängig
+            // auditiert — vorher gab es eine stille Mutation ohne Log.
+            $this->cancelChangeForUser($user, 'expired_on_confirm');
             throw new EmailChangeTokenExpiredException();
         }
 
         if ($user->trashed()) {
+            // Keine State-Mutation, aber forensisch relevant: jemand mit
+            // Token-Zugriff versucht, einen gelöschten Account zu reaktivieren.
+            // Eigener Event-Code (kein `cancelled`-Eintrag), weil nichts
+            // abgebrochen wird — der Pending-State bleibt unverändert, der
+            // Account ist nur nicht mehr eligible.
+            Activity::useLog('auth')
+                ->event('email_change_confirmation_rejected')
+                ->causedByAnonymous()
+                ->performedOn($user)
+                ->withProperties(['reason' => 'target_not_eligible'])
+                ->log(__('app.activity_email_change_confirmation_rejected'));
+
             throw new EmailChangeTargetNotEligibleException();
         }
 
         $pendingEmail = (string)$user->pending_email;
 
         if (User::query()->where('email', $pendingEmail)->whereKeyNot($user->getKey())->exists()) {
-            $this->clearPendingFields($user);
+            // Analog zum expired-Pfad: State-Mutation via `cancelChangeForUser()`
+            // mit `cancelled_via='target_taken_on_confirm'`. Dokumentiert sowohl
+            // den Confirm-Fehlversuch als auch die durchgeführte Bereinigung
+            // der `pending_email*`-Felder in einem einzigen Eintrag.
+            $this->cancelChangeForUser($user, 'target_taken_on_confirm');
             throw new EmailChangeConflictException();
         }
 

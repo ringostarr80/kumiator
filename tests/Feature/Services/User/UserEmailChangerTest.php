@@ -180,17 +180,55 @@ final class UserEmailChangerTest extends TestCase
             Activity::query()->where('event', 'email_changed')->count(),
             'Bei abgelaufenem Token darf kein email_changed entstehen.',
         );
+
+        $cancelled = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'email_change_cancelled')
+            ->latest('id')
+            ->first();
+        $this->assertNotNull($cancelled);
+        $this->assertNull($cancelled->causer_id);
+        $this->assertSame($user->getKey(), $cancelled->subject_id);
+
+        $properties = $cancelled->properties?->toArray() ?? [];
+        $this->assertSame('expired_on_confirm', $properties['cancelled_via'] ?? null);
+        $this->assertSame('neu@example.com', $properties['pending_email'] ?? null);
     }
 
-    public function testConfirmChangeForTrashedUserThrowsTargetNotEligible(): void
+    public function testConfirmChangeForTrashedUserThrowsTargetNotEligibleAndWritesRejectedAudit(): void
     {
         Notification::fake();
         $user = User::factory()->create();
         $plainToken = $this->seedPendingChange($user, 'neu@example.com');
         $user->deleteOrFail();
+        Activity::query()->delete();
 
-        $this->expectException(EmailChangeTargetNotEligibleException::class);
-        $this->service->confirmChange($plainToken);
+        try {
+            $this->service->confirmChange($plainToken);
+            $this->fail('Expected EmailChangeTargetNotEligibleException');
+        } catch (EmailChangeTargetNotEligibleException) {
+            // expected
+        }
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'email_change_confirmation_rejected')
+            ->latest('id')
+            ->first();
+        $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_email_change_confirmation_rejected'), $activity->description);
+        $this->assertNull($activity->causer_id);
+        $this->assertSame($user->getKey(), $activity->subject_id);
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('target_not_eligible', $properties['reason'] ?? null);
+
+        // Bei target_not_eligible bleibt der Pending-State erhalten — der
+        // Account ist nur nicht mehr eligible, nichts wird bereinigt.
+        $this->assertSame(
+            0,
+            Activity::query()->where('event', 'email_change_cancelled')->count(),
+        );
     }
 
     public function testConfirmChangeWithConflictThrowsAndClearsPendingFields(): void
@@ -199,6 +237,7 @@ final class UserEmailChangerTest extends TestCase
         User::factory()->create(['email' => 'belegt@example.com']);
         $user = User::factory()->create(['email' => 'alt@example.com']);
         $plainToken = $this->seedPendingChange($user, 'belegt@example.com');
+        Activity::query()->delete();
 
         try {
             $this->service->confirmChange($plainToken);
@@ -212,6 +251,19 @@ final class UserEmailChangerTest extends TestCase
         $this->assertSame('alt@example.com', $refreshed->email);
         $this->assertNull($refreshed->pending_email);
         $this->assertNull($refreshed->pending_email_token_hash);
+
+        $cancelled = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'email_change_cancelled')
+            ->latest('id')
+            ->first();
+        $this->assertNotNull($cancelled);
+        $this->assertNull($cancelled->causer_id);
+        $this->assertSame($user->getKey(), $cancelled->subject_id);
+
+        $properties = $cancelled->properties?->toArray() ?? [];
+        $this->assertSame('target_taken_on_confirm', $properties['cancelled_via'] ?? null);
+        $this->assertSame('belegt@example.com', $properties['pending_email'] ?? null);
     }
 
     public function testCancelChangeClearsPendingAndWritesAnonymousAudit(): void
