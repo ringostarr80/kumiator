@@ -13,4 +13,13 @@ interface UploadLimitResolverContract
      * App-Konfiguration, den PHP-Limits und dem Livewire-Temp-Upload-Limit.
      */
     public function resolveProfilePhotoLimit(): UploadLimitData;
+
+    /**
+     * Liefert die für Profilfoto-Uploads erlaubten Dateiendungen — gemeinsame
+     * Quelle für die server-seitige `mimes:`-Validierung und den client-
+     * seitigen `accept=""`-Filter, damit beide Schichten nicht divergieren.
+     *
+     * @return list<string>
+     */
+    public function resolveProfilePhotoAcceptedExtensions(): array;
 }

@@ -57,4 +57,34 @@ final class UploadLimitResolverTest extends TestCase
         $this->assertTrue($limit->constrainedByServer);
         $this->assertLessThanOrEqual(12_288 * 1_024, $limit->bytes);
     }
+
+    public function testAcceptedExtensionsAreReturnedFromConfig(): void
+    {
+        config(['jetstream.profile_photo_accepted_extensions' => ['jpg', 'png', 'webp']]);
+
+        $this->assertSame(
+            ['jpg', 'png', 'webp'],
+            (new UploadLimitResolver())->resolveProfilePhotoAcceptedExtensions(),
+        );
+    }
+
+    public function testAcceptedExtensionsAreNormalisedAndDeduplicated(): void
+    {
+        // Mischmasch aus Whitespace, führendem Punkt, Großschreibung, Duplikat
+        // und Müll-Einträgen — alles soll defensiv bereinigt werden.
+        config(['jetstream.profile_photo_accepted_extensions' => [
+            '  .JPG ',
+            'jpg',
+            '.png',
+            'WEBP',
+            '',
+            42,
+            null,
+        ]]);
+
+        $this->assertSame(
+            ['jpg', 'png', 'webp'],
+            (new UploadLimitResolver())->resolveProfilePhotoAcceptedExtensions(),
+        );
+    }
 }

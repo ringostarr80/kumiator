@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Fortify;
 
 use App\Models\User;
+use App\Services\Upload\Contracts\ProfilePhotoOptimizerContract;
 use App\Services\Upload\Contracts\UploadLimitResolverContract;
 use App\Services\User\Contracts\UserEmailChangerContract;
 use Illuminate\Http\UploadedFile;
@@ -18,6 +19,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
     public function __construct(
         private readonly UserEmailChangerContract $emailChanger,
         private readonly UploadLimitResolverContract $uploadLimitResolver,
+        private readonly ProfilePhotoOptimizerContract $profilePhotoOptimizer,
     ) {
     }
 
@@ -35,11 +37,12 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
     public function update(User $user, array $input): void
     {
         $photoMaxKilobytes = $this->uploadLimitResolver->resolveProfilePhotoLimit()->kilobytes();
+        $acceptedExtensions = $this->uploadLimitResolver->resolveProfilePhotoAcceptedExtensions();
 
         Validator::make($input, [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'photo' => ['nullable', 'mimes:jpg,jpeg,png', 'max:' . $photoMaxKilobytes],
+            'photo' => ['nullable', 'mimes:' . implode(',', $acceptedExtensions), 'max:' . $photoMaxKilobytes],
         ])->validateWithBag('updateProfileInformation');
 
         if (isset($input['photo']) && $input['photo'] instanceof UploadedFile) {
@@ -48,7 +51,9 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             // danach wäre der alte Wert verloren.
             $previousPath = $user->getAttribute('profile_photo_path');
 
-            $user->updateProfilePhoto($input['photo']);
+            // Nicht das Original speichern: der Optimizer rechnet das Foto auf
+            // ein quadratisches AVIF-Thumbnail herunter (inkl. EXIF-Korrektur).
+            $user->updateProfilePhoto($this->profilePhotoOptimizer->optimize($input['photo']));
 
             $newPath = $user->getAttribute('profile_photo_path');
 

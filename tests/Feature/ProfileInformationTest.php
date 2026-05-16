@@ -11,6 +11,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
@@ -86,6 +87,15 @@ final class ProfileInformationTest extends TestCase
 
         $this->assertNotNull($refreshedUser);
         $this->assertNotNull($refreshedUser->profile_photo_path);
+        // Der Optimizer speichert das Foto als AVIF-Thumbnail, nicht das Original.
+        $this->assertStringEndsWith('.avif', $refreshedUser->profile_photo_path);
+        Storage::disk('public')->assertExists($refreshedUser->profile_photo_path);
+        $storedDimensions = getimagesizefromstring(
+            Storage::disk('public')->get($refreshedUser->profile_photo_path) ?? '',
+        );
+        $this->assertNotFalse($storedDimensions);
+        $this->assertSame(256, $storedDimensions[0]);
+        $this->assertSame(256, $storedDimensions[1]);
 
         $entry = Activity::query()
             ->where('log_name', 'user')
@@ -289,5 +299,64 @@ final class ProfileInformationTest extends TestCase
             ['required', 'file', 'max:8192'],
             config('livewire.temporary_file_upload.rules'),
         );
+    }
+
+    #[DataProvider('acceptedProfilePhotoExtensionProvider')]
+    public function testEachConfiguredExtensionIsAccepted(string $filename): void
+    {
+        Storage::fake();
+
+        $this->actingAs($user = User::factory()->create());
+
+        Livewire::test(UpdateProfileInformationForm::class)
+            ->set('photo', UploadedFile::fake()->image($filename))
+            ->set('state', ['name' => $user->name, 'email' => $user->email])
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors('photo');
+
+        // Optimizer hat das Foto persistiert (egal in welchem Quellformat).
+        $this->assertIsString($user->fresh()?->profile_photo_path);
+    }
+
+    public function testUnacceptedExtensionIsRejected(): void
+    {
+        Storage::fake();
+
+        $this->actingAs($user = User::factory()->create());
+
+        // GIF steht nicht in der Default-`profile_photo_accepted_extensions`-
+        // Liste und muss daher von der Validierung abgewiesen werden.
+        Livewire::test(UpdateProfileInformationForm::class)
+            ->set('photo', UploadedFile::fake()->image('photo.gif'))
+            ->set('state', ['name' => $user->name, 'email' => $user->email])
+            ->call('updateProfileInformation')
+            ->assertHasErrors('photo');
+
+        $this->assertNull($user->fresh()?->profile_photo_path);
+    }
+
+    public function testClientSideAcceptAttributeMatchesConfiguredExtensions(): void
+    {
+        // Bewusst andere Reihenfolge / mit Tippfehler-Variationen, um zu prüfen,
+        // dass der Resolver normalisiert und die View die normalisierte Liste rendert.
+        config(['jetstream.profile_photo_accepted_extensions' => ['JPG', 'png', '.webp']]);
+
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test(UpdateProfileInformationForm::class)
+            ->assertSeeHtml('accept=".jpg,.png,.webp"');
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function acceptedProfilePhotoExtensionProvider(): iterable
+    {
+        // Jeder Eintrag der Default-Config muss server-seitig durchgehen.
+        yield 'jpg' => ['photo.jpg'];
+        yield 'jpeg' => ['photo.jpeg'];
+        yield 'png' => ['photo.png'];
+        yield 'webp' => ['photo.webp'];
+        yield 'avif' => ['photo.avif'];
     }
 }

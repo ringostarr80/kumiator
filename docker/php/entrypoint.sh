@@ -20,9 +20,10 @@ if [ ! -d public/build ]; then
 fi
 
 # Ensure the public/storage symlink exists and is relative. A committed
-# absolute symlink (host path) is dead inside the container — `--relative`
-# resolves correctly regardless of mount path, `--force` repairs a wrong one.
-php artisan storage:link --relative --force
+# absolute symlink (host path) is dead inside the container — a relative
+# link resolves correctly regardless of mount path. `ln -sfn` repairs a
+# wrong one in place.
+ln -sfn ../storage/app/public public/storage
 
 # Run database migrations
 php artisan migrate --force

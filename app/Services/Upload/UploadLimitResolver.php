@@ -48,6 +48,34 @@ final class UploadLimitResolver implements UploadLimitResolverContract
     }
 
     /**
+     * @return list<string>
+     */
+    public function resolveProfilePhotoAcceptedExtensions(): array
+    {
+        $configured = Config::array('jetstream.profile_photo_accepted_extensions');
+
+        // Nur lowercase, getrimmte, nicht-leere String-Endungen — defensiv
+        // gegen Tippfehler oder versehentliche Nicht-String-Einträge.
+        $normalised = [];
+
+        foreach ($configured as $extension) {
+            if (!is_string($extension)) {
+                continue;
+            }
+
+            $trimmed = strtolower(trim($extension, ". \t\n\r\0\x0B"));
+
+            if ($trimmed === '') {
+                continue;
+            }
+
+            $normalised[] = $trimmed;
+        }
+
+        return array_values(array_unique($normalised));
+    }
+
+    /**
      * Liest die `max:`-Regel aus der Livewire-Temp-Upload-Konfiguration.
      * Ohne explizite `max:`-Regel gibt es kein Livewire-seitiges Größenlimit
      * (PHP_INT_MAX) — die Schicht fällt dann aus der Minimum-Bildung heraus.

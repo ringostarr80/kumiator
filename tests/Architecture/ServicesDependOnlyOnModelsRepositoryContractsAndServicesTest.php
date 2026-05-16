@@ -32,6 +32,11 @@ final class ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
                 Selector::inNamespace('Laravel\\Sanctum'),
                 Selector::classname(\Throwable::class),
                 Selector::isThrowable(),
+                // `GdImage` ist das PHP-Core-Wertobjekt der GD-Extension — der
+                // natürliche Datentyp für Bildverarbeitung (z. B.
+                // `ProfilePhotoOptimizer`). Keine Infrastruktur-/Präsentations-
+                // kopplung, daher freigegeben — analog zu `\Throwable`.
+                Selector::classname(\GdImage::class),
             )
             ->because(
                 'Services dürfen nur von Config, DTOs, Models, Notifications, '
@@ -50,8 +55,11 @@ final class ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
                 . 'gesamte `\\Throwable`-Hierarchie ist freigegeben, damit Services '
                 . 'eigene Exception-Typen definieren können (z. B. fachliche Service-'
                 . 'Fehler unter `App\\Services\\*\\Exceptions\\`), ohne dass jede '
-                . 'Basisklasse separat aufgelistet werden muss. Neue Vendor-Pakete '
-                . 'müssen bewusst in die Allowlist eingetragen werden.',
+                . 'Basisklasse separat aufgelistet werden muss. `\\GdImage` ist als '
+                . 'PHP-Core-Wertobjekt der GD-Extension freigegeben — der natürliche '
+                . 'Datentyp für Bildverarbeitung (`ProfilePhotoOptimizer`), keine '
+                . 'Infrastruktur-Kopplung. Neue Vendor-Pakete müssen bewusst in die '
+                . 'Allowlist eingetragen werden.',
             );
     }
 

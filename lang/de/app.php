@@ -125,6 +125,18 @@ return [
     'profile_photo_limited_by_server' => '(durch Server-Konfiguration begrenzt)',
     'profile_photo_upload_failed' => 'Das Foto konnte nicht hochgeladen werden — '
         . 'es überschreitet vermutlich das zulässige Limit von :size.',
+
+    // Profilfoto-Optimizer: Exception-Messages für nicht-erwartbare GD-/IO-Fehler.
+    // Werden nur im 500-Fehlerpfad sichtbar (Logs, Debug-Ausgabe).
+    'profile_photo_optimizer_read_failed' => 'Das hochgeladene Profilfoto konnte nicht gelesen werden.',
+    'profile_photo_optimizer_not_an_image' => 'Das hochgeladene Profilfoto konnte nicht als Bild gelesen werden.',
+    'profile_photo_optimizer_rotation_failed' => 'Das Profilfoto konnte nicht in die richtige Lage gedreht werden.',
+    'profile_photo_optimizer_thumbnail_buffer_failed' => 'Für das Profilfoto-Thumbnail konnte kein Bildpuffer'
+        . ' angelegt werden.',
+    'profile_photo_optimizer_temp_file_failed' => 'Für das optimierte Profilfoto konnte keine temporäre Datei'
+        . ' angelegt werden.',
+    'profile_photo_optimizer_encode_failed' => 'Das Profilfoto konnte nicht als AVIF kodiert werden.',
+
     'role' => 'Rolle',
     'email_unverified' => 'Deine E-Mail-Adresse ist nicht verifiziert.',
     'resend_verification' => 'Klicke hier, um die Bestätigungs-E-Mail erneut zu senden.',

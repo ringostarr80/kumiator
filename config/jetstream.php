@@ -94,4 +94,18 @@ return [
 
     'profile_photo_max_kilobytes' => 8_192,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Profile Photo Accepted Extensions
+    |--------------------------------------------------------------------------
+    |
+    | Erlaubte Dateiendungen für Profilfoto-Uploads — gleichzeitig Quelle für
+    | die server-seitige `mimes:`-Validierung und den client-seitigen
+    | `accept=""`-Filter am Datei-Feld. Eine einzige Liste, damit beide
+    | Schichten nicht auseinanderlaufen können.
+    |
+    */
+
+    'profile_photo_accepted_extensions' => ['jpg', 'jpeg', 'png', 'webp', 'avif'],
+
 ];

@@ -50,6 +50,19 @@ final class UpdateProfileInformationForm extends JetstreamUpdateProfileInformati
         return $this->uploadLimitResolver->resolveProfilePhotoLimit();
     }
 
+    /**
+     * Wert fürs `accept`-Attribut des Datei-Felds — Komma-getrennte Liste
+     * der erlaubten Endungen (z. B. `.jpg,.jpeg,.png,.webp,.avif`). Quelle
+     * ist dieselbe Config wie für die server-seitige `mimes:`-Regel, damit
+     * Client- und Server-Filter nicht auseinanderlaufen.
+     */
+    public function getPhotoAcceptAttributeProperty(): string
+    {
+        $extensions = $this->uploadLimitResolver->resolveProfilePhotoAcceptedExtensions();
+
+        return implode(',', array_map(static fn (string $ext): string => '.' . $ext, $extensions));
+    }
+
     // phpcs:disable PSR2.Methods.MethodDeclaration.Underscore -- Methodenname ist von Livewires WithFileUploads-Trait vorgegeben.
     /**
      * Schlägt ein Livewire-Temp-Upload fehl, ruft das JS diese Action auf.

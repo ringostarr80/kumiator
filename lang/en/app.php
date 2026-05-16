@@ -122,6 +122,17 @@ return [
     'profile_photo_limited_by_server' => '(limited by server configuration)',
     'profile_photo_upload_failed' => 'The photo could not be uploaded — '
         . 'it likely exceeds the allowed limit of :size.',
+
+    // Profile photo optimizer: exception messages for unexpected GD/IO failures.
+    // Only surfaced via the 500 error path (logs, debug output).
+    'profile_photo_optimizer_read_failed' => 'The uploaded profile photo could not be read.',
+    'profile_photo_optimizer_not_an_image' => 'The uploaded profile photo could not be parsed as an image.',
+    'profile_photo_optimizer_rotation_failed' => 'The profile photo could not be rotated into the correct orientation.',
+    'profile_photo_optimizer_thumbnail_buffer_failed' => 'Could not allocate an image buffer for the profile photo'
+        . ' thumbnail.',
+    'profile_photo_optimizer_temp_file_failed' => 'Could not create a temporary file for the optimized profile photo.',
+    'profile_photo_optimizer_encode_failed' => 'The profile photo could not be encoded as AVIF.',
+
     'role' => 'Role',
     'email_unverified' => 'Your email address is unverified.',
     'resend_verification' => 'Click here to re-send the verification email.',

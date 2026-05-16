@@ -8,8 +8,10 @@ RUN apk update && \
     g++ \
     git \
     icu-dev \
+    libavif-dev \
     libjpeg-turbo-dev \
     libpng-dev \
+    libwebp-dev \
     libxml2-dev \
     libzip-dev \
     make \
@@ -22,9 +24,13 @@ RUN apk update && \
     zip
 
 # Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
+# gd mit --with-avif: der ProfilePhotoOptimizer speichert Profilfotos als AVIF.
+# --with-webp: WebP-Uploads sind in der Profilfoto-Validierung freigegeben.
+# exif: für die EXIF-Orientierungskorrektur von Hochformat-Fotos beim Upload.
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-avif --with-webp && \
     docker-php-ext-install \
     bcmath \
+    exif \
     gd \
     mbstring \
     intl \
