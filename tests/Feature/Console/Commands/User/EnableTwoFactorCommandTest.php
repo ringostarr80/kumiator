@@ -10,6 +10,7 @@ use Illuminate\Testing\PendingCommand;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use PragmaRX\Google2FA\Google2FA;
+use Spatie\Activitylog\Models\Activity;
 use Tests\Support\FixedSecretTwoFactorProvider;
 use Tests\TestCase;
 
@@ -51,6 +52,12 @@ final class EnableTwoFactorCommandTest extends TestCase
         $this->assertNotNull($user->two_factor_secret);
         $this->assertNotNull($user->two_factor_recovery_codes);
         $this->assertNotNull($user->two_factor_confirmed_at);
+
+        // Symmetrie zum UI-Pfad: sowohl `2fa_enabled` (durch
+        // `EnableTwoFactorAuthentication`) als auch `2fa_confirmed` (durch
+        // `ConfirmTwoFactorAuthentication`) müssen im auth-Log landen.
+        $this->assertAuthEventLogged($user, '2fa_enabled');
+        $this->assertAuthEventLogged($user, '2fa_confirmed');
     }
 
     public function testSecretAndQrCodeUrlAreDisplayed(): void
@@ -123,6 +130,15 @@ final class EnableTwoFactorCommandTest extends TestCase
         $this->assertNull($user->two_factor_secret);
         $this->assertNull($user->two_factor_recovery_codes);
         $this->assertNull($user->two_factor_confirmed_at);
+
+        // Cleanup-Pfad nutzt jetzt `DisableTwoFactorAuthentication` statt
+        // direkten forceFill — der Listener erkennt am ungeänderten
+        // `two_factor_confirmed_at` (war null, bleibt null) den Setup-Abbruch
+        // und schreibt `2fa_setup_aborted`, NICHT `2fa_disabled`.
+        $this->assertAuthEventLogged($user, '2fa_enabled');
+        $this->assertAuthEventLogged($user, '2fa_setup_aborted');
+        $this->assertAuthEventNotLogged($user, '2fa_disabled');
+        $this->assertAuthEventNotLogged($user, '2fa_confirmed');
     }
 
     public function testAlreadyEnabledTwoFactorShowsWarning(): void
@@ -178,5 +194,35 @@ final class EnableTwoFactorCommandTest extends TestCase
         $google2fa = new Google2FA();
 
         return $google2fa->getCurrentOtp($secret);
+    }
+
+    private function assertAuthEventLogged(User $user, string $eventCode): void
+    {
+        $exists = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', $eventCode)
+            ->where('causer_type', $user->getMorphClass())
+            ->where('causer_id', $user->getKey())
+            ->exists();
+
+        $this->assertTrue(
+            $exists,
+            sprintf("Auth-Log-Eintrag '%s' wurde erwartet, fehlt aber.", $eventCode),
+        );
+    }
+
+    private function assertAuthEventNotLogged(User $user, string $eventCode): void
+    {
+        $exists = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', $eventCode)
+            ->where('causer_type', $user->getMorphClass())
+            ->where('causer_id', $user->getKey())
+            ->exists();
+
+        $this->assertFalse(
+            $exists,
+            sprintf("Auth-Log-Eintrag '%s' hätte NICHT geschrieben werden dürfen.", $eventCode),
+        );
     }
 }

@@ -10,9 +10,10 @@ use BaconQrCode\Encoder\Encoder;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
+use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
+use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
-use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use Laravel\Fortify\Fortify;
 
 #[Signature('user:enable-2fa')]
@@ -22,8 +23,11 @@ class EnableTwoFactor extends Command
     /**
      * Execute the console command.
      */
-    public function handle(EnableTwoFactorAuthentication $enableAction, TwoFactorAuthenticationProvider $provider): int
-    {
+    public function handle(
+        EnableTwoFactorAuthentication $enableAction,
+        ConfirmTwoFactorAuthentication $confirmAction,
+        DisableTwoFactorAuthentication $disableAction,
+    ): int {
         $title = __('commands.enable_two_factor.title');
         $this->info($title);
         $this->line(str_repeat('-', mb_strlen($title)));
@@ -49,22 +53,26 @@ class EnableTwoFactor extends Command
         $enableAction($user, force: true);
         $user->refresh();
 
-        $decryptedSecret = $this->getDecryptedSecret($user);
-        $this->displaySetupInformation($decryptedSecret, $user);
+        $this->displaySetupInformation($this->getDecryptedSecret($user), $user);
 
         $code = $this->ask(__('commands.enable_two_factor.ask_code')) ?? '';
         assert(is_string($code));
 
-        if (!$provider->verify($decryptedSecret, $code)) {
+        try {
+            // Über die Fortify-Action statt direktem `forceFill`: die Action
+            // dispatcht `TwoFactorAuthenticationConfirmed`, was im
+            // `LogTwoFactorActivityListener` zu einem `2fa_confirmed`-Eintrag
+            // führt — Symmetrie zum UI-Pfad.
+            $confirmAction($user, $code);
+        } catch (ValidationException) {
             $this->error(__('commands.enable_two_factor.invalid_code'));
-            $this->resetTwoFactor($user);
+            // Ebenfalls über die Fortify-Action: `TwoFactorAuthenticationDisabled`
+            // → der Listener erkennt am unveränderten `two_factor_confirmed_at`
+            // den Setup-Abbruch und schreibt `2fa_setup_aborted`.
+            $disableAction($user);
 
             return self::FAILURE;
         }
-
-        $user->forceFill([
-            'two_factor_confirmed_at' => Carbon::now(),
-        ])->saveOrFail();
 
         $this->info(__('commands.enable_two_factor.success', ['name' => $user->name, 'email' => $email]));
         $this->displayRecoveryCodes($user);
@@ -137,14 +145,5 @@ class EnableTwoFactor extends Command
         foreach ($recoveryCodes as $code) {
             $this->line('  ' . $code);
         }
-    }
-
-    private function resetTwoFactor(User $user): void
-    {
-        $user->forceFill([
-            'two_factor_secret' => null,
-            'two_factor_recovery_codes' => null,
-            'two_factor_confirmed_at' => null,
-        ])->saveOrFail();
     }
 }
