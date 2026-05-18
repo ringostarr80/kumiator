@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Mockery;
 use Mockery\MockInterface;
+use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
 
@@ -213,6 +214,21 @@ final class PasskeyRegistrationTest extends TestCase
 
         $response->assertUnprocessable();
         $response->assertJson(['message' => 'Verification failed.']);
+
+        // Audit-Symmetrie zum Erfolgs-Pfad (`passkey_registered`): jeder
+        // gescheiterte Attest-Verify hinterlässt einen Eintrag mit dem
+        // authentifizierten User als Causer und `failure_reason` in den
+        // Properties. Domain-Verhalten der statischen Methode separat in
+        // {@see \Tests\Feature\ActivityLog\PasskeyRegistrationFailedActivityLogTest}.
+        $activity = Activity::query()
+            ->where('log_name', 'passkey')
+            ->where('event', 'passkey_registration_failed')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame($user->getKey(), $activity->causer_id);
+        $this->assertSame('verification_failed', $activity->properties?->get('failure_reason'));
     }
 
     public function testStoreEndpointReturns500WhenUnexpectedExceptionOccurs(): void
@@ -230,6 +246,16 @@ final class PasskeyRegistrationTest extends TestCase
             ->postJson(self::REGISTER_URL, ['data' => 'test'], ['Content-Type' => self::CONTENT_TYPE_JSON]);
 
         $response->assertInternalServerError();
+
+        $activity = Activity::query()
+            ->where('log_name', 'passkey')
+            ->where('event', 'passkey_registration_failed')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame($user->getKey(), $activity->causer_id);
+        $this->assertSame('internal_error', $activity->properties?->get('failure_reason'));
     }
 
     public function testStoreEndpointUsesDefaultNameWhenNameIsOmitted(): void

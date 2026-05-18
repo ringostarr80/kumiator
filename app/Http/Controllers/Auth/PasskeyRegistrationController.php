@@ -106,9 +106,12 @@ final class PasskeyRegistrationController extends Controller
                 host: WebauthnConfig::effectiveHost(),
             );
         } catch (AuthenticatorResponseVerificationException $e) {
+            PasskeyCredential::recordFailedRegistrationActivity($user, 'verification_failed');
+
             return response()->json(['message' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (\Throwable $e) {
             report($e);
+            PasskeyCredential::recordFailedRegistrationActivity($user, 'internal_error');
 
             return response()->json(
                 ['message' => __('app.passkey_registration_failed')],

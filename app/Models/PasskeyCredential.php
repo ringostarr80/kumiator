@@ -181,6 +181,44 @@ final class PasskeyCredential extends Model
     }
 
     /**
+     * Schreibt einen Audit-Eintrag für eine fehlgeschlagene Passkey-
+     * Registrierung. Symmetrie zum erfolgreichen Lifecycle-Pfad
+     * ({@see self::applyEventLabelToActivity()} mappt `created` → `passkey_registered`):
+     * gleicher Channel `passkey`, Causer ist der bereits eingeloggte User
+     * (Registrier-Endpoint ist auth-pflichtig — `auth:sanctum + verified + approved`).
+     *
+     * Bewusst KEIN `performedOn`: der Vorgang ist genau das Scheitern, eine
+     * Credential zu erzeugen — es existiert kein Subject. Ebenfalls bewusst
+     * KEIN `credential_id_hash` in den Properties: anders als bei
+     * {@see self::recordFailedLoginActivity()} (Korrelation wiederholter Versuche
+     * gegen dieselbe Credential-ID, Indikator für Klon-Authentifikatoren) ist
+     * bei der Registration jede Credential-ID frisch — eine Korrelation über
+     * Hashes brächte keinen forensischen Mehrwert.
+     *
+     * Statisch, weil zum Failure-Zeitpunkt keine Passkey-Instanz existiert
+     * (Verification-Exception VOR Persistenz).
+     *
+     * Resilient gegen Activity-Log-Ausfälle: ein Schreibfehler darf den
+     * HTTP-Response-Pfad des Aufrufers nicht beeinflussen — analog zu
+     * {@see self::recordFailedLoginActivity()}.
+     *
+     * @param string $reason Stabiler Maschinen-Code des Fehlerpfads
+     *                       (`verification_failed`, `internal_error`).
+     */
+    public static function recordFailedRegistrationActivity(User $user, string $reason): void
+    {
+        try {
+            Activity::useLog('passkey')
+                ->event('passkey_registration_failed')
+                ->causedBy($user)
+                ->withProperties(['failure_reason' => $reason])
+                ->log(__('app.activity_passkey_registration_failed'));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
      * Mappt das generische Eloquent-Event eines Passkey-Activity-Eintrags
      * (created/updated/deleted) auf einen fachlichen Code
      * (passkey_registered/passkey_renamed/passkey_removed), bevor der Eintrag
