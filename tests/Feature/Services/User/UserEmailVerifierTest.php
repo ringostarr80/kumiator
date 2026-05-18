@@ -33,12 +33,12 @@ final class UserEmailVerifierTest extends TestCase
 
         $activity = Activity::query()
             ->where('log_name', 'auth')
-            ->where('event', 'email_verified_via_cli')
+            ->where('event', 'email_verified')
             ->latest('id')
             ->first();
 
         $this->assertNotNull($activity);
-        $this->assertSame(__('app.activity_email_verified_via_cli'), $activity->description);
+        $this->assertSame(__('app.activity_email_verified'), $activity->description);
         $this->assertNull($activity->causer_id);
         $this->assertNull($activity->causer_type);
         $this->assertSame($user->getMorphClass(), $activity->subject_type);
@@ -69,7 +69,7 @@ final class UserEmailVerifierTest extends TestCase
             1,
             Activity::query()
                 ->where('log_name', 'auth')
-                ->where('event', 'email_verified_via_cli')
+                ->where('event', 'email_verified')
                 ->count(),
         );
     }
@@ -92,7 +92,7 @@ final class UserEmailVerifierTest extends TestCase
 
         $activity = Activity::query()
             ->where('log_name', 'auth')
-            ->where('event', 'email_verified_via_cli')
+            ->where('event', 'email_verified')
             ->latest('id')
             ->first();
 

@@ -28,30 +28,25 @@ use Spatie\Activitylog\Models\Activity;
  * `clearStatically()` aufrufen).
  *
  * Effekt auf den Activity-Log: `applyToActivity()` wird vom zentralen
- * `Activity::saving`-Hook aufgerufen und (a) hängt das `cli_actor`-Property
- * an, (b) labelt für eine kuratierte Liste von User-Lifecycle-Commands den
- * generischen Eloquent-Event-Code auf einen fachlichen Code um — symmetrisch
- * zum bestehenden Self-Registration-Remap, aber für den CLI-Pfad.
+ * `Activity::saving`-Hook aufgerufen und macht zwei Dinge an jedem
+ * während der Command-Ausführung entstehenden Eintrag:
+ *   (a) hängt das `cli_actor`-Property an (OS-User/Hostname/Command) —
+ *       der eigentliche, denormalisierte CLI-Marker im Audit-Log,
+ *   (b) anonymisiert den Causer (`causer_id`/`causer_type` → null) —
+ *       im CLI handelt ein Admin, kein User-Account; ein vom Listener
+ *       (`LogTwoFactorActivityListener::causedBy($user)`) oder von
+ *       Spatie's `CauserResolver` (über `Auth::user()`) gesetzter
+ *       Causer wäre semantisch falsch und wird daher überschrieben.
+ *       Wer im CLI bewusst einen User-Causer schreiben will, muss
+ *       den Marker temporär deaktivieren.
+ *
+ * Das fachliche Event-Labeling ist bewusst NICHT Aufgabe dieses Hooks —
+ * Domain-Models (z. B. `User`, `PasskeyCredential`) labeln ihre
+ * Lifecycle-Events selbst auf channel-agnostische Codes; der CLI-Marker
+ * steckt rein in (a) und die Anonymisierung in (b).
  */
 final class ConsoleActorContext implements ConsoleActorContextContract
 {
-    /**
-     * Mapping `command-signature` → ('log_name', 'event' aus Eloquent-Trait,
-     * fachlicher Ziel-Code). Der Hook fasst NUR Einträge an, die exakt zu
-     * dem aktuell laufenden Command gehören — andere Activity-Schreibvorgänge
-     * (z. B. Listener im selben Request) bleiben unverändert.
-     *
-     * Bewusst kuratiert (keine Wildcards): jeder Eintrag hier ist ein
-     * Audit-relevanter Vorgang mit eigener Übersetzung; reine Hilfs-Commands
-     * sollen nicht versehentlich umgelabelt werden.
-     */
-    private const array CLI_EVENT_REMAP = [
-        'user:create' => ['log_name' => 'user', 'event' => 'created', 'new_event' => 'user_created_via_cli'],
-        'user:approve' => ['log_name' => 'user', 'event' => 'updated', 'new_event' => 'user_approved_via_cli'],
-        'user:delete' => ['log_name' => 'user', 'event' => 'deleted', 'new_event' => 'user_deleted_via_cli'],
-        'user:restore' => ['log_name' => 'user', 'event' => 'restored', 'new_event' => 'user_restored_via_cli'],
-    ];
-
     /**
      * @var ?array<string, string>
      */
@@ -79,6 +74,10 @@ final class ConsoleActorContext implements ConsoleActorContextContract
      * Statische Variante für den `Activity::saving`-Listener im
      * `AppServiceProvider`, der pro Insert läuft und keinen Container-
      * Lookup rechtfertigt.
+     *
+     * Wendet zwei CLI-Effekte an, sobald der Kontext aktiv ist:
+     *   (a) hängt das `cli_actor`-Property an,
+     *   (b) nullt `causer_id`/`causer_type` — siehe Klassen-PHPDoc.
      */
     public static function applyToActivity(Activity $activity): void
     {
@@ -95,28 +94,14 @@ final class ConsoleActorContext implements ConsoleActorContextContract
         $properties = $activity->properties ?? new Collection();
         $activity->properties = $properties->put('cli_actor', $actor);
 
-        $command = $actor['command'] ?? null;
-
-        if ($command === null) {
-            return;
-        }
-
-        $remap = self::CLI_EVENT_REMAP[$command] ?? null;
-
-        if ($remap === null) {
-            return;
-        }
-
-        if ($activity->log_name !== $remap['log_name']) {
-            return;
-        }
-
-        if ($activity->event !== $remap['event']) {
-            return;
-        }
-
-        $activity->event = $remap['new_event'];
-        $activity->description = __('app.activity_' . $remap['new_event']);
+        // Im CLI handelt ein Admin, kein User-Account. Jeder vom Listener
+        // (z. B. `LogTwoFactorActivityListener::causedBy($user)`) oder von
+        // Spatie's Default-`CauserResolver` (über `Auth::user()`) gesetzte
+        // Causer wird hier überschrieben — die forensisch korrekte
+        // Information „wer hat gehandelt" steckt im `cli_actor`-Property,
+        // nicht im Causer-Feld.
+        $activity->causer_id = null;
+        $activity->causer_type = null;
     }
 
     /**

@@ -23,7 +23,7 @@ final class UserActivityLogTest extends TestCase
             ->where('log_name', 'user')
             ->where('subject_type', $user->getMorphClass())
             ->where('subject_id', $user->getKey())
-            ->where('event', 'updated')
+            ->where('event', 'user_renamed')
             ->latest('id')
             ->first();
 
@@ -49,7 +49,7 @@ final class UserActivityLogTest extends TestCase
             ->where('log_name', 'user')
             ->where('subject_type', $subject->getMorphClass())
             ->where('subject_id', $subject->getKey())
-            ->where('event', 'updated')
+            ->where('event', 'user_renamed')
             ->latest('id')
             ->first();
 
@@ -105,7 +105,7 @@ final class UserActivityLogTest extends TestCase
 
         $activity = Activity::query()
             ->where('log_name', 'user')
-            ->where('event', 'updated')
+            ->where('event', 'user_renamed')
             ->latest('id')
             ->first();
 

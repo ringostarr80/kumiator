@@ -11,20 +11,26 @@ use Spatie\Activitylog\Facades\Activity;
 
 /**
  * Setzt `email_verified_at` und schreibt anschließend einen anonymisierten
- * Audit-Eintrag im `auth`-Log (`email_verified_via_cli`).
+ * Audit-Eintrag im `auth`-Log (`email_verified`).
+ *
+ * Channel-Differenzierung: Der Event-Code `email_verified` ist
+ * channel-agnostisch und wird auch vom UI-/Self-Verify-Pfad geschrieben
+ * (`LogAuthenticationActivityListener::handleVerified`, ausgelöst über
+ * das `Verified`-Event aus dem `VerifyEmailController`/`SelfEmailVerifier`).
+ * Die Unterscheidung „Self-Verify vs. Admin-CLI-Verify" steckt im Causer:
+ * UI-Pfad → Causer = User, CLI-Pfad → Causer = null plus `cli_actor`-
+ * Property aus dem `ConsoleActorContext`.
  *
  * Warum keine `markEmailAsVerified()` aus dem Trait: das interne `save()`
  * (ohne -OrFail) verschluckt stille Persistierungs-Fehler. CLAUDE-Regel
  * verlangt `saveOrFail()`, also setzen wir das Feld explizit und sichern
  * mit harter Exception ab.
  *
- * Warum `causedByAnonymous()`: Spatie's `CauserResolver` würde sonst über
- * `Auth::user()` einen Default-Causer setzen — im CLI-Pfad ist das aktuell
- * `null`, aber Tests nutzen `actingAs()` häufig im Setup; ohne explizite
- * Anonymisierung könnte ein angemeldeter Test-User unbeabsichtigt als Causer
- * landen. Punkt #5 der Activity-Log-Roadmap wird hier später einen echten
- * CLI-Actor (OS-User aus `posix_getpwuid()`) als zusätzliches Property
- * nachreichen — ohne den Event-Code oder die Subject-Beziehung zu brechen.
+ * Warum kein `Verified`-Event-Dispatch (anders als im `SelfEmailVerifier`):
+ * Der Listener würde den Eintrag mit `causedBy($user)` schreiben — im
+ * CLI-Pfad falsch, weil der User die Aktion nicht selbst ausgelöst hat.
+ * Direktes Schreiben mit `causedByAnonymous()` ist hier die einzige
+ * Variante, die das Audit-Bild korrekt hält.
  */
 final class UserEmailVerifier implements UserEmailVerifierContract
 {
@@ -34,9 +40,9 @@ final class UserEmailVerifier implements UserEmailVerifierContract
         $user->saveOrFail();
 
         Activity::useLog('auth')
-            ->event('email_verified_via_cli')
+            ->event('email_verified')
             ->causedByAnonymous()
             ->performedOn($user)
-            ->log(__('app.activity_email_verified_via_cli'));
+            ->log(__('app.activity_email_verified'));
     }
 }

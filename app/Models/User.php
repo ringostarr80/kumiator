@@ -14,6 +14,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Activitylog\Models\Activity as ActivityModel;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Permission\Traits\HasRoles;
@@ -130,6 +131,56 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     }
 
     /**
+     * Mappt das generische Eloquent-Event eines User-Activity-Eintrags
+     * (created/updated/deleted/restored) auf einen fachlichen Code
+     * (user_created/user_approved/user_renamed/user_deleted/user_restored),
+     * bevor der Eintrag gespeichert wird. Aufgerufen aus einem
+     * `Activity::saving`-Listener im {@see \App\Providers\AppServiceProvider}.
+     *
+     * Hintergrund analog {@see PasskeyCredential::applyEventLabelToActivity}:
+     * Der `LogsActivity`-Trait dieser Spatie-Version bietet keinen
+     * `tapActivity`-Hook; ein globaler `saving`-Listener ist der einzige
+     * stabile Punkt zwischen Trait-Setup und Insert. Die Mapping-Logik
+     * gehört in die Domain, der Listener hängt nur dran.
+     *
+     * Channel-agnostisch: liefert dieselben fachlichen Codes unabhängig
+     * davon, ob der Vorgang per CLI, Web-Admin (künftig) oder Web-Self-Reg
+     * ausgelöst wurde. Der Auslöse-Kanal wird über das `cli_actor`-Property
+     * (CLI) bzw. einen nachgelagerten `Activity::saving`-Hook
+     * (Self-Registration → `user_self_registered`) gekennzeichnet.
+     *
+     * Description wird hier ebenfalls gesetzt — Hook setzt event+description
+     * atomar, damit beide Felder garantiert zueinander passen.
+     */
+    public static function applyEventLabelToActivity(ActivityModel $activity): void
+    {
+        if ($activity->log_name !== 'user') {
+            return;
+        }
+
+        $event = $activity->event;
+
+        if (!is_string($event)) {
+            return;
+        }
+
+        $mapped = match ($event) {
+            'created' => 'created',
+            'updated' => self::mapUpdatedEventName($activity),
+            'deleted' => 'deleted',
+            'restored' => 'restored',
+            default => null,
+        };
+
+        if ($mapped === null) {
+            return;
+        }
+
+        $activity->event = 'user_' . $mapped;
+        $activity->description = __('app.activity_user_' . $mapped);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -143,5 +194,31 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
             'approved_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Unterscheidet einen Approval-Save (Setzen von `approved_at`) von einer
+     * sonstigen Aktualisierung (heute realistisch nur `name`). `deleted_at`
+     * wird via Eloquent als eigenes `event = 'deleted'`/`'restored'` geführt,
+     * nicht als `updated` — daher hier keine Sonderbehandlung.
+     *
+     * `approved_at` schlägt jeden anderen Diff-Inhalt, weil ein kombinierter
+     * Save (Approval + Namensänderung) fachlich als Approval-Vorgang dominiert.
+     * Aktuell tritt diese Kombination im Code nirgends auf.
+     *
+     * Spatie legt den Attribut-Diff in `attribute_changes` ab (Collection mit
+     * Sub-Keys `attributes` und `old`), NICHT in `properties` — letzteres ist
+     * der Free-Form-Property-Bag (z. B. für unser `cli_actor`).
+     */
+    private static function mapUpdatedEventName(ActivityModel $activity): string
+    {
+        $changes = $activity->attribute_changes;
+        $attributes = $changes?->get('attributes');
+
+        if (is_array($attributes) && array_key_exists('approved_at', $attributes)) {
+            return 'approved';
+        }
+
+        return 'renamed';
     }
 }

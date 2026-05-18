@@ -14,10 +14,10 @@ use Illuminate\Support\Facades\Validator;
 /**
  * Admin-initiierter Passwort-Reset über die Konsole.
  *
- * Die eigentliche Mechanik (Hash, Persistenz, dedizierter
- * `password_reset_via_cli`-Audit-Eintrag) liegt im `UserPasswordResetter`-
- * Service. Der Command ist reine Presentation: Eingabe einlesen,
- * Vorbedingungen prüfen, Service aufrufen, Ergebnis ausgeben.
+ * Die eigentliche Mechanik (Hash, Persistenz, anonymisierter
+ * `password_reset`-Audit-Eintrag) liegt im `UserPasswordResetter`-Service.
+ * Der Command ist reine Presentation: Eingabe einlesen, Vorbedingungen
+ * prüfen, Service aufrufen, Ergebnis ausgeben.
  */
 #[Signature('user:reset-password')]
 #[Description('Setzt das Passwort eines Benutzers neu')]

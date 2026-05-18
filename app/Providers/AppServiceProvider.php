@@ -93,16 +93,32 @@ class AppServiceProvider extends ServiceProvider
         // Application-Lifetime, daher keine Doppel-Registrierung.
         Activity::saving(static fn (Activity $activity) => PasskeyCredential::applyEventLabelToActivity($activity));
 
+        // Analog zum Passkey-Hook für das User-Model: generische Eloquent-
+        // Lifecycle-Events (created/updated/deleted/restored) auf fachliche
+        // Codes (user_created/user_approved/user_renamed/user_deleted/
+        // user_restored) umlabeln. Channel-agnostisch — derselbe Code
+        // unabhängig davon, ob CLI, Web oder Seeder den Vorgang ausgelöst
+        // hat. Der Auslöse-Kanal wird über separate Properties markiert
+        // (`cli_actor`) bzw. einen nachgelagerten Hook (Self-Registration
+        // überschreibt `user_created` → `user_self_registered`).
+        Activity::saving(static fn (Activity $activity) => User::applyEventLabelToActivity($activity));
+
         // User-Self-Registration: der Web-Pfad (`RegisteredUserController` →
         // `CreateNewUser::create()`) erzeugt durch das `LogsActivity`-Trait
-        // einen generischen `user.created`-Eintrag. Ohne Remap wäre er nicht
-        // vom Admin-CLI-Pfad (`user:create`) zu unterscheiden — fachlich aber
-        // zwei grundverschiedene Vorgänge (Public-Endpoint vs. interner
-        // Admin-Akt). `CreateNewUser` setzt vor `User::create()` einen
+        // einen generischen `user.created`-Eintrag, der vom Hook darüber
+        // bereits auf `user_created` aufgewertet wurde. Ohne diesen zweiten
+        // Hook wäre der Self-Reg-Pfad nicht vom Admin-Anlage-Pfad
+        // (`user:create`) zu unterscheiden — fachlich aber zwei
+        // grundverschiedene Vorgänge (Public-Endpoint vs. interner Admin-
+        // Akt). `CreateNewUser` setzt vor `User::create()` einen
         // request-scoped Marker, der hier ausgewertet wird; ist er aktiv,
         // wird `event` auf `user_self_registered` umgelabelt und die
-        // Description auf den fachlichen Übersetzungs-Key gesetzt. Ohne
-        // Marker bleibt der Eintrag generisch (CLI/Tests/Seeder).
+        // Description überschrieben. Ohne Marker bleibt der Eintrag
+        // bei `user_created` (CLI/Tests/Seeder).
+        //
+        // Reihenfolge ist wichtig: dieser Hook muss NACH dem User-Mapper
+        // laufen, weil er auf den bereits aufgewerteten Code `user_created`
+        // matched, nicht auf den rohen Eloquent-`created`.
         //
         // Warum nicht im `User`-Model: `ModelsDependOnlyOnModelsTest`
         // verbietet Models den Zugriff auf `App\Services`. Die Remap-Logik
@@ -113,7 +129,7 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            if ($activity->event !== 'created') {
+            if ($activity->event !== 'user_created') {
                 return;
             }
 
@@ -125,12 +141,18 @@ class AppServiceProvider extends ServiceProvider
             $activity->description = __('app.activity_user_self_registered');
         });
 
-        // CLI-Actor & Event-Remap für Artisan-Commands. Hängt jedem während
-        // einer Command-Ausführung entstehenden Eintrag das `cli_actor`-
-        // Property an (OS-User/Hostname/Command) und labelt für eine
-        // kuratierte Liste von User-Lifecycle-Commands den generischen
-        // Eloquent-Event-Code auf einen fachlichen Code um — symmetrisch
-        // zum Self-Registration-Hook darüber.
+        // CLI-Effekte für Artisan-Commands. Macht zwei Dinge an jedem
+        // während einer Command-Ausführung entstehenden Eintrag:
+        // (a) hängt das `cli_actor`-Property an (OS-User/Hostname/Command)
+        //     — der eigentliche CLI-Marker im Audit-Log;
+        // (b) anonymisiert den Causer (`causer_id`/`causer_type` → null),
+        //     damit Listener-Pfade wie `LogTwoFactorActivityListener` im
+        //     CLI nicht den User als handelnden Account führen — der
+        //     Admin handelt im CLI, nicht der User selbst.
+        // Das fachliche Event-Labeling ist bewusst NICHT Aufgabe dieses
+        // Hooks — Domain-Models labeln ihre Lifecycle-Events selbst auf
+        // channel-agnostische Codes (siehe `User::applyEventLabelToActivity`
+        // darüber).
         Activity::saving(static fn (Activity $activity) => ConsoleActorContext::applyToActivity($activity));
 
         // Rollen-Lifecycle (Anlage/Löschung) ins Activity-Log spiegeln.

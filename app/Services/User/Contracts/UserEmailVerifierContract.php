@@ -11,11 +11,14 @@ use App\Models\User;
  *
  * Aktuell genutzt vom CLI-Pfad (`user:verify`); ein zukünftiges Admin-UI
  * (Web-Backoffice) kann denselben Vertrag nutzen, ohne den Audit-Pfad zu
- * duplizieren. Die Trennung zum Self-Verify (über `VerifyEmailController` →
- * `Illuminate\Auth\Events\Verified` → `LogAuthenticationActivityListener`)
- * ist absichtlich: dort ist der User selbst Causer (`auth/email_verified`),
- * hier wird das Verify als anonymisierter Admin-Vorgang dokumentiert
- * (`auth/email_verified_via_cli`), damit Reports beide Fälle trennen können.
+ * duplizieren. Schreibt denselben Event-Code (`auth/email_verified`) wie
+ * der Self-Verify-Pfad (über `VerifyEmailController`/`SelfEmailVerifier`
+ * → `Illuminate\Auth\Events\Verified` → `LogAuthenticationActivityListener`);
+ * die Unterscheidung „Self-Verify vs. Admin-CLI-Verify" steckt im Causer:
+ * Self-Pfad → User als Causer, CLI-Pfad → `causedByAnonymous()` plus
+ * `cli_actor`-Property aus `ConsoleActorContext`. Reports trennen die
+ * Fälle damit über `causer_id IS NULL` bzw. `properties->>'cli_actor'
+ * IS NOT NULL`.
  *
  * Idempotenz-Hinweis: Der Aufrufer prüft `hasVerifiedEmail()` und ruft
  * `verify()` nur, wenn der User noch nicht verifiziert ist — dieser Service

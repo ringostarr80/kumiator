@@ -75,7 +75,7 @@ final class SelfRegistrationActivityLogTest extends TestCase
      * Sonst wäre die Mechanik wertlos — sie soll fachliche von technischen
      * Anlagen unterscheiden, nicht alle User-Anlagen pauschal umlabeln.
      */
-    public function testDirectUserCreationKeepsGenericCreatedEvent(): void
+    public function testDirectUserCreationKeepsFactualUserCreatedEvent(): void
     {
         Activity::query()->delete();
 
@@ -93,16 +93,21 @@ final class SelfRegistrationActivityLogTest extends TestCase
             ->first();
 
         $this->assertNotNull($activity);
-        $this->assertSame('created', $activity->event);
+        // Direkte User-Anlage außerhalb der Self-Reg-Strecke wird vom
+        // channel-agnostischen User-Lifecycle-Hook auf den fachlichen
+        // Code `user_created` aufgewertet — sie darf aber NICHT als
+        // `user_self_registered` getarnt sein.
+        $this->assertSame('user_created', $activity->event);
         $this->assertNotSame('user_self_registered', $activity->event);
     }
 
     /**
-     * Der Marker greift bewusst nur für `created` — eine Namensänderung am
-     * selbst-registrierten User darf nicht plötzlich als
-     * `user_self_registered` getarnt sein, sondern bleibt `updated`.
+     * Der Self-Reg-Hook greift bewusst nur für den `user_created`-Übergang —
+     * eine Namensänderung am selbst-registrierten User darf nicht plötzlich
+     * als `user_self_registered` getarnt sein. Der channel-agnostische
+     * User-Lifecycle-Hook labelt sie auf den fachlichen Code `user_renamed`.
      */
-    public function testUpdatingSelfRegisteredUserKeepsUpdatedEvent(): void
+    public function testUpdatingSelfRegisteredUserBecomesUserRenamed(): void
     {
         $this->post('/register', [
             'name' => 'Erika Mustermann',
@@ -125,7 +130,8 @@ final class SelfRegistrationActivityLogTest extends TestCase
             ->first();
 
         $this->assertNotNull($activity);
-        $this->assertSame('updated', $activity->event);
+        $this->assertSame('user_renamed', $activity->event);
+        $this->assertNotSame('user_self_registered', $activity->event);
     }
 
     /**

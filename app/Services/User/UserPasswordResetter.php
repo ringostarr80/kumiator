@@ -11,12 +11,19 @@ use Spatie\Activitylog\Facades\Activity;
 
 /**
  * Setzt ein neues Passwort und schreibt anschließend einen anonymisierten
- * Audit-Eintrag im `auth`-Log (`password_reset_via_cli`).
+ * Audit-Eintrag im `auth`-Log (`password_reset`).
+ *
+ * Channel-Differenzierung: Der Event-Code `password_reset` ist
+ * channel-agnostisch und wird auch vom UI-Pfad (Fortify-Event-Kette über
+ * `LogAuthenticationActivityListener::handlePasswordReset`) geschrieben.
+ * Die Unterscheidung „Self-Service-Reset vs. Admin-CLI-Reset" steckt im
+ * Causer: UI-Pfad → Causer = handelnder User, CLI-Pfad → Causer = null
+ * plus `cli_actor`-Property aus dem `ConsoleActorContext`.
  *
  * Warum nicht `User::sendPasswordResetNotification()` o. ä.: das ist der
- * Self-Service-Pfad (Fortify-Event-Kette inkl. `password_reset`). Der
- * CLI-Pfad ist explizit administrativ — kein Notification-Versand, kein
- * User-Token-Roundtrip; der Admin gibt das neue Passwort direkt ein.
+ * Self-Service-Pfad (Fortify-Event-Kette). Der CLI-Pfad ist explizit
+ * administrativ — kein Notification-Versand, kein User-Token-Roundtrip;
+ * der Admin gibt das neue Passwort direkt ein.
  *
  * Warum kein automatischer `password`-Eintrag im `User`-Activity-Log: das
  * Feld steht bewusst nicht in `User::getActivitylogOptions()`-`logOnly`,
@@ -41,9 +48,9 @@ final class UserPasswordResetter implements UserPasswordResetterContract
         $user->saveOrFail();
 
         Activity::useLog('auth')
-            ->event('password_reset_via_cli')
+            ->event('password_reset')
             ->causedByAnonymous()
             ->performedOn($user)
-            ->log(__('app.activity_password_reset_via_cli'));
+            ->log(__('app.activity_password_reset'));
     }
 }

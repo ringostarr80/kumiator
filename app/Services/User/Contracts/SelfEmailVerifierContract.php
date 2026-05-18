@@ -14,12 +14,13 @@ use App\Models\User;
  * (Controller dürfen `Spatie\Activitylog` nicht direkt verwenden — siehe
  * `ControllersAreIndependentTest`).
  *
- * Abgrenzung zum {@see UserEmailVerifierContract}: Dieser Pfad ist der
- * User-Self-Verify (Causer = User selbst, schreibt `email_verified` über
- * den `Verified`-Event-Listener); `UserEmailVerifierContract` ist der
- * Admin-/CLI-Pfad (anonymer Causer, schreibt direkt `email_verified_via_cli`).
- * Die beiden Pfade müssen in Reports unterscheidbar bleiben, daher zwei
- * getrennte Services und Event-Codes.
+ * Abgrenzung zum {@see UserEmailVerifierContract}: Beide Pfade schreiben
+ * denselben Event-Code (`email_verified`); die Unterscheidung steckt im
+ * Causer. Self-Verify (dieser Service) dispatcht den `Verified`-Event,
+ * der `LogAuthenticationActivityListener` setzt den User als Causer.
+ * Admin-/CLI-Verify (`UserEmailVerifierContract`) schreibt direkt mit
+ * `causedByAnonymous()` plus `cli_actor`-Property. Reports trennen die
+ * Fälle damit über `causer_id IS NULL` bzw. den Causer-Vergleich.
  *
  * Wirft `App\Services\User\Exceptions\SelfEmailVerificationFailedException`,
  * wenn die User-ID nicht auflöst (`reason='user_not_found'`) oder der Hash

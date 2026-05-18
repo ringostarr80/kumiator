@@ -509,12 +509,16 @@ final class AuthenticationActivityLogTest extends TestCase
     }
 
     /**
-     * Sicherstellt, dass derselbe Vorgang nicht zusätzlich als generischer
-     * `user.updated`-Eintrag erscheint — `email_verified_at` wurde bewusst aus
-     * `User::getActivitylogOptions()` entfernt, der `auth`-Eintrag ist die
-     * einzige Quelle der Wahrheit für die Verifizierung.
+     * Sicherstellt, dass derselbe Vorgang KEINEN zusätzlichen Eintrag im
+     * `user`-Log erzeugt — weder einen generischen `updated` noch einen
+     * fachlichen Code wie `user_renamed`, den der channel-agnostische
+     * User-Lifecycle-Hook ansonsten aus einem `email_verified_at`-Diff
+     * ableiten würde. `email_verified_at` ist bewusst aus
+     * `User::getActivitylogOptions()->logOnly()` ausgenommen; der
+     * `auth/email_verified`-Eintrag vom `LogAuthenticationActivityListener`
+     * ist die einzige Quelle der Wahrheit für die Verifizierung.
      */
-    public function testEmailVerificationDoesNotProduceGenericUserUpdatedEntry(): void
+    public function testEmailVerificationDoesNotProduceUserLogEntry(): void
     {
         $user = User::factory()->unverified()->create();
         Activity::query()->delete();
@@ -528,10 +532,10 @@ final class AuthenticationActivityLogTest extends TestCase
                 ->where('log_name', 'user')
                 ->where('subject_type', $user->getMorphClass())
                 ->where('subject_id', $user->getKey())
-                ->where('event', 'updated')
                 ->count(),
             'Die E-Mail-Verifizierung darf nur als auth/email_verified erscheinen, '
-            . 'nicht zusätzlich als generischer user.updated-Eintrag.',
+            . 'nicht zusätzlich als Eintrag im user-Log (weder generisch noch '
+            . 'als fachlicher Code wie user_renamed).',
         );
     }
 
@@ -855,7 +859,6 @@ final class AuthenticationActivityLogTest extends TestCase
             'app.activity_password_updated',
             'app.activity_password_reset',
             'app.activity_email_verified',
-            'app.activity_email_verified_via_cli',
             'app.activity_email_change_requested',
             'app.activity_email_changed',
             'app.activity_email_change_cancelled',

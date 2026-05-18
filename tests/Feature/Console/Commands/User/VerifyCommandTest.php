@@ -40,13 +40,13 @@ final class VerifyCommandTest extends TestCase
 
     /**
      * CLI-Verifizierung schreibt einen anonymisierten Audit-Eintrag
-     * (`auth/email_verified_via_cli`) — Subject = User, Causer = null. Der
-     * Self-Verify-Pfad über `VerifyEmailController` würde dagegen
-     * `auth/email_verified` schreiben; die Trennung der Event-Codes ist
-     * bewusst, damit Reports zwischen User-Self-Verify und Admin-Verify
-     * unterscheiden können.
+     * (`auth/email_verified`) — Subject = User, Causer = null. Der
+     * Self-Verify-Pfad über `VerifyEmailController` schreibt denselben
+     * Event-Code, aber mit Causer = User (via `Verified`-Event-Listener);
+     * die Unterscheidung CLI vs. Self-Service steckt im Causer, nicht im
+     * Event-Code.
      */
-    public function testCliVerifyWritesAnonymisedAuditEntry(): void
+    public function testCliVerifyWritesAnonymisedEmailVerifiedEntry(): void
     {
         $user = User::factory()->unverified()->create([
             'name' => self::TEST_NAME,
@@ -65,25 +65,30 @@ final class VerifyCommandTest extends TestCase
 
         $activity = Activity::query()
             ->where('log_name', 'auth')
-            ->where('event', 'email_verified_via_cli')
+            ->where('event', 'email_verified')
             ->latest('id')
             ->first();
 
         $this->assertNotNull($activity);
-        $this->assertSame(__('app.activity_email_verified_via_cli'), $activity->description);
+        $this->assertSame(__('app.activity_email_verified'), $activity->description);
         $this->assertNull($activity->causer_id);
         $this->assertNull($activity->causer_type);
         $this->assertSame($user->getMorphClass(), $activity->subject_type);
         $this->assertSame($user->getKey(), $activity->subject_id);
 
-        // Symmetrie-Garantie: KEIN paralleler Self-Verify-Eintrag (`Verified`-
-        // Event darf der Command nicht zusätzlich feuern, sonst entstünden
-        // zwei semantisch unterschiedliche Einträge für denselben Vorgang).
+        // Doppel-Logging-Schutz: der CLI-Service schreibt direkt und dispatcht
+        // bewusst KEIN `Verified`-Event (anders als der `SelfEmailVerifier`).
+        // Würde jemand künftig ein Dispatch ergänzen, entstünde ein zweiter
+        // Eintrag mit `causedBy($user)` aus dem Listener-Pfad — das fixiert
+        // dieser Assert: genau EIN `email_verified`-Eintrag pro Verify-Call,
+        // mit anonymisiertem Causer.
         $this->assertSame(
-            0,
+            1,
             Activity::query()
                 ->where('log_name', 'auth')
                 ->where('event', 'email_verified')
+                ->where('subject_type', $user->getMorphClass())
+                ->where('subject_id', $user->getKey())
                 ->count(),
         );
     }
@@ -110,11 +115,11 @@ final class VerifyCommandTest extends TestCase
                 ->where('log_name', 'user')
                 ->where('subject_type', $user->getMorphClass())
                 ->where('subject_id', $user->getKey())
-                ->where('event', 'updated')
                 ->count(),
-            'Die CLI-Verifizierung darf nur als auth/email_verified_via_cli '
+            'Die CLI-Verifizierung darf nur als auth/email_verified '
             . 'erscheinen — `email_verified_at` ist absichtlich nicht in '
-            . 'User::getActivitylogOptions() enthalten.',
+            . 'User::getActivitylogOptions() enthalten, daher darf kein '
+            . 'Eintrag im user-Log entstehen (weder generisch noch fachlich).',
         );
     }
 
