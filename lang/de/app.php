@@ -262,6 +262,10 @@ return [
     'activity_log_causer' => 'Ausgelöst von',
     'activity_log_subject' => 'Betroffener Datensatz',
     'activity_log_description' => 'Beschreibung',
+    'activity_log_properties' => 'Details',
+    'activity_log_properties_show' => 'Details anzeigen',
+    'activity_log_properties_modal_title' => 'Aktivitäts-Details',
+    'activity_log_properties_modal_close' => 'Schließen',
     'activity_log_deleted_record' => ':type (gelöscht)',
 
     // Activity-Log: fachliche Ereignis-Beschreibungen

@@ -31,9 +31,54 @@ final class ActivityLogTable extends Component
 
     private const int PER_PAGE = 25;
 
+    /**
+     * JSON-Flags fürs Pretty-Printing der Properties im Modal:
+     * Einrückung + Klartext für Slashes & Unicode (sonst sind URLs/Umlaute
+     * im Modal schwer lesbar) + Exception statt stillem `false` bei Encoding-
+     * Fehlern (z. B. invalides UTF-8).
+     */
+    private const int PRETTY_JSON_FLAGS = JSON_PRETTY_PRINT
+        | JSON_UNESCAPED_SLASHES
+        | JSON_UNESCAPED_UNICODE
+        | JSON_THROW_ON_ERROR;
+
+    public bool $showPropertiesModal = false;
+
+    public ?string $selectedProperties = null;
+
     public function mount(): void
     {
         $this->authorize('activity-log.view');
+    }
+
+    /**
+     * Lädt die Properties einer Activity und öffnet das Modal.
+     *
+     * Wird absichtlich erst beim Klick aufgerufen, damit die initiale Page
+     * nicht alle Properties-Blobs aller 25 Rows an den Client schickt
+     * (Properties können bei Spatie-Diff-Events groß werden).
+     *
+     * Für Activities ohne Properties bleibt die Methode ein No-Op — das
+     * UI blendet das Icon für solche Rows ohnehin aus, der Frühzeitig-
+     * Exit ist Defense-in-Depth gegen manipulierte Wire-Calls.
+     */
+    public function showProperties(int $activityId): void
+    {
+        $activity = Activity::query()->whereKey($activityId)->first();
+        $properties = $activity?->properties?->toArray() ?? [];
+
+        if ($properties === []) {
+            return;
+        }
+
+        $this->selectedProperties = json_encode($properties, self::PRETTY_JSON_FLAGS);
+        $this->showPropertiesModal = true;
+    }
+
+    public function closeProperties(): void
+    {
+        $this->showPropertiesModal = false;
+        $this->selectedProperties = null;
     }
 
     public function render(): View

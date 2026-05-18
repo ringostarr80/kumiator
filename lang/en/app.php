@@ -258,6 +258,10 @@ return [
     'activity_log_causer' => 'Triggered by',
     'activity_log_subject' => 'Subject',
     'activity_log_description' => 'Description',
+    'activity_log_properties' => 'Details',
+    'activity_log_properties_show' => 'Show details',
+    'activity_log_properties_modal_title' => 'Activity details',
+    'activity_log_properties_modal_close' => 'Close',
     'activity_log_deleted_record' => ':type (deleted)',
 
     // Activity log: domain-specific event descriptions

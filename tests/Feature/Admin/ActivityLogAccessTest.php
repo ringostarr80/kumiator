@@ -238,6 +238,126 @@ final class ActivityLogAccessTest extends TestCase
     }
 
     /**
+     * Properties-Spalte: Eine Activity **mit** und eine **ohne** Properties
+     * stehen in der Tabelle. Der Klick-Handler `showProperties(<id>)` als
+     * eindeutiger HTML-Marker darf nur für die Activity mit Properties
+     * gerendert werden — die Activity ohne Properties bekommt stattdessen
+     * das Dash-Fallback (also keinen `showProperties`-Wire-Call).
+     */
+    public function testPropertiesColumnShowsIconOnlyForActivitiesWithProperties(): void
+    {
+        $admin = $this->makeAdmin();
+
+        ActivityFacade::useLog('with-props')
+            ->withProperties(['key' => 'value'])
+            ->event('demo')
+            ->log('Eintrag mit Properties');
+
+        $withProps = Activity::query()
+            ->where('log_name', 'with-props')
+            ->latest('id')
+            ->firstOrFail();
+
+        ActivityFacade::useLog('without-props')
+            ->event('demo')
+            ->log('Eintrag ohne Properties');
+
+        $withoutProps = Activity::query()
+            ->where('log_name', 'without-props')
+            ->latest('id')
+            ->firstOrFail();
+
+        Livewire::actingAs($admin)
+            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->assertOk()
+            ->assertSee(__('app.activity_log_properties'))
+            ->assertSeeHtml('showProperties(' . $withProps->id . ')')
+            ->assertDontSeeHtml('showProperties(' . $withoutProps->id . ')');
+    }
+
+    /**
+     * Aktion `showProperties`: Setzt den Modal-Sichtbarkeits-Flag und liefert
+     * die Properties als Pretty-JSON, sodass das Modal-Template sie als
+     * `<pre>`-Block darstellen kann. Anschließend setzt `closeProperties`
+     * den State sauber zurück.
+     */
+    public function testShowPropertiesOpensModalAndClosePropertiesResetsIt(): void
+    {
+        $admin = $this->makeAdmin();
+
+        ActivityFacade::useLog('with-props')
+            ->withProperties(['attributes' => ['name' => 'Neuer Name']])
+            ->event('updated')
+            ->log('Eintrag aktualisiert');
+
+        $activity = Activity::query()
+            ->where('log_name', 'with-props')
+            ->latest('id')
+            ->firstOrFail();
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+
+        $component->assertSet('showPropertiesModal', false);
+        $component->assertSet('selectedProperties', null);
+
+        $component->call('showProperties', $activity->id);
+        $component->assertSet('showPropertiesModal', true);
+
+        $selectedProperties = $component->get('selectedProperties');
+        self::assertIsString($selectedProperties);
+        self::assertStringContainsString('Neuer Name', $selectedProperties);
+        self::assertStringContainsString(
+            "\n",
+            $selectedProperties,
+            'JSON sollte Pretty-printed sein (Zeilenumbrüche enthalten).',
+        );
+
+        $component->call('closeProperties');
+        $component->assertSet('showPropertiesModal', false);
+        $component->assertSet('selectedProperties', null);
+    }
+
+    /**
+     * Defense-in-Depth: `showProperties` für eine Activity **ohne** Properties
+     * ist ein No-Op — Modal bleibt zu, kein verwirrender leerer Dialog. Schützt
+     * den Pfad, falls jemand den Wire-Call manipuliert oder das Icon
+     * versehentlich für leere Properties gerendert würde.
+     */
+    public function testShowPropertiesIsNoOpForActivityWithoutProperties(): void
+    {
+        $admin = $this->makeAdmin();
+
+        ActivityFacade::useLog('empty')
+            ->event('demo')
+            ->log('Eintrag ohne Properties');
+
+        $activity = Activity::query()
+            ->where('log_name', 'empty')
+            ->latest('id')
+            ->firstOrFail();
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->call('showProperties', $activity->id);
+        $component->assertSet('showPropertiesModal', false);
+        $component->assertSet('selectedProperties', null);
+    }
+
+    /**
+     * `showProperties` für eine **nicht-existierende** Activity ist ebenfalls
+     * ein No-Op (kein 404, kein Fehler, Modal bleibt zu) — verhindert dass
+     * eine manipulierte Wire-Call-ID die UI kaputt macht.
+     */
+    public function testShowPropertiesIsNoOpForUnknownActivityId(): void
+    {
+        $admin = $this->makeAdmin();
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->call('showProperties', 999_999);
+        $component->assertSet('showPropertiesModal', false);
+        $component->assertSet('selectedProperties', null);
+    }
+
+    /**
      * Speist Rollen + Permissions aus dem produktiven `RoleSeeder` statt sie
      * inline anzulegen — wenn der Seeder später um eine Permission ergänzt
      * wird, sehen die Tests sie automatisch. Sonst entstünde Drift zwischen
