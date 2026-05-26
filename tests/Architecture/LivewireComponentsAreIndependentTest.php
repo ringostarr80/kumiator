@@ -47,11 +47,16 @@ final class LivewireComponentsAreIndependentTest
                 // Activity-Logging direkt aus Komponenten für Sicherheits-Events
                 // ohne Framework-Hook (z. B. Jetstreams Form feuert kein Event).
                 Selector::inNamespace('Spatie\\Activitylog\\Facades'),
+                // PHP-Sprach-Builtins (z. B. `\Throwable` in defensiven Catch-
+                // Klauseln rund um Audit-Log-Aufrufe) sind keine Service-Dependency
+                // und stehen daher ausserhalb dieser Whitelist-Logik.
+                Selector::classname('Throwable'),
             )
             ->because(
                 'Livewire-Komponenten dürfen nur von Models, DTOs, Repository- '
                 . 'und Service-Contracts, Illuminate, Livewire, Jetstream-Profil-'
-                . 'komponenten (zur Erweiterung) und der Activity-Facade abhängen.',
+                . 'komponenten (zur Erweiterung), der Activity-Facade und PHP-'
+                . 'Sprach-Builtins (\\Throwable) abhängen.',
                 'Sie sind eine Präsentationsschicht und dürfen keine konkreten '
                 . 'Services oder Repositories kennen — DI erfolgt über Contracts. '
                 . 'Geschäftslogik gehört in die Service-Schicht.',

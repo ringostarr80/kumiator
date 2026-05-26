@@ -219,6 +219,48 @@ final class PasskeyCredential extends Model
     }
 
     /**
+     * Schreibt einen Audit-Eintrag für einen still abgelehnten Autorisierungs-
+     * Versuch auf eine Passkey-Credential (`Gate::authorize` / `$this->authorize`
+     * warf `AuthorizationException`). Ohne diesen Eintrag wäre der HTTP-403
+     * unsichtbar im Log — ein authentifizierter User probiert, eine fremde
+     * Credential umzubenennen oder zu löschen, und nichts dokumentiert es.
+     *
+     * Channel `security`: bewusst NICHT `passkey`, weil der Eintrag kein
+     * Lifecycle-Event ist, sondern eine Cross-Cutting-Auth-Verletzung. Das
+     * gleiche Event-Code-Schema (`authorization_denied`) deckt auch Nicht-
+     * Passkey-Sites ab (vgl. `ActivityLogTable::mount`) und lässt sich über
+     * `target_type` / `ability` in den Properties trennen.
+     *
+     * Datenminimierung (DSGVO Art. 5 Abs. 1 lit. c): die Klartext-UUID der
+     * Ziel-Credential geht nicht ins Log, stattdessen ein SHA-256-Hash —
+     * analog zum `credential_id_hash` bei Login-Failures. So bleibt
+     * Korrelation wiederholter Versuche gegen dieselbe Credential möglich
+     * (Indikator für gezielten Mass-Probing-Angriff), ohne den ID-Wert zu
+     * duplizieren.
+     *
+     * Resilient gegen Activity-Log-Ausfälle: ein Schreibfehler darf den
+     * Request-Pfad nicht beeinflussen — der ursprüngliche 403 muss raus.
+     *
+     * @param string $ability Spatie/Laravel-Ability-Name (`update`, `delete`).
+     */
+    public static function recordAuthorizationDeniedActivity(User $user, string $ability, self $target): void
+    {
+        try {
+            Activity::useLog('security')
+                ->event('authorization_denied')
+                ->causedBy($user)
+                ->withProperties([
+                    'ability' => $ability,
+                    'target_type' => 'passkey_credential',
+                    'target_id_hash' => hash('sha256', $target->id),
+                ])
+                ->log(__('app.activity_authorization_denied'));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
      * Mappt das generische Eloquent-Event eines Passkey-Activity-Eintrags
      * (created/updated/deleted) auf einen fachlichen Code
      * (passkey_registered/passkey_renamed/passkey_removed), bevor der Eintrag

@@ -275,6 +275,7 @@ return [
     'activity_passkey_login_succeeded' => 'Passkey-Anmeldung erfolgreich',
     'activity_passkey_login_failed' => 'Passkey-Anmeldung fehlgeschlagen',
     'activity_passkey_registration_failed' => 'Passkey-Registrierung fehlgeschlagen',
+    'activity_authorization_denied' => 'Autorisierung verweigert',
     'activity_password_login_succeeded' => 'Passwort-Anmeldung erfolgreich',
     'activity_logout' => 'Abmeldung',
     'activity_login_failed' => 'Anmeldung fehlgeschlagen',

@@ -17,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
 use Webauthn\PublicKeyCredentialCreationOptions;
 
@@ -133,6 +134,14 @@ final class PasskeyRegistrationController extends Controller
      */
     public function destroy(PasskeyCredential $passkeyCredential): JsonResponse
     {
+        if (Gate::denies('delete', $passkeyCredential)) {
+            $causer = Auth::user();
+
+            if ($causer instanceof User) {
+                PasskeyCredential::recordAuthorizationDeniedActivity($causer, 'delete', $passkeyCredential);
+            }
+        }
+
         $this->authorize('delete', $passkeyCredential);
 
         $this->repository->delete($passkeyCredential);

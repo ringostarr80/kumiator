@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace App\Livewire\Admin;
 
 use App\Models\Activity;
+use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Spatie\Activitylog\Facades\Activity as ActivityLogger;
 
 /**
  * Read-only Übersicht des Activity-Logs für Administratoren.
@@ -48,6 +52,10 @@ final class ActivityLogTable extends Component
 
     public function mount(): void
     {
+        if (Gate::denies('activity-log.view')) {
+            $this->recordAuthorizationDenied();
+        }
+
         $this->authorize('activity-log.view');
     }
 
@@ -113,5 +121,39 @@ final class ActivityLogTable extends Component
             ->with(['subject', 'causer'])
             ->latest('id')
             ->paginate(self::PER_PAGE);
+    }
+
+    /**
+     * Schreibt einen Audit-Eintrag für den abgelehnten Zugriff auf das
+     * Activity-Log-UI. Inline statt über statische Recorder-Methode auf einem
+     * Domain-Model — es gibt für diese Ability schlicht kein passendes
+     * Domain-Objekt (`activity-log.view` ist eine reine Anzeige-Permission).
+     * Channel und Event-Code spiegeln das Schema aus
+     * {@see \App\Models\PasskeyCredential::recordAuthorizationDeniedActivity()}.
+     *
+     * Resilient gegen Activity-Log-Ausfälle: der ursprüngliche 403 muss raus,
+     * ein kaputter Audit-Pfad darf das nicht blockieren.
+     */
+    private function recordAuthorizationDenied(): void
+    {
+        $causer = Auth::user();
+
+        if (!($causer instanceof User)) {
+            return;
+        }
+
+        try {
+            ActivityLogger::useLog('security')
+                ->event('authorization_denied')
+                ->causedBy($causer)
+                ->withProperties([
+                    'ability' => 'activity-log.view',
+                    'target_type' => null,
+                    'target_id_hash' => null,
+                ])
+                ->log(__('app.activity_authorization_denied'));
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 }

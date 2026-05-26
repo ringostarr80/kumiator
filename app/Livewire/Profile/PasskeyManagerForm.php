@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Profile;
 
+use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use Illuminate\Contracts\View\View;
@@ -59,7 +60,7 @@ class PasskeyManagerForm extends Component
     {
         $passkey = $this->repository->findByIdOrFail($passkeyId);
 
-        Gate::authorize('update', $passkey);
+        $this->authorizeOrLogDenied('update', $passkey);
 
         $this->editingPasskeyId = $passkey->id;
         $this->editingPasskeyName = $passkey->name;
@@ -92,7 +93,7 @@ class PasskeyManagerForm extends Component
 
         $passkey = $this->repository->findByIdOrFail($this->editingPasskeyId);
 
-        Gate::authorize('update', $passkey);
+        $this->authorizeOrLogDenied('update', $passkey);
 
         $this->repository->updateName($passkey, trim($this->editingPasskeyName));
 
@@ -111,7 +112,7 @@ class PasskeyManagerForm extends Component
     {
         $passkey = $this->repository->findByIdOrFail($passkeyId);
 
-        Gate::authorize('delete', $passkey);
+        $this->authorizeOrLogDenied('delete', $passkey);
 
         $this->repository->delete($passkey);
 
@@ -134,5 +135,26 @@ class PasskeyManagerForm extends Component
         }
 
         $this->passkeys = $this->repository->findAllForUser($user);
+    }
+
+    /**
+     * Pre-Check via `Gate::denies` statt try/catch um `Gate::authorize`:
+     * vermeidet, dass die `AuthorizationException` ausschließlich zum
+     * Logging gefangen und sofort weitergeworfen wird (PHPStan sieht den
+     * Throw nicht durch den Facade-Aufruf hindurch — und sauberer ist es
+     * ohnehin, das Log vor dem Throw zu schreiben statt im Catch-Pfad).
+     * Macht den ansonsten stillen 403 für das Audit-Log sichtbar.
+     */
+    private function authorizeOrLogDenied(string $ability, PasskeyCredential $passkey): void
+    {
+        if (Gate::denies($ability, $passkey)) {
+            $causer = Auth::user();
+
+            if ($causer instanceof User) {
+                PasskeyCredential::recordAuthorizationDeniedActivity($causer, $ability, $passkey);
+            }
+        }
+
+        Gate::authorize($ability, $passkey);
     }
 }
