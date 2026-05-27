@@ -279,6 +279,7 @@ return [
     'activity_login_locked_out' => 'Login locked out (too many failed attempts)',
     'activity_password_updated' => 'Password changed',
     'activity_password_update_failed' => 'Password change failed',
+    'activity_password_confirmation_failed' => 'Password confirmation failed',
     'activity_password_reset' => 'Password reset',
     'activity_user_self_registered' => 'Account created via self-registration',
     'activity_user_created' => 'Account created',

@@ -283,6 +283,7 @@ return [
     'activity_login_locked_out' => 'Anmeldung gesperrt (zu viele Fehlversuche)',
     'activity_password_updated' => 'Passwort geändert',
     'activity_password_update_failed' => 'Passwortänderung fehlgeschlagen',
+    'activity_password_confirmation_failed' => 'Passwort-Bestätigung fehlgeschlagen',
     'activity_password_reset' => 'Passwort zurückgesetzt',
     'activity_user_self_registered' => 'Konto durch Selbstregistrierung angelegt',
     'activity_user_created' => 'Konto angelegt',

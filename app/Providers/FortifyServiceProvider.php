@@ -21,6 +21,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Fortify;
+use Spatie\Activitylog\Facades\Activity;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -43,6 +44,27 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::redirectUserForTwoFactorAuthenticationUsing(RedirectIfTwoFactorAuthenticatable::class);
+
+        // Re-Auth-Failures vor 2FA-Endpoints sichtbar machen. Beide vendor-
+        // seitigen Pfade — der Web-Form-Pfad über `ConfirmablePasswordController`
+        // und der Livewire-Pfad über Jetstreams `ConfirmsPasswords::confirmPassword()`
+        // — laufen durch `Laravel\Fortify\Actions\ConfirmPassword`. Wird hier ein
+        // Callback registriert, delegiert die Action an ihn (siehe
+        // `vendor/laravel/fortify/src/Actions/ConfirmPassword.php`), und wir
+        // fangen beide Pfade an einer Stelle ab. Hash-Vergleich parität zur
+        // `authenticateUsing`-Override oben.
+        Fortify::confirmPasswordsUsing(static function (User $user, ?string $password): bool {
+            if (is_string($password) && Hash::check($password, $user->password)) {
+                return true;
+            }
+
+            Activity::useLog('auth')
+                ->event('password_confirmation_failed')
+                ->causedBy($user)
+                ->log(__('app.activity_password_confirmation_failed'));
+
+            return false;
+        });
 
         $unapprovedContext = $this->app->make(UnapprovedLoginContextContract::class);
 
