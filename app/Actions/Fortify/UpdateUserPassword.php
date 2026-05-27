@@ -7,8 +7,10 @@ namespace App\Actions\Fortify;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
 use Laravel\Fortify\Events\PasswordUpdatedViaController;
+use Spatie\Activitylog\Facades\Activity;
 
 class UpdateUserPassword implements UpdatesUserPasswords
 {
@@ -22,12 +24,20 @@ class UpdateUserPassword implements UpdatesUserPasswords
      */
     public function update(User $user, array $input): void
     {
-        Validator::make($input, [
-            'current_password' => ['required', 'string', 'current_password:web'],
-            'password' => $this->passwordRules(),
-        ], [
-            'current_password.current_password' => __('The provided password does not match your current password.'),
-        ])->validateWithBag('updatePassword');
+        try {
+            Validator::make($input, [
+                'current_password' => ['required', 'string', 'current_password:web'],
+                'password' => $this->passwordRules(),
+            ], [
+                'current_password.current_password' => __(
+                    'The provided password does not match your current password.',
+                ),
+            ])->validateWithBag('updatePassword');
+        } catch (ValidationException $e) {
+            $this->recordFailedCurrentPasswordCheck($user, $e);
+
+            throw $e;
+        }
 
         $user->forceFill([
             'password' => Hash::make($input['password']),
@@ -37,5 +47,35 @@ class UpdateUserPassword implements UpdatesUserPasswords
         // feuert das Fortify-Event nicht — also hier dispatchen, damit der
         // `LogAuthenticationActivityListener` einen Eintrag schreibt.
         event(new PasswordUpdatedViaController($user));
+    }
+
+    /**
+     * Schreibt einen `password_update_failed`-Eintrag, wenn die
+     * `current_password`-Regel verletzt wurde. Reine Passwort-Rule-Fehler
+     * (zu kurz, Confirmation-Mismatch) sind UX-Eingabefehler ohne
+     * Sicherheitssignal und bleiben bewusst ungeloggt — nur der forensisch
+     * relevante Mismatch des aktuellen Passworts wird festgehalten (Indiz
+     * für Session-Hijacking, fremder Nutzer am Endgerät, Shoulder-Surfing).
+     *
+     * Bewusst KEIN resilienter `try/catch`: PHPAt verbietet `\Throwable`
+     * in Actions ({@see \Tests\Architecture\ActionsAreIndependentTest}),
+     * und der Erfolgs-Pfad
+     * ({@see \App\Listeners\LogAuthenticationActivityListener::handlePasswordUpdated})
+     * loggt symmetrisch ohne Resilienz. Ein Activity-Log-DB-Fehler würde
+     * also auch im Erfolgsfall die Antwort verderben — der Failure-Pfad
+     * bekommt damit identische Garantien.
+     */
+    private function recordFailedCurrentPasswordCheck(User $user, ValidationException $e): void
+    {
+        if (!array_key_exists('current_password', $e->errors())) {
+            return;
+        }
+
+        Activity::useLog('auth')
+            ->event('password_update_failed')
+            ->causedBy($user)
+            ->performedOn($user)
+            ->withProperties(['failure_reason' => 'current_password_mismatch'])
+            ->log(__('app.activity_password_update_failed'));
     }
 }
