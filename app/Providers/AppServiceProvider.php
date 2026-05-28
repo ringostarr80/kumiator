@@ -30,6 +30,7 @@ use App\Services\User\UserSoftDeleter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -52,6 +53,28 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UploadLimitResolverContract::class, UploadLimitResolver::class);
         $this->app->bind(ProfilePhotoOptimizerContract::class, ProfilePhotoOptimizer::class);
         $this->app->singleton(ConsoleActorContextContract::class, ConsoleActorContext::class);
+
+        // Cascade-Detach beim Löschen einer Rolle audit-sichtbar machen.
+        // Hintergrund: Der FK `model_has_roles.role_id` ist mit
+        // `cascadeOnDelete()` definiert, zusätzlich räumt
+        // `HasPermissions::bootHasPermissions()` (Spatie-Trait) während
+        // des Role-Boots in einem eigenen `static::deleting`-Hook per
+        // raw `$role->users()->detach()` ohne `RoleDetachedEvent` auf.
+        // Beides würde den User-Verlust still passieren lassen.
+        //
+        // Wir registrieren den Aufräum-Listener daher hier in `register()`
+        // (vor jedem Model-Boot), damit er im Dispatcher VOR Spatie's
+        // Trait-Hook landet — `Event::listen(string)` löst die Role-
+        // Klasse nicht aus, der Trait-Hook wird erst beim ersten Boot
+        // nachgereiht. Der Listener iteriert die zugewiesenen User und
+        // ruft `removeRole($role)` auf, was wiederum `RoleDetachedEvent`
+        // feuert; der bestehende `LogRoleChangeListener` schreibt pro
+        // User einen `role_detached`-Eintrag. Spatie's Trait-Hook und
+        // die DB-Cascade greifen anschließend nur noch ins Leere.
+        Event::listen(
+            'eloquent.deleting: ' . Role::class,
+            [RoleLifecycleObserver::class, 'detachUsersBeforeCascadeDelete'],
+        );
     }
 
     /**

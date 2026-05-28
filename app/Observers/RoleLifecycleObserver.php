@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
+use App\Models\User;
 use Spatie\Activitylog\Facades\Activity;
 use Spatie\Permission\Models\Role;
 
@@ -59,5 +60,40 @@ final class RoleLifecycleObserver
             ])
             ->event('role_deleted')
             ->log(__('app.activity_role_deleted'));
+    }
+
+    /**
+     * Detacht zugewiesene User explizit, bevor die DB-Cascade auf
+     * `model_has_roles` greift. Hintergrund: Der FK auf der Pivot-Tabelle
+     * ist mit `cascadeOnDelete()` definiert, die DB löscht die Pivot-
+     * Zeilen also direkt — Spatie sieht das nicht, kein
+     * `RoleDetachedEvent` würde feuern, und der `LogRoleChangeListener`
+     * bliebe stumm. Folge: der User-Verlust wäre im Activity-Log
+     * unsichtbar. Über `$user->removeRole($role)` feuert Spatie das
+     * Event sauber, der bestehende Listener schreibt pro User einen
+     * `role_detached`-Eintrag, die nachgelagerte DB-Cascade greift
+     * dann nur noch ins Leere.
+     *
+     * **Achtung Methoden-Name:** bewusst NICHT `deleting` — Spatie's
+     * `HasPermissions::bootHasPermissions()` registriert während des
+     * Role-Model-Boots einen eigenen `static::deleting`-Hook, der via
+     * raw `$role->users()->detach()` aufräumt (ohne Events). Würde
+     * unser Observer-`deleting` heißen, käme er erst NACH Spatie's
+     * Trait-Listener dran (Trait bootet vor `Role::observe`), und die
+     * Pivots wären schon weg. Diese Methode wird daher in
+     * `AppServiceProvider::register()` via direktem
+     * `Event::listen('eloquent.deleting: ' . Role::class, ...)`
+     * registriert, **bevor** das Role-Model bootet — damit landen wir
+     * im Dispatcher vor Spatie's Trait-Hook.
+     */
+    public static function detachUsersBeforeCascadeDelete(Role $role): void
+    {
+        foreach ($role->users()->get() as $user) {
+            if (!$user instanceof User) {
+                continue;
+            }
+
+            $user->removeRole($role);
+        }
     }
 }
