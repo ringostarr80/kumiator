@@ -7,6 +7,7 @@ namespace Tests\Feature\Services\User;
 use App\Models\User;
 use App\Notifications\EmailChangeRequestedNotification;
 use App\Notifications\VerifyEmailChangeNotification;
+use App\Services\Audit\AuditEmailHasher;
 use App\Services\User\Contracts\UserEmailChangerContract;
 use App\Services\User\Exceptions\EmailChangeConflictException;
 use App\Services\User\Exceptions\EmailChangeTargetNotEligibleException;
@@ -64,7 +65,7 @@ final class UserEmailChangerTest extends TestCase
         Notification::assertSentTo($refreshed, EmailChangeRequestedNotification::class);
     }
 
-    public function testRequestChangeWritesEmailChangeRequestedAuditWithPendingEmail(): void
+    public function testRequestChangeWritesEmailChangeRequestedAuditWithPendingEmailHash(): void
     {
         Notification::fake();
         $user = User::factory()->create(['email' => 'alt@example.com']);
@@ -84,7 +85,8 @@ final class UserEmailChangerTest extends TestCase
         $this->assertSame($user->getKey(), $activity->subject_id);
 
         $properties = $activity->properties?->toArray() ?? [];
-        $this->assertSame('neu@example.com', $properties['pending_email'] ?? null);
+        $this->assertSame(AuditEmailHasher::hash('neu@example.com'), $properties['pending_email_hash'] ?? null);
+        $this->assertArrayNotHasKey('pending_email', $properties);
         $this->assertArrayNotHasKey('pending_email_token_hash', $properties);
     }
 
@@ -136,8 +138,12 @@ final class UserEmailChangerTest extends TestCase
         $this->assertSame(__('app.activity_email_changed'), $activity->description);
         $this->assertSame($user->getKey(), $activity->causer_id);
 
+        // Bewusst keine Properties: Subject und Causer zeigen beide auf den
+        // User selbst, die alte Adresse ist datenminimierend nicht zusätzlich
+        // 365 Tage festzuhalten.
         $properties = $activity->properties?->toArray() ?? [];
-        $this->assertSame('alt@example.com', $properties['old_email'] ?? null);
+        $this->assertArrayNotHasKey('old_email', $properties);
+        $this->assertSame([], $properties);
     }
 
     public function testConfirmChangeWithUnknownTokenThrowsAndWritesNoAudit(): void
@@ -192,7 +198,8 @@ final class UserEmailChangerTest extends TestCase
 
         $properties = $cancelled->properties?->toArray() ?? [];
         $this->assertSame('expired_on_confirm', $properties['cancelled_via'] ?? null);
-        $this->assertSame('neu@example.com', $properties['pending_email'] ?? null);
+        $this->assertSame(AuditEmailHasher::hash('neu@example.com'), $properties['pending_email_hash'] ?? null);
+        $this->assertArrayNotHasKey('pending_email', $properties);
     }
 
     public function testConfirmChangeForTrashedUserThrowsTargetNotEligibleAndWritesRejectedAudit(): void
@@ -263,7 +270,8 @@ final class UserEmailChangerTest extends TestCase
 
         $properties = $cancelled->properties?->toArray() ?? [];
         $this->assertSame('target_taken_on_confirm', $properties['cancelled_via'] ?? null);
-        $this->assertSame('belegt@example.com', $properties['pending_email'] ?? null);
+        $this->assertSame(AuditEmailHasher::hash('belegt@example.com'), $properties['pending_email_hash'] ?? null);
+        $this->assertArrayNotHasKey('pending_email', $properties);
     }
 
     public function testCancelChangeClearsPendingAndWritesAnonymousAudit(): void
@@ -291,8 +299,9 @@ final class UserEmailChangerTest extends TestCase
         $this->assertSame($user->getKey(), $activity->subject_id);
 
         $properties = $activity->properties?->toArray() ?? [];
-        $this->assertSame('neu@example.com', $properties['pending_email'] ?? null);
+        $this->assertSame(AuditEmailHasher::hash('neu@example.com'), $properties['pending_email_hash'] ?? null);
         $this->assertSame('recipient_revoked', $properties['cancelled_via'] ?? null);
+        $this->assertArrayNotHasKey('pending_email', $properties);
     }
 
     public function testCancelChangeWithUnknownTokenIsNoOp(): void

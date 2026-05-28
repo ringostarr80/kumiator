@@ -8,6 +8,7 @@ use App\Livewire\Profile\UpdateProfileInformationForm;
 use App\Models\User;
 use App\Notifications\EmailChangeRequestedNotification;
 use App\Notifications\VerifyEmailChangeNotification;
+use App\Services\Audit\AuditEmailHasher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Notification;
@@ -58,7 +59,8 @@ final class EmailChangeActivityLogTest extends TestCase
         $this->assertNotNull($activity);
         $this->assertSame($user->getKey(), $activity->causer_id);
         $properties = $activity->properties?->toArray() ?? [];
-        $this->assertSame('neu@example.com', $properties['pending_email'] ?? null);
+        $this->assertSame(AuditEmailHasher::hash('neu@example.com'), $properties['pending_email_hash'] ?? null);
+        $this->assertArrayNotHasKey('pending_email', $properties);
     }
 
     public function testFullHappyPathRequestThenConfirmProducesBothAudits(): void

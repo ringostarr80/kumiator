@@ -7,6 +7,7 @@ namespace App\Services\User;
 use App\Models\User;
 use App\Notifications\EmailChangeRequestedNotification;
 use App\Notifications\VerifyEmailChangeNotification;
+use App\Services\Audit\AuditEmailHasher;
 use App\Services\User\Contracts\UserEmailChangerContract;
 use App\Services\User\Exceptions\EmailChangeConflictException;
 use App\Services\User\Exceptions\EmailChangeTargetNotEligibleException;
@@ -47,11 +48,18 @@ final class UserEmailChanger implements UserEmailChangerContract
 
         $user->notify(new EmailChangeRequestedNotification($plainToken, $newEmail));
 
+        // DSGVO Art. 5(1)(c): `pending_email` kann eine fremde Adresse sein
+        // (Tippfehler des Antragstellers, oder ein Angreifer auf einem
+        // übernommenen Konto, der gegen eine Wegwerf-Adresse wechselt).
+        // Klartext-Speicherung über 365 Tage wäre Datenverarbeitung Dritter
+        // ohne Rechtsgrundlage. Hash erlaubt Korrelation (wiederholte
+        // Versuche an dieselbe Zieladresse), ohne den Klartext zu halten —
+        // dasselbe Muster wie `login_failed` (siehe `AuditEmailHasher`).
         Activity::useLog('auth')
             ->event('email_change_requested')
             ->causedBy($user)
             ->performedOn($user)
-            ->withProperties(['pending_email' => $newEmail])
+            ->withProperties(['pending_email_hash' => AuditEmailHasher::hash($newEmail)])
             ->log(__('app.activity_email_change_requested'));
     }
 
@@ -105,8 +113,6 @@ final class UserEmailChanger implements UserEmailChangerContract
             throw new EmailChangeConflictException();
         }
 
-        $oldEmail = $user->email;
-
         $user->forceFill([
             'email' => $pendingEmail,
             'email_verified_at' => Carbon::now(),
@@ -115,11 +121,14 @@ final class UserEmailChanger implements UserEmailChangerContract
             'pending_email_sent_at' => null,
         ])->saveOrFail();
 
+        // Bewusst keine Properties: `subject` und `causer` zeigen beide auf
+        // den User selbst, der Vorgang ist damit eindeutig zuordenbar.
+        // Die alte Adresse 365 Tage zusätzlich vorzuhalten geht über
+        // Art. 5(1)(c) Datenminimierung hinaus.
         Activity::useLog('auth')
             ->event('email_changed')
             ->causedBy($user)
             ->performedOn($user)
-            ->withProperties(['old_email' => $oldEmail])
             ->log(__('app.activity_email_changed'));
 
         return $user;
@@ -159,12 +168,14 @@ final class UserEmailChanger implements UserEmailChangerContract
 
         $this->clearPendingFields($user);
 
+        // Causer ist anonym; `pending_email` würde sonst eine ggf. fremde
+        // Adresse (siehe `requestChange()`-Kommentar) 365 Tage halten.
         Activity::useLog('auth')
             ->event('email_change_cancelled')
             ->causedByAnonymous()
             ->performedOn($user)
             ->withProperties([
-                'pending_email' => $pendingEmail,
+                'pending_email_hash' => AuditEmailHasher::hash($pendingEmail),
                 'cancelled_via' => $cancelledVia,
             ])
             ->log(__('app.activity_email_change_cancelled'));

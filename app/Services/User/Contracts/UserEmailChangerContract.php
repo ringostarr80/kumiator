@@ -17,7 +17,8 @@ use App\Models\User;
  *      invalidiert (Spalten-Overwrite).
  *   2. `confirmChange()` — auf Klick auf den Confirm-Link aus der Verifizierungs-
  *      Mail. Tauscht `email` ← `pending_email`, setzt `email_verified_at = now()`,
- *      leert `pending_email*`. Audit: `auth/email_changed` mit `old_email`.
+ *      leert `pending_email*`. Audit: `auth/email_changed` (ohne Properties:
+ *      Subject und Causer = User selbst, Datenminimierung Art. 5(1)(c)).
  *   3. `cancelChange()` — auf Klick auf den Cancel-Link aus der Hinweis-Mail
  *      an die alte Adresse. Leert nur `pending_email*`. Audit:
  *      `auth/email_change_cancelled`, causer=anonymous (Hijack-Opfer hat
