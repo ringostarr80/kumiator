@@ -32,11 +32,9 @@ final class ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
                 Selector::inNamespace('Laravel\\Sanctum'),
                 Selector::classname(\Throwable::class),
                 Selector::isThrowable(),
-                // `GdImage` ist das PHP-Core-Wertobjekt der GD-Extension — der
-                // natürliche Datentyp für Bildverarbeitung (z. B.
-                // `ProfilePhotoOptimizer`). Keine Infrastruktur-/Präsentations-
-                // kopplung, daher freigegeben — analog zu `\Throwable`.
                 Selector::classname(\GdImage::class),
+                Selector::classname(\BackedEnum::class),
+                Selector::classname(\UnitEnum::class),
             )
             ->because(
                 'Services dürfen nur von Config, DTOs, Models, Notifications, '
@@ -58,8 +56,11 @@ final class ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
                 . 'Basisklasse separat aufgelistet werden muss. `\\GdImage` ist als '
                 . 'PHP-Core-Wertobjekt der GD-Extension freigegeben — der natürliche '
                 . 'Datentyp für Bildverarbeitung (`ProfilePhotoOptimizer`), keine '
-                . 'Infrastruktur-Kopplung. Neue Vendor-Pakete müssen bewusst in die '
-                . 'Allowlist eingetragen werden.',
+                . 'Infrastruktur-Kopplung. `\\BackedEnum` und `\\UnitEnum` sind '
+                . 'als PHP-Core-Interfaces freigegeben, damit Services interne '
+                . 'Backed-/Unit-Enums definieren können (CLAUDE.md fordert Enums '
+                . 'statt Magic-Strings) — analog zur `\\Throwable`-Freigabe. Neue '
+                . 'Vendor-Pakete müssen bewusst in die Allowlist eingetragen werden.',
             );
     }
 

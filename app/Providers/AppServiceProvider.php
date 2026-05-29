@@ -11,6 +11,8 @@ use App\Policies\PasskeyCredentialPolicy;
 use App\Services\Auth\SelfRegistrationContext;
 use App\Services\Console\ConsoleActorContext;
 use App\Services\Console\Contracts\ConsoleActorContextContract;
+use App\Services\Schedule\HealthcheckPingPhase;
+use App\Services\Schedule\ScheduleHealthcheckPinger;
 use App\Services\Upload\Contracts\ProfilePhotoOptimizerContract;
 use App\Services\Upload\Contracts\UploadLimitResolverContract;
 use App\Services\Upload\ProfilePhotoOptimizer;
@@ -28,6 +30,7 @@ use App\Services\User\UserHardDeleter;
 use App\Services\User\UserPasswordResetter;
 use App\Services\User\UserSoftDeleter;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Scheduling\Event as ScheduledEvent;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -187,6 +190,23 @@ class AppServiceProvider extends ServiceProvider
         // konkreten Vendor-Klasse `config('permission.models.role')`
         // aufzulösen — das Projekt nutzt das Default-Model, daher direkt.
         Role::observe(RoleLifecycleObserver::class);
+
+        // Heartbeat-Pings für DSGVO-getriebene Cleanup-Schedules (siehe
+        // `routes/console.php`). Healthchecks.io-Auto-Provisioning erwartet
+        // pro Job einen distinkten Slug, alle teilen sich denselben Ping-Key
+        // (config `healthchecks.ping_key`). `before`/`onSuccess`/`onFailure`
+        // mappen auf die drei Healthchecks.io-Phasen (start/success/fail);
+        // der Pinger schluckt HTTP-Fehler, damit ein Healthchecks.io-Ausfall
+        // den Cron-Job nicht kippt. Ohne konfigurierten Ping-Key sind die
+        // Pings stille No-Ops (lokale Entwicklung, Tests).
+        ScheduledEvent::macro('withHealthcheck', function (string $slug): ScheduledEvent {
+            $pinger = app(ScheduleHealthcheckPinger::class);
+
+            return $this
+                ->before(static fn () => $pinger->ping($slug, HealthcheckPingPhase::Start))
+                ->onSuccess(static fn () => $pinger->ping($slug, HealthcheckPingPhase::Success))
+                ->onFailure(static fn () => $pinger->ping($slug, HealthcheckPingPhase::Failure));
+        });
 
         // Passkey authentication options (guests): IP-based, 20 requests per minute.
         // Limits e-mail enumeration via the allowCredentials field without impacting

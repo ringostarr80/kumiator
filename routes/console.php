@@ -31,7 +31,8 @@ Artisan::command('inspire', function (): void {
 Schedule::command('activitylog:clean')
     ->dailyAt('03:30')
     ->onOneServer()
-    ->withoutOverlapping();
+    ->withoutOverlapping()
+    ->withHealthcheck('activitylog_clean');
 
 /*
  * Cleanup abgelaufener E-Mail-Änderungs-Anfragen (Art. 5(1)(c) DSGVO —
@@ -44,4 +45,5 @@ Schedule::command('activitylog:clean')
 Schedule::command('user:cleanup-pending-email-changes')
     ->hourlyAt(7)
     ->onOneServer()
-    ->withoutOverlapping();
+    ->withoutOverlapping()
+    ->withHealthcheck('pending_email_cleanup');
