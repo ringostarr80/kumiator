@@ -249,6 +249,72 @@ final class AuthenticationActivityLogTest extends TestCase
     }
 
     /**
+     * Forensik bei anonymen Fehlversuchen: gekürzte IP (`/24`) + User-Agent
+     * werden als Properties abgelegt, damit verteilter Brute-Force korrelierbar
+     * wird. DSGVO-Datenminimierung — die VOLLE Host-IP darf nirgends im Eintrag
+     * stehen, nur das Netz (siehe `AuditIpTruncator`).
+     */
+    public function testFailedLoginStoresTruncatedIpAndUserAgent(): void
+    {
+        Activity::query()->delete();
+
+        $this->app->instance('request', Request::create(
+            '/login',
+            'POST',
+            ['email' => 'opfer@example.com'],
+            server: ['REMOTE_ADDR' => '203.0.113.7', 'HTTP_USER_AGENT' => 'Mozilla/5.0 (TestAgent)'],
+        ));
+
+        Event::dispatch(new Failed('web', null, ['email' => 'opfer@example.com']));
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'login_failed')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('203.0.113.0/24', $properties['ip'] ?? null);
+        $this->assertSame('Mozilla/5.0 (TestAgent)', $properties['user_agent'] ?? null);
+
+        $this->assertStringNotContainsString(
+            '203.0.113.7',
+            json_encode($activity->toArray(), JSON_THROW_ON_ERROR),
+        );
+    }
+
+    /**
+     * Ohne Request-IP (z. B. CLI-Auth-Versuch) darf weder `ip` noch
+     * `user_agent` entstehen — statt eines wertlosen Platzhalters.
+     */
+    public function testFailedLoginWithoutRequestIpOmitsForensicProperties(): void
+    {
+        Activity::query()->delete();
+
+        // CLI-Auth-Pfad nachstellen: keine Client-IP und kein User-Agent.
+        // `Request::create` setzt sonst defaultweise REMOTE_ADDR=127.0.0.1 und
+        // einen Platzhalter-User-Agent ('Symfony').
+        $request = Request::create('/login', 'POST', ['email' => 'x@example.com']);
+        $request->server->remove('REMOTE_ADDR');
+        $request->headers->remove('User-Agent');
+        $this->app->instance('request', $request);
+
+        Event::dispatch(new Failed('web', null, ['email' => 'x@example.com']));
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'login_failed')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertArrayNotHasKey('ip', $properties);
+        $this->assertArrayNotHasKey('user_agent', $properties);
+    }
+
+    /**
      * Passwort-Login eines nicht freigeschalteten Users:
      *   - genau ein `login_unapproved`-Eintrag mit Causer/Subject auf den User
      *     und `email_hash` für Korrelations-Reports
@@ -447,6 +513,39 @@ final class AuthenticationActivityLogTest extends TestCase
         $this->assertNotNull($activity);
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertArrayNotHasKey('email_hash', $properties);
+    }
+
+    /**
+     * Forensik beim Lockout (#3): gekürzte IPv6 (`/64`) + User-Agent aus dem
+     * Event-Request. Die volle Host-Adresse darf nicht im Eintrag stehen.
+     */
+    public function testLockoutStoresTruncatedIpAndUserAgent(): void
+    {
+        Activity::query()->delete();
+
+        $request = Request::create(
+            '/login',
+            'POST',
+            ['email' => 'bot@example.com'],
+            server: ['REMOTE_ADDR' => '2001:db8:1:2:3:4:5:6', 'HTTP_USER_AGENT' => 'curl/8.0'],
+        );
+        Event::dispatch(new Lockout($request));
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'login_locked_out')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('2001:db8:1:2::/64', $properties['ip'] ?? null);
+        $this->assertSame('curl/8.0', $properties['user_agent'] ?? null);
+
+        $this->assertStringNotContainsString(
+            '2001:db8:1:2:3:4:5:6',
+            json_encode($activity->toArray(), JSON_THROW_ON_ERROR),
+        );
     }
 
     public function testPasswordUpdatedViaControllerIsLogged(): void

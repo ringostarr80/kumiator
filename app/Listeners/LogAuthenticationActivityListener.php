@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Services\Audit\AuditEmailHasher;
+use App\Services\Audit\AuditIpTruncator;
 use App\Services\Auth\OtherDeviceLogoutContext;
 use App\Services\Auth\UnapprovedLoginContext;
 use App\Services\WebAuthn\PasskeyLoginContext;
@@ -16,6 +17,7 @@ use Illuminate\Auth\Events\OtherDeviceLogout;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Laravel\Fortify\Events\PasswordUpdatedViaController;
 use Spatie\Activitylog\Facades\Activity;
 
@@ -130,6 +132,10 @@ final class LogAuthenticationActivityListener
             $properties['email_hash'] = $emailHash;
         }
 
+        // `Failed` trägt keinen Request — IP/UA daher aus dem aktuellen
+        // HTTP-Request. In CLI-Auth-Pfaden fehlt die IP, dann bleibt es leer.
+        $properties += $this->forensicProperties(request());
+
         Activity::useLog(self::LOG_NAME)
             ->event('login_failed')
             ->withProperties($properties)
@@ -231,9 +237,38 @@ final class LogAuthenticationActivityListener
             $properties['email_hash'] = $emailHash;
         }
 
+        $properties += $this->forensicProperties($event->request);
+
         Activity::useLog(self::LOG_NAME)
             ->event('login_locked_out')
             ->withProperties($properties)
             ->log(__('app.activity_login_locked_out'));
+    }
+
+    /**
+     * Forensische Properties für anonyme Fehlversuche: gekürzte IP (Netz statt
+     * Host — DSGVO-Datenminimierung, siehe `AuditIpTruncator`) und User-Agent,
+     * jeweils nur wenn vorhanden. Ohne Request-IP (z. B. CLI-Auth) bleibt das
+     * Array leer.
+     *
+     * @return array<string, string>
+     */
+    private function forensicProperties(Request $request): array
+    {
+        $properties = [];
+
+        $ip = AuditIpTruncator::truncate($request->ip());
+
+        if ($ip !== null) {
+            $properties['ip'] = $ip;
+        }
+
+        $userAgent = $request->userAgent();
+
+        if ($userAgent !== null) {
+            $properties['user_agent'] = $userAgent;
+        }
+
+        return $properties;
     }
 }
