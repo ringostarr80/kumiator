@@ -69,11 +69,11 @@ class FortifyServiceProvider extends ServiceProvider
         $unapprovedContext = $this->app->make(UnapprovedLoginContextContract::class);
 
         Fortify::authenticateUsing(static function (Request $request) use ($unapprovedContext): ?User {
+            /** @var string $email */
             $email = $request->input('email');
-            assert(is_string($email));
 
+            /** @var string $password */
             $password = $request->input('password');
-            assert(is_string($password));
 
             $user = User::where('email', $email)->first();
 
@@ -97,8 +97,8 @@ class FortifyServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('login', static function (Request $request) {
+            /** @var string $username */
             $username = $request->input(Fortify::username()) ?? '';
-            assert(is_string($username));
             $throttleKey = Str::transliterate(Str::lower($username) . '|' . $request->ip());
 
             return Limit::perMinute(5)->by($throttleKey);

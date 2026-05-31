@@ -23,6 +23,7 @@ class Create extends Command
         $this->info($title);
         $this->line(str_repeat('-', mb_strlen($title)));
 
+        /** @var string $name */
         $name = $this->ask(__('commands.create_role.ask_name'));
 
         $validator = Validator::make(
@@ -37,8 +38,6 @@ class Create extends Command
 
             return self::FAILURE;
         }
-
-        assert(is_string($name));
 
         Role::create(['name' => $name]);
 

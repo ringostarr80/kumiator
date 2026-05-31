@@ -80,7 +80,10 @@
     <rule ref="SlevomatCodingStandard.Commenting.ForbiddenComments"/>
     <rule ref="SlevomatCodingStandard.Commenting.DocCommentSpacing"/>
     <rule ref="SlevomatCodingStandard.Commenting.EmptyComment"/>
-    <rule ref="SlevomatCodingStandard.Commenting.InlineDocCommentDeclaration"/>
+    <rule ref="SlevomatCodingStandard.Commenting.InlineDocCommentDeclaration">
+        <!-- Freistehendes @var-Narrowing erlaubt: Ersatz fuer das projektweit verbotene assert(). -->
+        <exclude name="SlevomatCodingStandard.Commenting.InlineDocCommentDeclaration.MissingVariable"/>
+    </rule>
     <!--<rule ref="SlevomatCodingStandard.Commenting.RequireOneLinePropertyDocComment"/>-->
     <!--<rule ref="SlevomatCodingStandard.Commenting.RequireOneLineDocComment"/>-->
     <rule ref="SlevomatCodingStandard.Commenting.DisallowOneLinePropertyDocComment"/>
@@ -189,7 +192,7 @@
     <rule ref="SlevomatCodingStandard.PHP.DisallowReference"/>
     <rule ref="SlevomatCodingStandard.PHP.ForbiddenClasses"/>
     <rule ref="SlevomatCodingStandard.PHP.ReferenceSpacing"/>
-    <rule ref="SlevomatCodingStandard.PHP.RequireExplicitAssertion"/>
+    <!--<rule ref="SlevomatCodingStandard.PHP.RequireExplicitAssertion"/>-->
     <rule ref="SlevomatCodingStandard.PHP.RequireNowdoc"/>
     <rule ref="SlevomatCodingStandard.PHP.OptimizedFunctionsWithoutUnpacking"/>
     <rule ref="SlevomatCodingStandard.PHP.ShortList"/>

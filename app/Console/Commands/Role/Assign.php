@@ -23,8 +23,8 @@ class Assign extends Command
         $this->info($title);
         $this->line(str_repeat('-', mb_strlen($title)));
 
+        /** @var string $email */
         $email = $this->ask(__('commands.common.ask_email')) ?? '';
-        assert(is_string($email));
 
         /** @var ?User $user */
         $user = User::where('email', $email)->first();
@@ -44,8 +44,8 @@ class Assign extends Command
             return self::FAILURE;
         }
 
+        /** @var string $roleName */
         $roleName = $this->choice(__('commands.assign_role.ask_role'), $roles);
-        assert(is_string($roleName));
 
         $user->syncRoles($roleName);
 

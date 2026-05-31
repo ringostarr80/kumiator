@@ -37,8 +37,8 @@ class ResetPassword extends Command
         $this->info($title);
         $this->line(str_repeat('-', mb_strlen($title)));
 
+        /** @var string $email */
         $email = $this->ask(__('commands.common.ask_email')) ?? '';
-        assert(is_string($email));
 
         /** @var ?User $user */
         $user = User::where('email', $email)->first();
@@ -49,6 +49,7 @@ class ResetPassword extends Command
             return self::FAILURE;
         }
 
+        /** @var string $password */
         $password = $this->secret(__('commands.reset_password.ask_password'));
         $passwordConfirm = $this->secret(__('commands.reset_password.ask_password_confirm'));
 
@@ -69,8 +70,6 @@ class ResetPassword extends Command
 
             return self::FAILURE;
         }
-
-        assert(is_string($password));
 
         $this->resetter->reset($user, $password);
 

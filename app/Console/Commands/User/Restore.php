@@ -30,8 +30,8 @@ class Restore extends Command
         $this->info($title);
         $this->line(str_repeat('-', mb_strlen($title)));
 
+        /** @var string $email */
         $email = $this->ask(__('commands.common.ask_email')) ?? '';
-        assert(is_string($email));
 
         /** @var ?User $user */
         $user = User::onlyTrashed()->where('email', $email)->first();

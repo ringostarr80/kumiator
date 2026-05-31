@@ -35,13 +35,16 @@ class Create extends Command
             return self::FAILURE;
         }
 
+        /** @var string $name */
         $name = $this->ask(__('commands.create_user.ask_name'));
+        /** @var string $email */
         $email = $this->ask(__('commands.common.ask_email'));
+        /** @var string $password */
         $password = $this->secret(__('commands.create_user.ask_password'));
         $passwordConfirm = $this->secret(__('commands.create_user.ask_password_confirm'));
 
+        /** @var string $roleName */
         $roleName = $this->choice(__('commands.create_user.ask_role'), $roles);
-        assert(is_string($roleName));
 
         $validator = Validator::make(
             [
@@ -64,10 +67,6 @@ class Create extends Command
 
             return self::FAILURE;
         }
-
-        assert(is_string($name));
-        assert(is_string($email));
-        assert(is_string($password));
 
         DB::transaction(static function () use ($name, $email, $password, $roleName): void {
             $user = User::create([

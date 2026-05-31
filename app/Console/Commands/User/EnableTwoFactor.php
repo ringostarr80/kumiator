@@ -32,8 +32,8 @@ class EnableTwoFactor extends Command
         $this->info($title);
         $this->line(str_repeat('-', mb_strlen($title)));
 
+        /** @var string $email */
         $email = $this->ask(__('commands.common.ask_email')) ?? '';
-        assert(is_string($email));
 
         /** @var ?User $user */
         $user = User::where('email', $email)->first();
@@ -55,8 +55,8 @@ class EnableTwoFactor extends Command
 
         $this->displaySetupInformation($this->getDecryptedSecret($user), $user);
 
+        /** @var string $code */
         $code = $this->ask(__('commands.enable_two_factor.ask_code')) ?? '';
-        assert(is_string($code));
 
         try {
             // Über die Fortify-Action statt direktem `forceFill`: die Action
@@ -82,11 +82,11 @@ class EnableTwoFactor extends Command
 
     private function getDecryptedSecret(User $user): string
     {
-        $twoFactorSecret = $user->two_factor_secret;
-        assert(is_string($twoFactorSecret));
+        $twoFactorSecret = $user->two_factor_secret
+            ?? throw new \RuntimeException('Two-factor secret missing after enabling 2FA.');
 
+        /** @var string $decrypted */
         $decrypted = Fortify::currentEncrypter()->decrypt($twoFactorSecret);
-        assert(is_string($decrypted));
 
         return $decrypted;
     }

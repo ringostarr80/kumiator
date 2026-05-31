@@ -23,8 +23,8 @@ class Delete extends Command
         $this->info($title);
         $this->line(str_repeat('-', mb_strlen($title)));
 
+        /** @var string $name */
         $name = $this->ask(__('commands.delete_role.ask_name')) ?? '';
-        assert(is_string($name));
 
         $role = Role::findByName($name);
 

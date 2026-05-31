@@ -43,14 +43,20 @@ final class ConsoleCommandsAreIndependentTest
                 Selector::inNamespace('Illuminate'),
                 Selector::inNamespace('Laravel'),
                 Selector::inNamespace('Spatie\\Permission'),
+                Selector::classname(\Throwable::class),
+                Selector::isThrowable(),
             )
             ->because(
                 'Console-Commands dürfen nur von Models, DTOs, Repository- und '
-                . 'Service-Contracts, Illuminate, Laravel, Spatie\\Permission '
-                . 'und BaconQrCode abhängen.',
+                . 'Service-Contracts, Illuminate, Laravel, Spatie\\Permission, '
+                . 'BaconQrCode und der \\Throwable-Hierarchie abhängen.',
                 'Sie sind eine Präsentationsschicht und dürfen keine konkreten '
                 . 'Services oder Repositories kennen — DI erfolgt über Contracts. '
-                . 'Geschäftslogik gehört in die Service-Schicht.',
+                . 'Geschäftslogik gehört in die Service-Schicht. Die gesamte '
+                . '\\Throwable-Hierarchie ist freigegeben, damit Commands gebrochene '
+                . 'Invarianten laut abbrechen (z. B. `?? throw`) und fachliche oder '
+                . 'Vendor-Exceptions fangen können — analog zur Services-Regel und '
+                . 'als Ersatz für das projektweit verbotene assert().',
             );
     }
 }
