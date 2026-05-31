@@ -9,6 +9,7 @@ use App\Services\Schedule\ScheduleHealthcheckPinger;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -50,7 +51,7 @@ final class ScheduleHealthcheckPingerTest extends TestCase
 
         app(ScheduleHealthcheckPinger::class)->ping('activitylog_clean', $phase);
 
-        $expectedUrl = 'https://hc-ping.example/project-key-123/activitylog_clean' . $expectedSuffix;
+        $expectedUrl = 'https://hc-ping.example/project-key-123/activitylog_clean' . $expectedSuffix . '?create=1';
         Http::assertSent(static fn (HttpRequest $request): bool => $request->url() === $expectedUrl);
     }
 
@@ -63,7 +64,7 @@ final class ScheduleHealthcheckPingerTest extends TestCase
         app(ScheduleHealthcheckPinger::class)->ping('slug', HealthcheckPingPhase::Success);
 
         Http::assertSent(
-            static fn (HttpRequest $request): bool => $request->url() === 'https://hc-ping.example/key/slug',
+            static fn (HttpRequest $request): bool => $request->url() === 'https://hc-ping.example/key/slug?create=1',
         );
     }
 
@@ -79,6 +80,23 @@ final class ScheduleHealthcheckPingerTest extends TestCase
         app(ScheduleHealthcheckPinger::class)->ping('slug', HealthcheckPingPhase::Success);
 
         $this->expectNotToPerformAssertions();
+    }
+
+    public function testLogsWarningWhenEndpointRespondsWithErrorStatus(): void
+    {
+        $log = Log::spy();
+        Http::preventStrayRequests();
+        Http::fake(['*' => Http::response('not found', 404)]);
+        Config::set('healthchecks.ping_key', 'key');
+
+        app(ScheduleHealthcheckPinger::class)->ping('slug', HealthcheckPingPhase::Success);
+
+        $log->shouldHaveReceived('warning')
+            ->once()
+            ->with(
+                'Healthcheck-Ping mit Fehler-Status beantwortet',
+                ['slug' => 'slug', 'phase' => 'success', 'status' => 404],
+            );
     }
 
     /**

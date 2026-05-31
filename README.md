@@ -12,3 +12,7 @@ Siehe [docs/cli-commands.md](docs/cli-commands.md).
 ## Production-Deployment
 
 Siehe [docs/deployment.md](docs/deployment.md).
+
+## Laufender Betrieb
+
+Siehe [docs/operations.md](docs/operations.md).

@@ -34,8 +34,12 @@ final class ScheduleHealthcheckPinger
             return;
         }
 
+        // `?create=1` legt den Check beim ersten Ping automatisch an
+        // (Auto-Provisioning). Ohne dieses Flag antwortet Healthchecks.io mit
+        // 404, solange kein Check mit dem Slug existiert — der Ping verpufft.
+        // Idempotent: sobald der Check existiert, ist das Flag ein No-Op.
         $url = sprintf(
-            '%s/%s/%s%s',
+            '%s/%s/%s%s?create=1',
             HealthchecksConfig::baseUrl(),
             $pingKey,
             $slug,
@@ -43,7 +47,19 @@ final class ScheduleHealthcheckPinger
         );
 
         try {
-            Http::timeout(HealthchecksConfig::timeoutSeconds())->get($url);
+            $response = Http::timeout(HealthchecksConfig::timeoutSeconds())->get($url);
+
+            // Http::get() wirft bei 4xx/5xx nicht. Ein falscher Ping-Key oder
+            // ein gelöschter Check verpuffte damit lautlos — genau der blinde
+            // Fleck, den das Monitoring vermeiden soll. Sichtbar machen, aber
+            // ohne Re-Throw (der Cron darf daran nicht scheitern).
+            if ($response->failed()) {
+                Log::warning('Healthcheck-Ping mit Fehler-Status beantwortet', [
+                    'slug' => $slug,
+                    'phase' => $phase->value,
+                    'status' => $response->status(),
+                ]);
+            }
         } catch (Throwable $exception) {
             Log::warning('Healthcheck-Ping fehlgeschlagen', [
                 'slug' => $slug,

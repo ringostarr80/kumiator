@@ -19,7 +19,7 @@ Artisan::command('inspire', function (): void {
  * unbegrenzt wachsen und die konfigurierte Retention wäre wirkungslos.
  *
  * Voraussetzung: Auf dem Zielsystem muss der Laravel-Scheduler via Cron laufen
- * (`* * * * * php artisan schedule:run`), siehe docs/deployment.md.
+ * (`* * * * * php artisan schedule:run`), siehe docs/operations.md.
  *
  * Optionen:
  *  - `dailyAt('03:30')` — Off-Peak, weg vom Mitternachts-Stau anderer Jobs.

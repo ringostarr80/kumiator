@@ -44,7 +44,8 @@ final class WithHealthcheckMacroTest extends TestCase
 
         $this->invokeBeforeCallbacks($event);
 
-        $expectedUrl = 'https://hc-ping.example/pk/activitylog_clean' . HealthcheckPingPhase::Start->urlSuffix();
+        $expectedUrl = 'https://hc-ping.example/pk/activitylog_clean'
+            . HealthcheckPingPhase::Start->urlSuffix() . '?create=1';
         Http::assertSent(static fn (HttpRequest $request): bool => $request->url() === $expectedUrl);
     }
 
