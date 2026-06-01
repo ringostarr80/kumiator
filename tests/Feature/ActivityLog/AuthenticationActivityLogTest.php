@@ -25,7 +25,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Events\PasswordUpdatedViaController;
 use Livewire\Livewire;
@@ -939,44 +938,6 @@ final class AuthenticationActivityLogTest extends TestCase
             0,
             Activity::query()->where('log_name', 'auth')->count(),
         );
-    }
-
-    /**
-     * Schützt die vier neuen Übersetzungs-Schlüssel: fehlt einer, würde
-     * Laravel den Key wörtlich zurückgeben und der Maschinen-Code landete
-     * sichtbar in der UI. Beide Locales prüfen — symmetrisch zum
-     * `PasskeyCredentialActivityLogTest`.
-     */
-    public function testTranslationKeysExistInAllLocales(): void
-    {
-        $keys = [
-            'app.activity_password_login_succeeded',
-            'app.activity_logout',
-            'app.activity_login_failed',
-            'app.activity_login_unapproved',
-            'app.activity_login_locked_out',
-            'app.activity_password_updated',
-            'app.activity_password_reset',
-            'app.activity_email_verified',
-            'app.activity_email_change_requested',
-            'app.activity_email_changed',
-            'app.activity_email_change_cancelled',
-            'app.activity_other_sessions_logged_out',
-            'app.activity_other_devices_logged_out',
-            'app.activity_account_self_deleted',
-            'app.activity_api_token_created',
-            'app.activity_api_token_revoked',
-        ];
-
-        foreach ($keys as $key) {
-            foreach (['de', 'en'] as $locale) {
-                $this->assertNotSame(
-                    $key,
-                    Lang::get($key, [], $locale),
-                    sprintf("Übersetzungs-Schlüssel '%s' fehlt in Locale '%s'.", $key, $locale),
-                );
-            }
-        }
     }
 
     protected function setUp(): void

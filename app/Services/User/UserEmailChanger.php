@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\User;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Models\User;
 use App\Notifications\EmailChangeRequestedNotification;
 use App\Notifications\VerifyEmailChangeNotification;
@@ -55,12 +57,12 @@ final class UserEmailChanger implements UserEmailChangerContract
         // ohne Rechtsgrundlage. Hash erlaubt Korrelation (wiederholte
         // Versuche an dieselbe Zieladresse), ohne den Klartext zu halten —
         // dasselbe Muster wie `login_failed` (siehe `AuditEmailHasher`).
-        Activity::useLog('auth')
-            ->event('email_change_requested')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::EMAIL_CHANGE_REQUESTED->value)
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties(['pending_email_hash' => AuditEmailHasher::hash($newEmail)])
-            ->log(__('app.activity_email_change_requested'));
+            ->log(ActivityEvent::EMAIL_CHANGE_REQUESTED->description());
     }
 
     public function confirmChange(string $plainToken): User
@@ -92,12 +94,12 @@ final class UserEmailChanger implements UserEmailChangerContract
             // Eigener Event-Code (kein `cancelled`-Eintrag), weil nichts
             // abgebrochen wird — der Pending-State bleibt unverändert, der
             // Account ist nur nicht mehr eligible.
-            Activity::useLog('auth')
-                ->event('email_change_confirmation_rejected')
+            Activity::useLog(ActivityChannel::AUTH->value)
+                ->event(ActivityEvent::EMAIL_CHANGE_CONFIRMATION_REJECTED->value)
                 ->causedByAnonymous()
                 ->performedOn($user)
                 ->withProperties(['reason' => 'target_not_eligible'])
-                ->log(__('app.activity_email_change_confirmation_rejected'));
+                ->log(ActivityEvent::EMAIL_CHANGE_CONFIRMATION_REJECTED->description());
 
             throw new EmailChangeTargetNotEligibleException();
         }
@@ -125,11 +127,11 @@ final class UserEmailChanger implements UserEmailChangerContract
         // den User selbst, der Vorgang ist damit eindeutig zuordenbar.
         // Die alte Adresse 365 Tage zusätzlich vorzuhalten geht über
         // Art. 5(1)(c) Datenminimierung hinaus.
-        Activity::useLog('auth')
-            ->event('email_changed')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::EMAIL_CHANGED->value)
             ->causedBy($user)
             ->performedOn($user)
-            ->log(__('app.activity_email_changed'));
+            ->log(ActivityEvent::EMAIL_CHANGED->description());
 
         return $user;
     }
@@ -170,15 +172,15 @@ final class UserEmailChanger implements UserEmailChangerContract
 
         // Causer ist anonym; `pending_email` würde sonst eine ggf. fremde
         // Adresse (siehe `requestChange()`-Kommentar) 365 Tage halten.
-        Activity::useLog('auth')
-            ->event('email_change_cancelled')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::EMAIL_CHANGE_CANCELLED->value)
             ->causedByAnonymous()
             ->performedOn($user)
             ->withProperties([
                 'pending_email_hash' => AuditEmailHasher::hash($pendingEmail),
                 'cancelled_via' => $cancelledVia,
             ])
-            ->log(__('app.activity_email_change_cancelled'));
+            ->log(ActivityEvent::EMAIL_CHANGE_CANCELLED->description());
     }
 
     private function resolveUserByToken(string $plainToken): ?User

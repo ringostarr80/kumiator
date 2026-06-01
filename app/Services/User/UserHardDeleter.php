@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\User;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Services\User\Contracts\UserHardDeleterContract;
@@ -38,9 +40,9 @@ use Spatie\Activitylog\Models\Activity as ActivityModel;
  */
 final class UserHardDeleter implements UserHardDeleterContract
 {
-    public function forceDelete(User $user, string $event, string $logMessage): void
+    public function forceDelete(User $user, ActivityEvent $event): void
     {
-        DB::transaction(static function () use ($user, $event, $logMessage): void {
+        DB::transaction(static function () use ($user, $event): void {
             // Mass-`delete()` statt `each->deleteOrFail()`: vermeidet, dass der
             // `LogsActivity`-Trait pro Token/Passkey Activity-Einträge mit
             // Causer/Subject-Verweis auf den gleich danach hart gelöschten User
@@ -96,10 +98,10 @@ final class UserHardDeleter implements UserHardDeleterContract
             // erfasst. `causedByAnonymous()` ist kritisch: Spatie würde sonst
             // über den `CauserResolver` den noch im `Auth::user()`-Cache
             // liegenden — gerade hart gelöschten — User als Causer eintragen.
-            Activity::useLog('auth')
-                ->event($event)
+            Activity::useLog(ActivityChannel::AUTH->value)
+                ->event($event->value)
                 ->causedByAnonymous()
-                ->log($logMessage);
+                ->log($event->description());
         });
 
         $user->deleteProfilePhoto();

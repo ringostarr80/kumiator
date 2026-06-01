@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Fortify;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -71,11 +73,11 @@ class UpdateUserPassword implements UpdatesUserPasswords
             return;
         }
 
-        Activity::useLog('auth')
-            ->event('password_update_failed')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::PASSWORD_UPDATE_FAILED->value)
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties(['failure_reason' => 'current_password_mismatch'])
-            ->log(__('app.activity_password_update_failed'));
+            ->log(ActivityEvent::PASSWORD_UPDATE_FAILED->description());
     }
 }

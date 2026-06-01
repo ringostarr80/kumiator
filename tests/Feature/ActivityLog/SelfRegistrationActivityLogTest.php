@@ -9,7 +9,6 @@ use App\Models\User;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
 use App\Services\Auth\SelfRegistrationContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Lang;
 use Spatie\Activitylog\Facades\Activity as ActivityFacade;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
@@ -170,23 +169,6 @@ final class SelfRegistrationActivityLogTest extends TestCase
             $context->isActive(),
             'Marker hängt nach Fehlschlag fest — `try/finally` in CreateNewUser greift nicht.',
         );
-    }
-
-    /**
-     * Schützt den neuen Übersetzungs-Schlüssel: fehlt er, würde Laravel den
-     * Key wörtlich zurückgeben und der Maschinen-Code landete sichtbar im
-     * Audit-Log. Beide Locales prüfen — symmetrisch zum Schwester-Test im
-     * `AuthenticationActivityLogTest`.
-     */
-    public function testTranslationKeyExistsInAllLocales(): void
-    {
-        foreach (['de', 'en'] as $locale) {
-            $this->assertNotSame(
-                'app.activity_user_self_registered',
-                Lang::get('app.activity_user_self_registered', [], $locale),
-                sprintf("Übersetzungs-Schlüssel fehlt in Locale '%s'.", $locale),
-            );
-        }
     }
 
     /**

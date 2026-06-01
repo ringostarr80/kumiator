@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Fortify;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Models\User;
 use App\Services\Upload\Contracts\ProfilePhotoOptimizerContract;
 use App\Services\Upload\Contracts\UploadLimitResolverContract;
@@ -57,15 +59,15 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
 
             $newPath = $user->getAttribute('profile_photo_path');
 
-            Activity::useLog('user')
-                ->event('profile_photo_updated')
+            Activity::useLog(ActivityChannel::USER->value)
+                ->event(ActivityEvent::PROFILE_PHOTO_UPDATED->value)
                 ->causedBy($user)
                 ->performedOn($user)
                 ->withProperties([
                     'profile_photo_path' => is_string($newPath) ? $newPath : null,
                     'previous_profile_photo_path' => is_string($previousPath) ? $previousPath : null,
                 ])
-                ->log(__('app.activity_profile_photo_updated'));
+                ->log(ActivityEvent::PROFILE_PHOTO_UPDATED->description());
         }
 
         $name = $input['name'];

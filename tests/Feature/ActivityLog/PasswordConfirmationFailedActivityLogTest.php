@@ -6,7 +6,6 @@ namespace Tests\Feature\ActivityLog;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Lang;
 use Laravel\Jetstream\Http\Livewire\TwoFactorAuthenticationForm;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
@@ -114,16 +113,5 @@ final class PasswordConfirmationFailedActivityLogTest extends TestCase
                 ->where('event', 'password_confirmation_failed')
                 ->count(),
         );
-    }
-
-    public function testTranslationKeyExistsInBothLocales(): void
-    {
-        foreach (['de', 'en'] as $locale) {
-            $this->assertNotSame(
-                'app.activity_password_confirmation_failed',
-                Lang::get('app.activity_password_confirmation_failed', [], $locale),
-                sprintf("Übersetzungs-Schlüssel fehlt in Locale '%s'.", $locale),
-            );
-        }
     }
 }

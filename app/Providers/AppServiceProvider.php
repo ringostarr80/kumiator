@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Observers\RoleLifecycleObserver;
@@ -18,12 +20,14 @@ use App\Services\Upload\Contracts\UploadLimitResolverContract;
 use App\Services\Upload\ProfilePhotoOptimizer;
 use App\Services\Upload\UploadLimitResolver;
 use App\Services\User\Contracts\SelfEmailVerifierContract;
+use App\Services\User\Contracts\UserApproverContract;
 use App\Services\User\Contracts\UserEmailChangerContract;
 use App\Services\User\Contracts\UserEmailVerifierContract;
 use App\Services\User\Contracts\UserHardDeleterContract;
 use App\Services\User\Contracts\UserPasswordResetterContract;
 use App\Services\User\Contracts\UserSoftDeleterContract;
 use App\Services\User\SelfEmailVerifier;
+use App\Services\User\UserApprover;
 use App\Services\User\UserEmailChanger;
 use App\Services\User\UserEmailVerifier;
 use App\Services\User\UserHardDeleter;
@@ -47,6 +51,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(UserApproverContract::class, UserApprover::class);
         $this->app->bind(UserHardDeleterContract::class, UserHardDeleter::class);
         $this->app->bind(UserSoftDeleterContract::class, UserSoftDeleter::class);
         $this->app->bind(UserEmailVerifierContract::class, UserEmailVerifier::class);
@@ -151,11 +156,11 @@ class AppServiceProvider extends ServiceProvider
         // braucht aber den Marker-Zustand aus dem Service-Layer, daher
         // gehört sie hier ins Bootstrapping.
         Activity::saving(static function (Activity $activity): void {
-            if ($activity->log_name !== 'user') {
+            if ($activity->log_name !== ActivityChannel::USER->value) {
                 return;
             }
 
-            if ($activity->event !== 'user_created') {
+            if ($activity->event !== ActivityEvent::USER_CREATED->value) {
                 return;
             }
 
@@ -163,8 +168,8 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            $activity->event = 'user_self_registered';
-            $activity->description = __('app.activity_user_self_registered');
+            $activity->event = ActivityEvent::USER_SELF_REGISTERED->value;
+            $activity->description = ActivityEvent::USER_SELF_REGISTERED->description();
         });
 
         // CLI-Effekte für Artisan-Commands. Macht zwei Dinge an jedem

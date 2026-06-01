@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Models\Contracts\MustBeApproved;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -127,7 +129,7 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
             ->logOnly(['name', 'approved_at', 'deleted_at'])
             ->logOnlyDirty()
             ->dontLogEmptyChanges()
-            ->useLogName('user');
+            ->useLogName(ActivityChannel::USER->value);
     }
 
     /**
@@ -154,7 +156,7 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
      */
     public static function applyEventLabelToActivity(ActivityModel $activity): void
     {
-        if ($activity->log_name !== 'user') {
+        if ($activity->log_name !== ActivityChannel::USER->value) {
             return;
         }
 
@@ -165,10 +167,10 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
         }
 
         $mapped = match ($event) {
-            'created' => 'created',
-            'updated' => self::mapUpdatedEventName($activity),
-            'deleted' => 'deleted',
-            'restored' => 'restored',
+            'created' => ActivityEvent::USER_CREATED,
+            'updated' => self::mapUpdatedEvent($activity),
+            'deleted' => ActivityEvent::USER_DELETED,
+            'restored' => ActivityEvent::USER_RESTORED,
             default => null,
         };
 
@@ -176,8 +178,8 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
             return;
         }
 
-        $activity->event = 'user_' . $mapped;
-        $activity->description = __('app.activity_user_' . $mapped);
+        $activity->event = $mapped->value;
+        $activity->description = $mapped->description();
     }
 
     /**
@@ -210,15 +212,15 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
      * Sub-Keys `attributes` und `old`), NICHT in `properties` — letzteres ist
      * der Free-Form-Property-Bag (z. B. für unser `cli_actor`).
      */
-    private static function mapUpdatedEventName(ActivityModel $activity): string
+    private static function mapUpdatedEvent(ActivityModel $activity): ActivityEvent
     {
         $changes = $activity->attribute_changes;
         $attributes = $changes?->get('attributes');
 
         if (is_array($attributes) && array_key_exists('approved_at', $attributes)) {
-            return 'approved';
+            return ActivityEvent::USER_APPROVED;
         }
 
-        return 'renamed';
+        return ActivityEvent::USER_RENAMED;
     }
 }

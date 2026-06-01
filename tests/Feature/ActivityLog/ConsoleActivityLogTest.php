@@ -10,7 +10,6 @@ use App\Services\Console\Contracts\ConsoleActorContextContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithConsoleEvents;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Lang;
 use Illuminate\Testing\PendingCommand;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
@@ -799,40 +798,6 @@ final class ConsoleActivityLogTest extends TestCase
             $properties,
             'Nach Command-Ende darf der nachfolgende Schreibvorgang kein cli_actor erben.',
         );
-    }
-
-    /**
-     * Schützt die Übersetzungs-Schlüssel: ohne diese Keys würde Laravel den
-     * Maschinen-Code wörtlich als Description ablegen — die Audit-UI würde
-     * dann `app.activity_user_created` o. ä. als Klartext anzeigen.
-     *
-     * Geprüft werden die fachlichen Codes vom User-Lifecycle-Hook sowie
-     * die channel-agnostischen Auth-Codes, die der CLI-Pfad mit dem
-     * UI-Pfad teilt (`password_reset`, `email_verified`).
-     */
-    public function testTranslationKeysExistInAllLocales(): void
-    {
-        $events = [
-            'user_created',
-            'user_approved',
-            'user_renamed',
-            'user_deleted',
-            'user_restored',
-            'password_reset',
-            'email_verified',
-        ];
-
-        foreach ($events as $event) {
-            $key = 'app.activity_' . $event;
-
-            foreach (['de', 'en'] as $locale) {
-                $this->assertNotSame(
-                    $key,
-                    Lang::get($key, [], $locale),
-                    sprintf("Übersetzungs-Schlüssel '%s' fehlt in Locale '%s'.", $key, $locale),
-                );
-            }
-        }
     }
 
     protected function setUp(): void

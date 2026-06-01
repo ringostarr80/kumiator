@@ -6,7 +6,6 @@ namespace Tests\Feature\ActivityLog;
 
 use App\Models\PasskeyCredential;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Lang;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
@@ -141,16 +140,5 @@ final class PasskeyAuthenticationFailedActivityLogTest extends TestCase
         $this->assertNotNull($activity);
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertArrayNotHasKey('credential_id_hash', $properties);
-    }
-
-    public function testTranslationKeyExistsInBothLocales(): void
-    {
-        foreach (['de', 'en'] as $locale) {
-            $this->assertNotSame(
-                'app.activity_passkey_login_failed',
-                Lang::get('app.activity_passkey_login_failed', [], $locale),
-                sprintf("Übersetzungs-Schlüssel fehlt in Locale '%s'.", $locale),
-            );
-        }
     }
 }

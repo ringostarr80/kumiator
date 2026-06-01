@@ -18,6 +18,8 @@ final class ListenersAreIndependentTest
             ->dependOn()
             ->classes(
                 Selector::inNamespace('App\\Models'),
+                // App\Enums: zentrale Activity-Event-/Channel-Codes (Magic-String-Ersatz).
+                Selector::inNamespace('App\\Enums'),
                 Selector::inNamespace('Illuminate'),
                 Selector::inNamespace('Laravel'),
                 Selector::inNamespace('Spatie\\Activitylog'),

@@ -272,6 +272,7 @@ return [
     'activity_passkey_login_failed' => 'Passkey login failed',
     'activity_passkey_registration_failed' => 'Passkey registration failed',
     'activity_authorization_denied' => 'Authorization denied',
+    'activity_activity_log_viewed' => 'Activity log viewed',
     'activity_password_login_succeeded' => 'Password login succeeded',
     'activity_logout' => 'Logout',
     'activity_login_failed' => 'Login failed',

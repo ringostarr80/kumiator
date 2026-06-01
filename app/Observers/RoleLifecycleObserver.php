@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Models\User;
 use Spatie\Activitylog\Facades\Activity;
 use Spatie\Permission\Models\Role;
@@ -37,14 +39,14 @@ final class RoleLifecycleObserver
 {
     public function created(Role $role): void
     {
-        Activity::useLog('role')
+        Activity::useLog(ActivityChannel::ROLE->value)
             ->performedOn($role)
             ->withProperties([
                 'name' => $role->name,
                 'guard_name' => $role->guard_name,
             ])
-            ->event('role_created')
-            ->log(__('app.activity_role_created'));
+            ->event(ActivityEvent::ROLE_CREATED->value)
+            ->log(ActivityEvent::ROLE_CREATED->description());
     }
 
     public function deleted(Role $role): void
@@ -52,14 +54,14 @@ final class RoleLifecycleObserver
         // Properties bewusst aus dem Model lesen, solange es noch befüllt
         // ist: nach dem DELETE zeigt `subject_id` ins Leere, nur die
         // Properties bleiben dauerhaft forensisch verwertbar.
-        Activity::useLog('role')
+        Activity::useLog(ActivityChannel::ROLE->value)
             ->performedOn($role)
             ->withProperties([
                 'name' => $role->name,
                 'guard_name' => $role->guard_name,
             ])
-            ->event('role_deleted')
-            ->log(__('app.activity_role_deleted'));
+            ->event(ActivityEvent::ROLE_DELETED->value)
+            ->log(ActivityEvent::ROLE_DELETED->description());
     }
 
     /**

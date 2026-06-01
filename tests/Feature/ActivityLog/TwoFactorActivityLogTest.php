@@ -7,14 +7,12 @@ namespace Tests\Feature\ActivityLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Lang;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
 use Laravel\Fortify\Events\RecoveryCodeReplaced;
 use Laravel\Fortify\Events\RecoveryCodesGenerated;
 use Laravel\Fortify\Events\TwoFactorAuthenticationConfirmed;
 use Laravel\Fortify\Events\TwoFactorAuthenticationEnabled;
 use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
-use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
@@ -123,32 +121,6 @@ final class TwoFactorActivityLogTest extends TestCase
         Event::dispatch(new TwoFactorAuthenticationFailed($user));
 
         $this->assertActivityLogged($user, '2fa_failed', 'app.activity_2fa_failed');
-    }
-
-    #[DataProvider('twoFactorTranslationKeyProvider')]
-    public function testTranslationKeyForTwoFactorEventExistsInBothLocales(string $key): void
-    {
-        foreach (['de', 'en'] as $locale) {
-            $this->assertNotSame(
-                $key,
-                Lang::get($key, [], $locale),
-                sprintf("Übersetzungs-Schlüssel '%s' fehlt in Locale '%s'.", $key, $locale),
-            );
-        }
-    }
-
-    /**
-     * @return iterable<string, array{0: string}>
-     */
-    public static function twoFactorTranslationKeyProvider(): iterable
-    {
-        yield 'enabled' => ['app.activity_2fa_enabled'];
-        yield 'confirmed' => ['app.activity_2fa_confirmed'];
-        yield 'disabled' => ['app.activity_2fa_disabled'];
-        yield 'setup aborted' => ['app.activity_2fa_setup_aborted'];
-        yield 'recovery codes regenerated' => ['app.activity_2fa_recovery_codes_regenerated'];
-        yield 'recovery code used' => ['app.activity_2fa_recovery_code_used'];
-        yield 'failed' => ['app.activity_2fa_failed'];
     }
 
     private function assertActivityLogged(User $user, string $eventCode, string $descriptionKey): Activity

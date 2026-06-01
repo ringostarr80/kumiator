@@ -36,6 +36,8 @@ final class ConsoleCommandsAreIndependentTest
             ->classes(
                 Selector::inNamespace(self::COMMANDS_NAMESPACE),
                 Selector::inNamespace('App\\Models'),
+                // App\Enums: zentrale Activity-Event-/Channel-Codes (Magic-String-Ersatz).
+                Selector::inNamespace('App\\Enums'),
                 Selector::inNamespace('App\\DataTransferObjects'),
                 Selector::inNamespace('App\\Repositories\\Contracts'),
                 Selector::inNamespace('/^App\\\\Services\\\\.*\\\\Contracts$/', true),

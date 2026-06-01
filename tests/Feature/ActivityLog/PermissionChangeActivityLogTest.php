@@ -9,7 +9,6 @@ use App\Models\User;
 use App\Services\Permission\PermissionSeederContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Log\Logger;
-use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Log;
 use Monolog\Handler\TestHandler;
 use Monolog\Level;
@@ -356,31 +355,6 @@ final class PermissionChangeActivityLogTest extends TestCase
         $this->assertNotNull($detached);
         $this->assertSame(__('app.activity_permission_detached'), $detached->description);
         $this->assertNotSame('permission_detached', $detached->description);
-    }
-
-    /**
-     * Schützt das Übersetzungs-Schema `app.activity_<event>`: ohne diese
-     * Schlüssel würde Laravel den Key wörtlich zurückgeben und der
-     * Maschinen-Code (`permission_attached`) landete sichtbar in der UI.
-     * Beide Locales prüfen, damit weder DE noch EN still hinten runterfällt.
-     */
-    public function testTranslationKeysExistForBothPermissionEventsInBothLocales(): void
-    {
-        foreach (['permission_attached', 'permission_detached'] as $event) {
-            $key = 'app.activity_' . $event;
-
-            foreach (['de', 'en'] as $locale) {
-                $this->assertNotSame(
-                    $key,
-                    Lang::get($key, [], $locale),
-                    sprintf(
-                        "Übersetzungs-Schlüssel '%s' fehlt in Locale '%s'.",
-                        $key,
-                        $locale,
-                    ),
-                );
-            }
-        }
     }
 
     protected function setUp(): void

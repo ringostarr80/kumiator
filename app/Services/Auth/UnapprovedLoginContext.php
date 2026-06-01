@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Auth;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Models\User;
 use App\Services\Audit\AuditEmailHasher;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
@@ -33,8 +35,6 @@ use Spatie\Activitylog\Facades\Activity;
  */
 final class UnapprovedLoginContext implements UnapprovedLoginContextContract
 {
-    private const LOG_NAME = 'auth';
-
     private static bool $active = false;
 
     /**
@@ -63,12 +63,12 @@ final class UnapprovedLoginContext implements UnapprovedLoginContextContract
             $properties['email_hash'] = $emailHash;
         }
 
-        Activity::useLog(self::LOG_NAME)
-            ->event('login_unapproved')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::LOGIN_UNAPPROVED->value)
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties($properties)
-            ->log(__('app.activity_login_unapproved'));
+            ->log(ActivityEvent::LOGIN_UNAPPROVED->description());
     }
 
     public static function markActive(): void

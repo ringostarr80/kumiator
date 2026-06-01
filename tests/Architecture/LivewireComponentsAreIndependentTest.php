@@ -34,6 +34,8 @@ final class LivewireComponentsAreIndependentTest
             ->classes(
                 Selector::inNamespace('App\\Livewire'),
                 Selector::inNamespace('App\\Models'),
+                // App\Enums: zentrale Activity-Event-/Channel-Codes (Magic-String-Ersatz).
+                Selector::inNamespace('App\\Enums'),
                 Selector::inNamespace('App\\DataTransferObjects'),
                 Selector::inNamespace('App\\Repositories\\Contracts'),
                 Selector::inNamespace('/^App\\\\Services\\\\.*\\\\Contracts$/', true),

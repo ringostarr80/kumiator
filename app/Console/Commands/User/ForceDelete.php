@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\User;
 
+use App\Enums\ActivityEvent;
 use App\Models\User;
 use App\Services\User\Contracts\UserHardDeleterContract;
 use Illuminate\Console\Attributes\Description;
@@ -64,11 +65,7 @@ class ForceDelete extends Command
             return self::SUCCESS;
         }
 
-        $this->hardDeleter->forceDelete(
-            $user,
-            'account_admin_force_deleted',
-            __('app.activity_account_admin_force_deleted'),
-        );
+        $this->hardDeleter->forceDelete($user, ActivityEvent::ACCOUNT_ADMIN_FORCE_DELETED);
 
         $this->info(__('commands.force_delete_user.success', ['email' => $email]));
 

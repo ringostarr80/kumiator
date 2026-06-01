@@ -7,8 +7,6 @@ namespace Tests\Feature\ActivityLog;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Lang;
-use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
@@ -225,37 +223,5 @@ final class PasskeyCredentialActivityLogTest extends TestCase
                 ->where('event', 'passkey_login_succeeded')
                 ->count(),
         );
-    }
-
-    #[DataProvider('passkeyEventTranslationKeyProvider')]
-    public function testTranslationKeyForPasskeyEventExistsInBothLocales(string $key): void
-    {
-        foreach (['de', 'en'] as $locale) {
-            $this->assertNotSame(
-                $key,
-                Lang::get($key, [], $locale),
-                sprintf(
-                    "Übersetzungs-Schlüssel '%s' fehlt in Locale '%s'.",
-                    $key,
-                    $locale,
-                ),
-            );
-        }
-    }
-
-    /**
-     * Schützt die Übersetzungs-Schlüssel der fachlichen Passkey-Events:
-     * fehlt einer, würde Laravel den Key wörtlich zurückgeben und der
-     * Maschinen-Code landete sichtbar in der UI. Beide Locales prüfen,
-     * damit weder DE noch EN still hinten runterfällt.
-     *
-     * @return iterable<string, array{0: string}>
-     */
-    public static function passkeyEventTranslationKeyProvider(): iterable
-    {
-        yield 'login succeeded' => ['app.activity_passkey_login_succeeded'];
-        yield 'registered' => ['app.activity_passkey_registered'];
-        yield 'renamed' => ['app.activity_passkey_renamed'];
-        yield 'removed' => ['app.activity_passkey_removed'];
     }
 }

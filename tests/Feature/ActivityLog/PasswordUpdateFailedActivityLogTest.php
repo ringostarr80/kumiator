@@ -8,7 +8,6 @@ use App\Actions\Fortify\UpdateUserPassword;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Lang;
 use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
@@ -134,16 +133,5 @@ final class PasswordUpdateFailedActivityLogTest extends TestCase
                 ->where('event', 'password_update_failed')
                 ->count(),
         );
-    }
-
-    public function testTranslationKeyExistsInBothLocales(): void
-    {
-        foreach (['de', 'en'] as $locale) {
-            $this->assertNotSame(
-                'app.activity_password_update_failed',
-                Lang::get('app.activity_password_update_failed', [], $locale),
-                sprintf("Übersetzungs-Schlüssel fehlt in Locale '%s'.", $locale),
-            );
-        }
     }
 }

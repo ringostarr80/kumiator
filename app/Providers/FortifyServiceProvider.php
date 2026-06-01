@@ -8,6 +8,8 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Models\User;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
@@ -58,10 +60,10 @@ class FortifyServiceProvider extends ServiceProvider
                 return true;
             }
 
-            Activity::useLog('auth')
-                ->event('password_confirmation_failed')
+            Activity::useLog(ActivityChannel::AUTH->value)
+                ->event(ActivityEvent::PASSWORD_CONFIRMATION_FAILED->value)
                 ->causedBy($user)
-                ->log(__('app.activity_password_confirmation_failed'));
+                ->log(ActivityEvent::PASSWORD_CONFIRMATION_FAILED->description());
 
             return false;
         });

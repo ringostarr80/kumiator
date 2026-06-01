@@ -7,7 +7,6 @@ namespace Tests\Feature\ActivityLog;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Lang;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
@@ -88,16 +87,5 @@ final class PasskeyRegistrationFailedActivityLogTest extends TestCase
             'Bei der Registrierung erzeugt jeder Authenticator eine frische Credential-ID — '
             . 'ein Hash brächte keinen forensischen Mehrwert und steht daher bewusst nicht in den Properties.',
         );
-    }
-
-    public function testTranslationKeyExistsInBothLocales(): void
-    {
-        foreach (['de', 'en'] as $locale) {
-            $this->assertNotSame(
-                'app.activity_passkey_registration_failed',
-                Lang::get('app.activity_passkey_registration_failed', [], $locale),
-                sprintf("Übersetzungs-Schlüssel fehlt in Locale '%s'.", $locale),
-            );
-        }
     }
 }

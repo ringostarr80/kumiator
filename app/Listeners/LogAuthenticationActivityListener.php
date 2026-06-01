@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Services\Audit\AuditEmailHasher;
 use App\Services\Audit\AuditIpTruncator;
 use App\Services\Auth\OtherDeviceLogoutContext;
@@ -53,8 +55,6 @@ use Spatie\Activitylog\Facades\Activity;
  */
 final class LogAuthenticationActivityListener
 {
-    private const LOG_NAME = 'auth';
-
     public function handleLogin(Login $event): void
     {
         // Passkey-Logins werden bereits über
@@ -69,15 +69,15 @@ final class LogAuthenticationActivityListener
             return;
         }
 
-        Activity::useLog(self::LOG_NAME)
-            ->event('password_login_succeeded')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::PASSWORD_LOGIN_SUCCEEDED->value)
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties([
                 'guard' => $event->guard,
                 'remember' => (bool) $event->remember,
             ])
-            ->log(__('app.activity_password_login_succeeded'));
+            ->log(ActivityEvent::PASSWORD_LOGIN_SUCCEEDED->description());
     }
 
     public function handleLogout(Logout $event): void
@@ -103,12 +103,12 @@ final class LogAuthenticationActivityListener
             return;
         }
 
-        Activity::useLog(self::LOG_NAME)
-            ->event('logout')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::LOGOUT->value)
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties(['guard' => $event->guard])
-            ->log(__('app.activity_logout'));
+            ->log(ActivityEvent::LOGOUT->description());
     }
 
     public function handleFailed(Failed $event): void
@@ -136,10 +136,10 @@ final class LogAuthenticationActivityListener
         // HTTP-Request. In CLI-Auth-Pfaden fehlt die IP, dann bleibt es leer.
         $properties += $this->forensicProperties(request());
 
-        Activity::useLog(self::LOG_NAME)
-            ->event('login_failed')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::LOGIN_FAILED->value)
             ->withProperties($properties)
-            ->log(__('app.activity_login_failed'));
+            ->log(ActivityEvent::LOGIN_FAILED->description());
     }
 
     public function handlePasswordUpdated(PasswordUpdatedViaController $event): void
@@ -148,11 +148,11 @@ final class LogAuthenticationActivityListener
         // also immer ein Eloquent-Model — kein zusätzlicher Guard nötig.
         $user = $event->user;
 
-        Activity::useLog(self::LOG_NAME)
-            ->event('password_updated')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::PASSWORD_UPDATED->value)
             ->causedBy($user)
             ->performedOn($user)
-            ->log(__('app.activity_password_updated'));
+            ->log(ActivityEvent::PASSWORD_UPDATED->description());
     }
 
     public function handlePasswordReset(PasswordReset $event): void
@@ -163,11 +163,11 @@ final class LogAuthenticationActivityListener
             return;
         }
 
-        Activity::useLog(self::LOG_NAME)
-            ->event('password_reset')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::PASSWORD_RESET->value)
             ->causedBy($user)
             ->performedOn($user)
-            ->log(__('app.activity_password_reset'));
+            ->log(ActivityEvent::PASSWORD_RESET->description());
     }
 
     /**
@@ -190,11 +190,11 @@ final class LogAuthenticationActivityListener
             return;
         }
 
-        Activity::useLog(self::LOG_NAME)
-            ->event('email_verified')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::EMAIL_VERIFIED->value)
             ->causedBy($user)
             ->performedOn($user)
-            ->log(__('app.activity_email_verified'));
+            ->log(ActivityEvent::EMAIL_VERIFIED->description());
     }
 
     /**
@@ -218,12 +218,12 @@ final class LogAuthenticationActivityListener
             return;
         }
 
-        Activity::useLog(self::LOG_NAME)
-            ->event('other_devices_logged_out')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::OTHER_DEVICES_LOGGED_OUT->value)
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties(['guard' => $event->guard])
-            ->log(__('app.activity_other_devices_logged_out'));
+            ->log(ActivityEvent::OTHER_DEVICES_LOGGED_OUT->description());
     }
 
     public function handleLockout(Lockout $event): void
@@ -239,10 +239,10 @@ final class LogAuthenticationActivityListener
 
         $properties += $this->forensicProperties($event->request);
 
-        Activity::useLog(self::LOG_NAME)
-            ->event('login_locked_out')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::LOGIN_LOCKED_OUT->value)
             ->withProperties($properties)
-            ->log(__('app.activity_login_locked_out'));
+            ->log(ActivityEvent::LOGIN_LOCKED_OUT->description());
     }
 
     /**

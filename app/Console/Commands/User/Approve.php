@@ -5,15 +5,20 @@ declare(strict_types=1);
 namespace App\Console\Commands\User;
 
 use App\Models\User;
+use App\Services\User\Contracts\UserApproverContract;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 
 #[Signature('user:approve')]
 #[Description('Schaltet einen Benutzer frei')]
 class Approve extends Command
 {
+    public function __construct(private readonly UserApproverContract $approver)
+    {
+        parent::__construct();
+    }
+
     /**
      * Execute the console command.
      */
@@ -41,8 +46,7 @@ class Approve extends Command
             return self::SUCCESS;
         }
 
-        $user->approved_at = Carbon::now();
-        $user->saveOrFail();
+        $this->approver->approve($user);
 
         $this->info(__('commands.approve_user.success', ['name' => $user->name, 'email' => $email]));
 

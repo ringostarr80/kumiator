@@ -19,6 +19,8 @@ final class ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
             ->classes(
                 Selector::inNamespace('App\\Config'),
                 Selector::inNamespace('App\\DataTransferObjects'),
+                // App\Enums: zentrale Activity-Event-/Channel-Codes (Magic-String-Ersatz)
+                Selector::inNamespace('App\\Enums'),
                 Selector::inNamespace('App\\Models'),
                 Selector::inNamespace('App\\Notifications'),
                 Selector::inNamespace('App\\Repositories\\Contracts'),

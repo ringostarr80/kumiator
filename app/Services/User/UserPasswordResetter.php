@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\User;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Models\User;
 use App\Services\User\Contracts\UserPasswordResetterContract;
 use Illuminate\Support\Facades\Hash;
@@ -47,10 +49,10 @@ final class UserPasswordResetter implements UserPasswordResetterContract
         $user->password = Hash::make($newPassword);
         $user->saveOrFail();
 
-        Activity::useLog('auth')
-            ->event('password_reset')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::PASSWORD_RESET->value)
             ->causedByAnonymous()
             ->performedOn($user)
-            ->log(__('app.activity_password_reset'));
+            ->log(ActivityEvent::PASSWORD_RESET->description());
     }
 }

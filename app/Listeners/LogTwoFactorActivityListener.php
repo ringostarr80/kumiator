@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use Illuminate\Database\Eloquent\Model;
 use Laravel\Fortify\Events\RecoveryCodeReplaced;
 use Laravel\Fortify\Events\RecoveryCodesGenerated;
@@ -36,16 +38,14 @@ use Spatie\Activitylog\Facades\Activity;
  */
 final class LogTwoFactorActivityListener
 {
-    private const LOG_NAME = 'auth';
-
     public function handleEnabled(TwoFactorAuthenticationEnabled $event): void
     {
-        $this->logForUser($event->user, '2fa_enabled', __('app.activity_2fa_enabled'));
+        $this->logForUser($event->user, ActivityEvent::TWO_FA_ENABLED);
     }
 
     public function handleConfirmed(TwoFactorAuthenticationConfirmed $event): void
     {
-        $this->logForUser($event->user, '2fa_confirmed', __('app.activity_2fa_confirmed'));
+        $this->logForUser($event->user, ActivityEvent::TWO_FA_CONFIRMED);
     }
 
     public function handleDisabled(TwoFactorAuthenticationDisabled $event): void
@@ -67,21 +67,17 @@ final class LogTwoFactorActivityListener
         // der Fall, weil der User vor dem Disable aus der DB geladen wird.
         // In Tests ggf. `$user->fresh()` vor dem Disable aufrufen.
         if ($user->wasChanged('two_factor_confirmed_at')) {
-            $this->logForUser($user, '2fa_disabled', __('app.activity_2fa_disabled'));
+            $this->logForUser($user, ActivityEvent::TWO_FA_DISABLED);
 
             return;
         }
 
-        $this->logForUser($user, '2fa_setup_aborted', __('app.activity_2fa_setup_aborted'));
+        $this->logForUser($user, ActivityEvent::TWO_FA_SETUP_ABORTED);
     }
 
     public function handleRecoveryCodesGenerated(RecoveryCodesGenerated $event): void
     {
-        $this->logForUser(
-            $event->user,
-            '2fa_recovery_codes_regenerated',
-            __('app.activity_2fa_recovery_codes_regenerated'),
-        );
+        $this->logForUser($event->user, ActivityEvent::TWO_FA_RECOVERY_CODES_REGENERATED);
     }
 
     public function handleRecoveryCodeReplaced(RecoveryCodeReplaced $event): void
@@ -89,28 +85,24 @@ final class LogTwoFactorActivityListener
         // Den verbrauchten Code selbst NICHT mitloggen — er ist Geheimnismaterial,
         // das nirgends im Klartext landen darf. Die Tatsache des Verbrauchs reicht
         // forensisch (n verbrauchte Codes ⇒ Recovery-Pool schrumpft).
-        $this->logForUser(
-            $event->user,
-            '2fa_recovery_code_used',
-            __('app.activity_2fa_recovery_code_used'),
-        );
+        $this->logForUser($event->user, ActivityEvent::TWO_FA_RECOVERY_CODE_USED);
     }
 
     public function handleFailed(TwoFactorAuthenticationFailed $event): void
     {
-        $this->logForUser($event->user, '2fa_failed', __('app.activity_2fa_failed'));
+        $this->logForUser($event->user, ActivityEvent::TWO_FA_FAILED);
     }
 
-    private function logForUser(mixed $user, string $eventCode, string $description): void
+    private function logForUser(mixed $user, ActivityEvent $event): void
     {
         if (!$user instanceof Model) {
             return;
         }
 
-        Activity::useLog(self::LOG_NAME)
-            ->event($eventCode)
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event($event->value)
             ->causedBy($user)
             ->performedOn($user)
-            ->log($description);
+            ->log($event->description());
     }
 }

@@ -20,6 +20,8 @@ final class ActionsAreIndependentTest
                 Selector::inNamespace('App\\Actions'),
                 Selector::inNamespace('App\\DataTransferObjects'),
                 Selector::inNamespace('App\\Models'),
+                // App\Enums: zentrale Activity-Event-/Channel-Codes (Magic-String-Ersatz).
+                Selector::inNamespace('App\\Enums'),
                 Selector::inNamespace('/^App\\\\Services\\\\.*\\\\Contracts$/', true),
                 Selector::inNamespace('Illuminate'),
                 Selector::inNamespace('Laravel'),

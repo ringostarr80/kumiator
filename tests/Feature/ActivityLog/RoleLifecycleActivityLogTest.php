@@ -6,7 +6,6 @@ namespace Tests\Feature\ActivityLog;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithConsoleEvents;
-use Illuminate\Support\Facades\Lang;
 use Illuminate\Testing\PendingCommand;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
@@ -156,30 +155,5 @@ final class RoleLifecycleActivityLogTest extends TestCase
         $this->assertArrayHasKey('cli_actor', $properties);
         $this->assertIsArray($properties['cli_actor']);
         $this->assertSame('role:delete', $properties['cli_actor']['command'] ?? null);
-    }
-
-    /**
-     * Schützt das Übersetzungs-Schema `app.activity_<event>` — ohne diese
-     * Keys liefert Laravel den Maschinen-Code wörtlich zurück und der
-     * landete sichtbar im Activity-Log-UI. Beide Locales prüfen, damit
-     * weder DE noch EN still hinten runterfällt.
-     */
-    public function testTranslationKeysExistForBothLifecycleEventsInBothLocales(): void
-    {
-        foreach (['role_created', 'role_deleted'] as $event) {
-            $key = 'app.activity_' . $event;
-
-            foreach (['de', 'en'] as $locale) {
-                $this->assertNotSame(
-                    $key,
-                    Lang::get($key, [], $locale),
-                    sprintf(
-                        "Übersetzungs-Schlüssel '%s' fehlt in Locale '%s'.",
-                        $key,
-                        $locale,
-                    ),
-                );
-            }
-        }
     }
 }

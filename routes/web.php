@@ -153,12 +153,15 @@ Route::middleware([
     // Admin area
     //
     // Access is gated by granular permissions (via spatie/laravel-permission).
-    // The `can:<permission>` middleware leverages Laravel's Gate — Spatie
-    // permissions register themselves as Gate abilities automatically.
+    // Bewusst KEINE `can:activity-log.view`-Route-Middleware: die würde den
+    // Request vor dem Mount der Livewire-Komponente abbrechen, sodass der
+    // abgelehnte Zugriff un-auditiert bliebe. Autorisierung UND Audit
+    // (authorization_denied bei Verweigerung, activity_log_viewed bei Erfolg)
+    // laufen daher gebündelt in `ActivityLogTable::mount()` — der einzigen
+    // Stelle, die auch im Verweigerungsfall garantiert ausgeführt wird.
     // ──────────────────────────────────────────────────────────────────────────
     Route::prefix('admin')->name('admin.')->group(static function (): void {
         Route::get('/activity-log', static fn () => view('admin.activity-log'))
-            ->middleware('can:activity-log.view')
             ->name('activity-log');
     });
 });

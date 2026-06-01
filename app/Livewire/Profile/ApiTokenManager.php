@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Profile;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -55,8 +57,8 @@ final class ApiTokenManager extends JetstreamApiTokenManager
             return;
         }
 
-        Activity::useLog('auth')
-            ->event('api_token_created')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::API_TOKEN_CREATED->value)
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties([
@@ -64,7 +66,7 @@ final class ApiTokenManager extends JetstreamApiTokenManager
                 'token_name' => $accessToken->getAttribute('name'),
                 'abilities' => $accessToken->getAttribute('abilities'),
             ])
-            ->log(__('app.activity_api_token_created'));
+            ->log(ActivityEvent::API_TOKEN_CREATED->description());
     }
 
     public function deleteApiToken(): void
@@ -83,8 +85,8 @@ final class ApiTokenManager extends JetstreamApiTokenManager
             return;
         }
 
-        Activity::useLog('auth')
-            ->event('api_token_revoked')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::API_TOKEN_REVOKED->value)
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties([
@@ -92,6 +94,6 @@ final class ApiTokenManager extends JetstreamApiTokenManager
                 'token_name' => $token->getAttribute('name'),
                 'abilities' => $token->getAttribute('abilities'),
             ])
-            ->log(__('app.activity_api_token_revoked'));
+            ->log(ActivityEvent::API_TOKEN_REVOKED->description());
     }
 }

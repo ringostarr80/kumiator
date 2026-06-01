@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire\Profile;
 
 use App\DataTransferObjects\UploadLimitData;
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Services\Upload\Contracts\UploadLimitResolverContract;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -131,11 +133,11 @@ final class UpdateProfileInformationForm extends JetstreamUpdateProfileInformati
             return;
         }
 
-        Activity::useLog('user')
-            ->event('profile_photo_removed')
+        Activity::useLog(ActivityChannel::USER->value)
+            ->event(ActivityEvent::PROFILE_PHOTO_REMOVED->value)
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties(['previous_profile_photo_path' => $previousPath])
-            ->log(__('app.activity_profile_photo_removed'));
+            ->log(ActivityEvent::PROFILE_PHOTO_REMOVED->description());
     }
 }

@@ -9,7 +9,6 @@ use App\Livewire\Profile\PasskeyManagerForm;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Lang;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
@@ -177,17 +176,6 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
             $this->latestAuthorizationDenied(),
             'Erlaubter Zugriff auf das Activity-Log-UI darf keinen authorization_denied-Eintrag erzeugen.',
         );
-    }
-
-    public function testTranslationKeyExistsInBothLocales(): void
-    {
-        foreach (['de', 'en'] as $locale) {
-            $this->assertNotSame(
-                'app.activity_authorization_denied',
-                Lang::get('app.activity_authorization_denied', [], $locale),
-                sprintf("Übersetzungs-Schlüssel fehlt in Locale '%s'.", $locale),
-            );
-        }
     }
 
     private function assertAuthorizationDeniedLogged(User $causer, string $ability, PasskeyCredential $target): void

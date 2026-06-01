@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\User;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Models\User;
 use App\Services\User\Contracts\UserEmailVerifierContract;
 use Illuminate\Support\Carbon;
@@ -39,10 +41,10 @@ final class UserEmailVerifier implements UserEmailVerifierContract
         $user->email_verified_at = Carbon::now();
         $user->saveOrFail();
 
-        Activity::useLog('auth')
-            ->event('email_verified')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::EMAIL_VERIFIED->value)
             ->causedByAnonymous()
             ->performedOn($user)
-            ->log(__('app.activity_email_verified'));
+            ->log(ActivityEvent::EMAIL_VERIFIED->description());
     }
 }

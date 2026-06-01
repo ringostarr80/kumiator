@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Profile;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Services\Auth\Contracts\OtherDeviceLogoutContextContract;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Database\Eloquent\Model;
@@ -74,12 +76,12 @@ final class LogoutOtherBrowserSessionsForm extends JetstreamLogoutOtherBrowserSe
             return;
         }
 
-        Activity::useLog('auth')
-            ->event('other_sessions_logged_out')
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::OTHER_SESSIONS_LOGGED_OUT->value)
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties(['terminated_session_count' => $terminatedSessionCount])
-            ->log(__('app.activity_other_sessions_logged_out'));
+            ->log(ActivityEvent::OTHER_SESSIONS_LOGGED_OUT->description());
     }
 
     private function countOtherSessions(): int

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -42,15 +44,15 @@ final class LogRoleChangeListener
 {
     public function handleAttached(RoleAttachedEvent $event): void
     {
-        $this->log($event->model, $event->rolesOrIds, 'role_attached');
+        $this->log($event->model, $event->rolesOrIds, ActivityEvent::ROLE_ATTACHED);
     }
 
     public function handleDetached(RoleDetachedEvent $event): void
     {
-        $this->log($event->model, $event->rolesOrIds, 'role_detached');
+        $this->log($event->model, $event->rolesOrIds, ActivityEvent::ROLE_DETACHED);
     }
 
-    private function log(Model $subject, mixed $rolesOrIds, string $event): void
+    private function log(Model $subject, mixed $rolesOrIds, ActivityEvent $event): void
     {
         $roleNames = $this->resolveRoleNames($rolesOrIds);
 
@@ -58,16 +60,13 @@ final class LogRoleChangeListener
             return;
         }
 
-        // `event` bleibt der stabile Maschinen-Code (für Filter/Reports),
-        // `description` ist die übersetzte Klartext-Beschreibung für die UI.
-        // Die Übersetzungs-Schlüssel sind bewusst nach dem Schema
-        // `app.activity_<event>` benannt; Tests in
-        // `RoleChangeActivityLogTest` verifizieren ihre Existenz.
-        Activity::useLog('role')
+        // `event->value` ist der stabile Maschinen-Code (für Filter/Reports),
+        // `description()` die übersetzte Klartext-Beschreibung für die UI.
+        Activity::useLog(ActivityChannel::ROLE->value)
             ->performedOn($subject)
             ->withProperties(['roles' => $roleNames])
-            ->event($event)
-            ->log(__('app.activity_' . $event));
+            ->event($event->value)
+            ->log($event->description());
     }
 
     /**

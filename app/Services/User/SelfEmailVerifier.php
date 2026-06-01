@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\User;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Models\User;
 use App\Services\User\Contracts\SelfEmailVerifierContract;
 use App\Services\User\Exceptions\SelfEmailVerificationFailedException;
@@ -30,21 +32,19 @@ use Spatie\Activitylog\Facades\Activity;
  */
 final class SelfEmailVerifier implements SelfEmailVerifierContract
 {
-    private const LOG_NAME = 'auth';
-
     public function verify(int $userId, string $hash): User
     {
         $user = User::find($userId);
 
         if ($user === null) {
-            Activity::useLog(self::LOG_NAME)
-                ->event('email_verification_failed')
+            Activity::useLog(ActivityChannel::AUTH->value)
+                ->event(ActivityEvent::EMAIL_VERIFICATION_FAILED->value)
                 ->causedByAnonymous()
                 ->withProperties([
                     'reason' => 'user_not_found',
                     'attempted_user_id' => $userId,
                 ])
-                ->log(__('app.activity_email_verification_failed'));
+                ->log(ActivityEvent::EMAIL_VERIFICATION_FAILED->description());
 
             throw new SelfEmailVerificationFailedException();
         }
@@ -53,12 +53,12 @@ final class SelfEmailVerifier implements SelfEmailVerifierContract
             // Forensisch wertvoll: `performedOn=user` macht sichtbar, gegen
             // welches Konto die ungültigen Hashes laufen — Indikator für
             // gezieltes Probieren oder einen alten Link nach E-Mail-Wechsel.
-            Activity::useLog(self::LOG_NAME)
-                ->event('email_verification_failed')
+            Activity::useLog(ActivityChannel::AUTH->value)
+                ->event(ActivityEvent::EMAIL_VERIFICATION_FAILED->value)
                 ->causedByAnonymous()
                 ->performedOn($user)
                 ->withProperties(['reason' => 'hash_mismatch'])
-                ->log(__('app.activity_email_verification_failed'));
+                ->log(ActivityEvent::EMAIL_VERIFICATION_FAILED->description());
 
             throw new SelfEmailVerificationFailedException();
         }

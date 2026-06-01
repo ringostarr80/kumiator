@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Services\Permission\PermissionSeederContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -54,15 +56,15 @@ final class LogPermissionChangeListener
 {
     public function handleAttached(PermissionAttachedEvent $event): void
     {
-        $this->log($event->model, $event->permissionsOrIds, 'permission_attached');
+        $this->log($event->model, $event->permissionsOrIds, ActivityEvent::PERMISSION_ATTACHED);
     }
 
     public function handleDetached(PermissionDetachedEvent $event): void
     {
-        $this->log($event->model, $event->permissionsOrIds, 'permission_detached');
+        $this->log($event->model, $event->permissionsOrIds, ActivityEvent::PERMISSION_DETACHED);
     }
 
-    private function log(Model $subject, mixed $permissionsOrIds, string $event): void
+    private function log(Model $subject, mixed $permissionsOrIds, ActivityEvent $event): void
     {
         if (PermissionSeederContext::isActive()) {
             return;
@@ -74,14 +76,14 @@ final class LogPermissionChangeListener
             return;
         }
 
-        // `event` bleibt der stabile Maschinen-Code (für Filter/Reports),
-        // `description` ist die übersetzte Klartext-Beschreibung für die UI
-        // (Schema `app.activity_<event>`, analog zum Role-Listener).
-        Activity::useLog('permission')
+        // `event->value` ist der stabile Maschinen-Code (für Filter/Reports),
+        // `description()` die übersetzte Klartext-Beschreibung für die UI
+        // (analog zum Role-Listener).
+        Activity::useLog(ActivityChannel::PERMISSION->value)
             ->performedOn($subject)
             ->withProperties(['permissions' => $permissionNames])
-            ->event($event)
-            ->log(__('app.activity_' . $event));
+            ->event($event->value)
+            ->log($event->description());
     }
 
     /**

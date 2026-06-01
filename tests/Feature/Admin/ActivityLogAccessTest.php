@@ -49,6 +49,37 @@ final class ActivityLogAccessTest extends TestCase
     }
 
     /**
+     * Vor der Konsolidierung brach die Route-`can:`-
+     * Middleware den Request vor dem Mount ab — der abgelehnte Navigations-
+     * Zugriff blieb un-auditiert. Jetzt loggt `mount()` den Denial, und zwar
+     * genau einmal (mount läuft pro Seiten-Render einmal → kein Doppel-Log).
+     */
+    public function testRouteLevelDenialIsLoggedExactlyOnce(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get(self::ACTIVITY_LOG_URL)->assertForbidden();
+
+        $this->assertSame(
+            1,
+            Activity::query()
+                ->where('log_name', 'security')
+                ->where('event', 'authorization_denied')
+                ->count(),
+            'Der abgelehnte Route-Zugriff muss genau einen authorization_denied-Eintrag schreiben.',
+        );
+
+        $entry = Activity::query()
+            ->where('log_name', 'security')
+            ->where('event', 'authorization_denied')
+            ->firstOrFail();
+
+        $this->assertSame($user->getKey(), $entry->causer_id);
+        $properties = $entry->properties?->toArray() ?? [];
+        $this->assertSame('activity-log.view', $properties['ability'] ?? null);
+    }
+
+    /**
      * Discoverability-Schutz: Der Activity-Log-Bereich ist nur sinnvoll
      * nutzbar, wenn Admins den Einsprung-Link in der Hauptnavigation sehen.
      * Fehlt der Link, wird das Feature still „versteckt" (URL nur per
@@ -358,6 +389,53 @@ final class ActivityLogAccessTest extends TestCase
     }
 
     /**
+     * Erfolgreicher Lese-Zugriff aufs Activity-Log ist selbst dokumentations-
+     * pflichtig (DSGVO Art. 5(2)/32): das Log bündelt personenbezogene Daten
+     * aller Mitglieder. Der Eintrag landet im `security`-Channel mit
+     * benanntem Causer (anders als `authorization_denied` ist der Akteur hier
+     * zwingend zu identifizieren).
+     */
+    public function testSuccessfulAccessIsLogged(): void
+    {
+        $admin = $this->makeAdmin();
+
+        Livewire::actingAs($admin)
+            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->assertOk();
+
+        $entry = $this->latestActivityLogViewed();
+
+        $this->assertNotNull($entry, 'Erlaubter Zugriff muss einen activity_log_viewed-Eintrag schreiben.');
+        $this->assertSame($admin->getKey(), $entry->causer_id);
+        $this->assertSame($admin->getMorphClass(), $entry->causer_type);
+        $this->assertSame(__('app.activity_activity_log_viewed'), $entry->description);
+    }
+
+    /**
+     * Sichert die „1 Eintrag pro Mount"-Entscheidung ab: `mount()` läuft pro
+     * Livewire-Lebenszyklus genau einmal — Pagination/Re-Render dürfen keinen
+     * zusätzlichen Zugriffs-Eintrag erzeugen, sonst flutete jedes Blättern das Log.
+     */
+    public function testPaginationDoesNotMultiplyAccessLog(): void
+    {
+        $admin = $this->makeAdmin();
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->assertOk();
+        $component->call('gotoPage', 2);
+        $component->call('gotoPage', 1);
+
+        $this->assertSame(
+            1,
+            Activity::query()
+                ->where('log_name', 'security')
+                ->where('event', 'activity_log_viewed')
+                ->count(),
+            'Pagination/Re-Render darf keinen zusätzlichen Eintrag erzeugen — mount() läuft nur einmal.',
+        );
+    }
+
+    /**
      * Speist Rollen + Permissions aus dem produktiven `RoleSeeder` statt sie
      * inline anzulegen — wenn der Seeder später um eine Permission ergänzt
      * wird, sehen die Tests sie automatisch. Sonst entstünde Drift zwischen
@@ -376,5 +454,14 @@ final class ActivityLogAccessTest extends TestCase
         $user->assignRole('admin');
 
         return $user;
+    }
+
+    private function latestActivityLogViewed(): ?Activity
+    {
+        return Activity::query()
+            ->where('log_name', 'security')
+            ->where('event', 'activity_log_viewed')
+            ->latest('id')
+            ->first();
     }
 }

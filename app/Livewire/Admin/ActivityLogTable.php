@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -18,15 +20,18 @@ use Spatie\Activitylog\Facades\Activity as ActivityLogger;
 /**
  * Read-only Übersicht des Activity-Logs für Administratoren.
  *
- * Zugriffsschutz erfolgt zweistufig:
- *  - Primär über Route-Middleware `can:activity-log.view` (siehe routes/web.php),
- *    die den Request bereits vor dem Rendern der View abbricht und damit auch
- *    eventuelle Geschwister-Komponenten auf derselben Seite mit-schützt.
- *  - Defense-in-depth über `$this->authorize(...)` in `mount()`: greift, falls
- *    die Komponente jemals außerhalb der dedizierten Route eingebettet wird
- *    (eigene Route, andere Parent-Komponente) und der dort gesetzte Schutz
- *    versehentlich fehlt. Spatie-Permissions sind als Gate-Abilities registriert,
- *    die Prüfung ist deshalb identisch zur Route-Middleware.
+ * Zugriffsschutz UND Audit sind bewusst in `mount()` gebündelt (statt über eine
+ * Route-`can:`-Middleware), weil beides zusammengehört: der abgelehnte Zugriff
+ * muss protokolliert werden. Eine Route-Middleware würde den Request vor dem
+ * Mount abbrechen — der `authorization_denied`-Eintrag entstünde dann nie. In
+ * `mount()` läuft daher in einem Durchgang:
+ *  - `Gate::denies(...)` → `recordAuthorizationDenied()` (Channel `security`),
+ *  - `$this->authorize(...)` → 403 bei fehlender Permission,
+ *  - `recordAccessGranted()` → `activity_log_viewed` (Channel `security`) bei Erfolg.
+ *
+ * Spatie-Permissions sind als Gate-Abilities registriert; die Prüfung greift
+ * auch dann, wenn die Komponente künftig außerhalb der dedizierten Route
+ * eingebettet würde.
  */
 final class ActivityLogTable extends Component
 {
@@ -57,6 +62,8 @@ final class ActivityLogTable extends Component
         }
 
         $this->authorize('activity-log.view');
+
+        $this->recordAccessGranted();
     }
 
     /**
@@ -124,6 +131,43 @@ final class ActivityLogTable extends Component
     }
 
     /**
+     * Schreibt einen Audit-Eintrag für den erfolgreichen Lese-Zugriff auf das
+     * Activity-Log-UI. Das Log bündelt personenbezogene Daten aller Mitglieder
+     * (Namen, Rollen-Zuweisungen, Login-Zeiten, IP-/E-Mail-Hashes); wer es wann
+     * einsieht, ist nach Art. 5(2)/32 DSGVO (Rechenschaft + Nachvollziehbarkeit
+     * des Zugriffs auf den Mitglieder-Audit-Trail) selbst dokumentationspflichtig.
+     *
+     * Anders als bei `authorization_denied` ist der Causer hier zwingend zu
+     * benennen — ein Lese-Zugriff ist nur dann sinnvoll auditierbar, wenn der
+     * einsehende Admin identifiziert wird.
+     *
+     * Granularität: `mount()` läuft pro Livewire-Lebenszyklus genau einmal;
+     * Pagination und das Properties-Modal re-hydrieren die bestehende Instanz
+     * ohne erneuten Mount und erzeugen daher keinen zusätzlichen Eintrag. Es
+     * entsteht ein Eintrag pro Seitenaufruf, nicht pro Zeile.
+     *
+     * Resilient gegen Activity-Log-Ausfälle: ein kaputter Audit-Pfad darf das
+     * Anzeigen des Logs nicht blockieren.
+     */
+    private function recordAccessGranted(): void
+    {
+        $causer = Auth::user();
+
+        if (!($causer instanceof User)) {
+            return;
+        }
+
+        try {
+            ActivityLogger::useLog(ActivityChannel::SECURITY->value)
+                ->event(ActivityEvent::ACTIVITY_LOG_VIEWED->value)
+                ->causedBy($causer)
+                ->log(ActivityEvent::ACTIVITY_LOG_VIEWED->description());
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
      * Schreibt einen Audit-Eintrag für den abgelehnten Zugriff auf das
      * Activity-Log-UI. Inline statt über statische Recorder-Methode auf einem
      * Domain-Model — es gibt für diese Ability schlicht kein passendes
@@ -143,15 +187,15 @@ final class ActivityLogTable extends Component
         }
 
         try {
-            ActivityLogger::useLog('security')
-                ->event('authorization_denied')
+            ActivityLogger::useLog(ActivityChannel::SECURITY->value)
+                ->event(ActivityEvent::AUTHORIZATION_DENIED->value)
                 ->causedBy($causer)
                 ->withProperties([
                     'ability' => 'activity-log.view',
                     'target_type' => null,
                     'target_id_hash' => null,
                 ])
-                ->log(__('app.activity_authorization_denied'));
+                ->log(ActivityEvent::AUTHORIZATION_DENIED->description());
         } catch (\Throwable $e) {
             report($e);
         }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -95,9 +97,9 @@ final class PasskeyCredential extends Model
             ->logOnly(['name', 'aaguid'])
             ->logOnlyDirty()
             ->dontLogEmptyChanges()
-            ->useLogName('passkey')
+            ->useLogName(ActivityChannel::PASSKEY->value)
             ->setDescriptionForEvent(
-                fn (string $eventName): string => __('app.activity_passkey_' . self::mapLifecycleEventName($eventName)),
+                fn (string $eventName): string => self::mapLifecycleEvent($eventName)?->description() ?? $eventName,
             );
     }
 
@@ -126,11 +128,11 @@ final class PasskeyCredential extends Model
             return;
         }
 
-        Activity::useLog('passkey')
-            ->event('passkey_login_succeeded')
+        Activity::useLog(ActivityChannel::PASSKEY->value)
+            ->event(ActivityEvent::PASSKEY_LOGIN_SUCCEEDED->value)
             ->causedBy($owner)
             ->performedOn($this)
-            ->log(__('app.activity_passkey_login_succeeded'));
+            ->log(ActivityEvent::PASSKEY_LOGIN_SUCCEEDED->description());
     }
 
     /**
@@ -171,10 +173,10 @@ final class PasskeyCredential extends Model
         }
 
         try {
-            Activity::useLog('auth')
-                ->event('passkey_login_failed')
+            Activity::useLog(ActivityChannel::AUTH->value)
+                ->event(ActivityEvent::PASSKEY_LOGIN_FAILED->value)
                 ->withProperties($properties)
-                ->log(__('app.activity_passkey_login_failed'));
+                ->log(ActivityEvent::PASSKEY_LOGIN_FAILED->description());
         } catch (\Throwable $e) {
             report($e);
         }
@@ -208,11 +210,11 @@ final class PasskeyCredential extends Model
     public static function recordFailedRegistrationActivity(User $user, string $reason): void
     {
         try {
-            Activity::useLog('passkey')
-                ->event('passkey_registration_failed')
+            Activity::useLog(ActivityChannel::PASSKEY->value)
+                ->event(ActivityEvent::PASSKEY_REGISTRATION_FAILED->value)
                 ->causedBy($user)
                 ->withProperties(['failure_reason' => $reason])
-                ->log(__('app.activity_passkey_registration_failed'));
+                ->log(ActivityEvent::PASSKEY_REGISTRATION_FAILED->description());
         } catch (\Throwable $e) {
             report($e);
         }
@@ -246,15 +248,15 @@ final class PasskeyCredential extends Model
     public static function recordAuthorizationDeniedActivity(User $user, string $ability, self $target): void
     {
         try {
-            Activity::useLog('security')
-                ->event('authorization_denied')
+            Activity::useLog(ActivityChannel::SECURITY->value)
+                ->event(ActivityEvent::AUTHORIZATION_DENIED->value)
                 ->causedBy($user)
                 ->withProperties([
                     'ability' => $ability,
                     'target_type' => 'passkey_credential',
                     'target_id_hash' => hash('sha256', $target->id),
                 ])
-                ->log(__('app.activity_authorization_denied'));
+                ->log(ActivityEvent::AUTHORIZATION_DENIED->description());
         } catch (\Throwable $e) {
             report($e);
         }
@@ -276,7 +278,7 @@ final class PasskeyCredential extends Model
      */
     public static function applyEventLabelToActivity(ActivityModel $activity): void
     {
-        if ($activity->log_name !== 'passkey') {
+        if ($activity->log_name !== ActivityChannel::PASSKEY->value) {
             return;
         }
 
@@ -286,13 +288,13 @@ final class PasskeyCredential extends Model
             return;
         }
 
-        $mapped = self::mapLifecycleEventName($event);
+        $mapped = self::mapLifecycleEvent($event);
 
-        if ($mapped === $event) {
+        if ($mapped === null) {
             return;
         }
 
-        $activity->event = 'passkey_' . $mapped;
+        $activity->event = $mapped->value;
     }
 
     /**
@@ -311,19 +313,19 @@ final class PasskeyCredential extends Model
     }
 
     /**
-     * Mappt die generischen Eloquent-Lifecycle-Event-Namen auf fachliche
-     * Suffixe für Translation-Keys und Event-Codes. Da `aaguid` post-create
-     * unveränderlich ist, kann ein `updated` realistisch nur durch eine
-     * Namensänderung ausgelöst werden — `renamed` ist daher die korrekte
-     * Bezeichnung.
+     * Mappt die generischen Eloquent-Lifecycle-Event-Namen auf den fachlichen
+     * {@see ActivityEvent}. Da `aaguid` post-create unveränderlich ist, kann ein
+     * `updated` realistisch nur durch eine Namensänderung ausgelöst werden —
+     * `PASSKEY_RENAMED` ist daher die korrekte Bezeichnung. Liefert `null` für
+     * Events ohne fachliches Pendant (kein Remapping/keine Description).
      */
-    private static function mapLifecycleEventName(string $eventName): string
+    private static function mapLifecycleEvent(string $eventName): ?ActivityEvent
     {
         return match ($eventName) {
-            'created' => 'registered',
-            'updated' => 'renamed',
-            'deleted' => 'removed',
-            default => $eventName,
+            'created' => ActivityEvent::PASSKEY_REGISTERED,
+            'updated' => ActivityEvent::PASSKEY_RENAMED,
+            'deleted' => ActivityEvent::PASSKEY_REMOVED,
+            default => null,
         };
     }
 

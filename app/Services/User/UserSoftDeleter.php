@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\User;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
 use App\Models\User;
 use App\Services\User\Contracts\UserSoftDeleterContract;
 use Illuminate\Support\Facades\Config;
@@ -61,8 +63,8 @@ final class UserSoftDeleter implements UserSoftDeleterContract
             foreach ($user->tokens as $token) {
                 $token->deleteOrFail();
 
-                Activity::useLog('auth')
-                    ->event('api_token_revoked')
+                Activity::useLog(ActivityChannel::AUTH->value)
+                    ->event(ActivityEvent::API_TOKEN_REVOKED->value)
                     ->causedByAnonymous()
                     ->performedOn($user)
                     ->withProperties([
@@ -70,7 +72,7 @@ final class UserSoftDeleter implements UserSoftDeleterContract
                         'token_name' => $token->name,
                         'abilities' => $token->abilities,
                     ])
-                    ->log(__('app.activity_api_token_revoked'));
+                    ->log(ActivityEvent::API_TOKEN_REVOKED->description());
             }
 
             $user->passkeyCredentials->each->deleteOrFail();
