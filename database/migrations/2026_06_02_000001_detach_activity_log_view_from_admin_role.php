@@ -17,6 +17,12 @@
  * — die strukturelle Deploy-Bereinigung soll keinen `permission_detached`-
  * Audit-Eintrag erzeugen (Causer wäre ohnehin nur der CLI-Migrationslauf).
  *
+ * Weil der rohe DELETE Spaties Model-Events umgeht, wird der Permission-Cache
+ * NICHT automatisch geleert (Spatie cached die Rollen→Permission-Zuordnung 24 h,
+ * siehe `config/permission.php`). Ohne expliziten `forgetCachedPermissions()`
+ * behielten Admins den Log-Zugriff bis zum Cache-Ablauf — deshalb der manuelle
+ * Flush nach jeder Änderung.
+ *
  * Single-Guard-Annahme (`web`, wie in den Permission-Listenern): Auflösung über
  * den Permission-/Rollen-Namen genügt, weil es projektweit nur einen Guard gibt.
  */
@@ -25,6 +31,7 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\PermissionRegistrar;
 
 return new class () extends Migration {
     private const string PERMISSION = 'activity-log.view';
@@ -43,6 +50,8 @@ return new class () extends Migration {
             ->where('permission_id', $permissionId)
             ->where('role_id', $roleId)
             ->delete();
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
     public function down(): void
@@ -58,6 +67,8 @@ return new class () extends Migration {
             'permission_id' => $permissionId,
             'role_id' => $roleId,
         ]);
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
     private function permissionId(): ?int
