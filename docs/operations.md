@@ -64,7 +64,8 @@ manuelles `php artisan config:clear` löst das.
 
 | Command                              | Cadence            | Healthcheck-Slug        | Zweck                                                                                            |
 |--------------------------------------|--------------------|-------------------------|--------------------------------------------------------------------------------------------------|
-| `activitylog:clean`                  | täglich, **03:30** | `activitylog_clean`     | Activity-Log-Retention — Begründung & Frist siehe `config/activitylog.php` (Art. 5(1)(e) DSGVO). |
+| `activitylog:clean`                  | täglich, **03:30** | `activitylog_clean`     | Activity-Log-Retention (alle Kanäle, 365 Tage) — Begründung & Frist siehe `config/activitylog.php` (Art. 5(1)(e) DSGVO). |
+| `activitylog:clean forensic`         | täglich, **03:45** | `activitylog_clean_forensic` | Verkürzte Retention (90 Tage) nur für den `forensic`-Kanal (anonyme Dritt-Daten) — Art. 5(1)(e) DSGVO, siehe `config/activitylog.php`. |
 | `user:cleanup-pending-email-changes` | stündlich, **:07** | `pending_email_cleanup` | Löscht abgelaufene E-Mail-Änderungs-Anfragen (TTL 60 Min) — Datenminimierung (Art. 5(1)(c) DSGVO). |
 
 ## Schedule-Healthcheck (Healthchecks.io)
@@ -133,10 +134,11 @@ loggt sie nur als Warnung.
    erwartete Frequenz muss dort **einmalig pro Check** gesetzt werden
    (Auto-Provisioning legt als Default „every 1 day" an):
 
-   | Check                   | Period (erwartet) | Grace (Toleranz) |
-   |-------------------------|-------------------|------------------|
-   | `activitylog_clean`     | 1 day             | 2 hours          |
-   | `pending_email_cleanup` | 1 hour            | 30 minutes       |
+   | Check                        | Period (erwartet) | Grace (Toleranz) |
+   |------------------------------|-------------------|------------------|
+   | `activitylog_clean`          | 1 day             | 2 hours          |
+   | `activitylog_clean_forensic` | 1 day             | 2 hours          |
+   | `pending_email_cleanup`      | 1 hour            | 30 minutes       |
 
 4. In den Project-Integrations einen Notification-Channel (Mail, Slack, …)
    hinterlegen, der bei rotem Check alarmiert.

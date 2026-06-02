@@ -13,8 +13,8 @@ use Tests\TestCase;
  * Validiert den Activity-Log-Eintrag bei fehlgeschlagenen Passkey-Anmelde-
  * Versuchen. Symmetrisch zum `login_failed`-Pfad
  * ({@see \App\Listeners\LogAuthenticationActivityListener::handleFailed}):
- * `log_name=auth`, kein Causer, kein Subject, Klartext-Credential-ID
- * niemals in Properties.
+ * `log_name=forensic` (anonyme Dritt-Daten → verkürzte Retention), kein Causer,
+ * kein Subject, Klartext-Credential-ID niemals in Properties.
  *
  * Tests laufen direkt gegen die statische Domain-Methode
  * {@see \App\Models\PasskeyCredential::recordFailedLoginActivity()}; den
@@ -33,7 +33,7 @@ final class PasskeyAuthenticationFailedActivityLogTest extends TestCase
         PasskeyCredential::recordFailedLoginActivity('verification_failed', $rawBody);
 
         $activity = Activity::query()
-            ->where('log_name', 'auth')
+            ->where('log_name', 'forensic')
             ->where('event', 'passkey_login_failed')
             ->latest('id')
             ->first();
@@ -58,7 +58,7 @@ final class PasskeyAuthenticationFailedActivityLogTest extends TestCase
         );
 
         $activity = Activity::query()
-            ->where('log_name', 'auth')
+            ->where('log_name', 'forensic')
             ->where('event', 'passkey_login_failed')
             ->latest('id')
             ->first();
@@ -78,7 +78,7 @@ final class PasskeyAuthenticationFailedActivityLogTest extends TestCase
         );
 
         $activity = Activity::query()
-            ->where('log_name', 'auth')
+            ->where('log_name', 'forensic')
             ->where('event', 'passkey_login_failed')
             ->latest('id')
             ->first();
@@ -98,7 +98,7 @@ final class PasskeyAuthenticationFailedActivityLogTest extends TestCase
         PasskeyCredential::recordFailedLoginActivity('verification_failed', 'not-json-at-all');
 
         $activity = Activity::query()
-            ->where('log_name', 'auth')
+            ->where('log_name', 'forensic')
             ->where('event', 'passkey_login_failed')
             ->latest('id')
             ->first();
@@ -117,7 +117,7 @@ final class PasskeyAuthenticationFailedActivityLogTest extends TestCase
         );
 
         $activity = Activity::query()
-            ->where('log_name', 'auth')
+            ->where('log_name', 'forensic')
             ->where('event', 'passkey_login_failed')
             ->latest('id')
             ->first();
@@ -132,7 +132,7 @@ final class PasskeyAuthenticationFailedActivityLogTest extends TestCase
         PasskeyCredential::recordFailedLoginActivity('verification_failed', '');
 
         $activity = Activity::query()
-            ->where('log_name', 'auth')
+            ->where('log_name', 'forensic')
             ->where('event', 'passkey_login_failed')
             ->latest('id')
             ->first();

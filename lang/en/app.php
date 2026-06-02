@@ -290,6 +290,7 @@ return [
     'activity_user_deleted' => 'Account deleted (soft delete)',
     'activity_user_restored' => 'Account restored',
     'activity_email_verified' => 'Email address verified',
+    'activity_email_verification_requested' => 'Verification email re-requested',
     'activity_email_change_requested' => 'Email change requested',
     'activity_email_changed' => 'Email address changed',
     'activity_email_change_cancelled' => 'Email change cancelled',

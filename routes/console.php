@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function (): void {
@@ -33,6 +34,24 @@ Schedule::command('activitylog:clean')
     ->onOneServer()
     ->withoutOverlapping()
     ->withHealthcheck('activitylog_clean');
+
+/*
+ * Verkürzte Retention nur für den `forensic`-Kanal (anonyme Dritt-Daten:
+ * `login_failed`, `login_locked_out`, `password_reset_requested` mit gekürzter
+ * IP/User-Agent/E-Mail-Hash potenziell fremder Personen). Art. 5(1)(e) DSGVO —
+ * Dritt-Daten dürfen nicht so lange wie der Mitglieder-Audit aufbewahrt werden.
+ *
+ * Spaties `activitylog:clean {log?} {--days=}` filtert via `inLog()` auf genau
+ * diesen Kanal; Frist aus `config/activitylog.php` (Default 90 Tage). Versetzte
+ * Minute (03:45) entzerrt gegenüber dem globalen 03:30-Lauf; eigener Healthcheck-
+ * Slug, weil Healthchecks.io-Auto-Provisioning pro Job einen distinkten Slug
+ * erwartet. Der globale Clean oben bleibt Catch-all für alle übrigen Kanäle.
+ */
+Schedule::command('activitylog:clean forensic --days=' . Config::integer('activitylog.clean_after_days_forensic'))
+    ->dailyAt('03:45')
+    ->onOneServer()
+    ->withoutOverlapping()
+    ->withHealthcheck('activitylog_clean_forensic');
 
 /*
  * Cleanup abgelaufener E-Mail-Änderungs-Anfragen (Art. 5(1)(c) DSGVO —

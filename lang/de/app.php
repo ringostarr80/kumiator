@@ -294,6 +294,7 @@ return [
     'activity_user_deleted' => 'Konto gelöscht (soft-delete)',
     'activity_user_restored' => 'Konto wiederhergestellt',
     'activity_email_verified' => 'E-Mail-Adresse bestätigt',
+    'activity_email_verification_requested' => 'Bestätigungs-E-Mail erneut angefordert',
     'activity_email_change_requested' => 'E-Mail-Änderung beantragt',
     'activity_email_changed' => 'E-Mail-Adresse geändert',
     'activity_email_change_cancelled' => 'E-Mail-Änderung abgebrochen',

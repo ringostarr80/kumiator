@@ -22,6 +22,18 @@ use Spatie\Activitylog\Models\Activity;
  * und ist für die nicht-buchhalterischen Vorgänge in dieser Tabelle
  * (Rollen-Änderungen, Profil-Edits, Passkey-Lifecycle) verhältnismäßig.
  *
+ * **Verkürzte Frist für anonyme Dritt-Forensik** (`clean_after_days_forensic`)
+ * Der `forensic`-Kanal (siehe {@see App\Enums\ActivityChannel::FORENSIC})
+ * sammelt Fehlversuche/Anforderungen ohne authentifizierten Causer
+ * (`login_failed`, `login_locked_out`, `password_reset_requested`,
+ * `passkey_login_failed`) mit gekürzter IP, User-Agent, E-Mail-Hash bzw.
+ * Credential-ID-Hash potenziell fremder Personen. Diese
+ * Dritt-Daten dürfen nicht so lange wie der Mitglieder-Audit vorgehalten werden;
+ * ein eigener Schedule löscht den Kanal nach 90 Tagen
+ * (`activitylog:clean forensic --days=...`). Der globale 365-Tage-Clean bleibt
+ * Catch-all für alle übrigen Kanäle (greift im `forensic`-Kanal nicht mehr,
+ * weil der kürzere Lauf dort längst aufgeräumt hat).
+ *
  * **Activity-Model (bewusst Vendor-Klasse)**
  * `activity_model` zeigt absichtlich auf `Spatie\Activitylog\Models\Activity`,
  * NICHT auf `App\Models\Activity`. Der App-eigene Wrapper ist heute leer und
@@ -47,6 +59,14 @@ return [
      * the number of days specified here will be deleted.
      */
     'clean_after_days' => (int) env('ACTIVITYLOG_CLEAN_AFTER_DAYS', 365),
+
+    /*
+     * Verkürzte Retention nur für den `forensic`-Kanal (anonyme Dritt-Daten).
+     * Wird vom dedizierten Schedule in routes/console.php an
+     * `activitylog:clean forensic --days=...` durchgereicht. Siehe Doc oben
+     * (Art. 5(1)(e) DSGVO — Speicherbegrenzung für Dritt-Daten).
+     */
+    'clean_after_days_forensic' => (int) env('ACTIVITYLOG_CLEAN_AFTER_DAYS_FORENSIC', 90),
 
     /*
      * If no log name is passed to the activity() helper

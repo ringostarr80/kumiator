@@ -36,6 +36,7 @@ enum ActivityEvent: string
     case PASSWORD_UPDATE_FAILED = 'password_update_failed';
     case PASSWORD_CONFIRMATION_FAILED = 'password_confirmation_failed';
     case EMAIL_VERIFIED = 'email_verified';
+    case EMAIL_VERIFICATION_REQUESTED = 'email_verification_requested';
     case EMAIL_VERIFICATION_FAILED = 'email_verification_failed';
     case EMAIL_CHANGE_REQUESTED = 'email_change_requested';
     case EMAIL_CHANGED = 'email_changed';

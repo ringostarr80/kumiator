@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\CancelEmailChangeController;
 use App\Http\Controllers\Auth\ConfirmEmailChangeController;
 use App\Http\Controllers\Auth\PasskeyAuthenticationController;
 use App\Http\Controllers\Auth\PasskeyRegistrationController;
+use App\Http\Controllers\Auth\ResendEmailVerificationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\LocaleController;
 use Illuminate\Support\Facades\Route;
@@ -56,6 +57,19 @@ Route::middleware('guest')->group(static function (): void {
 Route::middleware(['signed', 'throttle:6,1'])
     ->get('/email/verify/{id}/{hash}', VerifyEmailController::class)
     ->name('verification.verify');
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Resend der Verifizierungs-Mail
+//
+// Überschreibt Fortifys `verification.send`: der Vendor-Controller versendet
+// ohne Audit-Trail. Bewusst NUR hinter `auth` (kein `verified`/`approved`) —
+// der Anfordernde ist per Definition noch unverifiziert. Last-registered
+// gewinnt über Fortifys gleichnamigen Eintrag (vgl. `verification.verify`-
+// und `/user/profile`-Override).
+// ──────────────────────────────────────────────────────────────────────────────
+Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'throttle:6,1'])
+    ->post('/email/verification-notification', ResendEmailVerificationController::class)
+    ->name('verification.send');
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Deferred email change (guest-zugänglich, Token IST die Berechtigung)

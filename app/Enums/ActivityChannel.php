@@ -20,4 +20,5 @@ enum ActivityChannel: string
     case ROLE = 'role';
     case PERMISSION = 'permission';
     case PASSKEY = 'passkey';
+    case FORENSIC = 'forensic';
 }

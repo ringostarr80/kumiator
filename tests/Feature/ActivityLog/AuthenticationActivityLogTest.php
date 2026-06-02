@@ -140,7 +140,7 @@ final class AuthenticationActivityLogTest extends TestCase
         Event::dispatch(new Failed('web', null, ['email' => "   \t\n"]));
 
         $activity = Activity::query()
-            ->where('log_name', 'auth')
+            ->where('log_name', 'forensic')
             ->where('event', 'login_failed')
             ->latest('id')
             ->first();
@@ -208,7 +208,7 @@ final class AuthenticationActivityLogTest extends TestCase
         Event::dispatch(new Failed('web', null, ['email' => $email, 'password' => 'wrong']));
 
         $activity = Activity::query()
-            ->where('log_name', 'auth')
+            ->where('log_name', 'forensic')
             ->where('event', 'login_failed')
             ->latest('id')
             ->first();
@@ -239,7 +239,7 @@ final class AuthenticationActivityLogTest extends TestCase
         Event::dispatch(new Failed('web', null, ['username' => 'foo']));
 
         $activity = Activity::query()
-            ->where('log_name', 'auth')
+            ->where('log_name', 'forensic')
             ->where('event', 'login_failed')
             ->latest('id')
             ->first();
@@ -269,7 +269,7 @@ final class AuthenticationActivityLogTest extends TestCase
         Event::dispatch(new Failed('web', null, ['email' => 'opfer@example.com']));
 
         $activity = Activity::query()
-            ->where('log_name', 'auth')
+            ->where('log_name', 'forensic')
             ->where('event', 'login_failed')
             ->latest('id')
             ->first();
@@ -304,7 +304,7 @@ final class AuthenticationActivityLogTest extends TestCase
         Event::dispatch(new Failed('web', null, ['email' => 'x@example.com']));
 
         $activity = Activity::query()
-            ->where('log_name', 'auth')
+            ->where('log_name', 'forensic')
             ->where('event', 'login_failed')
             ->latest('id')
             ->first();
@@ -364,7 +364,7 @@ final class AuthenticationActivityLogTest extends TestCase
         $this->assertSame(
             0,
             Activity::query()
-                ->where('log_name', 'auth')
+                ->where('log_name', 'forensic')
                 ->where('event', 'login_failed')
                 ->count(),
             'Bei `login_unapproved` darf der Marker den parallelen `login_failed`-Eintrag '
@@ -404,7 +404,7 @@ final class AuthenticationActivityLogTest extends TestCase
         $this->assertSame(
             1,
             Activity::query()
-                ->where('log_name', 'auth')
+                ->where('log_name', 'forensic')
                 ->where('event', 'login_failed')
                 ->count(),
         );
@@ -466,7 +466,7 @@ final class AuthenticationActivityLogTest extends TestCase
         $this->assertSame(
             0,
             Activity::query()
-                ->where('log_name', 'auth')
+                ->where('log_name', 'forensic')
                 ->where('event', 'login_failed')
                 ->count(),
         );
@@ -480,7 +480,7 @@ final class AuthenticationActivityLogTest extends TestCase
         Event::dispatch(new Lockout($request));
 
         $activity = Activity::query()
-            ->where('log_name', 'auth')
+            ->where('log_name', 'forensic')
             ->where('event', 'login_locked_out')
             ->latest('id')
             ->first();
@@ -506,7 +506,7 @@ final class AuthenticationActivityLogTest extends TestCase
         Event::dispatch(new Lockout($request));
 
         $activity = Activity::query()
-            ->where('log_name', 'auth')
+            ->where('log_name', 'forensic')
             ->where('event', 'login_locked_out')
             ->latest('id')
             ->first();
@@ -533,7 +533,7 @@ final class AuthenticationActivityLogTest extends TestCase
         Event::dispatch(new Lockout($request));
 
         $activity = Activity::query()
-            ->where('log_name', 'auth')
+            ->where('log_name', 'forensic')
             ->where('event', 'login_locked_out')
             ->latest('id')
             ->first();
@@ -602,7 +602,7 @@ final class AuthenticationActivityLogTest extends TestCase
         Event::dispatch(new PasswordResetLinkSent($user));
 
         $activity = Activity::query()
-            ->where('log_name', 'auth')
+            ->where('log_name', 'forensic')
             ->where('event', 'password_reset_requested')
             ->latest('id')
             ->first();
@@ -655,7 +655,7 @@ final class AuthenticationActivityLogTest extends TestCase
 
         $this->assertSame(
             0,
-            Activity::query()->where('log_name', 'auth')->count(),
+            Activity::query()->where('log_name', 'forensic')->count(),
         );
     }
 

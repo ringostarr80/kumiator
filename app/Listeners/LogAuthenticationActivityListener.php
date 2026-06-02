@@ -50,6 +50,14 @@ use Spatie\Activitylog\Facades\Activity;
  * gleicher Angreifer-Versuche, ohne personenbezogene Klartext-Daten zu
  * speichern.
  *
+ * Kanal-Wahl (DSGVO Art. 5 Abs. 1 lit. e — Speicherbegrenzung): Die anonymen
+ * Dritt-Forensik-Einträge `login_failed`, `login_locked_out` und
+ * `password_reset_requested` schreiben in den {@see ActivityChannel::FORENSIC}-
+ * Kanal statt nach `auth`, weil der `log_name` die Retention-Grenze ist — nur
+ * `forensic` wird mit verkürzter Frist gelöscht. Die übrigen, einem Mitglied
+ * zuordenbaren auth-Events (Login, Logout, 2FA, Passwort) bleiben im `auth`-
+ * Kanal mit voller Frist.
+ *
  * Registrierung: Event-Auto-Discovery wertet die Type-Hints der `handle*`-
  * Methoden aus — keine zusätzliche `Event::listen()`-Bindung nötig (siehe
  * Architektur-Hinweis in `LogRoleChangeListener`).
@@ -137,7 +145,7 @@ final class LogAuthenticationActivityListener
         // HTTP-Request. In CLI-Auth-Pfaden fehlt die IP, dann bleibt es leer.
         $properties += $this->forensicProperties(request());
 
-        Activity::useLog(ActivityChannel::AUTH->value)
+        Activity::useLog(ActivityChannel::FORENSIC->value)
             ->event(ActivityEvent::LOGIN_FAILED->value)
             ->withProperties($properties)
             ->log(ActivityEvent::LOGIN_FAILED->description());
@@ -194,7 +202,7 @@ final class LogAuthenticationActivityListener
             return;
         }
 
-        Activity::useLog(ActivityChannel::AUTH->value)
+        Activity::useLog(ActivityChannel::FORENSIC->value)
             ->event(ActivityEvent::PASSWORD_RESET_REQUESTED->value)
             ->performedOn($user)
             ->withProperties($this->forensicProperties(request()))
@@ -270,7 +278,7 @@ final class LogAuthenticationActivityListener
 
         $properties += $this->forensicProperties($event->request);
 
-        Activity::useLog(ActivityChannel::AUTH->value)
+        Activity::useLog(ActivityChannel::FORENSIC->value)
             ->event(ActivityEvent::LOGIN_LOCKED_OUT->value)
             ->withProperties($properties)
             ->log(ActivityEvent::LOGIN_LOCKED_OUT->description());

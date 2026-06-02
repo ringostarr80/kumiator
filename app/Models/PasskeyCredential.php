@@ -139,9 +139,10 @@ final class PasskeyCredential extends Model
      * Schreibt einen Audit-Eintrag für einen fehlgeschlagenen Passkey-
      * Anmelde-Versuch. Symmetrie zum `login_failed`-Pfad
      * ({@see \App\Listeners\LogAuthenticationActivityListener::handleFailed}):
-     * unter `log_name=auth`, ohne Causer und ohne Subject (selbst bei
-     * gefundener Credential ist „Owner = Causer" forensisch falsch — ein
-     * Angreifer könnte die Credential-ID gestohlen haben).
+     * unter `log_name=forensic` (anonyme Dritt-Daten → verkürzte Retention,
+     * Art. 5(1)(e) DSGVO; siehe {@see ActivityChannel::FORENSIC}), ohne Causer
+     * und ohne Subject (selbst bei gefundener Credential ist „Owner = Causer"
+     * forensisch falsch — ein Angreifer könnte die Credential-ID gestohlen haben).
      *
      * Datenminimierung (DSGVO Art. 5 Abs. 1 lit. c): Klartext-`credential_id`
      * landet niemals im Log; stattdessen ein SHA-256-Hash über die vom
@@ -173,7 +174,7 @@ final class PasskeyCredential extends Model
         }
 
         try {
-            Activity::useLog(ActivityChannel::AUTH->value)
+            Activity::useLog(ActivityChannel::FORENSIC->value)
                 ->event(ActivityEvent::PASSKEY_LOGIN_FAILED->value)
                 ->withProperties($properties)
                 ->log(ActivityEvent::PASSKEY_LOGIN_FAILED->description());
