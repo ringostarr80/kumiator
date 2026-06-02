@@ -436,6 +436,42 @@ final class ActivityLogAccessTest extends TestCase
     }
 
     /**
+     * Das Pagination-Control steht jetzt sowohl oberhalb als auch unterhalb der
+     * Tabelle. Jede Instanz bringt Livewires eingebaute Treffer-Info
+     * ("Showing X to Y of Z results") mit. Setup mit > PER_PAGE (25) Einträgen,
+     * damit das Control überhaupt rendert — Livewire blendet es bei nur einer
+     * Seite komplett aus.
+     */
+    public function testPaginationControlAppearsAboveAndBelowTheTable(): void
+    {
+        $admin = $this->makeAuditor();
+        $actor = User::factory()->create();
+        $this->actingAs($actor);
+
+        for ($i = 0; $i < 30; $i++) {
+            $subject = User::factory()->create();
+            $subject->updateOrFail(['name' => 'Renamed ' . $i]);
+        }
+
+        $component = Livewire::actingAs($admin)
+            ->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->assertOk();
+
+        $html = $component->html();
+
+        $this->assertSame(
+            2,
+            substr_count($html, 'aria-label="Pagination Navigation"'),
+            'Das Pagination-Control muss oberhalb UND unterhalb der Tabelle stehen.',
+        );
+        $this->assertSame(
+            2,
+            substr_count($html, 'Showing'),
+            'Die eingebaute Treffer-Info muss bei beiden Pagination-Instanzen erscheinen.',
+        );
+    }
+
+    /**
      * Speist Rollen + Permissions aus dem produktiven `RoleSeeder` statt sie
      * inline anzulegen — wenn der Seeder später um eine Permission ergänzt
      * wird, sehen die Tests sie automatisch. Sonst entstünde Drift zwischen

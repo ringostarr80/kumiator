@@ -5,6 +5,10 @@
             {{ __('app.activity_log_empty') }}
         </p>
     @else
+        <div class="mb-4">
+            {{ $activities->links() }}
+        </div>
+
         <div class="overflow-x-auto">
             <table class="w-full min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-auto">
                 <thead class="bg-gray-50 dark:bg-gray-900">
