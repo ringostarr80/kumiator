@@ -96,6 +96,18 @@ return [
         'success' => 'Benutzer ":name" (:email) wurde die Rolle ":role" erfolgreich zugewiesen.',
     ],
 
+    'activity_log_grant' => [
+        'title' => 'Activity-Log-Zugriff gewähren',
+        'already_granted' => 'Benutzer ":name" (:email) darf das Activity-Log bereits einsehen.',
+        'success' => 'Benutzer ":name" (:email) darf das Activity-Log jetzt einsehen.',
+    ],
+
+    'activity_log_revoke' => [
+        'title' => 'Activity-Log-Zugriff entziehen',
+        'not_granted' => 'Benutzer ":name" (:email) hat keinen Activity-Log-Zugriff.',
+        'success' => 'Der Activity-Log-Zugriff für Benutzer ":name" (:email) wurde entzogen.',
+    ],
+
     'approve_user' => [
         'title' => 'Benutzer freischalten',
         'already_approved' => 'Benutzer ":name" (:email) ist bereits freigeschaltet.',

@@ -41,7 +41,7 @@ final class ActivityLogAccessTest extends TestCase
 
     public function testAuthenticatedUserWithPermissionCanAccess(): void
     {
-        $user = $this->makeAdmin();
+        $user = $this->makeAuditor();
 
         $response = $this->actingAs($user)->get(self::ACTIVITY_LOG_URL);
 
@@ -87,7 +87,7 @@ final class ActivityLogAccessTest extends TestCase
      */
     public function testNavigationLinkIsVisibleForUsersWithPermission(): void
     {
-        $admin = $this->makeAdmin();
+        $admin = $this->makeAuditor();
 
         $response = $this->actingAs($admin)->get(route('dashboard'));
 
@@ -132,7 +132,7 @@ final class ActivityLogAccessTest extends TestCase
 
     public function testComponentRendersExistingActivityEntries(): void
     {
-        $user = $this->makeAdmin();
+        $user = $this->makeAuditor();
 
         ActivityFacade::useLog('test')
             ->event('demo')
@@ -157,7 +157,7 @@ final class ActivityLogAccessTest extends TestCase
         $this->actingAs($actor);
         $subject->updateOrFail(['name' => self::SUBJECT_RENAMED]);
 
-        $admin = $this->makeAdmin();
+        $admin = $this->makeAuditor();
 
         Livewire::actingAs($admin)
             ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
@@ -181,7 +181,7 @@ final class ActivityLogAccessTest extends TestCase
         $this->actingAs($actor);
         $subject->updateOrFail(['name' => self::SUBJECT_RENAMED]);
 
-        $admin = $this->makeAdmin();
+        $admin = $this->makeAuditor();
 
         Livewire::actingAs($admin)
             ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
@@ -206,7 +206,7 @@ final class ActivityLogAccessTest extends TestCase
         $subject->updateOrFail(['name' => 'Final Name']);
         $subject->deleteOrFail();
 
-        $admin = $this->makeAdmin();
+        $admin = $this->makeAuditor();
 
         Livewire::actingAs($admin)
             ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
@@ -233,7 +233,7 @@ final class ActivityLogAccessTest extends TestCase
      */
     public function testRenderingPageStaysWithinQueryBudget(): void
     {
-        $admin = $this->makeAdmin();
+        $admin = $this->makeAuditor();
         $actor = User::factory()->create();
 
         // Eine Mischung aus User- und Passkey-Subjects sowie einem Causer-User —
@@ -277,7 +277,7 @@ final class ActivityLogAccessTest extends TestCase
      */
     public function testPropertiesColumnShowsIconOnlyForActivitiesWithProperties(): void
     {
-        $admin = $this->makeAdmin();
+        $admin = $this->makeAuditor();
 
         ActivityFacade::useLog('with-props')
             ->withProperties(['key' => 'value'])
@@ -314,7 +314,7 @@ final class ActivityLogAccessTest extends TestCase
      */
     public function testShowPropertiesOpensModalAndClosePropertiesResetsIt(): void
     {
-        $admin = $this->makeAdmin();
+        $admin = $this->makeAuditor();
 
         ActivityFacade::useLog('with-props')
             ->withProperties(['attributes' => ['name' => 'Neuer Name']])
@@ -356,7 +356,7 @@ final class ActivityLogAccessTest extends TestCase
      */
     public function testShowPropertiesIsNoOpForActivityWithoutProperties(): void
     {
-        $admin = $this->makeAdmin();
+        $admin = $this->makeAuditor();
 
         ActivityFacade::useLog('empty')
             ->event('demo')
@@ -380,7 +380,7 @@ final class ActivityLogAccessTest extends TestCase
      */
     public function testShowPropertiesIsNoOpForUnknownActivityId(): void
     {
-        $admin = $this->makeAdmin();
+        $admin = $this->makeAuditor();
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
         $component->call('showProperties', 999_999);
@@ -397,7 +397,7 @@ final class ActivityLogAccessTest extends TestCase
      */
     public function testSuccessfulAccessIsLogged(): void
     {
-        $admin = $this->makeAdmin();
+        $admin = $this->makeAuditor();
 
         Livewire::actingAs($admin)
             ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
@@ -418,7 +418,7 @@ final class ActivityLogAccessTest extends TestCase
      */
     public function testPaginationDoesNotMultiplyAccessLog(): void
     {
-        $admin = $this->makeAdmin();
+        $admin = $this->makeAuditor();
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
         $component->assertOk();
@@ -448,10 +448,10 @@ final class ActivityLogAccessTest extends TestCase
         $this->seed(RoleSeeder::class);
     }
 
-    private function makeAdmin(): User
+    private function makeAuditor(): User
     {
         $user = User::factory()->create();
-        $user->assignRole('admin');
+        $user->givePermissionTo('activity-log.view');
 
         return $user;
     }

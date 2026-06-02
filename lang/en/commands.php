@@ -95,6 +95,18 @@ return [
         'success' => 'User ":name" (:email) was successfully assigned the role ":role".',
     ],
 
+    'activity_log_grant' => [
+        'title' => 'Grant activity log access',
+        'already_granted' => 'User ":name" (:email) can already view the activity log.',
+        'success' => 'User ":name" (:email) can now view the activity log.',
+    ],
+
+    'activity_log_revoke' => [
+        'title' => 'Revoke activity log access',
+        'not_granted' => 'User ":name" (:email) does not have activity log access.',
+        'success' => 'Activity log access for user ":name" (:email) was revoked.',
+    ],
+
     'approve_user' => [
         'title' => 'Approve user',
         'already_approved' => 'User ":name" (:email) is already approved.',

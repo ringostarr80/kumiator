@@ -16,8 +16,9 @@ use Tests\TestCase;
  *  - `composer setup` und `composer deploy` rufen den Seeder bei jedem Deploy
  *    auf. Mehrfaches Ausführen darf weder Duplikate noch Exceptions erzeugen.
  *  - Sobald jemand eine nicht-idempotente Methode in den Seeder einbaut
- *    (z. B. `create()` statt `findOrCreate()` oder ein blindes
- *    `attach()` statt `givePermissionTo()`), schlägt dieser Test an.
+ *    (z. B. `create()` statt `findOrCreate()`), schlägt dieser Test an.
+ *  - Außerdem hält er fest, dass der Seeder `activity-log.view` nur als
+ *    Definition anlegt und KEINER Rolle zuweist.
  */
 final class RoleSeederTest extends TestCase
 {
@@ -40,7 +41,10 @@ final class RoleSeederTest extends TestCase
         $this->assertSame(1, Role::query()->where('name', 'admin')->count());
         $this->assertSame(1, Permission::query()->where('name', 'activity-log.view')->count());
 
+        // `activity-log.view` wird bewusst KEINER Rolle zugewiesen: das Recht
+        // wird pro Person über `activity-log:grant`/`:revoke` vergeben (Least
+        // Privilege, Art. 32 DSGVO). Der Seeder hält nur die Definition vor.
         $admin = Role::findByName('admin');
-        $this->assertCount(1, $admin->permissions()->where('name', 'activity-log.view')->get());
+        $this->assertCount(0, $admin->permissions()->where('name', 'activity-log.view')->get());
     }
 }

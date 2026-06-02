@@ -4,30 +4,31 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Services\Permission\PermissionSeederContext;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 /**
- * Source-of-Truth für Rollen und ihre Permission-Zuweisungen.
+ * Source-of-Truth für die im Code definierten Rollen und Permissions.
  *
  * Dieser Seeder läuft bei jedem Deploy (siehe `composer setup` und
- * `composer deploy`) und ist bewusst idempotent:
- *  - `Role::findOrCreate()` und `Permission::findOrCreate()` legen fehlende
- *    Datensätze an und sind ein No-Op, wenn sie bereits existieren.
- *  - `givePermissionTo()` nutzt intern `syncWithoutDetaching()` und ergänzt
- *    fehlende Pivot-Einträge ohne Duplikate.
+ * `composer deploy`) und ist bewusst idempotent: `Role::findOrCreate()` und
+ * `Permission::findOrCreate()` legen fehlende Datensätze an und sind ein No-Op,
+ * wenn sie bereits existieren.
  *
- * Wichtige Semantik: Diese Idempotenz schließt das **Heilen** manueller
- * Eingriffe ein. Wer einer Rolle zur Laufzeit (z. B. via Tinker) eine im
- * Code definierte Permission entzieht, bekommt sie beim nächsten Deploy
- * automatisch zurück. Das ist beabsichtigt, solange Permissions ausschließlich
- * im Code definiert werden und es kein Admin-UI für Permission-Verwaltung gibt.
+ * **Permissions werden hier NICHT an Rollen gebunden.** Insbesondere
+ * `activity-log.view` wird bewusst keiner Rolle (auch nicht `admin`) zugewiesen:
+ * Das Recht, den Mitglieder-Audit-Trail einzusehen, ist eine sicherheits- und
+ * datenschutzsensible Berechtigung (Least Privilege / Need-to-know, Art. 32
+ * DSGVO). Sie wird pro Person über `activity-log:grant` vergeben und über
+ * `activity-log:revoke` wieder entzogen (jeweils auditiert über den
+ * `LogPermissionChangeListener`). Der Seeder hält nur die **Definition** der
+ * Permission vor, damit sie reproduzierbar existiert und die Grant-Commands
+ * sie referenzieren können.
  *
- * Sobald ein Admin-UI eingeführt wird, das Rollen/Permissions zur Laufzeit
- * verändern kann, muss diese Strategie überdacht werden — sonst überschreibt
- * jeder Deploy stillschweigend die per UI vorgenommenen Anpassungen.
+ * Konsequenz: Manuell pro User vergebene Grants werden vom Seeder weder
+ * angelegt noch wieder entfernt — anders als bei Rollen-Permission-Bindungen
+ * gibt es hier also kein „Heilen" oder „Überschreiben" durch einen Deploy.
  */
 class RoleSeeder extends Seeder
 {
@@ -37,22 +38,8 @@ class RoleSeeder extends Seeder
     public function run(): void
     {
         Role::findOrCreate('member');
+        Role::findOrCreate('admin');
 
-        $activityLogView = Permission::findOrCreate('activity-log.view');
-
-        $admin = Role::findOrCreate('admin');
-
-        // Spatie's `givePermissionTo()` feuert `PermissionAttachedEvent`
-        // **unbedingt** — auch wenn der interne Attach ein No-Op ist
-        // (Permission war bereits an die Rolle gebunden). Ohne diesen
-        // Marker würde jeder Deploy einen falsch-positiven
-        // `permission_attached`-Eintrag im Activity-Log erzeugen.
-        PermissionSeederContext::markActive();
-
-        try {
-            $admin->givePermissionTo($activityLogView);
-        } finally {
-            PermissionSeederContext::clear();
-        }
+        Permission::findOrCreate('activity-log.view');
     }
 }
