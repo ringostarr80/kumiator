@@ -17,6 +17,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\OtherDeviceLogout;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Auth\Events\PasswordResetLinkSent;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -168,6 +169,36 @@ final class LogAuthenticationActivityListener
             ->causedBy($user)
             ->performedOn($user)
             ->log(ActivityEvent::PASSWORD_RESET->description());
+    }
+
+    /**
+     * Anforderung eines Passwort-Reset-Links als Audit-Eintrag — das forensische
+     * Gegenstück zum abschließenden `password_reset`. `PasswordResetLinkSent`
+     * feuert erst, NACHDEM der Broker den User aufgelöst hat (nie für unbekannte
+     * Adressen), deshalb identifiziert `performedOn($user)` den Betroffenen, ohne
+     * eine fremde E-Mail aus Tippfehlern/Enumeration im Klartext abzulegen.
+     *
+     * KEIN `causedBy`: die Anforderung läuft als Gast auf `/forgot-password` —
+     * der Anforderer ist nicht authentifiziert. Stattdessen anonyme Forensik
+     * (gekürzte IP + User-Agent) analog `handleFailed`; das Event trägt keinen
+     * Request, daher IP/UA aus dem aktuellen HTTP-Request.
+     *
+     * `$user` ist als `CanResetPassword` getypt; Spatie braucht für `performedOn`
+     * ein Eloquent-`Model` (Typ-Eingrenzung wie in `handleVerified`).
+     */
+    public function handlePasswordResetLinkSent(PasswordResetLinkSent $event): void
+    {
+        $user = $event->user;
+
+        if (!$user instanceof Model) {
+            return;
+        }
+
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::PASSWORD_RESET_REQUESTED->value)
+            ->performedOn($user)
+            ->withProperties($this->forensicProperties(request()))
+            ->log(ActivityEvent::PASSWORD_RESET_REQUESTED->description());
     }
 
     /**

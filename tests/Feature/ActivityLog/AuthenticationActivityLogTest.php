@@ -19,8 +19,10 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\OtherDeviceLogout;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Auth\Events\PasswordResetLinkSent;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\GenericUser;
+use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
@@ -583,6 +585,78 @@ final class AuthenticationActivityLogTest extends TestCase
         $this->assertSame(__('app.activity_password_reset'), $activity->description);
         $this->assertSame($user->getKey(), $activity->causer_id);
         $this->assertSame($user->getKey(), $activity->subject_id);
+    }
+
+    public function testPasswordResetLinkRequestIsLogged(): void
+    {
+        $user = User::factory()->create();
+        Activity::query()->delete();
+
+        $this->app->instance('request', Request::create(
+            '/forgot-password',
+            'POST',
+            ['email' => $user->email],
+            server: ['REMOTE_ADDR' => '203.0.113.7', 'HTTP_USER_AGENT' => 'Mozilla/5.0 (TestAgent)'],
+        ));
+
+        Event::dispatch(new PasswordResetLinkSent($user));
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'password_reset_requested')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_password_reset_requested'), $activity->description);
+
+        // Anonymer Anforderer (Gast auf /forgot-password): kein Causer, aber
+        // das Subject identifiziert den Betroffenen.
+        $this->assertNull($activity->causer_id);
+        $this->assertSame($user->getMorphClass(), $activity->subject_type);
+        $this->assertSame($user->getKey(), $activity->subject_id);
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('203.0.113.0/24', $properties['ip'] ?? null);
+        $this->assertSame('Mozilla/5.0 (TestAgent)', $properties['user_agent'] ?? null);
+
+        // Volle Host-IP darf nirgends im Eintrag landen (DSGVO-Datenminimierung).
+        $this->assertStringNotContainsString(
+            '203.0.113.7',
+            json_encode($activity->toArray(), JSON_THROW_ON_ERROR),
+        );
+    }
+
+    /**
+     * `PasswordResetLinkSent::$user` ist als `CanResetPassword` getypt — ein
+     * Nicht-Eloquent-Träger (theoretisch über einen Custom-User-Provider) lässt
+     * sich nicht als `performedOn` referenzieren; der Listener verlässt früh,
+     * statt einen subjektlosen Eintrag zu schreiben (Symmetrie zu den
+     * `Login`/`Logout`-Skip-Tests).
+     */
+    public function testPasswordResetLinkRequestForNonEloquentUserIsSkipped(): void
+    {
+        Activity::query()->delete();
+
+        $nonEloquent = new class implements CanResetPassword {
+            public function getEmailForPasswordReset(): string
+            {
+                return 'x@example.com';
+            }
+
+            public function sendPasswordResetNotification(mixed $token): void
+            {
+                // No-op: der Stub existiert nur, um den Nicht-Eloquent-Zweig
+                // des Listeners zu treffen; es wird nie eine Notification erwartet.
+            }
+        };
+
+        Event::dispatch(new PasswordResetLinkSent($nonEloquent));
+
+        $this->assertSame(
+            0,
+            Activity::query()->where('log_name', 'auth')->count(),
+        );
     }
 
     public function testEmailVerifiedIsLogged(): void
