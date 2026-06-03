@@ -51,6 +51,12 @@ final class ActivityLogTable extends Component
         | JSON_UNESCAPED_UNICODE
         | JSON_THROW_ON_ERROR;
 
+    /**
+     * Sortierrichtung der Zeitpunkt-Spalte; Default `desc` = neueste zuerst,
+     * deckt sich mit der bisherigen Standard-Reihenfolge (`latest('id')`).
+     */
+    public string $sortDirection = 'desc';
+
     public bool $showPropertiesModal = false;
 
     public ?string $selectedProperties = null;
@@ -96,6 +102,19 @@ final class ActivityLogTable extends Component
         $this->selectedProperties = null;
     }
 
+    /**
+     * Toggelt die Sortierrichtung der Zeitpunkt-Spalte und springt zurück auf
+     * Seite 1: bei umgekehrter Richtung ist die alte Seitennummer inhaltlich
+     * bedeutungslos, der Nutzer erwartet den Anfang der neu sortierten Liste.
+     */
+    public function sortByCreatedAt(): void
+    {
+        $this->sortDirection = $this->sortDirection === 'desc'
+            ? 'asc'
+            : 'desc';
+        $this->resetPage();
+    }
+
     public function render(): View
     {
         return view('livewire.admin.activity-log-table', [
@@ -124,9 +143,18 @@ final class ActivityLogTable extends Component
      */
     private function loadActivities(): LengthAwarePaginator
     {
+        // Manipulierte Wire-Payloads könnten $sortDirection beliebig setzen;
+        // vor dem orderBy() auf ein hartes Literal klemmen — verhindert
+        // sowohl SQL-Injection als auch die InvalidArgumentException, die
+        // orderBy() bei ungültiger Richtung würfe.
+        $direction = $this->sortDirection === 'asc'
+            ? 'asc'
+            : 'desc';
+
         return Activity::query()
             ->with(['subject', 'causer'])
-            ->latest('id')
+            ->orderBy('created_at', $direction)
+            ->orderBy('id', $direction)
             ->paginate(self::PER_PAGE);
     }
 

@@ -9,6 +9,7 @@ use App\Models\PasskeyCredential;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Activitylog\Facades\Activity as ActivityFacade;
@@ -469,6 +470,57 @@ final class ActivityLogAccessTest extends TestCase
             substr_count($html, 'Showing'),
             'Die eingebaute Treffer-Info muss bei beiden Pagination-Instanzen erscheinen.',
         );
+    }
+
+    /**
+     * Die Zeitpunkt-Spalte ist sortierbar: `sortByCreatedAt` toggelt zwischen
+     * `desc` (Default, neueste zuerst) und `asc` und dreht damit die Reihenfolge
+     * der Rows im DOM. Der Richtungswechsel springt zudem zurück auf Seite 1.
+     *
+     * Die beiden Marker werden über `travelTo()` auf distinkte Zeitpunkte gesetzt,
+     * damit die erwartete Reihenfolge nicht von Sekunden-genauer Insert-Reihenfolge
+     * abhängt.
+     */
+    public function testCreatedAtColumnIsSortableAndTogglesDirection(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $this->travelTo(Carbon::parse('2026-01-01 10:00:00'), function (): void {
+            ActivityFacade::useLog('sort')->event('demo')->log('Sortier-Marker-Alt');
+        });
+        $this->travelTo(Carbon::parse('2026-01-02 10:00:00'), function (): void {
+            ActivityFacade::useLog('sort')->event('demo')->log('Sortier-Marker-Neu');
+        });
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->assertOk();
+        $component->assertSee('Sortier-Marker-Alt');
+        $component->assertSee('Sortier-Marker-Neu');
+
+        // Default desc: neuester Eintrag steht im DOM vor dem ältesten.
+        $component->assertSet('sortDirection', 'desc');
+        $descHtml = $component->html();
+        $this->assertLessThan(
+            strpos($descHtml, 'Sortier-Marker-Alt'),
+            strpos($descHtml, 'Sortier-Marker-Neu'),
+            'Bei desc muss der neueste Eintrag oberhalb des ältesten stehen.',
+        );
+
+        // Toggle → asc: Reihenfolge dreht sich um.
+        $component->call('sortByCreatedAt');
+        $component->assertSet('sortDirection', 'asc');
+        $ascHtml = $component->html();
+        $this->assertLessThan(
+            strpos($ascHtml, 'Sortier-Marker-Neu'),
+            strpos($ascHtml, 'Sortier-Marker-Alt'),
+            'Bei asc muss der älteste Eintrag oberhalb des neuesten stehen.',
+        );
+
+        // Richtungswechsel springt zurück auf Seite 1.
+        $component->call('gotoPage', 2);
+        $component->assertSet('paginators.page', 2);
+        $component->call('sortByCreatedAt');
+        $component->assertSet('paginators.page', 1);
     }
 
     /**

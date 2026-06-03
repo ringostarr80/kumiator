@@ -13,8 +13,23 @@
             <table class="w-full min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-auto">
                 <thead class="bg-gray-50 dark:bg-gray-900">
                     <tr>
-                        <th scope="col" class="{{ $th }}">
-                            {{ __('app.activity_log_when') }}
+                        <th
+                            scope="col"
+                            class="{{ $th }}"
+                            aria-sort="{{ $sortDirection === 'asc' ? 'ascending' : 'descending' }}"
+                        >
+                            <button
+                                type="button"
+                                wire:click="sortByCreatedAt"
+                                class="inline-flex items-center gap-1 rounded hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                {{ __('app.activity_log_when') }}
+                                @if ($sortDirection === 'asc')
+                                    <x-heroicon-m-chevron-up class="h-3 w-3" aria-hidden="true" />
+                                @else
+                                    <x-heroicon-m-chevron-down class="h-3 w-3" aria-hidden="true" />
+                                @endif
+                            </button>
                         </th>
                         <th scope="col" class="{{ $th }}">
                             {{ __('app.activity_log_log_name') }}
