@@ -263,6 +263,12 @@ return [
     'activity_log_properties_modal_title' => 'Activity details',
     'activity_log_properties_modal_close' => 'Close',
     'activity_log_deleted_record' => ':type (deleted)',
+    'activity_log_filter_toggle' => 'Filters',
+    'activity_log_filter_date_from' => 'From',
+    'activity_log_filter_date_to' => 'To',
+    'activity_log_filter_all' => 'All',
+    'activity_log_filter_reset' => 'Reset filters',
+    'activity_log_no_matches' => 'No entries match the current filters.',
 
     // Activity log: domain-specific event descriptions
     'activity_passkey_registered' => 'Passkey registered',

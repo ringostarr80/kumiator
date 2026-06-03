@@ -23,6 +23,7 @@ final class ActivityLogAccessTest extends TestCase
     private const string ACTIVITY_LOG_URL = '/admin/activity-log';
     private const string ACTOR_NAME = 'Acting Admin';
     private const string SUBJECT_RENAMED = 'Subject Renamed';
+    private const string RENAMED_PREFIX = 'Renamed ';
 
     public function testGuestsAreRedirectedToLogin(): void
     {
@@ -243,7 +244,7 @@ final class ActivityLogAccessTest extends TestCase
 
         for ($i = 0; $i < 5; $i++) {
             $subject = User::factory()->create();
-            $subject->updateOrFail(['name' => 'Renamed ' . $i]);
+            $subject->updateOrFail(['name' => self::RENAMED_PREFIX . $i]);
         }
 
         for ($i = 0; $i < 5; $i++) {
@@ -451,7 +452,7 @@ final class ActivityLogAccessTest extends TestCase
 
         for ($i = 0; $i < 30; $i++) {
             $subject = User::factory()->create();
-            $subject->updateOrFail(['name' => 'Renamed ' . $i]);
+            $subject->updateOrFail(['name' => self::RENAMED_PREFIX . $i]);
         }
 
         $component = Livewire::actingAs($admin)
@@ -521,6 +522,187 @@ final class ActivityLogAccessTest extends TestCase
         $component->assertSet('paginators.page', 2);
         $component->call('sortByCreatedAt');
         $component->assertSet('paginators.page', 1);
+    }
+
+    public function testFilterByChannelLimitsResults(): void
+    {
+        $admin = $this->makeAuditor();
+
+        ActivityFacade::useLog('auth')->event('demo')->log('Eintrag im Auth-Kanal');
+        ActivityFacade::useLog('user')->event('demo')->log('Eintrag im User-Kanal');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filterChannel', 'auth');
+
+        $component->assertSee('Eintrag im Auth-Kanal');
+        $component->assertDontSee('Eintrag im User-Kanal');
+    }
+
+    public function testFilterByEventLimitsResults(): void
+    {
+        $admin = $this->makeAuditor();
+
+        ActivityFacade::useLog('auth')->event('login_failed')->log('Fehlgeschlagener Login');
+        ActivityFacade::useLog('auth')->event('logout')->log('Reguläre Abmeldung');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filterEvent', 'login_failed');
+
+        $component->assertSee('Fehlgeschlagener Login');
+        $component->assertDontSee('Reguläre Abmeldung');
+    }
+
+    /**
+     * Zeitpunkt-Range: `von`/`bis` sind beide tag-inklusiv (whereDate). Drei
+     * Einträge in unterschiedlichen Monaten (via `travelTo`), das Fenster
+     * Februar–April lässt nur den März-Eintrag durch.
+     */
+    public function testFilterByDateRangeLimitsResults(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $this->travelTo(Carbon::parse('2026-01-15 09:00:00'), function (): void {
+            ActivityFacade::useLog('test')->event('demo')->log('Eintrag Januar');
+        });
+        $this->travelTo(Carbon::parse('2026-03-15 09:00:00'), function (): void {
+            ActivityFacade::useLog('test')->event('demo')->log('Eintrag Maerz');
+        });
+        $this->travelTo(Carbon::parse('2026-05-15 09:00:00'), function (): void {
+            ActivityFacade::useLog('test')->event('demo')->log('Eintrag Mai');
+        });
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filterDateFrom', '2026-02-01');
+        $component->set('filterDateTo', '2026-04-01');
+
+        $component->assertSee('Eintrag Maerz');
+        $component->assertDontSee('Eintrag Januar');
+        $component->assertDontSee('Eintrag Mai');
+    }
+
+    /**
+     * Causer-Namenssuche über die polymorphe `causer`-Relation
+     * (`whereHasMorph`): findet Einträge anhand des Verursacher-Namens, nicht
+     * über einen FQCN-/ID-Vergleich.
+     */
+    public function testFilterByCauserNameSearchesAcrossMorph(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $causer = User::factory()->create(['name' => 'Gesuchter Verursacher']);
+        $other = User::factory()->create(['name' => 'Irrelevanter Verursacher']);
+
+        ActivityFacade::useLog('test')->event('demo')->causedBy($causer)->log('Tat des Gesuchten');
+        ActivityFacade::useLog('test')->event('demo')->causedBy($other)->log('Tat des Anderen');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filterCauser', 'Gesuchter');
+
+        $component->assertSee('Tat des Gesuchten');
+        $component->assertDontSee('Tat des Anderen');
+    }
+
+    /**
+     * Subject-Namenssuche über die polymorphe `subject`-Relation
+     * (`whereHasMorph`) — Gegenstück zum Causer-Filter.
+     */
+    public function testFilterBySubjectNameSearchesAcrossMorph(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $subject = User::factory()->create(['name' => 'Gesuchtes Subjekt']);
+        $other = User::factory()->create(['name' => 'Irrelevantes Subjekt']);
+
+        ActivityFacade::useLog('test')->event('demo')->performedOn($subject)->log('Vorgang am Gesuchten');
+        ActivityFacade::useLog('test')->event('demo')->performedOn($other)->log('Vorgang am Anderen');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filterSubject', 'Gesuchtes');
+
+        $component->assertSee('Vorgang am Gesuchten');
+        $component->assertDontSee('Vorgang am Anderen');
+    }
+
+    /**
+     * Analog zum Sortier-Toggle muss jede Filter-Änderung (`updated`-Hook)
+     * zurück auf Seite 1 springen, sonst bliebe der Cursor auf einer in der
+     * gefilterten Treffermenge nicht mehr existierenden Seite stehen.
+     */
+    public function testChangingFilterResetsToFirstPage(): void
+    {
+        $admin = $this->makeAuditor();
+        $actor = User::factory()->create();
+        $this->actingAs($actor);
+
+        for ($i = 0; $i < 30; $i++) {
+            $subject = User::factory()->create();
+            $subject->updateOrFail(['name' => self::RENAMED_PREFIX . $i]);
+        }
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->call('gotoPage', 2);
+        $component->assertSet('paginators.page', 2);
+
+        $component->set('filterChannel', 'user');
+        $component->assertSet('paginators.page', 1);
+    }
+
+    public function testResetFiltersClearsAllFilters(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filterChannel', 'auth');
+        $component->set('filterEvent', 'logout');
+        $component->set('filterCauser', 'irgendwer');
+        $component->set('filterSubject', 'irgendwas');
+        $component->set('filterDateFrom', '2026-01-01');
+        $component->set('filterDateTo', '2026-12-31');
+
+        $component->call('resetFilters');
+
+        $component->assertSet('filterChannel', '');
+        $component->assertSet('filterEvent', '');
+        $component->assertSet('filterCauser', '');
+        $component->assertSet('filterSubject', '');
+        $component->assertSet('filterDateFrom', '');
+        $component->assertSet('filterDateTo', '');
+    }
+
+    /**
+     * Empty-State-Unterscheidung: Liefert ein aktiver Filter keine Treffer,
+     * erscheint die „keine Treffer"-Meldung statt der „Log ist leer"-Meldung —
+     * sonst wirkte ein zu eng gesetzter Filter wie ein leeres Log.
+     */
+    public function testEmptyResultDueToFilterShowsNoMatchesMessage(): void
+    {
+        $admin = $this->makeAuditor();
+
+        ActivityFacade::useLog('test')->event('demo')->log('Irgendein Eintrag');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filterCauser', 'Garantiert Kein Treffer XYZ');
+
+        $component->assertSee(__('app.activity_log_no_matches'));
+        $component->assertDontSee(__('app.activity_log_empty'));
+    }
+
+    /**
+     * Die Filterleiste ist standardmäßig eingeklappt und startet nur dann
+     * aufgeklappt, wenn bereits gefiltert wird — sonst zeigte ein geteilter oder
+     * gebookmarkter #[Url]-Filter eine gefilterte Liste ohne sichtbaren Grund.
+     * Geprüft wird der serverseitig gerenderte Alpine-Initialzustand (`x-data`);
+     * das Ein-/Ausklappen selbst ist rein clientseitiges Alpine-Verhalten.
+     */
+    public function testFilterPanelStartsCollapsedUnlessFiltersAreActive(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->assertSeeHtml('{ open: false }');
+
+        $component->set('filterChannel', 'auth');
+        $component->assertSeeHtml('{ open: true }');
     }
 
     /**

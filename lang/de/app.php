@@ -267,6 +267,12 @@ return [
     'activity_log_properties_modal_title' => 'Aktivitäts-Details',
     'activity_log_properties_modal_close' => 'Schließen',
     'activity_log_deleted_record' => ':type (gelöscht)',
+    'activity_log_filter_toggle' => 'Filter',
+    'activity_log_filter_date_from' => 'Von',
+    'activity_log_filter_date_to' => 'Bis',
+    'activity_log_filter_all' => 'Alle',
+    'activity_log_filter_reset' => 'Filter zurücksetzen',
+    'activity_log_no_matches' => 'Keine Einträge für die aktuelle Filterauswahl.',
 
     // Activity-Log: fachliche Ereignis-Beschreibungen
     'activity_passkey_registered' => 'Passkey registriert',

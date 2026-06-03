@@ -1,8 +1,84 @@
 @php($th = 'px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300')
+@php($selectClasses = 'block mt-1 w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm')
 <div>
+    {{-- Filter ein-/ausklappbar (Alpine, rein clientseitig). Startet aufgeklappt,
+         wenn bereits gefiltert wird — z. B. via #[Url] aus einem geteilten oder
+         gebookmarkten Link; sonst wäre die Liste ohne sichtbaren Grund gefiltert.
+         Der Punkt am Button signalisiert aktive Filter im eingeklappten Zustand. --}}
+    <div x-data="{ open: @js($hasActiveFilters) }" class="mb-4">
+        <button
+            type="button"
+            x-on:click="open = ! open"
+            x-bind:aria-expanded="open"
+            class="inline-flex items-center gap-1 rounded text-sm font-medium text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-gray-300 dark:hover:text-white"
+        >
+            <x-heroicon-m-funnel class="h-4 w-4" aria-hidden="true" />
+            {{ __('app.activity_log_filter_toggle') }}
+            @if ($hasActiveFilters)
+                <span class="ml-1 inline-block h-2 w-2 rounded-full bg-indigo-500" aria-hidden="true"></span>
+            @endif
+            <x-heroicon-m-chevron-down class="h-4 w-4" x-show="! open" aria-hidden="true" />
+            <x-heroicon-m-chevron-up class="h-4 w-4" x-cloak x-show="open" aria-hidden="true" />
+        </button>
+
+        {{-- Spaltenfilter: UND-verknüpft; jede Änderung springt via updated()-Hook
+             zurück auf Seite 1. Der Zustand ist per #[Url] im Query-String.
+             2-Spalten-Grid: die DOM-Reihenfolge bildet die logischen Paare
+             (von/bis, kategorie/ereignis, causer/subject). --}}
+        <div x-cloak x-show="open" class="mt-3">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                    <x-label for="filter-date-from" value="{{ __('app.activity_log_filter_date_from') }}" />
+                    <x-input id="filter-date-from" class="block mt-1 w-full" type="date" wire:model.live="filterDateFrom" />
+                </div>
+
+                <div>
+                    <x-label for="filter-date-to" value="{{ __('app.activity_log_filter_date_to') }}" />
+                    <x-input id="filter-date-to" class="block mt-1 w-full" type="date" wire:model.live="filterDateTo" />
+                </div>
+
+                <div>
+                    <x-label for="filter-channel" value="{{ __('app.activity_log_log_name') }}" />
+                    <select id="filter-channel" wire:model.live="filterChannel" class="{{ $selectClasses }}">
+                        <option value="">{{ __('app.activity_log_filter_all') }}</option>
+                        @foreach ($channels as $channel)
+                            <option value="{{ $channel->value }}">{{ $channel->value }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <x-label for="filter-event" value="{{ __('app.activity_log_event') }}" />
+                    <select id="filter-event" wire:model.live="filterEvent" class="{{ $selectClasses }}">
+                        <option value="">{{ __('app.activity_log_filter_all') }}</option>
+                        @foreach ($events as $event)
+                            <option value="{{ $event->value }}">{{ $event->description() }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <x-label for="filter-causer" value="{{ __('app.activity_log_causer') }}" />
+                    <x-input id="filter-causer" class="block mt-1 w-full" type="text" wire:model.live.debounce.400ms="filterCauser" />
+                </div>
+
+                <div>
+                    <x-label for="filter-subject" value="{{ __('app.activity_log_subject') }}" />
+                    <x-input id="filter-subject" class="block mt-1 w-full" type="text" wire:model.live.debounce.400ms="filterSubject" />
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <x-secondary-button type="button" wire:click="resetFilters">
+                    {{ __('app.activity_log_filter_reset') }}
+                </x-secondary-button>
+            </div>
+        </div>
+    </div>
+
     @if ($activities->isEmpty())
         <p class="text-sm text-gray-600 dark:text-gray-400">
-            {{ __('app.activity_log_empty') }}
+            {{ $hasActiveFilters ? __('app.activity_log_no_matches') : __('app.activity_log_empty') }}
         </p>
     @else
         <div class="mb-4">
