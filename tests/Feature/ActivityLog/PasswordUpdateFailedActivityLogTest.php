@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\ActivityLog;
 
 use App\Actions\Fortify\UpdateUserPassword;
+use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
-use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 /**

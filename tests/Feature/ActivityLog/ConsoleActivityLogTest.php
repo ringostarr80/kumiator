@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\ActivityLog;
 
+use App\Models\Activity;
 use App\Models\User;
 use App\Services\Console\ConsoleActorContext;
 use App\Services\Console\Contracts\ConsoleActorContextContract;
@@ -15,7 +16,6 @@ use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use PragmaRX\Google2FA\Google2FA;
 use Spatie\Activitylog\Facades\Activity as ActivityFacade;
-use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
 use Tests\Support\FixedSecretTwoFactorProvider;
 use Tests\TestCase;

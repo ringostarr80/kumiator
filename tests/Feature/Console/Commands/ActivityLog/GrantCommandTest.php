@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Console\Commands\ActivityLog;
 
+use App\Models\Activity;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\PendingCommand;
-use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 final class GrantCommandTest extends TestCase

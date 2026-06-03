@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
+use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Observers\RoleLifecycleObserver;
@@ -43,7 +44,6 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
-use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
 
 class AppServiceProvider extends ServiceProvider
@@ -146,9 +146,8 @@ class AppServiceProvider extends ServiceProvider
         // grundverschiedene Vorgänge (Public-Endpoint vs. interner Admin-
         // Akt). `CreateNewUser` setzt vor `User::create()` einen
         // request-scoped Marker, der hier ausgewertet wird; ist er aktiv,
-        // wird `event` auf `user_self_registered` umgelabelt und die
-        // Description überschrieben. Ohne Marker bleibt der Eintrag
-        // bei `user_created` (CLI/Tests/Seeder).
+        // wird `event` auf `user_self_registered` umgelabelt. Ohne Marker
+        // bleibt der Eintrag bei `user_created` (CLI/Tests/Seeder).
         //
         // Reihenfolge ist wichtig: dieser Hook muss NACH dem User-Mapper
         // laufen, weil er auf den bereits aufgewerteten Code `user_created`
@@ -172,7 +171,6 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $activity->event = ActivityEvent::USER_SELF_REGISTERED->value;
-            $activity->description = ActivityEvent::USER_SELF_REGISTERED->description();
         });
 
         // CLI-Effekte für Artisan-Commands. Macht zwei Dinge an jedem

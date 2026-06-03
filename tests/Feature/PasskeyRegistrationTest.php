@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Services\WebAuthn\Contracts\PasskeyRegistrationContract;
@@ -11,7 +12,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Mockery;
 use Mockery\MockInterface;
-use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
 

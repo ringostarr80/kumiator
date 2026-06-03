@@ -6,11 +6,11 @@ namespace Tests\Feature\ActivityLog;
 
 use App\Livewire\Admin\ActivityLogTable;
 use App\Livewire\Profile\PasskeyManagerForm;
+use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
-use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 

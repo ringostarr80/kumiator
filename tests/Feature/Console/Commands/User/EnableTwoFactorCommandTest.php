@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Console\Commands\User;
 
+use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\PendingCommand;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use PragmaRX\Google2FA\Google2FA;
-use Spatie\Activitylog\Models\Activity;
 use Tests\Support\FixedSecretTwoFactorProvider;
 use Tests\TestCase;
 

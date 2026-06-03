@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\ActivityLog;
 
 use App\Listeners\LogPermissionChangeListener;
+use App\Models\Activity;
 use App\Models\User;
 use App\Services\Permission\PermissionSeederContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -13,7 +14,6 @@ use Illuminate\Support\Facades\Log;
 use Monolog\Handler\TestHandler;
 use Monolog\Level;
 use Monolog\Logger as MonologLogger;
-use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Events\PermissionAttachedEvent;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;

@@ -7,6 +7,7 @@ namespace Tests\Feature\ActivityLog;
 use App\Actions\Jetstream\DeleteUser;
 use App\Livewire\Profile\ApiTokenManager;
 use App\Livewire\Profile\LogoutOtherBrowserSessionsForm;
+use App\Models\Activity;
 use App\Models\User;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\Auth\OtherDeviceLogoutContext;
@@ -30,7 +31,6 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Events\PasswordUpdatedViaController;
 use Livewire\Livewire;
-use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 /**

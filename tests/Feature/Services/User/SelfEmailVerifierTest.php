@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Services\User;
 
+use App\Models\Activity;
 use App\Models\User;
 use App\Services\User\Contracts\SelfEmailVerifierContract;
 use App\Services\User\Exceptions\SelfEmailVerificationFailedException;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
-use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 /**

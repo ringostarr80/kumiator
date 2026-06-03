@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\ActivityLog;
 
+use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
-use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 /**

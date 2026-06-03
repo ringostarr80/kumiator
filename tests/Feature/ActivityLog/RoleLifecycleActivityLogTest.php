@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\ActivityLog;
 
+use App\Models\Activity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithConsoleEvents;
 use Illuminate\Testing\PendingCommand;
-use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 

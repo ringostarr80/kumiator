@@ -150,9 +150,6 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
      * ausgelöst wurde. Der Auslöse-Kanal wird über das `cli_actor`-Property
      * (CLI) bzw. einen nachgelagerten `Activity::saving`-Hook
      * (Self-Registration → `user_self_registered`) gekennzeichnet.
-     *
-     * Description wird hier ebenfalls gesetzt — Hook setzt event+description
-     * atomar, damit beide Felder garantiert zueinander passen.
      */
     public static function applyEventLabelToActivity(ActivityModel $activity): void
     {
@@ -179,7 +176,6 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
         }
 
         $activity->event = $mapped->value;
-        $activity->description = $mapped->description();
     }
 
     /**

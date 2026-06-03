@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\ActivityLog;
 
+use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Jetstream\Http\Livewire\TwoFactorAuthenticationForm;
 use Livewire\Livewire;
-use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 /**

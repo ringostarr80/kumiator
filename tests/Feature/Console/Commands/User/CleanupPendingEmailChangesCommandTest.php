@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Console\Commands\User;
 
+use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Testing\PendingCommand;
-use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 final class CleanupPendingEmailChangesCommandTest extends TestCase

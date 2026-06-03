@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\ActivityLog;
 
 use App\Listeners\LogRoleChangeListener;
+use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Log\Logger;
@@ -12,7 +13,6 @@ use Illuminate\Support\Facades\Log;
 use Monolog\Handler\TestHandler;
 use Monolog\Level;
 use Monolog\Logger as MonologLogger;
-use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Events\RoleAttachedEvent;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;

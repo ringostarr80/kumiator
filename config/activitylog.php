@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Models\Activity;
 use Spatie\Activitylog\Actions\CleanActivityLogAction;
 use Spatie\Activitylog\Actions\LogActivityAction;
-use Spatie\Activitylog\Models\Activity;
 
 /*
  * Konfiguration für spatie/laravel-activitylog.
@@ -34,13 +34,13 @@ use Spatie\Activitylog\Models\Activity;
  * Catch-all für alle übrigen Kanäle (greift im `forensic`-Kanal nicht mehr,
  * weil der kürzere Lauf dort längst aufgeräumt hat).
  *
- * **Activity-Model (bewusst Vendor-Klasse)**
- * `activity_model` zeigt absichtlich auf `Spatie\Activitylog\Models\Activity`,
- * NICHT auf `App\Models\Activity`. Der App-eigene Wrapper ist heute leer und
- * existiert nur als Architektur-Anker für Lese-Zugriffe (siehe PHPDoc dort).
- * Sobald der Wrapper eigene Domain-Logik trägt, ist hier auf
- * `App\Models\Activity::class` umzustellen — und zwar im selben PR wie die
- * Logik-Erweiterung, damit Schreib- und Lese-Pfad symmetrisch bleiben.
+ * **Activity-Model (`App\Models\Activity`)**
+ * `activity_model` zeigt auf den App-eigenen Wrapper, damit Schreib- und
+ * Lese-Pfad symmetrisch über dieselbe Klasse laufen. Der Wrapper trägt
+ * eigene Domain-Logik: die `description`-Spalte wurde entfernt und wird zur
+ * Lesezeit aus dem `event`-Code abgeleitet (siehe PHPDoc dort). Modell-Events
+ * sind klassengebunden — die `Activity::saving`-Hooks im AppServiceProvider
+ * müssen daher ebenfalls auf `App\Models\Activity` registriert sein.
  */
 
 return [

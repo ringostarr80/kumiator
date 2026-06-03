@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Tests\Feature\ActivityLog;
 
 use App\Actions\Fortify\CreateNewUser;
+use App\Models\Activity;
 use App\Models\User;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
 use App\Services\Auth\SelfRegistrationContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Activitylog\Facades\Activity as ActivityFacade;
-use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 

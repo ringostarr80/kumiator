@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Services\User;
 
+use App\Models\Activity;
 use App\Models\User;
 use App\Notifications\EmailChangeRequestedNotification;
 use App\Notifications\VerifyEmailChangeNotification;
@@ -17,7 +18,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
-use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 /**

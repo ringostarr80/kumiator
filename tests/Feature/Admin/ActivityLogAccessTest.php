@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\ActivityEvent;
 use App\Livewire\Admin\ActivityLogTable;
+use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -13,7 +15,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Activitylog\Facades\Activity as ActivityFacade;
-use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 final class ActivityLogAccessTest extends TestCase
@@ -149,6 +150,46 @@ final class ActivityLogAccessTest extends TestCase
             ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
             ->assertOk()
             ->assertSee($activity->description);
+    }
+
+    /**
+     * Die Beschreibung wird read-time aus dem `event`-Code aufgelöst: bei einem
+     * bekannten Code zeigt das UI die (aktuelle, lokalisierte) Enum-Beschreibung.
+     * Der an `log()` übergebene String wird nicht persistiert und nie gezeigt.
+     */
+    public function testRenderedDescriptionIsResolvedFromEventCode(): void
+    {
+        $admin = $this->makeAuditor();
+
+        ActivityFacade::useLog('auth')
+            ->event(ActivityEvent::LOGIN_FAILED->value)
+            ->log('VERALTETE EINGEFRORENE BESCHREIBUNG');
+
+        Livewire::actingAs($admin)
+            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->assertOk()
+            ->assertSee(ActivityEvent::LOGIN_FAILED->description())
+            ->assertDontSee('VERALTETE EINGEFRORENE BESCHREIBUNG');
+    }
+
+    /**
+     * Gegenstück: für einen zurückgezogenen Event-Code ohne Enum-Case fällt die
+     * Anzeige auf den rohen `event`-Code zurück — die `description`-Spalte gibt es
+     * nicht mehr. Der `log()`-String wird nicht persistiert und nie gezeigt.
+     */
+    public function testRenderedDescriptionFallsBackToRawEventCodeForUnknownEvent(): void
+    {
+        $admin = $this->makeAuditor();
+
+        ActivityFacade::useLog('auth')
+            ->event('retired_event_code')
+            ->log('Nicht gespeicherter Text');
+
+        Livewire::actingAs($admin)
+            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->assertOk()
+            ->assertSee('retired_event_code')
+            ->assertDontSee('Nicht gespeicherter Text');
     }
 
     public function testRenderedTableShowsCauserAndSubjectNamesInsteadOfFqcn(): void
@@ -487,23 +528,23 @@ final class ActivityLogAccessTest extends TestCase
         $admin = $this->makeAuditor();
 
         $this->travelTo(Carbon::parse('2026-01-01 10:00:00'), function (): void {
-            ActivityFacade::useLog('sort')->event('demo')->log('Sortier-Marker-Alt');
+            ActivityFacade::useLog('sort')->event('sort_alt')->log('');
         });
         $this->travelTo(Carbon::parse('2026-01-02 10:00:00'), function (): void {
-            ActivityFacade::useLog('sort')->event('demo')->log('Sortier-Marker-Neu');
+            ActivityFacade::useLog('sort')->event('sort_neu')->log('');
         });
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
         $component->assertOk();
-        $component->assertSee('Sortier-Marker-Alt');
-        $component->assertSee('Sortier-Marker-Neu');
+        $component->assertSee('sort_alt');
+        $component->assertSee('sort_neu');
 
         // Default desc: neuester Eintrag steht im DOM vor dem ältesten.
         $component->assertSet('sortDirection', 'desc');
         $descHtml = $component->html();
         $this->assertLessThan(
-            strpos($descHtml, 'Sortier-Marker-Alt'),
-            strpos($descHtml, 'Sortier-Marker-Neu'),
+            strpos($descHtml, 'sort_alt'),
+            strpos($descHtml, 'sort_neu'),
             'Bei desc muss der neueste Eintrag oberhalb des ältesten stehen.',
         );
 
@@ -512,8 +553,8 @@ final class ActivityLogAccessTest extends TestCase
         $component->assertSet('sortDirection', 'asc');
         $ascHtml = $component->html();
         $this->assertLessThan(
-            strpos($ascHtml, 'Sortier-Marker-Neu'),
-            strpos($ascHtml, 'Sortier-Marker-Alt'),
+            strpos($ascHtml, 'sort_neu'),
+            strpos($ascHtml, 'sort_alt'),
             'Bei asc muss der älteste Eintrag oberhalb des neuesten stehen.',
         );
 
@@ -528,28 +569,33 @@ final class ActivityLogAccessTest extends TestCase
     {
         $admin = $this->makeAuditor();
 
-        ActivityFacade::useLog('auth')->event('demo')->log('Eintrag im Auth-Kanal');
-        ActivityFacade::useLog('user')->event('demo')->log('Eintrag im User-Kanal');
+        ActivityFacade::useLog('auth')->event('marker_auth')->log('');
+        ActivityFacade::useLog('user')->event('marker_user')->log('');
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
         $component->set('filterChannel', 'auth');
 
-        $component->assertSee('Eintrag im Auth-Kanal');
-        $component->assertDontSee('Eintrag im User-Kanal');
+        $component->assertSee('marker_auth');
+        $component->assertDontSee('marker_user');
     }
 
     public function testFilterByEventLimitsResults(): void
     {
         $admin = $this->makeAuditor();
 
-        ActivityFacade::useLog('auth')->event('login_failed')->log('Fehlgeschlagener Login');
-        ActivityFacade::useLog('auth')->event('logout')->log('Reguläre Abmeldung');
+        // Bewusst Nicht-Enum-Codes: die Beschreibung wird read-time aus dem
+        // event-Code abgeleitet und fällt für unbekannte Codes auf den rohen
+        // Code zurück — so bleibt der Marker eindeutig der Zeile zuordenbar
+        // (Enum-Codes zeigten die Beschreibung, die zugleich im Event-Filter-
+        // Dropdown steht).
+        ActivityFacade::useLog('auth')->event('marker_event_a')->log('');
+        ActivityFacade::useLog('auth')->event('marker_event_b')->log('');
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
-        $component->set('filterEvent', 'login_failed');
+        $component->set('filterEvent', 'marker_event_a');
 
-        $component->assertSee('Fehlgeschlagener Login');
-        $component->assertDontSee('Reguläre Abmeldung');
+        $component->assertSee('marker_event_a');
+        $component->assertDontSee('marker_event_b');
     }
 
     /**
@@ -562,22 +608,22 @@ final class ActivityLogAccessTest extends TestCase
         $admin = $this->makeAuditor();
 
         $this->travelTo(Carbon::parse('2026-01-15 09:00:00'), function (): void {
-            ActivityFacade::useLog('test')->event('demo')->log('Eintrag Januar');
+            ActivityFacade::useLog('test')->event('range_jan')->log('');
         });
         $this->travelTo(Carbon::parse('2026-03-15 09:00:00'), function (): void {
-            ActivityFacade::useLog('test')->event('demo')->log('Eintrag Maerz');
+            ActivityFacade::useLog('test')->event('range_mar')->log('');
         });
         $this->travelTo(Carbon::parse('2026-05-15 09:00:00'), function (): void {
-            ActivityFacade::useLog('test')->event('demo')->log('Eintrag Mai');
+            ActivityFacade::useLog('test')->event('range_mai')->log('');
         });
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
         $component->set('filterDateFrom', '2026-02-01');
         $component->set('filterDateTo', '2026-04-01');
 
-        $component->assertSee('Eintrag Maerz');
-        $component->assertDontSee('Eintrag Januar');
-        $component->assertDontSee('Eintrag Mai');
+        $component->assertSee('range_mar');
+        $component->assertDontSee('range_jan');
+        $component->assertDontSee('range_mai');
     }
 
     /**
@@ -598,8 +644,8 @@ final class ActivityLogAccessTest extends TestCase
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
         $component->set('filterCauser', 'Gesuchter');
 
-        $component->assertSee('Tat des Gesuchten');
-        $component->assertDontSee('Tat des Anderen');
+        $component->assertSee('Gesuchter Verursacher');
+        $component->assertDontSee('Irrelevanter Verursacher');
     }
 
     /**
@@ -619,8 +665,8 @@ final class ActivityLogAccessTest extends TestCase
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
         $component->set('filterSubject', 'Gesuchtes');
 
-        $component->assertSee('Vorgang am Gesuchten');
-        $component->assertDontSee('Vorgang am Anderen');
+        $component->assertSee('Gesuchtes Subjekt');
+        $component->assertDontSee('Irrelevantes Subjekt');
     }
 
     /**
