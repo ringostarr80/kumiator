@@ -48,9 +48,6 @@ use Spatie\Permission\Models\Role;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         $this->app->bind(UserApproverContract::class, UserApprover::class);
@@ -65,32 +62,16 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ProfilePhotoOptimizerContract::class, ProfilePhotoOptimizer::class);
         $this->app->singleton(ConsoleActorContextContract::class, ConsoleActorContext::class);
 
-        // Cascade-Detach beim Löschen einer Rolle audit-sichtbar machen.
-        // Hintergrund: Der FK `model_has_roles.role_id` ist mit
-        // `cascadeOnDelete()` definiert, zusätzlich räumt
-        // `HasPermissions::bootHasPermissions()` (Spatie-Trait) während
-        // des Role-Boots in einem eigenen `static::deleting`-Hook per
-        // raw `$role->users()->detach()` ohne `RoleDetachedEvent` auf.
-        // Beides würde den User-Verlust still passieren lassen.
-        //
-        // Wir registrieren den Aufräum-Listener daher hier in `register()`
-        // (vor jedem Model-Boot), damit er im Dispatcher VOR Spatie's
-        // Trait-Hook landet — `Event::listen(string)` löst die Role-
-        // Klasse nicht aus, der Trait-Hook wird erst beim ersten Boot
-        // nachgereiht. Der Listener iteriert die zugewiesenen User und
-        // ruft `removeRole($role)` auf, was wiederum `RoleDetachedEvent`
-        // feuert; der bestehende `LogRoleChangeListener` schreibt pro
-        // User einen `role_detached`-Eintrag. Spatie's Trait-Hook und
-        // die DB-Cascade greifen anschließend nur noch ins Leere.
+        // Beim Löschen einer Rolle räumt Spatie die User-Zuordnungen still ab
+        // (ohne Event) — der Entzug würde sonst nicht im Activity-Log landen.
+        // Unser Listener wird darum schon in `register()` eingehängt, damit er
+        // vor Spatie's eigenem Hook (gesetzt beim Model-Boot) läuft und loggt.
         Event::listen(
             'eloquent.deleting: ' . Role::class,
             [RoleLifecycleObserver::class, 'detachUsersBeforeCascadeDelete'],
         );
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
         // Stabile Aliase für polymorphe Beziehungen — primär für den Activity-Log,
@@ -101,62 +82,47 @@ class AppServiceProvider extends ServiceProvider
         // sobald ein Model mit polymorpher Beziehung NICHT in der Map steht. Das ist
         // beabsichtigt: bei einem neuen Loggable-Model fliegt der Fehler sofort beim
         // ersten Schreibversuch, statt jahrelang stille FQCN in die DB zu schreiben.
-        // Der Architektur-Test `tests/Feature/ActivityLog/MorphMapTest.php` schützt
-        // zusätzlich gegen vergessene Einträge.
         Relation::enforceMorphMap([
             'user' => User::class,
             'passkey' => PasskeyCredential::class,
-            // `Spatie\Permission\Models\Role` ist ein Vendor-Model, taucht
-            // aber als `subject_type` im Activity-Log auf (siehe
-            // `RoleLifecycleObserver`). Ohne Alias würde `enforceMorphMap`
-            // jeden Schreibversuch mit `ClassMorphViolationException` brechen.
-            // Vendor-Models in der Map sind selten, hier aber zwingend.
+            // Vendor-Model, wird aber als `subject_type` geloggt (Rollen-Lifecycle)
+            // und braucht darum ebenfalls einen Alias.
             'role' => Role::class,
         ]);
 
         Gate::policy(PasskeyCredential::class, PasskeyCredentialPolicy::class);
 
-        // Vor dem Persistieren eines Passkey-Activity-Log-Eintrags den
-        // generischen Eloquent-Event-Namen (created/updated/deleted) auf
-        // einen fachlichen Code umlabeln (passkey_registered/_renamed/
-        // _removed). Spatie's `LogsActivity`-Trait dieser Version bietet
-        // keinen `tapActivity`-Hook; ein `saving`-Listener auf dem Activity-
-        // Model ist der einzige stabile Punkt zwischen Trait-Setup und Insert.
-        // Die Mapping-Logik bleibt im Domain-Model (PasskeyCredential), hier
-        // hängt nur der Listener dran — `boot()` läuft genau einmal pro
-        // Application-Lifetime, daher keine Doppel-Registrierung.
+        // Vor dem Persistieren eines Passkey-Activity-Log-Eintrags den generischen
+        // Eloquent-Event-Namen (created/updated/deleted) auf einen fachlichen Code
+        // umlabeln. Spatie's `LogsActivity`-Trait schreibt den Eintrag automatisch
+        // über die Eloquent-Lifecycle-Events, ohne Callback zum Anpassen des
+        // `event`-Felds; ein `saving`-Listener auf dem Activity-Model ist daher der
+        // einzige stabile Punkt zwischen Trait-Setup und Insert. Die Mapping-Logik
+        // selbst bleibt im Domain-Model (PasskeyCredential), hier hängt nur der
+        // Listener dran.
         Activity::saving(static fn (Activity $activity) => PasskeyCredential::applyEventLabelToActivity($activity));
 
-        // Analog zum Passkey-Hook für das User-Model: generische Eloquent-
-        // Lifecycle-Events (created/updated/deleted/restored) auf fachliche
-        // Codes (user_created/user_approved/user_renamed/user_deleted/
-        // user_restored) umlabeln. Channel-agnostisch — derselbe Code
-        // unabhängig davon, ob CLI, Web oder Seeder den Vorgang ausgelöst
-        // hat. Der Auslöse-Kanal wird über separate Properties markiert
-        // (`cli_actor`) bzw. einen nachgelagerten Hook (Self-Registration
-        // überschreibt `user_created` → `user_self_registered`).
+        // Analog zum Passkey-Hook, für das User-Model: generische Eloquent-Lifecycle-
+        // Events (created/updated/deleted/restored) auf fachliche Codes umlabeln.
+        // Channel-agnostisch — derselbe Code, egal ob CLI, Web oder Seeder den Vorgang
+        // ausgelöst hat; der Auslöse-Kanal wird separat über Properties und
+        // nachgelagerte Hooks markiert.
         Activity::saving(static fn (Activity $activity) => User::applyEventLabelToActivity($activity));
 
-        // User-Self-Registration: der Web-Pfad (`RegisteredUserController` →
-        // `CreateNewUser::create()`) erzeugt durch das `LogsActivity`-Trait
-        // einen generischen `user.created`-Eintrag, der vom Hook darüber
-        // bereits auf `user_created` aufgewertet wurde. Ohne diesen zweiten
-        // Hook wäre der Self-Reg-Pfad nicht vom Admin-Anlage-Pfad
-        // (`user:create`) zu unterscheiden — fachlich aber zwei
-        // grundverschiedene Vorgänge (Public-Endpoint vs. interner Admin-
-        // Akt). `CreateNewUser` setzt vor `User::create()` einen
-        // request-scoped Marker, der hier ausgewertet wird; ist er aktiv,
-        // wird `event` auf `user_self_registered` umgelabelt. Ohne Marker
-        // bleibt der Eintrag bei `user_created` (CLI/Tests/Seeder).
+        // User-Self-Registration vs. Admin/CLI-Anlage unterscheidbar machen: beide
+        // erzeugen denselben `user_created`-Eintrag (vom Hook darüber aus dem rohen
+        // `created` aufgewertet), sind fachlich aber grundverschieden — Public-Endpoint
+        // vs. interner Admin-Akt. Nur der Web-Self-Reg-Pfad setzt vor `User::create()`
+        // einen request-scoped Marker (`SelfRegistrationContext`); fehlt er
+        // (CLI/Tests/Seeder), bleibt der Eintrag `user_created`.
         //
-        // Reihenfolge ist wichtig: dieser Hook muss NACH dem User-Mapper
-        // laufen, weil er auf den bereits aufgewerteten Code `user_created`
-        // matched, nicht auf den rohen Eloquent-`created`.
+        // Reihenfolge ist wichtig: dieser Hook muss NACH dem User-Mapper laufen, weil
+        // er auf den bereits aufgewerteten Code `user_created` matched, nicht auf den
+        // rohen Eloquent-`created`.
         //
-        // Warum nicht im `User`-Model: `ModelsDependOnlyOnModelsTest`
-        // verbietet Models den Zugriff auf `App\Services`. Die Remap-Logik
-        // braucht aber den Marker-Zustand aus dem Service-Layer, daher
-        // gehört sie hier ins Bootstrapping.
+        // Warum hier statt im `User`-Model: unsere Architektur-Regel verbietet Models
+        // den Zugriff auf `App\Services`, die Remap braucht aber den Marker-Zustand aus
+        // dem Service-Layer — also gehört sie ins Bootstrapping.
         Activity::saving(static function (Activity $activity): void {
             if ($activity->log_name !== ActivityChannel::USER->value) {
                 return;
@@ -173,38 +139,21 @@ class AppServiceProvider extends ServiceProvider
             $activity->event = ActivityEvent::USER_SELF_REGISTERED->value;
         });
 
-        // CLI-Effekte für Artisan-Commands. Macht zwei Dinge an jedem
-        // während einer Command-Ausführung entstehenden Eintrag:
-        // (a) hängt das `cli_actor`-Property an (OS-User/Hostname/Command)
-        //     — der eigentliche CLI-Marker im Audit-Log;
-        // (b) anonymisiert den Causer (`causer_id`/`causer_type` → null),
-        //     damit Listener-Pfade wie `LogTwoFactorActivityListener` im
-        //     CLI nicht den User als handelnden Account führen — der
-        //     Admin handelt im CLI, nicht der User selbst.
-        // Das fachliche Event-Labeling ist bewusst NICHT Aufgabe dieses
-        // Hooks — Domain-Models labeln ihre Lifecycle-Events selbst auf
-        // channel-agnostische Codes (siehe `User::applyEventLabelToActivity`
-        // darüber).
+        // CLI-Effekte (cli_actor-Property + Causer-Anonymisierung) an jeden
+        // Activity-Log-Eintrag hängen, der während eines Artisan-Commands
+        // entsteht. Was genau passiert und warum, steht im Klassen-PHPDoc von
+        // ConsoleActorContext.
         Activity::saving(static fn (Activity $activity) => ConsoleActorContext::applyToActivity($activity));
 
-        // Rollen-Lifecycle (Anlage/Löschung) ins Activity-Log spiegeln.
-        // `Spatie\Permission\Models\Role` ist ein Vendor-Model ohne
-        // `LogsActivity`-Trait; ein Observer hängt sich extern an die
-        // Eloquent-Lifecycle-Events und deckt damit alle Aufruf-Quellen
-        // (CLI, Seeder, künftiges Admin-UI) ab. Ein hier konfiguriertes
-        // Custom-Role-Wrapper-Model wäre der einzige Grund, statt der
-        // konkreten Vendor-Klasse `config('permission.models.role')`
-        // aufzulösen — das Projekt nutzt das Default-Model, daher direkt.
+        // Rollen-Lifecycle (Anlage/Löschung) ins Activity-Log spiegeln; warum
+        // per Observer statt Trait, steht im Klassen-PHPDoc von
+        // RoleLifecycleObserver.
         Role::observe(RoleLifecycleObserver::class);
 
-        // Heartbeat-Pings für DSGVO-getriebene Cleanup-Schedules (siehe
-        // `routes/console.php`). Healthchecks.io-Auto-Provisioning erwartet
-        // pro Job einen distinkten Slug, alle teilen sich denselben Ping-Key
-        // (config `healthchecks.ping_key`). `before`/`onSuccess`/`onFailure`
-        // mappen auf die drei Healthchecks.io-Phasen (start/success/fail);
-        // der Pinger schluckt HTTP-Fehler, damit ein Healthchecks.io-Ausfall
-        // den Cron-Job nicht kippt. Ohne konfigurierten Ping-Key sind die
-        // Pings stille No-Ops (lokale Entwicklung, Tests).
+        // Fluent-Macro, damit Schedule-Definitionen (routes/console.php) einen Job
+        // per `->withHealthcheck($slug)` an Healthchecks.io-Monitoring hängen.
+        // Ping-Mechanik (Auto-Provisioning, geschluckte Fehler, No-Op ohne Ping-Key)
+        // steckt im ScheduleHealthcheckPinger.
         ScheduledEvent::macro('withHealthcheck', function (string $slug): ScheduledEvent {
             $pinger = app(ScheduleHealthcheckPinger::class);
 
@@ -214,23 +163,20 @@ class AppServiceProvider extends ServiceProvider
                 ->onFailure(static fn () => $pinger->ping($slug, HealthcheckPingPhase::Failure));
         });
 
-        // Passkey authentication options (guests): IP-based, 20 requests per minute.
-        // Limits e-mail enumeration via the allowCredentials field without impacting
-        // legitimate UX (a real user needs at most one options call per login attempt).
+        // Bremst E-Mail-Enumeration über das `allowCredentials`-Feld, ohne legitime
+        // UX zu treffen — ein echter Login braucht höchstens einen Options-Call.
         RateLimiter::for(
             'passkey-authenticate-options',
             static fn (Request $request): Limit => Limit::perMinute(20)->by($request->ip()),
         );
 
-        // Passkey authentication (guests): IP-based, 5 attempts per minute.
-        // Protects against credential enumeration and brute-force via the public endpoint.
+        // Begrenzt Credential-Enumeration und Brute-Force über den öffentlichen
+        // Authentifizierungs-Endpoint.
         RateLimiter::for(
             'passkey-authenticate',
             static fn (Request $request): Limit => Limit::perMinute(5)->by($request->ip()),
         );
 
-        // Passkey registration (authenticated users): user-based, 5 attempts per minute.
-        // Falls back to IP when no authenticated user is available.
         RateLimiter::for('passkey-register', static function (Request $request): Limit {
             $user = $request->user();
 
@@ -239,11 +185,10 @@ class AppServiceProvider extends ServiceProvider
                 : Limit::perMinute(5)->by($request->ip());
         });
 
-        // Deferred-Email-Change confirm/cancel endpoints (guests, IP-basiert):
-        // schützt gegen Token-Probieren auf den 64-Hex-Tokens. 10/min ist
-        // großzügig genug für legitime Mehrfach-Klicks (z. B. Antiviren-Prefetch
-        // + User-Klick) und eng genug, um Brute-Force-Versuche praktisch wertlos
-        // zu machen — der Suchraum ist ohnehin 2^256.
+        // Öffentliche Confirm/Cancel-Endpoints (Gäste): deckelt Endpoint-Missbrauch.
+        // Token-Raten ist schon durch die 256-Bit-Entropie aussichtslos — das Limit
+        // schützt also gegen Last/Hämmern, nicht gegen Token-Brute-Force. 10/min ist
+        // großzügig für legitime Mehrfach-Klicks (z. B. Antiviren-Prefetch + User-Klick).
         RateLimiter::for(
             'email-change-link',
             static fn (Request $request): Limit => Limit::perMinute(10)->by($request->ip()),

@@ -11,8 +11,7 @@ namespace App\Services\Console\Contracts;
  * (OS-User + Hostname + Command-Signatur) bereit, damit der zentrale
  * `Activity::saving`-Hook im `AppServiceProvider` jedem während der
  * Command-Ausführung entstehenden Activity-Log-Eintrag das `cli_actor`-
- * Property anhängen und ausgewählte generische Eloquent-Events (z. B.
- * `user.created` aus `user:create`) auf fachliche Codes umlabeln kann.
+ * Property anhängen kann.
  *
  * Trennung in ein Interface, weil der CLI-Listener (`CaptureConsoleActorListener`)
  * den Marker via DI aktiviert/cleart und die Architektur-Regel für Listener

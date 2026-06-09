@@ -78,10 +78,9 @@ final class PasskeyCredential extends Model
     }
 
     /**
-     * Activity-Log-Konfiguration für die automatischen Eloquent-Lifecycle-Events
-     * (created/updated/deleted). Geloggt werden ausschließlich `name` und
-     * `aaguid` — Schlüsselmaterial (`credential_id`, `credential_public_key`,
-     * `counter`, `transports`, `backup_eligible`, `backup_state`) bleibt ohne
+     * Gilt für die automatischen Eloquent-Lifecycle-Events (created/updated/deleted):
+     * geloggt werden ausschließlich `name` und `aaguid` — Schlüsselmaterial
+     * (`credential_public_key`, `credential_id`, `counter`, …) bleibt ohne
      * Ausnahme in der `passkey_credentials`-Tabelle.
      *
      * `last_used_at` ist bewusst NICHT in `logOnly`: Login-Updates bestehen
@@ -105,16 +104,14 @@ final class PasskeyCredential extends Model
 
     /**
      * Schreibt einen dedizierten Activity-Log-Eintrag für eine erfolgreiche
-     * Passkey-Anmeldung. Aufzurufen aus `PasskeyAuthenticationService::verify()`,
-     * unmittelbar nachdem `PasskeyCredentialRepository::updateAfterAuthentication()`
-     * den Counter & `last_used_at` persistiert hat.
+     * Passkey-Anmeldung. Auf dem erfolgreichen Login-Pfad aufzurufen, nachdem
+     * die Signatur des Authenticators verifiziert wurde.
      *
      * Warum hier explizit (statt über den `LogsActivity`-Trait):
      *  - `event` wird auf `passkey_login_succeeded` gesetzt — der Eloquent-
      *    `updated` ist ein Implementierungsdetail, fachlich passiert ein Login.
      *    Der spezifische Code erlaubt scharfes Filtern/Reporting.
-     *  - `description` ist übersetzt — die Activity-Log-UI zeigt damit
-     *    "Passkey-Anmeldung erfolgreich" statt eines generischen "updated".
+     *  - `description` ist übersetzt — die UI zeigt Klartext statt "updated".
      *  - `causedBy($this->user)` umgeht das Pre-Auth-Causer-Problem: zum
      *    Zeitpunkt der Verifikation ist `Auth::login()` noch nicht gelaufen,
      *    `auth()->user()` wäre `null`. Der Owner der Credential ist der
@@ -136,13 +133,11 @@ final class PasskeyCredential extends Model
     }
 
     /**
-     * Schreibt einen Audit-Eintrag für einen fehlgeschlagenen Passkey-
-     * Anmelde-Versuch. Symmetrie zum `login_failed`-Pfad
-     * ({@see \App\Listeners\LogAuthenticationActivityListener::handleFailed}):
-     * unter `log_name=forensic` (anonyme Dritt-Daten → verkürzte Retention,
-     * Art. 5(1)(e) DSGVO; siehe {@see ActivityChannel::FORENSIC}), ohne Causer
-     * und ohne Subject (selbst bei gefundener Credential ist „Owner = Causer"
-     * forensisch falsch — ein Angreifer könnte die Credential-ID gestohlen haben).
+     * Wie der Passwort-`login_failed`-Pfad: unter `log_name=forensic`
+     * (anonyme Dritt-Daten → verkürzte Retention, Art. 5(1)(e) DSGVO; siehe
+     * {@see ActivityChannel::FORENSIC}), ohne Causer und ohne Subject (selbst
+     * bei gefundener Credential ist „Owner = Causer" forensisch falsch — ein
+     * Angreifer könnte die Credential-ID gestohlen haben).
      *
      * Datenminimierung (DSGVO Art. 5 Abs. 1 lit. c): Klartext-`credential_id`
      * landet niemals im Log; stattdessen ein SHA-256-Hash über die vom
@@ -153,14 +148,12 @@ final class PasskeyCredential extends Model
      *
      * Statisch, weil zum Failure-Zeitpunkt typischerweise gar keine
      * Passkey-Instanz existiert (Credential nicht gefunden / Verification-
-     * Exception vor Resolve). Aufrufer: {@see \App\Http\Controllers\Auth\PasskeyAuthenticationController}.
+     * Exception vor Resolve).
      *
-     * Resilient gegen Activity-Log-Ausfälle: ein Schreibfehler darf den
-     * Auth-Pfad des Aufrufers nicht beeinflussen — ein kaputter Audit-Pfad
-     * blockiert sonst die Auth-Antwort. Wir reporten still und kehren zurück.
+     * Resilient gegen Activity-Log-Ausfälle: ein Schreibfehler wird still
+     * gemeldet, statt den Auth-Pfad des Aufrufers zu unterbrechen.
      *
-     * @param string $reason Stabiler Maschinen-Code des Fehlerpfads
-     *                       (`verification_failed`, `internal_error`).
+     * @param string $reason Stabiler Maschinen-Code des Fehlerpfads (`verification_failed`, `internal_error`).
      * @param string $rawBody Roh-Body des Authenticate-Requests.
      */
     public static function recordFailedLoginActivity(string $reason, string $rawBody): void
@@ -184,29 +177,24 @@ final class PasskeyCredential extends Model
     }
 
     /**
-     * Schreibt einen Audit-Eintrag für eine fehlgeschlagene Passkey-
-     * Registrierung. Symmetrie zum erfolgreichen Lifecycle-Pfad
-     * ({@see self::applyEventLabelToActivity()} mappt `created` → `passkey_registered`):
+     * Gegenstück zum erfolgreichen Lifecycle-Pfad (`created` → `passkey_registered`):
      * gleicher Channel `passkey`, Causer ist der bereits eingeloggte User
      * (Registrier-Endpoint ist auth-pflichtig — `auth:sanctum + verified + approved`).
      *
      * Bewusst KEIN `performedOn`: der Vorgang ist genau das Scheitern, eine
      * Credential zu erzeugen — es existiert kein Subject. Ebenfalls bewusst
-     * KEIN `credential_id_hash` in den Properties: anders als bei
-     * {@see self::recordFailedLoginActivity()} (Korrelation wiederholter Versuche
-     * gegen dieselbe Credential-ID, Indikator für Klon-Authentifikatoren) ist
-     * bei der Registration jede Credential-ID frisch — eine Korrelation über
-     * Hashes brächte keinen forensischen Mehrwert.
+     * KEIN `credential_id_hash`: anders als beim Login-Failure-Pfad (Korrelation
+     * wiederholter Versuche gegen dieselbe Credential-ID, Indikator für Klon-
+     * Authentifikatoren) ist bei der Registration jede Credential-ID frisch —
+     * eine Korrelation über Hashes brächte keinen forensischen Mehrwert.
      *
      * Statisch, weil zum Failure-Zeitpunkt keine Passkey-Instanz existiert
      * (Verification-Exception VOR Persistenz).
      *
-     * Resilient gegen Activity-Log-Ausfälle: ein Schreibfehler darf den
-     * HTTP-Response-Pfad des Aufrufers nicht beeinflussen — analog zu
-     * {@see self::recordFailedLoginActivity()}.
+     * Resilient gegen Activity-Log-Ausfälle: ein Schreibfehler wird still
+     * gemeldet, statt den HTTP-Response-Pfad des Aufrufers zu unterbrechen.
      *
-     * @param string $reason Stabiler Maschinen-Code des Fehlerpfads
-     *                       (`verification_failed`, `internal_error`).
+     * @param string $reason Stabiler Maschinen-Code des Fehlerpfads (`verification_failed`, `internal_error`).
      */
     public static function recordFailedRegistrationActivity(User $user, string $reason): void
     {
@@ -222,17 +210,13 @@ final class PasskeyCredential extends Model
     }
 
     /**
-     * Schreibt einen Audit-Eintrag für einen still abgelehnten Autorisierungs-
-     * Versuch auf eine Passkey-Credential (`Gate::authorize` / `$this->authorize`
-     * warf `AuthorizationException`). Ohne diesen Eintrag wäre der HTTP-403
-     * unsichtbar im Log — ein authentifizierter User probiert, eine fremde
-     * Credential umzubenennen oder zu löschen, und nichts dokumentiert es.
+     * Macht einen still abgelehnten Autorisierungs-Versuch auf eine Passkey-
+     * Credential sichtbar: ohne diesen Eintrag bliebe der HTTP-403 unsichtbar
+     * im Log — ein authentifizierter User probiert, eine fremde Credential
+     * umzubenennen oder zu löschen, und nichts dokumentiert es.
      *
      * Channel `security`: bewusst NICHT `passkey`, weil der Eintrag kein
-     * Lifecycle-Event ist, sondern eine Cross-Cutting-Auth-Verletzung. Das
-     * gleiche Event-Code-Schema (`authorization_denied`) deckt auch Nicht-
-     * Passkey-Sites ab (vgl. `ActivityLogTable::mount`) und lässt sich über
-     * `target_type` / `ability` in den Properties trennen.
+     * Lifecycle-Event ist, sondern eine Cross-Cutting-Auth-Verletzung.
      *
      * Datenminimierung (DSGVO Art. 5 Abs. 1 lit. c): die Klartext-UUID der
      * Ziel-Credential geht nicht ins Log, stattdessen ein SHA-256-Hash —
@@ -265,16 +249,14 @@ final class PasskeyCredential extends Model
 
     /**
      * Mappt das generische Eloquent-Event eines Passkey-Activity-Eintrags
-     * (created/updated/deleted) auf einen fachlichen Code
-     * (passkey_registered/passkey_renamed/passkey_removed), bevor der Eintrag
+     * (created/updated/deleted) auf einen fachlichen Code, bevor der Eintrag
      * gespeichert wird. Aufgerufen aus einem `Activity::saving`-Listener im
      * {@see \App\Providers\AppServiceProvider}.
      *
-     * Hintergrund: Der `LogsActivity`-Trait dieser Spatie-Version hat keinen
-     * `tapActivity`-Hook (anders als ältere Versionen suggerieren) — der Trait
-     * persistiert das Event direkt via `ActivityLogger::event()`. Ein globaler
-     * `saving`-Listener auf dem Activity-Model ist der einzige Weg, den
-     * Wert nach Spatie-eigenem Setup, aber vor dem Insert, anzupassen. Die
+     * Hintergrund: Der `LogsActivity`-Trait persistiert das Event direkt via
+     * `ActivityLogger::event()`. Ein globaler `Activity::saving`-Listener auf
+     * dem Activity-Model ist daher die einzige Stelle, an der sich der Wert
+     * nach Spatie-eigenem Setup, aber vor dem Insert anpassen lässt. Die
      * Mapping-Logik bleibt hier in der Domain, der Listener hängt nur dran.
      */
     public static function applyEventLabelToActivity(ActivityModel $activity): void
@@ -314,11 +296,10 @@ final class PasskeyCredential extends Model
     }
 
     /**
-     * Mappt die generischen Eloquent-Lifecycle-Event-Namen auf den fachlichen
-     * {@see ActivityEvent}. Da `aaguid` post-create unveränderlich ist, kann ein
-     * `updated` realistisch nur durch eine Namensänderung ausgelöst werden —
-     * `PASSKEY_RENAMED` ist daher die korrekte Bezeichnung. Liefert `null` für
-     * Events ohne fachliches Pendant (kein Remapping/keine Description).
+     * Mappt die Eloquent-Lifecycle-Events auf den fachlichen `ActivityEvent`.
+     * Da `aaguid` post-create unveränderlich ist, kann `updated` realistisch nur
+     * durch eine Namensänderung ausgelöst werden — daher `PASSKEY_RENAMED`.
+     * `null` für Events ohne fachliches Pendant (kein Remapping/keine Description).
      */
     private static function mapLifecycleEvent(string $eventName): ?ActivityEvent
     {
@@ -331,11 +312,10 @@ final class PasskeyCredential extends Model
     }
 
     /**
-     * Liefert einen SHA-256-Hash über die vom Browser gemeldete Credential-ID,
-     * sofern der Body als JSON parsebar ist und ein `rawId`- oder `id`-Feld
-     * enthält. Die Werte sind bereits Base64URL-codiert (WebAuthn-Norm), wir
-     * hashen die Repräsentation, nicht die Bytes — das reicht für Korrelation
-     * gleicher Versuche. Liefert `null`, wenn nichts Brauchbares extrahierbar ist.
+     * Die vom Browser gemeldeten Werte (`rawId`/`id`) sind bereits Base64URL-
+     * codiert (WebAuthn-Norm) — wir hashen die Repräsentation, nicht die
+     * dekodierten Bytes, das reicht für die Korrelation gleicher Versuche.
+     * `null`, wenn kein brauchbares Feld extrahierbar ist.
      */
     private static function hashCredentialIdFromBody(string $rawBody): ?string
     {

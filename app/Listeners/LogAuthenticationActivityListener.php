@@ -25,22 +25,9 @@ use Laravel\Fortify\Events\PasswordUpdatedViaController;
 use Spatie\Activitylog\Facades\Activity;
 
 /**
- * Schreibt Activity-Log-Einträge für Authentifizierungs-Ereignisse:
- * Anmeldung, Abmeldung, fehlgeschlagene Versuche und Lockouts.
- *
- * Symmetrie zum Passkey-Pfad: Vor Einführung dieses Listeners wurden nur
- * erfolgreiche Passkey-Anmeldungen geloggt (über
- * `PasskeyCredential::recordSuccessfulLoginActivity()`). Passwort-Logins,
- * Logouts und Fehlversuche blieben unsichtbar — das war forensisch und
- * audit-technisch eine Lücke (DSGVO Art. 32 verlangt angemessene
- * Sicherheitsmaßnahmen, dazu zählt die Nachvollziehbarkeit von
- * Authentifizierungsvorgängen).
- *
- * Doppel-Log-Vermeidung: Die Passkey-Anmeldung löst über `Auth::login()` im
- * `PasskeyAuthenticationController` ebenfalls ein `Login`-Event aus. Damit
- * dieser nicht zusätzlich als generischer Passwort-Login erscheint, setzt der
- * Controller vorher `PasskeyLoginContext::markActive()` — `handleLogin()`
- * überspringt das Logging in diesem Fall.
+ * Schreibt Activity-Log-Einträge für Authentifizierungs-Ereignisse (Anmeldung,
+ * Abmeldung, Fehlversuche, Lockouts) — symmetrisch zum Passkey-Pfad und weil
+ * DSGVO Art. 32 die Nachvollziehbarkeit von Authentifizierungsvorgängen verlangt.
  *
  * Datenminimierung (DSGVO Art. 5 Abs. 1 lit. c): Bei `Failed`/`Lockout` ist
  * kein Causer bekannt, und die eingegebene E-Mail kann zu beliebigen Dritten
@@ -59,15 +46,16 @@ use Spatie\Activitylog\Facades\Activity;
  * Kanal mit voller Frist.
  *
  * Registrierung: Event-Auto-Discovery wertet die Type-Hints der `handle*`-
- * Methoden aus — keine zusätzliche `Event::listen()`-Bindung nötig (siehe
- * Architektur-Hinweis in `LogRoleChangeListener`).
+ * Methoden aus — keine zusätzliche `Event::listen()`-Bindung nötig.
  */
 final class LogAuthenticationActivityListener
 {
     public function handleLogin(Login $event): void
     {
-        // Passkey-Logins werden bereits über
-        // `PasskeyCredential::recordSuccessfulLoginActivity()` dokumentiert.
+        // Die Passkey-Anmeldung löst über `Auth::login()` ebenfalls ein `Login`-
+        // Event aus; der Passkey-Pfad setzt davor `PasskeyLoginContext::markActive()`.
+        // Hier überspringen, damit der Passkey-Login nicht zusätzlich als
+        // generischer Passwort-Login erscheint (Doppel-Eintrag).
         if (PasskeyLoginContext::isActive()) {
             return;
         }
@@ -97,8 +85,8 @@ final class LogAuthenticationActivityListener
             return;
         }
 
-        // DSGVO-Schutz für Lösch-Pfade (Self-Delete via `DeleteUser`,
-        // zukünftige Hard-Deletes): Jetstreams `DeleteUserForm` ruft nach
+        // DSGVO-Schutz für den Self-Delete-Hard-Delete (`DeleteUser` →
+        // `UserHardDeleter`): Jetstreams `DeleteUserForm` ruft nach
         // `$deleter->delete(Auth::user()->fresh())` noch `Auth::logout()`
         // auf. Im Logout-Event landet aber die ORIGINAL `Auth::user()`-
         // Instanz — nicht die hart gelöschte Fresh-Kopie. Deren `exists`-
@@ -141,8 +129,7 @@ final class LogAuthenticationActivityListener
             $properties['email_hash'] = $emailHash;
         }
 
-        // `Failed` trägt keinen Request — IP/UA daher aus dem aktuellen
-        // HTTP-Request. In CLI-Auth-Pfaden fehlt die IP, dann bleibt es leer.
+        // `Failed` trägt keinen Request — IP/UA daher aus dem aktuellen HTTP-Request.
         $properties += $this->forensicProperties(request());
 
         Activity::useLog(ActivityChannel::FORENSIC->value)
@@ -153,8 +140,6 @@ final class LogAuthenticationActivityListener
 
     public function handlePasswordUpdated(PasswordUpdatedViaController $event): void
     {
-        // Fortify-Event: `$user` ist per PHPDoc als `App\Models\User` getypt,
-        // also immer ein Eloquent-Model — kein zusätzlicher Guard nötig.
         $user = $event->user;
 
         Activity::useLog(ActivityChannel::AUTH->value)
@@ -188,11 +173,7 @@ final class LogAuthenticationActivityListener
      *
      * KEIN `causedBy`: die Anforderung läuft als Gast auf `/forgot-password` —
      * der Anforderer ist nicht authentifiziert. Stattdessen anonyme Forensik
-     * (gekürzte IP + User-Agent) analog `handleFailed`; das Event trägt keinen
-     * Request, daher IP/UA aus dem aktuellen HTTP-Request.
-     *
-     * `$user` ist als `CanResetPassword` getypt; Spatie braucht für `performedOn`
-     * ein Eloquent-`Model` (Typ-Eingrenzung wie in `handleVerified`).
+     * (gekürzte IP + User-Agent), wie in `handleFailed`.
      */
     public function handlePasswordResetLinkSent(PasswordResetLinkSent $event): void
     {
@@ -214,12 +195,6 @@ final class LogAuthenticationActivityListener
      * — anstatt nur als generischer `user.updated` über `email_verified_at`.
      * Das Field wurde deshalb bewusst aus `User::getActivitylogOptions()`
      * entfernt; sonst entstünde derselbe Vorgang doppelt.
-     *
-     * `Verified::$user` ist per Docblock nur als `MustVerifyEmail` getypt —
-     * Spatie's Activity-Log braucht aber ein Eloquent-`Model` für
-     * `causedBy`/`performedOn`. Im Projekt ist `User` der einzige Träger
-     * dieser Schnittstelle, daher reicht der `Model`-Check zur Typ-Eingrenzung
-     * für PHPStan und als Schutz gegen einen exotischen Drittanbieter-Caller.
      */
     public function handleVerified(Verified $event): void
     {
@@ -242,8 +217,8 @@ final class LogAuthenticationActivityListener
      * Eintrag mit `terminated_session_count` und setzt davor den
      * `OtherDeviceLogoutContext`-Marker — den prüfen wir hier, um den
      * Form-Pfad nicht doppelt zu loggen. Der eigene Event-Code
-     * `other_devices_logged_out` bleibt für native Aufrufe (eigene
-     * Controller, künftige API, CLI) reserviert.
+     * `other_devices_logged_out` bleibt für native (Nicht-Form-)Aufrufe
+     * reserviert.
      */
     public function handleOtherDeviceLogout(OtherDeviceLogout $event): void
     {
@@ -286,9 +261,8 @@ final class LogAuthenticationActivityListener
 
     /**
      * Forensische Properties für anonyme Fehlversuche: gekürzte IP (Netz statt
-     * Host — DSGVO-Datenminimierung, siehe `AuditIpTruncator`) und User-Agent,
-     * jeweils nur wenn vorhanden. Ohne Request-IP (z. B. CLI-Auth) bleibt das
-     * Array leer.
+     * Host — DSGVO-Datenminimierung) und User-Agent, jeweils nur wenn vorhanden.
+     * Ohne Request-IP (z. B. CLI-Auth) bleibt das Array leer.
      *
      * @return array<string, string>
      */

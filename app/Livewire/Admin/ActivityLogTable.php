@@ -23,17 +23,12 @@ use Spatie\Activitylog\Facades\Activity as ActivityLogger;
  * Read-only Übersicht des Activity-Logs für Administratoren.
  *
  * Zugriffsschutz UND Audit sind bewusst in `mount()` gebündelt (statt über eine
- * Route-`can:`-Middleware), weil beides zusammengehört: der abgelehnte Zugriff
- * muss protokolliert werden. Eine Route-Middleware würde den Request vor dem
- * Mount abbrechen — der `authorization_denied`-Eintrag entstünde dann nie. In
- * `mount()` läuft daher in einem Durchgang:
- *  - `Gate::denies(...)` → `recordAuthorizationDenied()` (Channel `security`),
- *  - `$this->authorize(...)` → 403 bei fehlender Permission,
- *  - `recordAccessGranted()` → `activity_log_viewed` (Channel `security`) bei Erfolg.
+ * Route-`can:`-Middleware), weil beides zusammengehört: eine Route-Middleware
+ * würde den Request vor dem Mount abbrechen — der `authorization_denied`-Eintrag
+ * entstünde dann nie. So wird auch der abgelehnte Zugriff protokolliert.
  *
- * Spatie-Permissions sind als Gate-Abilities registriert; die Prüfung greift
- * auch dann, wenn die Komponente künftig außerhalb der dedizierten Route
- * eingebettet würde.
+ * Spatie-Permissions sind als Gate-Abilities registriert, daher greift
+ * `Gate::denies('activity-log.view')` hier direkt.
  */
 final class ActivityLogTable extends Component
 {
@@ -43,10 +38,9 @@ final class ActivityLogTable extends Component
     private const int PER_PAGE = 25;
 
     /**
-     * JSON-Flags fürs Pretty-Printing der Properties im Modal:
-     * Einrückung + Klartext für Slashes & Unicode (sonst sind URLs/Umlaute
-     * im Modal schwer lesbar) + Exception statt stillem `false` bei Encoding-
-     * Fehlern (z. B. invalides UTF-8).
+     * JSON-Flags fürs Pretty-Printing der Properties im Modal: unescaped
+     * Slashes & Unicode, damit URLs/Umlaute lesbar bleiben; Exception statt
+     * stillem `false` bei Encoding-Fehlern (z. B. invalides UTF-8).
      */
     private const int PRETTY_JSON_FLAGS = JSON_PRETTY_PRINT
         | JSON_UNESCAPED_SLASHES
@@ -54,8 +48,7 @@ final class ActivityLogTable extends Component
         | JSON_THROW_ON_ERROR;
 
     /**
-     * Sortierrichtung der Zeitpunkt-Spalte; Default `desc` = neueste zuerst,
-     * deckt sich mit der bisherigen Standard-Reihenfolge (`latest('id')`).
+     * Sortierrichtung der Zeitpunkt-Spalte; Default `desc` = neueste zuerst.
      */
     public string $sortDirection = 'desc';
 
@@ -102,8 +95,7 @@ final class ActivityLogTable extends Component
      * Lädt die Properties einer Activity und öffnet das Modal.
      *
      * Wird absichtlich erst beim Klick aufgerufen, damit die initiale Page
-     * nicht alle Properties-Blobs aller 25 Rows an den Client schickt
-     * (Properties können bei Spatie-Diff-Events groß werden).
+     * nicht alle Properties-Blobs aller 25 Rows an den Client schickt.
      *
      * Für Activities ohne Properties bleibt die Methode ein No-Op — das
      * UI blendet das Icon für solche Rows ohnehin aus, der Frühzeitig-
@@ -144,7 +136,7 @@ final class ActivityLogTable extends Component
     /**
      * Jede Filter-Änderung muss zurück auf Seite 1 — sonst bliebe der Page-
      * Cursor auf einer in der gefilterten Treffermenge oft nicht mehr
-     * existierenden hohen Seite stehen. Greift für alle `filter*`-Properties.
+     * existierenden hohen Seite stehen.
      */
     public function updated(string $name): void
     {
@@ -153,10 +145,6 @@ final class ActivityLogTable extends Component
         }
     }
 
-    /**
-     * Setzt alle Spaltenfilter auf den Ausgangszustand zurück und springt auf
-     * Seite 1.
-     */
     public function resetFilters(): void
     {
         $this->reset([
@@ -183,28 +171,19 @@ final class ActivityLogTable extends Component
     /**
      * Lädt die paginierte Activity-Liste mit Eager-Loading für `subject` & `causer`.
      *
-     * Performance-Charakteristik:
-     *  - 1 Query für die Pagination (Count + Select).
-     *  - Pro distinct `subject_type` auf der Seite **eine zusätzliche** `whereIn`-
-     *    Query (anders als ein normales `belongsTo` ist `morphTo` typ-abhängig:
-     *    Eloquent gruppiert die Page-Rows nach Morph-Typ und feuert pro Typ eine
-     *    eigene Query gegen die jeweilige Tabelle).
-     *  - Pro distinct `causer_type` analog eine weitere Query.
-     *
-     * Bei aktuell zwei Loggable-Modellen (`user`, `passkey`) ergibt das im
-     * Worst-Case ~5 Queries pro Seite, **unabhängig von der Anzahl der Rows** —
-     * kein N+1. Der Test `testRenderingPageStaysWithinQueryBudget` schützt
-     * gegen versehentliche Regressionen (z. B. wenn jemand das `with()` entfernt
-     * oder im Blade-Template eine weitere Relation lazy lädt).
+     * `subject`/`causer` sind `morphTo`: Eloquent feuert pro distinct Morph-Typ
+     * auf der Seite eine eigene Query (nicht eine pauschale wie bei `belongsTo`).
+     * Die Query-Zahl ist damit durch die Zahl der registrierten Morph-Typen
+     * begrenzt (`Relation::enforceMorphMap()` in `AppServiceProvider::boot()`),
+     * nicht durch die Row-Anzahl — kein N+1.
      *
      * @return LengthAwarePaginator<int, Activity>
      */
     private function loadActivities(): LengthAwarePaginator
     {
-        // Manipulierte Wire-Payloads könnten $sortDirection beliebig setzen;
-        // vor dem orderBy() auf ein hartes Literal klemmen — verhindert
-        // sowohl SQL-Injection als auch die InvalidArgumentException, die
-        // orderBy() bei ungültiger Richtung würfe.
+        // $sortDirection stammt aus dem client-kontrollierten Wire-State; ein
+        // manipulierter Wert würde orderBy() mit InvalidArgumentException brechen.
+        // Daher vor dem orderBy() auf ein gültiges Literal klemmen.
         $direction = $this->sortDirection === 'asc'
             ? 'asc'
             : 'desc';
@@ -220,14 +199,6 @@ final class ActivityLogTable extends Component
     }
 
     /**
-     * Hängt die aktiven Spaltenfilter (UND-verknüpft) an die Query; leere
-     * Filter werden übersprungen.
-     *
-     * `causer`/`subject` sind polymorph (`user`/`passkey`/`role`); die Namens-
-     * suche läuft über `whereHasMorph` mit einer für alle drei Typen gültigen
-     * Closure — alle haben eine `name`-Spalte. Das erzeugt EXISTS-Subqueries,
-     * aber keine zusätzliche Query pro Row; das Query-Budget bleibt gewahrt.
-     *
      * @param Builder<Activity> $query
      */
     private function applyFilters(Builder $query): void
@@ -258,11 +229,12 @@ final class ActivityLogTable extends Component
     }
 
     /**
-     * Namenssuche über eine polymorphe Relation (`causer`/`subject`). Die
-     * Morph-Typen werden als Aliase übergeben, damit die Komponente nicht auf
-     * Vendor-Modellklassen (z. B. `Spatie\Permission\Models\Role`) angewiesen
-     * ist — die Architektur-Regel hält Livewire-Komponenten von Vendor-
-     * Namespaces fern.
+     * Sucht in `causer`/`subject` nach dem Namen. Die Typen werden als String-
+     * Aliase übergeben (nicht als Klassennamen), damit diese Komponente nicht
+     * direkt von Fremd-Paket-Klassen wie der Spatie-`Role` abhängt.
+     *
+     * `whereHasMorph` erzeugt EXISTS-Subqueries, also keine zusätzliche Query
+     * pro Row — das Query-Budget bleibt gewahrt.
      *
      * @param Builder<Activity> $query
      */
@@ -278,8 +250,8 @@ final class ActivityLogTable extends Component
     }
 
     /**
-     * Ob aktuell überhaupt gefiltert wird — steuert im Blade die Unterscheidung
-     * zwischen „Log ist leer" und „keine Treffer für die Filterauswahl".
+     * Steuert im Blade die Unterscheidung zwischen „Log ist leer" und „keine
+     * Treffer für die Filterauswahl".
      */
     private function hasActiveFilters(): bool
     {
@@ -292,11 +264,11 @@ final class ActivityLogTable extends Component
     }
 
     /**
-     * Schreibt einen Audit-Eintrag für den erfolgreichen Lese-Zugriff auf das
-     * Activity-Log-UI. Das Log bündelt personenbezogene Daten aller Mitglieder
-     * (Namen, Rollen-Zuweisungen, Login-Zeiten, IP-/E-Mail-Hashes); wer es wann
-     * einsieht, ist nach Art. 5(2)/32 DSGVO (Rechenschaft + Nachvollziehbarkeit
-     * des Zugriffs auf den Mitglieder-Audit-Trail) selbst dokumentationspflichtig.
+     * Das Activity-Log bündelt personenbezogene Daten aller Mitglieder (Namen,
+     * Rollen-Zuweisungen, Login-Zeiten, IP-/E-Mail-Hashes); wer es wann einsieht,
+     * ist nach Art. 5(2)/32 DSGVO (Rechenschaft + Nachvollziehbarkeit des Zugriffs
+     * auf den Mitglieder-Audit-Trail) selbst dokumentationspflichtig — daher dieser
+     * Eintrag beim Lese-Zugriff aufs UI.
      *
      * Anders als bei `authorization_denied` ist der Causer hier zwingend zu
      * benennen — ein Lese-Zugriff ist nur dann sinnvoll auditierbar, wenn der
@@ -329,12 +301,9 @@ final class ActivityLogTable extends Component
     }
 
     /**
-     * Schreibt einen Audit-Eintrag für den abgelehnten Zugriff auf das
-     * Activity-Log-UI. Inline statt über statische Recorder-Methode auf einem
-     * Domain-Model — es gibt für diese Ability schlicht kein passendes
-     * Domain-Objekt (`activity-log.view` ist eine reine Anzeige-Permission).
-     * Channel und Event-Code spiegeln das Schema aus
-     * {@see \App\Models\PasskeyCredential::recordAuthorizationDeniedActivity()}.
+     * Inline statt über eine statische Recorder-Methode auf einem Domain-Model —
+     * für diese Ability gibt es schlicht kein passendes Domain-Objekt
+     * (`activity-log.view` ist eine reine Anzeige-Permission).
      *
      * Resilient gegen Activity-Log-Ausfälle: der ursprüngliche 403 muss raus,
      * ein kaputter Audit-Pfad darf das nicht blockieren.

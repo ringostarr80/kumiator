@@ -87,6 +87,22 @@ Starke Erfolgskriterien ermöglichen eigenständiges Iterieren. Schwache Kriteri
 
 ---
 
+## Arbeitsweise: Code-Kommentare
+
+**Kommentare erklären das Warum. Was der Code, der Methodenname oder die Signatur schon sagt, gehört nicht in den Kommentar.**
+
+- **Kein Methodennamen-Echo:** Ein Docblock, dessen erster Satz nur den Methodennamen übersetzt, beginnt stattdessen mit dem Warum – oder entfällt.
+- **Kein Nacherzählen des Bodys:** Ist der Code mit gutem Namen lesbar, braucht er keinen Kommentar. Eine triviale Methode darf ganz ohne Docblock auskommen.
+- **Nur die aktuell verwendete Version beschreiben:** keine Kontraste zu alten/deprecated Lib-Versionen, keine „bisher war es so"-Historie, kein Recherche-/Entstehungsweg.
+- **Driftquellen meiden:** Keine `{@see}`-/Methoden-Links und keine „Wer ruft mich auf?"-Verweise – nichts in der Toolchain (PHPStan/PHPCS) prüft sie. Stabile Anker bevorzugen (Enum-Cases, Event-Code-Values, feste Framework-Methoden) oder auf die *eine* Quelle der Wahrheit zeigen (z. B. die Morph-Map), statt Listen zu kopieren.
+- **Nichts Driftendes aufzählen:** Werte-/Feldlisten, die eine Quelle der Wahrheit duplizieren, nicht abschreiben – auf die Quelle verweisen.
+- **Konsistenz ist Pflicht:** Ein Kommentar, der dem Code widerspricht, ist ein Bug. Fachliche/architektonische Aussagen vor dem Festschreiben verifizieren.
+- **Typ-Annotationen sind kein Prosa-Kommentar:** `@param`/`@return`-Generics (z. B. `@param Builder<Activity>`) bleiben erhalten, auch wenn die Prosa gestrichen wird – sie halten die Analyse grün.
+
+Selbsttest: Lässt sich jeder Kommentarsatz auf ein „Warum" zurückführen? Wer nur beschreibt, was direkt darunter steht, fliegt raus.
+
+---
+
 ## Code-Konventionen
 
 - **Architektur:** SOLID-Prinzipien und CQRS anwenden, wo sinnvoll. Im fachlichen Teil **DDD** (Domain-Driven Design).
@@ -94,4 +110,3 @@ Starke Erfolgskriterien ermöglichen eigenständiges Iterieren. Schwache Kriteri
 - **`assert()` vermeiden.**
 - **DSGVO berücksichtigen** – die App richtet sich an den deutschen Markt.
 - **Enums / Backed-Enums** statt Magic-Strings oder Magic-Numbers.
-- **Code-Kommentare:** nur, wenn sie das **Warum** erklären – nicht das Was.
