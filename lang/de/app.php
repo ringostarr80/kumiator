@@ -130,6 +130,8 @@ return [
     // Werden nur im 500-Fehlerpfad sichtbar (Logs, Debug-Ausgabe).
     'profile_photo_optimizer_read_failed' => 'Das hochgeladene Profilfoto konnte nicht gelesen werden.',
     'profile_photo_optimizer_not_an_image' => 'Das hochgeladene Profilfoto konnte nicht als Bild gelesen werden.',
+    'profile_photo_optimizer_too_many_pixels' => 'Das Profilfoto hat zu viele Pixel'
+        . ' (maximal :max_megapixels Megapixel).',
     'profile_photo_optimizer_rotation_failed' => 'Das Profilfoto konnte nicht in die richtige Lage gedreht werden.',
     'profile_photo_optimizer_thumbnail_buffer_failed' => 'Für das Profilfoto-Thumbnail konnte kein Bildpuffer'
         . ' angelegt werden.',

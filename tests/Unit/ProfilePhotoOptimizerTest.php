@@ -51,6 +51,41 @@ final class ProfilePhotoOptimizerTest extends TestCase
     }
 
     /**
+     * Dekompressions-Bomben-Schutz: Ein kleines, hochkomprimiertes Bild kann
+     * im Header Riesen-Dimensionen deklarieren, deren Decode
+     * `Breite × Höhe × 4` Bytes erzwingt. Solche Bilder müssen am
+     * Header-Check scheitern, bevor `imagecreatefromstring()` den Speicher
+     * tatsächlich anfordert.
+     */
+    public function testOptimizeRejectsImagesDeclaringMoreThanTheMaximumPixels(): void
+    {
+        $photo = $this->pngDeclaringDimensions(25_000_001, 1);
+
+        $this->expectException(ProfilePhotoOptimizationException::class);
+        $this->expectExceptionMessageIs(
+            __('app.profile_photo_optimizer_too_many_pixels', ['max_megapixels' => 25]),
+        );
+
+        (new ProfilePhotoOptimizer())->optimize($photo);
+    }
+
+    /**
+     * Genau an der Grenze greift der Guard nicht: Das Fixture kommt bis zum
+     * Decode und scheitert erst dort an den 1×1-Pixeldaten. Das nagelt die
+     * Grenze als „mehr als" statt „mindestens" fest — sonst fielen legitime
+     * Fotos exakt an der Grenze durch.
+     */
+    public function testOptimizeLetsImagesExactlyAtTheMaximumPixelsPassTheGuard(): void
+    {
+        $photo = $this->pngDeclaringDimensions(25_000_000, 1);
+
+        $this->expectException(ProfilePhotoOptimizationException::class);
+        $this->expectExceptionMessageIs(__('app.profile_photo_optimizer_not_an_image'));
+
+        (new ProfilePhotoOptimizer())->optimize($photo);
+    }
+
+    /**
      * Ein JPEG ganz ohne EXIF-Block (z. B. von Software exportiert) muss als
      * ungedreht behandelt werden — die Quadranten landen unverändert.
      */
@@ -205,6 +240,33 @@ final class ProfilePhotoOptimizerTest extends TestCase
         file_put_contents($path, $jpeg);
 
         return new UploadedFile($path, 'photo.jpg', 'image/jpeg', test: true);
+    }
+
+    /**
+     * Erzeugt ein PNG, dessen IHDR-Header die angegebenen Dimensionen
+     * deklariert, dessen Pixeldaten aber von einem 1×1-Bild stammen — das
+     * Angriffsmuster einer Dekompressions-Bombe, ohne dass der Test selbst
+     * ein Riesen-Bild allokieren muss. `getimagesize*()` liest nur den
+     * Header und prüft keine Prüfsummen; der Decoder dagegen schon.
+     */
+    private function pngDeclaringDimensions(int $width, int $height): UploadedFile
+    {
+        $image = imagecreatetruecolor(1, 1);
+        $this->assertInstanceOf(GdImage::class, $image);
+
+        ob_start();
+        imagepng($image);
+        $png = ob_get_clean();
+        $this->assertIsString($png);
+
+        // IHDR: Breite ab Byte 16, Höhe ab Byte 20 (je 4 Bytes, big-endian).
+        $png = substr_replace($png, pack('N2', $width, $height), 16, 8);
+
+        $path = tempnam(sys_get_temp_dir(), 'pixel_limit_test_');
+        $this->assertIsString($path);
+        file_put_contents($path, $png);
+
+        return new UploadedFile($path, 'photo.png', 'image/png', test: true);
     }
 
     private function readAvif(string $path): GdImage

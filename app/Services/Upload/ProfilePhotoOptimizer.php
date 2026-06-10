@@ -38,12 +38,38 @@ final class ProfilePhotoOptimizer implements ProfilePhotoOptimizerContract
     /** AVIF-Qualität (0–100); für ein Thumbnail visuell unkritisch. */
     private const int AVIF_QUALITY = 60;
 
+    /**
+     * Dekompressions-Bomben-Schutz: Der Decode kostet `Breite × Höhe × 4`
+     * Bytes — ein kleines, hochkomprimiertes Bild mit Riesen-Dimensionen
+     * liefe sonst gegen das `memory_limit`. Die Grenze hält den Peak (bei
+     * EXIF-Rotation temporär das Doppelte) unter den konfigurierten 256M
+     * und lässt Standard-Smartphone-Fotos (iPhone: 24 MP) passieren.
+     */
+    private const int MAX_PIXELS = 25_000_000;
+
     public function optimize(UploadedFile $photo): UploadedFile
     {
         $contents = $photo->get();
 
         if (!is_string($contents)) {
             throw new ProfilePhotoOptimizationException(__('app.profile_photo_optimizer_read_failed'));
+        }
+
+        try {
+            // `getimagesizefromstring()` liest nur die Header-Metadaten, ohne
+            // Pixeldaten zu allokieren. Unlesbare Daten meldet es je nach
+            // Inhalt per `false` oder per Warning, die Laravels Error-Handler
+            // in eine Exception übersetzt — beides fällt zum Decode durch,
+            // der dieselben Daten ohnehin ablehnt.
+            $info = getimagesizefromstring($contents);
+        } catch (\Throwable) {
+            $info = false;
+        }
+
+        if (is_array($info) && $info[0] * $info[1] > self::MAX_PIXELS) {
+            throw new ProfilePhotoOptimizationException(__('app.profile_photo_optimizer_too_many_pixels', [
+                'max_megapixels' => intdiv(self::MAX_PIXELS, 1_000_000),
+            ]));
         }
 
         try {

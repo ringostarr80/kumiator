@@ -127,6 +127,8 @@ return [
     // Only surfaced via the 500 error path (logs, debug output).
     'profile_photo_optimizer_read_failed' => 'The uploaded profile photo could not be read.',
     'profile_photo_optimizer_not_an_image' => 'The uploaded profile photo could not be parsed as an image.',
+    'profile_photo_optimizer_too_many_pixels' => 'The profile photo has too many pixels'
+        . ' (maximum of :max_megapixels megapixels).',
     'profile_photo_optimizer_rotation_failed' => 'The profile photo could not be rotated into the correct orientation.',
     'profile_photo_optimizer_thumbnail_buffer_failed' => 'Could not allocate an image buffer for the profile photo'
         . ' thumbnail.',
