@@ -221,7 +221,7 @@ final class AuthenticationActivityLogTest extends TestCase
         $this->assertSame('web', $properties['guard'] ?? null);
         $this->assertArrayHasKey('email_hash', $properties);
         $this->assertSame(
-            hash('sha256', mb_strtolower(trim($email))),
+            hash_hmac('sha256', mb_strtolower(trim($email)), Config::string('app.key')),
             $properties['email_hash'],
         );
         $this->assertArrayNotHasKey('email', $properties);
@@ -355,7 +355,7 @@ final class AuthenticationActivityLogTest extends TestCase
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertSame('web', $properties['guard'] ?? null);
         $this->assertSame(
-            hash('sha256', 'unapproved@example.com'),
+            hash_hmac('sha256', 'unapproved@example.com', Config::string('app.key')),
             $properties['email_hash'] ?? null,
         );
         $this->assertArrayNotHasKey('email', $properties);
@@ -442,7 +442,7 @@ final class AuthenticationActivityLogTest extends TestCase
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertSame('web', $properties['guard'] ?? null);
         $this->assertSame(
-            hash('sha256', 'passkey-unapproved@example.com'),
+            hash_hmac('sha256', 'passkey-unapproved@example.com', Config::string('app.key')),
             $properties['email_hash'] ?? null,
         );
     }
@@ -492,7 +492,7 @@ final class AuthenticationActivityLogTest extends TestCase
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertArrayHasKey('email_hash', $properties);
         $this->assertSame(
-            hash('sha256', 'bot@example.com'),
+            hash_hmac('sha256', 'bot@example.com', Config::string('app.key')),
             $properties['email_hash'],
         );
         $this->assertArrayNotHasKey('email', $properties);
