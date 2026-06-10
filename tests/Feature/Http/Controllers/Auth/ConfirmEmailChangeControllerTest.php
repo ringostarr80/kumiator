@@ -17,9 +17,9 @@ final class ConfirmEmailChangeControllerTest extends TestCase
     public function testValidTokenSwapsEmailAndShowsConfirmedView(): void
     {
         $user = User::factory()->create(['email' => 'alt@example.com']);
-        $plainToken = $this->seedPendingChange($user, 'neu@example.com');
+        $tokens = $this->seedPendingChange($user, 'neu@example.com');
 
-        $response = $this->get(route('email.change.confirm', ['token' => $plainToken]));
+        $response = $this->get(route('email.change.confirm', ['token' => $tokens['confirm']]));
 
         $response->assertOk();
         $response->assertSeeText(__('app.email_change_confirmed_message'));
@@ -33,9 +33,9 @@ final class ConfirmEmailChangeControllerTest extends TestCase
     public function testExpiredTokenShowsExpiredView(): void
     {
         $user = User::factory()->create(['email' => 'alt@example.com']);
-        $plainToken = $this->seedPendingChange($user, 'neu@example.com', Carbon::now()->subHours(2));
+        $tokens = $this->seedPendingChange($user, 'neu@example.com', Carbon::now()->subHours(2));
 
-        $response = $this->get(route('email.change.confirm', ['token' => $plainToken]));
+        $response = $this->get(route('email.change.confirm', ['token' => $tokens['confirm']]));
 
         $response->assertOk();
         $response->assertSeeText(__('app.email_change_expired_message'));
@@ -55,9 +55,9 @@ final class ConfirmEmailChangeControllerTest extends TestCase
     {
         User::factory()->create(['email' => 'belegt@example.com']);
         $user = User::factory()->create(['email' => 'alt@example.com']);
-        $plainToken = $this->seedPendingChange($user, 'belegt@example.com');
+        $tokens = $this->seedPendingChange($user, 'belegt@example.com');
 
-        $response = $this->get(route('email.change.confirm', ['token' => $plainToken]));
+        $response = $this->get(route('email.change.confirm', ['token' => $tokens['confirm']]));
 
         $response->assertOk();
         $response->assertSeeText(__('app.email_change_conflict_message'));
@@ -70,10 +70,10 @@ final class ConfirmEmailChangeControllerTest extends TestCase
     public function testTrashedUserShowsInvalidViewToAvoidExistenceLeak(): void
     {
         $user = User::factory()->create();
-        $plainToken = $this->seedPendingChange($user, 'neu@example.com');
+        $tokens = $this->seedPendingChange($user, 'neu@example.com');
         $user->deleteOrFail();
 
-        $response = $this->get(route('email.change.confirm', ['token' => $plainToken]));
+        $response = $this->get(route('email.change.confirm', ['token' => $tokens['confirm']]));
 
         $response->assertOk();
         // Bewusst SELBER View wie bei unbekanntem Token — sonst leakt das UI,
@@ -88,12 +88,12 @@ final class ConfirmEmailChangeControllerTest extends TestCase
         // geräumt vor und läuft in den Invalid-Pfad — ohne State zu zerstören
         // (Tausch bereits durchgeführt, nichts mehr zu tun).
         $user = User::factory()->create(['email' => 'alt@example.com']);
-        $plainToken = $this->seedPendingChange($user, 'neu@example.com');
+        $tokens = $this->seedPendingChange($user, 'neu@example.com');
 
-        $first = $this->get(route('email.change.confirm', ['token' => $plainToken]));
+        $first = $this->get(route('email.change.confirm', ['token' => $tokens['confirm']]));
         $first->assertOk();
 
-        $second = $this->get(route('email.change.confirm', ['token' => $plainToken]));
+        $second = $this->get(route('email.change.confirm', ['token' => $tokens['confirm']]));
         $second->assertOk();
         $second->assertSeeText(__('app.email_change_invalid_message'));
 
@@ -110,15 +110,39 @@ final class ConfirmEmailChangeControllerTest extends TestCase
         $this->assertSame(0, Activity::query()->where('event', 'email_changed')->count());
     }
 
-    private function seedPendingChange(User $user, string $pendingEmail, ?Carbon $sentAt = null): string
+    public function testCancelTokenIsRejectedOnConfirmEndpoint(): void
     {
-        $plainToken = bin2hex(random_bytes(32));
+        // Wer nur die Hinweis-Mail an die ALTE Adresse einsehen kann
+        // (Mailbox-Zugriff, Link-Scanner-Logs), darf damit nicht bestätigen
+        // können. Gleicher Invalid-View wie bei unbekanntem Token (kein
+        // Oracle), Pending-State bleibt unberührt.
+        $user = User::factory()->create(['email' => 'alt@example.com']);
+        $tokens = $this->seedPendingChange($user, 'neu@example.com');
+
+        $response = $this->get(route('email.change.confirm', ['token' => $tokens['cancel']]));
+
+        $response->assertOk();
+        $response->assertSeeText(__('app.email_change_invalid_message'));
+
+        $refreshed = $user->fresh();
+        $this->assertSame('alt@example.com', $refreshed?->email);
+        $this->assertSame('neu@example.com', $refreshed->pending_email);
+    }
+
+    /**
+     * @return array{confirm: string, cancel: string}
+     */
+    private function seedPendingChange(User $user, string $pendingEmail, ?Carbon $sentAt = null): array
+    {
+        $plainConfirmToken = bin2hex(random_bytes(32));
+        $plainCancelToken = bin2hex(random_bytes(32));
         $user->forceFill([
             'pending_email' => $pendingEmail,
-            'pending_email_token_hash' => hash('sha256', $plainToken),
+            'pending_email_confirm_token_hash' => hash('sha256', $plainConfirmToken),
+            'pending_email_cancel_token_hash' => hash('sha256', $plainCancelToken),
             'pending_email_sent_at' => $sentAt ?? Carbon::now(),
         ])->saveOrFail();
 
-        return $plainToken;
+        return ['confirm' => $plainConfirmToken, 'cancel' => $plainCancelToken];
     }
 }

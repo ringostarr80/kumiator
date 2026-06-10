@@ -112,7 +112,7 @@ final class EmailChangeActivityLogTest extends TestCase
             ])
             ->call('updateProfileInformation');
 
-        $token = $this->extractTokenFromVerifyNotification($user->fresh());
+        $token = $this->extractTokenFromRequestedNotification($user->fresh());
 
         $this->get(route('email.change.cancel', ['token' => $token]))->assertOk();
 
@@ -251,6 +251,32 @@ final class EmailChangeActivityLogTest extends TestCase
                 }
 
                 $url = (string)$notification->toMail()->actionUrl;
+                $this->capturedToken = (string)basename(parse_url($url, PHP_URL_PATH) ?: '');
+
+                return true;
+            },
+        );
+
+        $this->assertNotSame('', $this->capturedToken);
+
+        return $this->capturedToken;
+    }
+
+    /**
+     * Pendant für den CANCEL-Token aus der Hinweis-Mail an die alte Adresse
+     * (`EmailChangeRequestedNotification`) — seit der Token-Trennung der
+     * einzige Token, den der Cancel-Endpoint akzeptiert.
+     */
+    private function extractTokenFromRequestedNotification(?User $user): string
+    {
+        $this->assertNotNull($user);
+
+        $this->capturedToken = '';
+        Notification::assertSentTo(
+            $user,
+            EmailChangeRequestedNotification::class,
+            function (EmailChangeRequestedNotification $notification) use ($user): bool {
+                $url = (string)$notification->toMail($user)->actionUrl;
                 $this->capturedToken = (string)basename(parse_url($url, PHP_URL_PATH) ?: '');
 
                 return true;

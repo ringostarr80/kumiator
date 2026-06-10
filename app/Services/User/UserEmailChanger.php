@@ -23,13 +23,17 @@ use Spatie\Activitylog\Facades\Activity;
  * Konkretes Verfahren der zweistufigen E-Mail-Änderung. Siehe Contract für
  * den Lebenszyklus und die Begründung der Sicherheits-Entscheidungen.
  *
- * Klartext-Token: `bin2hex(random_bytes(32))` → 64 Hex-Zeichen. Persistiert
- * wird ausschließlich `hash('sha256', $plainToken)` (ebenfalls 64 Hex). Der
- * Klartext wandert nur durch die URL in der Mail. Bei Confirm/Cancel wird
- * der eingehende URL-Parameter erneut gehasht und gegen `pending_email_token_hash`
- * verglichen — `hash_equals` ist hier nicht zwingend notwendig (Hash-Lookup
- * über `where(...)->first()` verrät keine Teil-Treffer), aber auch nicht
- * schädlich; wir bleiben beim einfachen Equality-Lookup.
+ * Klartext-Tokens: je Aktion ein eigener `bin2hex(random_bytes(32))`-Token
+ * (64 Hex-Zeichen) — der Confirm-Token geht in die Mail an die NEUE, der
+ * Cancel-Token in die Mail an die ALTE Adresse. Getrennt, damit die
+ * Cancel-Mail niemanden zum Bestätigen befähigt (siehe Contract).
+ * Persistiert wird ausschließlich `hash('sha256', $plainToken)` je Spalte;
+ * der Klartext wandert nur durch die URL in der Mail. Bei Confirm/Cancel
+ * wird der eingehende URL-Parameter erneut gehasht und nur gegen die Spalte
+ * der jeweiligen Aktion verglichen — `hash_equals` ist hier nicht zwingend
+ * notwendig (Hash-Lookup über `where(...)->first()` verrät keine
+ * Teil-Treffer), aber auch nicht schädlich; wir bleiben beim einfachen
+ * Equality-Lookup.
  */
 final class UserEmailChanger implements UserEmailChangerContract
 {
@@ -37,18 +41,20 @@ final class UserEmailChanger implements UserEmailChangerContract
 
     public function requestChange(User $user, string $newEmail): void
     {
-        $plainToken = bin2hex(random_bytes(32));
+        $plainConfirmToken = bin2hex(random_bytes(32));
+        $plainCancelToken = bin2hex(random_bytes(32));
 
         $user->forceFill([
             'pending_email' => $newEmail,
-            'pending_email_token_hash' => hash('sha256', $plainToken),
+            'pending_email_confirm_token_hash' => hash('sha256', $plainConfirmToken),
+            'pending_email_cancel_token_hash' => hash('sha256', $plainCancelToken),
             'pending_email_sent_at' => Carbon::now(),
         ])->saveOrFail();
 
         Notification::route('mail', $newEmail)
-            ->notify(new VerifyEmailChangeNotification($user, $plainToken, $newEmail));
+            ->notify(new VerifyEmailChangeNotification($user, $plainConfirmToken, $newEmail));
 
-        $user->notify(new EmailChangeRequestedNotification($plainToken, $newEmail));
+        $user->notify(new EmailChangeRequestedNotification($plainCancelToken, $newEmail));
 
         // DSGVO Art. 5(1)(c): `pending_email` kann eine fremde Adresse sein
         // (Tippfehler des Antragstellers, oder ein Angreifer auf einem
@@ -80,14 +86,11 @@ final class UserEmailChanger implements UserEmailChangerContract
 
     public function confirmChange(string $plainToken): User
     {
-        $user = $this->resolveUserByToken($plainToken);
+        $user = $this->resolveUserByToken($plainToken, 'pending_email_confirm_token_hash');
 
         if ($user === null) {
-            // Bewusst kein Audit-Eintrag: Ohne Causer, performedOn oder
-            // korrelierbare Property (anders als `login_failed` mit E-Mail-
-            // Hash) wäre der Eintrag forensisch wertlos und würde durch
-            // Bot-Scans nur Rauschen erzeugen. Brute-Force-Schutz gehört
-            // auf Rate-Limit-Ebene, nicht ins Activity-Log.
+            $this->recordCancelTokenOnConfirm($plainToken);
+
             throw new EmailChangeTokenInvalidException();
         }
 
@@ -132,7 +135,8 @@ final class UserEmailChanger implements UserEmailChangerContract
             'email' => $pendingEmail,
             'email_verified_at' => Carbon::now(),
             'pending_email' => null,
-            'pending_email_token_hash' => null,
+            'pending_email_confirm_token_hash' => null,
+            'pending_email_cancel_token_hash' => null,
             'pending_email_sent_at' => null,
         ])->saveOrFail();
 
@@ -151,7 +155,7 @@ final class UserEmailChanger implements UserEmailChangerContract
 
     public function cancelChange(string $plainToken): void
     {
-        $user = $this->resolveUserByToken($plainToken);
+        $user = $this->resolveUserByToken($plainToken, 'pending_email_cancel_token_hash');
 
         if ($user === null) {
             return;
@@ -166,7 +170,7 @@ final class UserEmailChanger implements UserEmailChangerContract
 
         $expired = User::query()
             ->withTrashed()
-            ->whereNotNull('pending_email_token_hash')
+            ->whereNotNull('pending_email_confirm_token_hash')
             ->where('pending_email_sent_at', '<', $cutoff)
             ->get();
 
@@ -196,13 +200,45 @@ final class UserEmailChanger implements UserEmailChangerContract
             ->log(ActivityEvent::EMAIL_CHANGE_CANCELLED->description());
     }
 
-    private function resolveUserByToken(string $plainToken): ?User
+    /**
+     * Trifft ein am Confirm-Endpoint eingereichter Token die CANCEL-Spalte,
+     * versucht jemand mit Einsicht in die Hinweis-Mail der alten Adresse zu
+     * bestätigen statt abzubrechen — exakt das Angriffsmuster, gegen das die
+     * Token-Trennung schützt, und damit ein starkes Forensik-Signal. Keine
+     * State-Mutation; der Aufrufer antwortet weiterhin mit dem
+     * undifferenzierten Invalid-View, damit der Audit-Eintrag kein
+     * Token-Oracle über die Response erzeugt.
+     *
+     * Komplett unbekannte Tokens (auch kein Treffer in der Cancel-Spalte)
+     * bleiben bewusst ohne Audit-Eintrag: Ohne Causer, performedOn oder
+     * korrelierbare Property (anders als `login_failed` mit E-Mail-Hash)
+     * wäre der Eintrag forensisch wertlos und würde durch Bot-Scans nur
+     * Rauschen erzeugen. Brute-Force-Schutz gehört auf Rate-Limit-Ebene,
+     * nicht ins Activity-Log.
+     */
+    private function recordCancelTokenOnConfirm(string $plainToken): void
+    {
+        $user = $this->resolveUserByToken($plainToken, 'pending_email_cancel_token_hash');
+
+        if ($user === null) {
+            return;
+        }
+
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::EMAIL_CHANGE_CONFIRMATION_REJECTED->value)
+            ->causedByAnonymous()
+            ->performedOn($user)
+            ->withProperties(['reason' => 'cancel_token_on_confirm'])
+            ->log(ActivityEvent::EMAIL_CHANGE_CONFIRMATION_REJECTED->description());
+    }
+
+    private function resolveUserByToken(string $plainToken, string $tokenHashColumn): ?User
     {
         $hash = hash('sha256', $plainToken);
 
         return User::query()
             ->withTrashed()
-            ->where('pending_email_token_hash', $hash)
+            ->where($tokenHashColumn, $hash)
             ->first();
     }
 
@@ -221,7 +257,8 @@ final class UserEmailChanger implements UserEmailChangerContract
     {
         $user->forceFill([
             'pending_email' => null,
-            'pending_email_token_hash' => null,
+            'pending_email_confirm_token_hash' => null,
+            'pending_email_cancel_token_hash' => null,
             'pending_email_sent_at' => null,
         ])->saveOrFail();
     }

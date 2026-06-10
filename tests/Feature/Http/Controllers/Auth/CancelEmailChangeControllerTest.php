@@ -65,15 +65,20 @@ final class CancelEmailChangeControllerTest extends TestCase
         $this->assertNull($user->fresh()?->pending_email);
     }
 
+    /**
+     * Liefert den Klartext-CANCEL-Token — der einzige, den dieser Endpoint
+     * akzeptiert (Aktionsbindung, siehe `UserEmailChangerTest`).
+     */
     private function seedPendingChange(User $user, string $pendingEmail, ?Carbon $sentAt = null): string
     {
-        $plainToken = bin2hex(random_bytes(32));
+        $plainCancelToken = bin2hex(random_bytes(32));
         $user->forceFill([
             'pending_email' => $pendingEmail,
-            'pending_email_token_hash' => hash('sha256', $plainToken),
+            'pending_email_confirm_token_hash' => hash('sha256', bin2hex(random_bytes(32))),
+            'pending_email_cancel_token_hash' => hash('sha256', $plainCancelToken),
             'pending_email_sent_at' => $sentAt ?? Carbon::now(),
         ])->saveOrFail();
 
-        return $plainToken;
+        return $plainCancelToken;
     }
 }

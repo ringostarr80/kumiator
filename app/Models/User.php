@@ -26,7 +26,8 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $email
  * @property ?\Illuminate\Support\Carbon $email_verified_at
  * @property ?string $pending_email
- * @property ?string $pending_email_token_hash
+ * @property ?string $pending_email_confirm_token_hash
+ * @property ?string $pending_email_cancel_token_hash
  * @property ?\Illuminate\Support\Carbon $pending_email_sent_at
  * @property ?\Illuminate\Support\Carbon $approved_at
  * @property ?\Illuminate\Support\Carbon $deleted_at

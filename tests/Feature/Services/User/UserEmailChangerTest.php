@@ -32,6 +32,10 @@ final class UserEmailChangerTest extends TestCase
 
     private UserEmailChangerContract $service;
 
+    // Capturing INSIDE der assertSentTo-Callback über ein Property, damit
+    // kein `use (&$var)` by reference nötig ist (verbietet PHPCS).
+    private string $capturedToken = '';
+
     public function testRequestChangePersistsPendingFieldsAndSendsBothMails(): void
     {
         Notification::fake();
@@ -52,8 +56,11 @@ final class UserEmailChangerTest extends TestCase
         $this->assertNotNull($refreshed->email_verified_at);
 
         $this->assertSame('neu@example.com', $refreshed->pending_email);
-        $this->assertNotNull($refreshed->pending_email_token_hash);
-        $this->assertSame(64, strlen((string)$refreshed->pending_email_token_hash));
+        $this->assertNotNull($refreshed->pending_email_confirm_token_hash);
+        $this->assertSame(64, strlen((string)$refreshed->pending_email_confirm_token_hash));
+        $this->assertNotNull($refreshed->pending_email_cancel_token_hash);
+        $this->assertSame(64, strlen((string)$refreshed->pending_email_cancel_token_hash));
+        $this->assertNotSame($refreshed->pending_email_confirm_token_hash, $refreshed->pending_email_cancel_token_hash);
         $this->assertNotNull($refreshed->pending_email_sent_at);
 
         $mail = 'neu@example.com';
@@ -87,7 +94,51 @@ final class UserEmailChangerTest extends TestCase
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertSame(AuditEmailHasher::hash('neu@example.com'), $properties['pending_email_hash'] ?? null);
         $this->assertArrayNotHasKey('pending_email', $properties);
-        $this->assertArrayNotHasKey('pending_email_token_hash', $properties);
+        $this->assertArrayNotHasKey('pending_email_confirm_token_hash', $properties);
+        $this->assertArrayNotHasKey('pending_email_cancel_token_hash', $properties);
+    }
+
+    public function testRequestChangeIssuesActionScopedTokensPerMail(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'alt@example.com']);
+
+        $this->service->requestChange($user, 'neu@example.com');
+
+        $refreshed = $user->fresh();
+        $this->assertNotNull($refreshed);
+
+        // Jede Mail trägt NUR den Token ihrer eigenen Aktion: Die Cancel-Mail
+        // an die alte Adresse darf niemanden zum Bestätigen befähigen
+        // (Mailbox-Zugriff, Link-Scanner-Logs).
+        $this->capturedToken = '';
+        Notification::assertSentTo(
+            new AnonymousNotifiable(),
+            VerifyEmailChangeNotification::class,
+            function (VerifyEmailChangeNotification $notification): bool {
+                $this->capturedToken = $this->tokenFromActionUrl((string)$notification->toMail()->actionUrl);
+
+                return true;
+            },
+        );
+        $this->assertSame(hash('sha256', $this->capturedToken), $refreshed->pending_email_confirm_token_hash);
+
+        $plainConfirmToken = $this->capturedToken;
+
+        $this->capturedToken = '';
+        Notification::assertSentTo(
+            $refreshed,
+            EmailChangeRequestedNotification::class,
+            function (EmailChangeRequestedNotification $notification) use ($refreshed): bool {
+                $this->capturedToken = $this->tokenFromActionUrl(
+                    (string)$notification->toMail($refreshed)->actionUrl,
+                );
+
+                return true;
+            },
+        );
+        $this->assertSame(hash('sha256', $this->capturedToken), $refreshed->pending_email_cancel_token_hash);
+        $this->assertNotSame($plainConfirmToken, $this->capturedToken);
     }
 
     public function testRequestChangeOverwritesPreviousPendingTokenInvalidation(): void
@@ -95,15 +146,20 @@ final class UserEmailChangerTest extends TestCase
         Notification::fake();
         $user = User::factory()->create();
         $this->service->requestChange($user, 'erste@example.com');
-        $firstHash = $user->fresh()?->pending_email_token_hash;
-        $this->assertNotNull($firstHash);
+        $firstConfirmHash = $user->fresh()?->pending_email_confirm_token_hash;
+        $firstCancelHash = $user->fresh()?->pending_email_cancel_token_hash;
+        $this->assertNotNull($firstConfirmHash);
+        $this->assertNotNull($firstCancelHash);
 
         $this->service->requestChange($user, 'zweite@example.com');
-        $secondHash = $user->fresh()?->pending_email_token_hash;
+        $refreshed = $user->fresh();
+        $this->assertNotNull($refreshed);
 
-        $this->assertNotNull($secondHash);
-        $this->assertNotSame($firstHash, $secondHash);
-        $this->assertSame('zweite@example.com', $user->fresh()->pending_email);
+        $this->assertNotNull($refreshed->pending_email_confirm_token_hash);
+        $this->assertNotSame($firstConfirmHash, $refreshed->pending_email_confirm_token_hash);
+        $this->assertNotNull($refreshed->pending_email_cancel_token_hash);
+        $this->assertNotSame($firstCancelHash, $refreshed->pending_email_cancel_token_hash);
+        $this->assertSame('zweite@example.com', $refreshed->pending_email);
     }
 
     public function testConfirmChangeSwapsEmailAndWritesAudit(): void
@@ -113,10 +169,10 @@ final class UserEmailChangerTest extends TestCase
             'email' => 'alt@example.com',
             'email_verified_at' => Carbon::now()->subDay(),
         ]);
-        $plainToken = $this->seedPendingChange($user, 'neu@example.com');
+        $tokens = $this->seedPendingChange($user, 'neu@example.com');
         Activity::query()->delete();
 
-        $returned = $this->service->confirmChange($plainToken);
+        $returned = $this->service->confirmChange($tokens['confirm']);
 
         $this->assertSame($user->getKey(), $returned->getKey());
 
@@ -125,7 +181,8 @@ final class UserEmailChangerTest extends TestCase
         $this->assertSame('neu@example.com', $refreshed->email);
         $this->assertNotNull($refreshed->email_verified_at);
         $this->assertNull($refreshed->pending_email);
-        $this->assertNull($refreshed->pending_email_token_hash);
+        $this->assertNull($refreshed->pending_email_confirm_token_hash);
+        $this->assertNull($refreshed->pending_email_cancel_token_hash);
         $this->assertNull($refreshed->pending_email_sent_at);
 
         $activity = Activity::query()
@@ -164,11 +221,11 @@ final class UserEmailChangerTest extends TestCase
     {
         Notification::fake();
         $user = User::factory()->create(['email' => 'alt@example.com']);
-        $plainToken = $this->seedPendingChange($user, 'neu@example.com', Carbon::now()->subMinutes(61));
+        $tokens = $this->seedPendingChange($user, 'neu@example.com', Carbon::now()->subMinutes(61));
         Activity::query()->delete();
 
         try {
-            $this->service->confirmChange($plainToken);
+            $this->service->confirmChange($tokens['confirm']);
             $this->fail('Expected EmailChangeTokenExpiredException');
         } catch (EmailChangeTokenExpiredException) {
             // expected
@@ -178,7 +235,8 @@ final class UserEmailChangerTest extends TestCase
         $this->assertNotNull($refreshed);
         $this->assertSame('alt@example.com', $refreshed->email);
         $this->assertNull($refreshed->pending_email);
-        $this->assertNull($refreshed->pending_email_token_hash);
+        $this->assertNull($refreshed->pending_email_confirm_token_hash);
+        $this->assertNull($refreshed->pending_email_cancel_token_hash);
         $this->assertNull($refreshed->pending_email_sent_at);
 
         $this->assertSame(
@@ -206,12 +264,12 @@ final class UserEmailChangerTest extends TestCase
     {
         Notification::fake();
         $user = User::factory()->create();
-        $plainToken = $this->seedPendingChange($user, 'neu@example.com');
+        $tokens = $this->seedPendingChange($user, 'neu@example.com');
         $user->deleteOrFail();
         Activity::query()->delete();
 
         try {
-            $this->service->confirmChange($plainToken);
+            $this->service->confirmChange($tokens['confirm']);
             $this->fail('Expected EmailChangeTargetNotEligibleException');
         } catch (EmailChangeTargetNotEligibleException) {
             // expected
@@ -243,11 +301,11 @@ final class UserEmailChangerTest extends TestCase
         Notification::fake();
         User::factory()->create(['email' => 'belegt@example.com']);
         $user = User::factory()->create(['email' => 'alt@example.com']);
-        $plainToken = $this->seedPendingChange($user, 'belegt@example.com');
+        $tokens = $this->seedPendingChange($user, 'belegt@example.com');
         Activity::query()->delete();
 
         try {
-            $this->service->confirmChange($plainToken);
+            $this->service->confirmChange($tokens['confirm']);
             $this->fail('Expected EmailChangeConflictException');
         } catch (EmailChangeConflictException) {
             // expected
@@ -257,7 +315,8 @@ final class UserEmailChangerTest extends TestCase
         $this->assertNotNull($refreshed);
         $this->assertSame('alt@example.com', $refreshed->email);
         $this->assertNull($refreshed->pending_email);
-        $this->assertNull($refreshed->pending_email_token_hash);
+        $this->assertNull($refreshed->pending_email_confirm_token_hash);
+        $this->assertNull($refreshed->pending_email_cancel_token_hash);
 
         $cancelled = Activity::query()
             ->where('log_name', 'auth')
@@ -278,10 +337,10 @@ final class UserEmailChangerTest extends TestCase
     {
         Notification::fake();
         $user = User::factory()->create();
-        $plainToken = $this->seedPendingChange($user, 'neu@example.com');
+        $tokens = $this->seedPendingChange($user, 'neu@example.com');
         Activity::query()->delete();
 
-        $this->service->cancelChange($plainToken);
+        $this->service->cancelChange($tokens['cancel']);
 
         $refreshed = $user->fresh();
         $this->assertNotNull($refreshed);
@@ -310,6 +369,62 @@ final class UserEmailChangerTest extends TestCase
 
         $this->service->cancelChange(str_repeat('0', 64));
 
+        $this->assertSame(0, Activity::query()->count());
+    }
+
+    public function testConfirmChangeRejectsCancelTokenAndWritesRejectedAudit(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'alt@example.com']);
+        $tokens = $this->seedPendingChange($user, 'neu@example.com');
+        Activity::query()->delete();
+
+        try {
+            $this->service->confirmChange($tokens['cancel']);
+            $this->fail('Expected EmailChangeTokenInvalidException');
+        } catch (EmailChangeTokenInvalidException) {
+            // expected
+        }
+
+        // Der Missbrauchsversuch darf die legitime offene Anfrage weder
+        // bestätigen noch abbrechen — der Pending-State bleibt vollständig
+        // erhalten.
+        $refreshed = $user->fresh();
+        $this->assertNotNull($refreshed);
+        $this->assertSame('alt@example.com', $refreshed->email);
+        $this->assertSame('neu@example.com', $refreshed->pending_email);
+        $this->assertNotNull($refreshed->pending_email_confirm_token_hash);
+        $this->assertNotNull($refreshed->pending_email_cancel_token_hash);
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'email_change_confirmation_rejected')
+            ->latest('id')
+            ->first();
+        $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_email_change_confirmation_rejected'), $activity->description);
+        $this->assertNull($activity->causer_id);
+        $this->assertSame($user->getKey(), $activity->subject_id);
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('cancel_token_on_confirm', $properties['reason'] ?? null);
+
+        $this->assertSame(0, Activity::query()->where('event', 'email_changed')->count());
+        $this->assertSame(0, Activity::query()->where('event', 'email_change_cancelled')->count());
+    }
+
+    public function testCancelChangeIgnoresConfirmToken(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+        $tokens = $this->seedPendingChange($user, 'neu@example.com');
+        Activity::query()->delete();
+
+        $this->service->cancelChange($tokens['confirm']);
+
+        // Aktionsbindung in Gegenrichtung: Der Confirm-Token bricht nichts
+        // ab — die offene Anfrage bleibt bestehen, kein Audit-Eintrag.
+        $this->assertSame('neu@example.com', $user->fresh()?->pending_email);
         $this->assertSame(0, Activity::query()->count());
     }
 
@@ -350,17 +465,26 @@ final class UserEmailChangerTest extends TestCase
     /**
      * Hilfs-Seeder, der das Persistieren via Service umgeht — wir wollen den
      * Service-Pfad NICHT bei jedem Vorbedingungs-Setup mit-testen. Liefert
-     * den Klartext-Token zurück, der über Hash wieder auflösbar ist.
+     * die Klartext-Tokens zurück, die über Hash wieder auflösbar sind.
+     *
+     * @return array{confirm: string, cancel: string}
      */
-    private function seedPendingChange(User $user, string $pendingEmail, ?Carbon $sentAt = null): string
+    private function seedPendingChange(User $user, string $pendingEmail, ?Carbon $sentAt = null): array
     {
-        $plainToken = bin2hex(random_bytes(32));
+        $plainConfirmToken = bin2hex(random_bytes(32));
+        $plainCancelToken = bin2hex(random_bytes(32));
         $user->forceFill([
             'pending_email' => $pendingEmail,
-            'pending_email_token_hash' => hash('sha256', $plainToken),
+            'pending_email_confirm_token_hash' => hash('sha256', $plainConfirmToken),
+            'pending_email_cancel_token_hash' => hash('sha256', $plainCancelToken),
             'pending_email_sent_at' => $sentAt ?? Carbon::now(),
         ])->saveOrFail();
 
-        return $plainToken;
+        return ['confirm' => $plainConfirmToken, 'cancel' => $plainCancelToken];
+    }
+
+    private function tokenFromActionUrl(string $url): string
+    {
+        return (string)basename(parse_url($url, PHP_URL_PATH) ?: '');
     }
 }

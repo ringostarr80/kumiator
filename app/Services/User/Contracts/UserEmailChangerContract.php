@@ -13,7 +13,7 @@ use App\Models\User;
  *   1. `requestChange()` — schreibt `pending_email*`, lässt `email` und
  *      `email_verified_at` UNBERÜHRT, versendet Verifizierungs-Mail an die
  *      neue Adresse und Hinweis-Mail an die alte. Audit: `auth/email_change_requested`.
- *      Eine bestehende offene Anfrage wird durch den neuen Token implizit
+ *      Eine bestehende offene Anfrage wird durch die neuen Tokens implizit
  *      invalidiert (Spalten-Overwrite).
  *   2. `confirmChange()` — auf Klick auf den Confirm-Link aus der Verifizierungs-
  *      Mail. Tauscht `email` ← `pending_email`, setzt `email_verified_at = now()`,
@@ -25,8 +25,11 @@ use App\Models\User;
  *      typischerweise keine Session).
  *
  * Sicherheitsmodell: Der Token IST die Berechtigung — beide Endpoints sind
- * guest-zugänglich. In der DB liegt ausschließlich der SHA-256-Hex-Hash des
- * Klartext-Tokens; Klartext wandert nur durch die URL in der Mail.
+ * guest-zugänglich. Confirm und Cancel haben jeweils einen EIGENEN,
+ * aktionsgebundenen Token: Die Cancel-Mail an die alte Adresse darf
+ * niemanden zum Bestätigen befähigen (Mailbox-Zugriff, Link-Scanner-Logs).
+ * In der DB liegen ausschließlich die SHA-256-Hex-Hashes der
+ * Klartext-Tokens; Klartext wandert nur durch die URLs in den Mails.
  */
 interface UserEmailChangerContract
 {
@@ -44,7 +47,11 @@ interface UserEmailChangerContract
     public function recordRequestFailed(User $user, ?string $attemptedEmail): void;
 
     /**
-     * @throws \App\Services\User\Exceptions\EmailChangeTokenInvalidException Token unbekannt
+     * Akzeptiert nur den CONFIRM-Token. Ein Cancel-Token landet im
+     * Invalid-Pfad und wird als `auth/email_change_confirmation_rejected`
+     * (`reason = 'cancel_token_on_confirm'`) auditiert — ohne State-Mutation.
+     *
+     * @throws \App\Services\User\Exceptions\EmailChangeTokenInvalidException Token unbekannt oder Cancel-Token
      * @throws \App\Services\User\Exceptions\EmailChangeTokenExpiredException Token älter als TTL (60 Min)
      * @throws \App\Services\User\Exceptions\EmailChangeTargetNotEligibleException User ist soft-deleted
      * @throws \App\Services\User\Exceptions\EmailChangeConflictException Adresse zwischenzeitlich Drittem belegt
@@ -52,7 +59,8 @@ interface UserEmailChangerContract
     public function confirmChange(string $plainToken): User;
 
     /**
-     * Idempotent: unbekannter Token → No-Op (kein Audit, keine Exception).
+     * Akzeptiert nur den CANCEL-Token. Idempotent: unbekannter Token (auch
+     * ein Confirm-Token) → No-Op (kein Audit, keine Exception).
      */
     public function cancelChange(string $plainToken): void;
 

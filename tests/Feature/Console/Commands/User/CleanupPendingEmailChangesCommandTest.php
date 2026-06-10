@@ -86,10 +86,10 @@ final class CleanupPendingEmailChangesCommandTest extends TestCase
 
     private function seedPendingChange(User $user, string $pendingEmail, Carbon $sentAt): User
     {
-        $plainToken = bin2hex(random_bytes(32));
         $user->forceFill([
             'pending_email' => $pendingEmail,
-            'pending_email_token_hash' => hash('sha256', $plainToken),
+            'pending_email_confirm_token_hash' => hash('sha256', bin2hex(random_bytes(32))),
+            'pending_email_cancel_token_hash' => hash('sha256', bin2hex(random_bytes(32))),
             'pending_email_sent_at' => $sentAt,
         ])->saveOrFail();
 
