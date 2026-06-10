@@ -42,6 +42,7 @@ enum ActivityEvent: string
     case EMAIL_CHANGED = 'email_changed';
     case EMAIL_CHANGE_CANCELLED = 'email_change_cancelled';
     case EMAIL_CHANGE_CONFIRMATION_REJECTED = 'email_change_confirmation_rejected';
+    case EMAIL_CHANGE_REQUEST_FAILED = 'email_change_request_failed';
     case TWO_FA_ENABLED = '2fa_enabled';
     case TWO_FA_CONFIRMED = '2fa_confirmed';
     case TWO_FA_DISABLED = '2fa_disabled';

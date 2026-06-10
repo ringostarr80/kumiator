@@ -95,6 +95,30 @@
                 @endif
             @endif
         </div>
+
+        <!-- Current Password (Re-Auth für den E-Mail-Wechsel) -->
+        {{-- Nur eingeblendet, wenn die eingegebene E-Mail vom Original abweicht
+             (Vergleich gegen die server-seitig gerenderte Adresse, damit das Feld
+             nach einem Validierungsfehler-Rerender sichtbar bleibt). Die Pflicht
+             erzwingt unabhängig davon die Server-Validierung in der Action. --}}
+        <div
+            class="col-span-6 sm:col-span-4"
+            x-data="{ originalEmail: @js($this->user->email), emailDirty: false }"
+            x-init="const emailInput = document.getElementById('email');
+                const sync = () => { emailDirty = emailInput.value.trim() !== originalEmail; };
+                emailInput.addEventListener('input', sync);
+                sync();"
+            x-show="emailDirty"
+            x-cloak
+        >
+            <x-label for="email-change-current-password" value="{{ __('app.current_password') }}" />
+            <x-input id="email-change-current-password" type="password" class="mt-1 block w-full"
+                     wire:model="state.current_password" autocomplete="current-password" />
+            <p class="text-sm mt-2 text-gray-600">
+                {{ __('app.email_change_current_password_hint') }}
+            </p>
+            <x-input-error for="current_password" class="mt-2" />
+        </div>
     </x-slot>
 
     <x-slot name="actions">

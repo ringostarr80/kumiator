@@ -301,6 +301,7 @@ return [
     'activity_email_changed' => 'Email address changed',
     'activity_email_change_cancelled' => 'Email change cancelled',
     'activity_email_change_confirmation_rejected' => 'Email change confirmation rejected',
+    'activity_email_change_request_failed' => 'Email change failed',
     'activity_email_verification_failed' => 'Email verification failed',
     'activity_other_sessions_logged_out' => 'Other browser sessions logged out',
     'activity_other_devices_logged_out' => 'Other devices logged out',
@@ -357,4 +358,8 @@ return [
     'email_change_invalid_message' => 'This link is invalid.',
     'email_change_cancelled_message' => 'If a pending email change matched this link, it has been cancelled.'
         . ' Your existing email address remains unchanged.',
+
+    // Email change: profile form (re-authentication)
+    'email_change_current_password_hint' => 'Confirm the change of your email address with your current password.',
+    'email_change_current_password_required' => 'Changing your email address requires your current password.',
 ];

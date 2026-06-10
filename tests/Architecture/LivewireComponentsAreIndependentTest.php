@@ -46,6 +46,11 @@ final class LivewireComponentsAreIndependentTest
                 // projekt-spezifisches Verhalten ergänzen können, ohne sie
                 // komplett neu zu implementieren.
                 Selector::inNamespace('Laravel\\Jetstream\\Http\\Livewire'),
+                // Folge der Jetstream-Erweiterung: deren Methoden type-hinten
+                // Fortify-Contracts (z. B. UpdatesUserProfileInformation) —
+                // Overrides müssen dieselbe Signatur tragen. Nur die Contracts,
+                // keine konkreten Fortify-Klassen.
+                Selector::inNamespace('Laravel\\Fortify\\Contracts'),
                 // Activity-Logging direkt aus Komponenten für Sicherheits-Events
                 // ohne Framework-Hook (z. B. Jetstreams Form feuert kein Event).
                 Selector::inNamespace('Spatie\\Activitylog\\Facades'),
@@ -57,8 +62,9 @@ final class LivewireComponentsAreIndependentTest
             ->because(
                 'Livewire-Komponenten dürfen nur von Models, DTOs, Repository- '
                 . 'und Service-Contracts, Illuminate, Livewire, Jetstream-Profil-'
-                . 'komponenten (zur Erweiterung), der Activity-Facade und PHP-'
-                . 'Sprach-Builtins (\\Throwable) abhängen.',
+                . 'komponenten (zur Erweiterung) samt deren Fortify-Contract-'
+                . 'Signaturen, der Activity-Facade und PHP-Sprach-Builtins '
+                . '(\\Throwable) abhängen.',
                 'Sie sind eine Präsentationsschicht und dürfen keine konkreten '
                 . 'Services oder Repositories kennen — DI erfolgt über Contracts. '
                 . 'Geschäftslogik gehört in die Service-Schicht.',

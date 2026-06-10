@@ -39,7 +39,11 @@ final class EmailChangeActivityLogTest extends TestCase
         Activity::query()->delete();
 
         Livewire::test(UpdateProfileInformationForm::class)
-            ->set('state', ['name' => 'Alt', 'email' => 'neu@example.com'])
+            ->set('state', [
+                'name' => 'Alt',
+                'email' => 'neu@example.com',
+                'current_password' => 'password',
+            ])
             ->call('updateProfileInformation');
 
         $refreshed = $user->fresh();
@@ -72,7 +76,11 @@ final class EmailChangeActivityLogTest extends TestCase
         $this->actingAs($user);
 
         Livewire::test(UpdateProfileInformationForm::class)
-            ->set('state', ['name' => $user->name, 'email' => 'neu@example.com'])
+            ->set('state', [
+                'name' => $user->name,
+                'email' => 'neu@example.com',
+                'current_password' => 'password',
+            ])
             ->call('updateProfileInformation');
 
         $token = $this->extractTokenFromVerifyNotification($user->fresh());
@@ -97,7 +105,11 @@ final class EmailChangeActivityLogTest extends TestCase
         $this->actingAs($user);
 
         Livewire::test(UpdateProfileInformationForm::class)
-            ->set('state', ['name' => $user->name, 'email' => 'neu@example.com'])
+            ->set('state', [
+                'name' => $user->name,
+                'email' => 'neu@example.com',
+                'current_password' => 'password',
+            ])
             ->call('updateProfileInformation');
 
         $token = $this->extractTokenFromVerifyNotification($user->fresh());
@@ -147,6 +159,68 @@ final class EmailChangeActivityLogTest extends TestCase
         $this->assertSame(0, $emailEvents);
 
         Notification::assertNothingSent();
+    }
+
+    public function testWrongCurrentPasswordWritesRequestFailedAuditAndNoRequestedEntry(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'alt@example.com']);
+        $this->actingAs($user);
+        Activity::query()->delete();
+
+        Livewire::test(UpdateProfileInformationForm::class)
+            ->set('state', [
+                'name' => $user->name,
+                'email' => 'neu@example.com',
+                'current_password' => 'falsches-passwort',
+            ])
+            ->call('updateProfileInformation')
+            ->assertHasErrors('current_password');
+
+        $entry = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'email_change_request_failed')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($entry);
+        $this->assertSame(__('app.activity_email_change_request_failed'), $entry->description);
+        $this->assertSame($user->getKey(), $entry->causer_id);
+        $this->assertSame('user', $entry->causer_type);
+        $this->assertSame($user->getKey(), $entry->subject_id);
+        $this->assertSame('user', $entry->subject_type);
+
+        $properties = $entry->properties?->toArray() ?? [];
+        $this->assertSame('current_password_mismatch', $properties['failure_reason'] ?? null);
+        $this->assertSame(AuditEmailHasher::hash('neu@example.com'), $properties['pending_email_hash'] ?? null);
+        $this->assertArrayNotHasKey('pending_email', $properties);
+
+        // Kein Antrag zustande gekommen → weder requested-Eintrag noch Mails.
+        $this->assertSame(
+            0,
+            Activity::query()->where('event', 'email_change_requested')->count(),
+        );
+        Notification::assertNothingSent();
+    }
+
+    public function testMissingCurrentPasswordWritesNoRequestFailedAudit(): void
+    {
+        // Der `required`-Verstoß ist ein UX-Eingabefehler ohne Forensik-Signal —
+        // auditiert wird nur der Mismatch (analog `password_update_failed`).
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'alt@example.com']);
+        $this->actingAs($user);
+        Activity::query()->delete();
+
+        Livewire::test(UpdateProfileInformationForm::class)
+            ->set('state', ['name' => $user->name, 'email' => 'neu@example.com'])
+            ->call('updateProfileInformation')
+            ->assertHasErrors('current_password');
+
+        $this->assertSame(
+            0,
+            Activity::query()->where('event', 'email_change_request_failed')->count(),
+        );
     }
 
     /**

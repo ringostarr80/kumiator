@@ -40,7 +40,11 @@ final class ProfileInformationTest extends TestCase
         ]));
 
         Livewire::test(UpdateProfileInformationForm::class)
-            ->set('state', ['name' => 'Test Name', 'email' => 'test@example.com'])
+            ->set('state', [
+                'name' => 'Test Name',
+                'email' => 'test@example.com',
+                'current_password' => 'password',
+            ])
             ->call('updateProfileInformation');
 
         $refreshedUser = $user->fresh();
@@ -60,7 +64,8 @@ final class ProfileInformationTest extends TestCase
 
         Livewire::test(UpdateProfileInformationForm::class)
             ->set('state', ['name' => 'Updated Name', 'email' => $user->email])
-            ->call('updateProfileInformation');
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors('current_password');
 
         $refreshedUser = $user->fresh();
 
@@ -68,6 +73,97 @@ final class ProfileInformationTest extends TestCase
         $this->assertEquals('Updated Name', $refreshedUser->name);
         $this->assertEquals($user->email, $refreshedUser->email);
         $this->assertNotNull($refreshedUser->email_verified_at);
+    }
+
+    public function testEmailChangeWithoutCurrentPasswordIsRejected(): void
+    {
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create(['email' => 'original@example.com']));
+
+        Livewire::test(UpdateProfileInformationForm::class)
+            ->set('state', ['name' => $user->name, 'email' => 'neu@example.com'])
+            ->call('updateProfileInformation')
+            ->assertHasErrors('current_password');
+
+        $refreshedUser = $user->fresh();
+
+        $this->assertNotNull($refreshedUser);
+        $this->assertSame('original@example.com', $refreshedUser->email);
+        $this->assertNull($refreshedUser->pending_email);
+        Notification::assertNothingSent();
+    }
+
+    public function testEmailChangeWithWrongCurrentPasswordIsRejected(): void
+    {
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create(['email' => 'original@example.com']));
+
+        Livewire::test(UpdateProfileInformationForm::class)
+            ->set('state', [
+                'name' => $user->name,
+                'email' => 'neu@example.com',
+                'current_password' => 'falsches-passwort',
+            ])
+            ->call('updateProfileInformation')
+            ->assertHasErrors('current_password');
+
+        $refreshedUser = $user->fresh();
+
+        $this->assertNotNull($refreshedUser);
+        $this->assertSame('original@example.com', $refreshedUser->email);
+        $this->assertNull($refreshedUser->pending_email);
+        Notification::assertNothingSent();
+    }
+
+    public function testCurrentPasswordIsClearedFromStateAfterEmailChangeRequest(): void
+    {
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create());
+
+        $component = Livewire::test(UpdateProfileInformationForm::class)
+            ->set('state', [
+                'name' => $user->name,
+                'email' => 'neu@example.com',
+                'current_password' => 'password',
+            ])
+            ->call('updateProfileInformation');
+
+        // Das Secret darf nach Erfolg nicht im Livewire-State (Snapshot landet
+        // im HTML) zurück zum Client wandern.
+        $state = $component->get('state');
+        $this->assertIsArray($state);
+        $this->assertArrayNotHasKey('current_password', $state);
+        $this->assertSame('neu@example.com', $user->fresh()?->pending_email);
+    }
+
+    public function testHttpRouteRequiresCurrentPasswordForEmailChange(): void
+    {
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create(['email' => 'original@example.com']));
+
+        // Der direkte Fortify-HTTP-Pfad teilt sich die Action mit dem
+        // Livewire-Formular — die Re-Auth-Pflicht muss auch hier greifen.
+        $this->put('/user/profile-information', [
+            'name' => $user->name,
+            'email' => 'neu@example.com',
+        ])->assertSessionHasErrorsIn('updateProfileInformation', 'current_password');
+
+        $this->assertNull($user->fresh()?->pending_email);
+        Notification::assertNothingSent();
+    }
+
+    public function testHttpRouteAcceptsEmailChangeWithCorrectCurrentPassword(): void
+    {
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create(['email' => 'original@example.com']));
+
+        $this->put('/user/profile-information', [
+            'name' => $user->name,
+            'email' => 'neu@example.com',
+            'current_password' => 'password',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('neu@example.com', $user->fresh()?->pending_email);
     }
 
     public function testProfilePhotoCanBeUpdated(): void

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Number;
 use Illuminate\Validation\ValidationException;
+use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
 use Laravel\Jetstream\Http\Livewire\UpdateProfileInformationForm as JetstreamUpdateProfileInformationForm;
 use Spatie\Activitylog\Facades\Activity;
 
@@ -41,6 +42,22 @@ final class UpdateProfileInformationForm extends JetstreamUpdateProfileInformati
     public function boot(UploadLimitResolverContract $uploadLimitResolver): void
     {
         $this->uploadLimitResolver = $uploadLimitResolver;
+    }
+
+    /**
+     * Das beim E-Mail-Wechsel zur Re-Auth eingegebene aktuelle Passwort darf
+     * nach Erfolg nicht im Livewire-State verbleiben — der State wird als
+     * Snapshot ins HTML serialisiert und würde das Klartext-Secret bei jedem
+     * weiteren Render zurück zum Client schicken (gleiches Muster wie der
+     * State-Reset in Jetstreams UpdatePasswordForm).
+     */
+    public function updateProfileInformation(UpdatesUserProfileInformation $updater): mixed
+    {
+        $redirect = parent::updateProfileInformation($updater);
+
+        unset($this->state['current_password']);
+
+        return $redirect;
     }
 
     /**

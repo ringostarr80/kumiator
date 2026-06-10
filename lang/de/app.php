@@ -305,6 +305,7 @@ return [
     'activity_email_changed' => 'E-Mail-Adresse geändert',
     'activity_email_change_cancelled' => 'E-Mail-Änderung abgebrochen',
     'activity_email_change_confirmation_rejected' => 'E-Mail-Änderungs-Bestätigung abgelehnt',
+    'activity_email_change_request_failed' => 'E-Mail-Änderung fehlgeschlagen',
     'activity_email_verification_failed' => 'E-Mail-Bestätigung fehlgeschlagen',
     'activity_other_sessions_logged_out' => 'Andere Browser-Sessions abgemeldet',
     'activity_other_devices_logged_out' => 'Andere Geräte abgemeldet',
@@ -362,5 +363,11 @@ return [
     'email_change_invalid_message' => 'Dieser Link ist ungültig.',
     'email_change_cancelled_message' => 'Sofern eine offene E-Mail-Änderung zu diesem Link existierte, wurde sie'
         . ' abgebrochen. Deine bestehende E-Mail-Adresse bleibt unverändert.',
+
+    // E-Mail-Änderung: Profil-Formular (Re-Authentifizierung)
+    'email_change_current_password_hint' => 'Bestätige die Änderung deiner E-Mail-Adresse mit deinem'
+        . ' aktuellen Passwort.',
+    'email_change_current_password_required' => 'Für die Änderung der E-Mail-Adresse ist dein aktuelles'
+        . ' Passwort erforderlich.',
 
 ];

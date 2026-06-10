@@ -65,6 +65,19 @@ final class UserEmailChanger implements UserEmailChangerContract
             ->log(ActivityEvent::EMAIL_CHANGE_REQUESTED->description());
     }
 
+    public function recordRequestFailed(User $user, ?string $attemptedEmail): void
+    {
+        Activity::useLog(ActivityChannel::AUTH->value)
+            ->event(ActivityEvent::EMAIL_CHANGE_REQUEST_FAILED->value)
+            ->causedBy($user)
+            ->performedOn($user)
+            ->withProperties([
+                'failure_reason' => 'current_password_mismatch',
+                'pending_email_hash' => AuditEmailHasher::hash($attemptedEmail),
+            ])
+            ->log(ActivityEvent::EMAIL_CHANGE_REQUEST_FAILED->description());
+    }
+
     public function confirmChange(string $plainToken): User
     {
         $user = $this->resolveUserByToken($plainToken);

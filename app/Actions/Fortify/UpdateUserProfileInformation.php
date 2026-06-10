@@ -13,6 +13,7 @@ use App\Services\User\Contracts\UserEmailChangerContract;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
 use Spatie\Activitylog\Facades\Activity;
 
@@ -41,11 +42,28 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
         $photoMaxKilobytes = $this->uploadLimitResolver->resolveProfilePhotoLimit()->kilobytes();
         $acceptedExtensions = $this->uploadLimitResolver->resolveProfilePhotoAcceptedExtensions();
 
-        Validator::make($input, [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'photo' => ['nullable', 'mimes:' . implode(',', $acceptedExtensions), 'max:' . $photoMaxKilobytes],
-        ])->validateWithBag('updateProfileInformation');
+        $emailChanged = ($input['email'] ?? null) !== $user->email;
+
+        try {
+            Validator::make($input, [
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+                'photo' => ['nullable', 'mimes:' . implode(',', $acceptedExtensions), 'max:' . $photoMaxKilobytes],
+                // Re-Auth nur beim E-Mail-Wechsel: Eine gekaperte Session darf
+                // den Deferred-Flow nicht anstoßen können — der Confirm-Link
+                // ginge an die Angreifer-Adresse, und der erfolgreiche Confirm
+                // entwertet den Cancel-Link der alten Adresse sofort.
+                'current_password' => $emailChanged
+                    ? ['required', 'string', 'current_password:web']
+                    : ['nullable', 'string'],
+            ], [
+                'current_password.required' => __('app.email_change_current_password_required'),
+            ])->validateWithBag('updateProfileInformation');
+        } catch (ValidationException $e) {
+            $this->recordFailedCurrentPasswordCheck($user, $input, $e);
+
+            throw $e;
+        }
 
         if (isset($input['photo']) && $input['photo'] instanceof UploadedFile) {
             // Pfad VOR dem Trait-Aufruf snapshotten — `updateProfilePhoto()`
@@ -85,5 +103,35 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
         if ($email !== $user->email) {
             $this->emailChanger->requestChange($user, $email);
         }
+    }
+
+    /**
+     * Auditiert NUR den Mismatch des aktuellen Passworts (Forensik-Signal für
+     * eine gekaperte Session), nicht den `required`-Verstoß — der ist ein
+     * UX-Eingabefehler ohne Sicherheitsaussage. Darum die Prüfung über
+     * `failed()` (verletzte Regel) statt bloßer Key-Existenz in `errors()`;
+     * Audit-Symmetrie zum `password_update_failed`-Event beim Passwort-Wechsel.
+     *
+     * Das Schreiben delegiert an den `UserEmailChanger`-Service, weil dort
+     * alle `email_change_*`-Audits inkl. des E-Mail-Hashings liegen — Actions
+     * dürfen den konkreten `AuditEmailHasher` laut Architektur-Regel nicht
+     * direkt nutzen.
+     *
+     * @param array<string, mixed> $input
+     */
+    private function recordFailedCurrentPasswordCheck(User $user, array $input, ValidationException $e): void
+    {
+        $failedRules = $e->validator->failed()['current_password'] ?? [];
+
+        if (!is_array($failedRules) || !array_key_exists('CurrentPassword', $failedRules)) {
+            return;
+        }
+
+        $attemptedEmail = $input['email'] ?? null;
+
+        $this->emailChanger->recordRequestFailed(
+            $user,
+            is_string($attemptedEmail) ? $attemptedEmail : null,
+        );
     }
 }
