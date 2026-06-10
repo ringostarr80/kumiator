@@ -349,6 +349,14 @@ return [
     'email_change_requested_ttl' => 'The request expires automatically after 60 minutes.',
     'email_change_requested_self_hint' => 'If you initiated the change yourself, no further action is required.',
 
+    // Email change: landing pages (GET side-effect free, action via POST)
+    'email_change_confirm_prompt' => 'Confirm the change of your email address here. The new address only takes'
+        . ' effect once you click the button.',
+    'email_change_confirm_button' => 'Confirm new email address',
+    'email_change_cancel_prompt' => 'Cancel the requested change of your email address here. Your current'
+        . ' address will be kept.',
+    'email_change_cancel_button' => 'Cancel change',
+
     // Email change: view messages
     'email_change_confirmed_message' => 'Your new email address is now active. You can log in with it from now on.',
     'email_change_expired_message' => 'This confirmation link has expired. Please restart the email change from'

@@ -14,12 +14,33 @@ final class ConfirmEmailChangeControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function testGetShowsLandingPageWithoutSideEffects(): void
+    {
+        // Mail-Scanner/Antiviren-Prefetch feuert GET-Requests: Die Landingpage
+        // rendert deshalb ohne Token-Lookup nur den Bestätigen-Button — erst
+        // der POST des Formulars führt den Tausch aus.
+        $user = User::factory()->create(['email' => 'alt@example.com']);
+        $tokens = $this->seedPendingChange($user, 'neu@example.com');
+        Activity::query()->delete();
+
+        $response = $this->get(route('email.change.confirm', ['token' => $tokens['confirm']]));
+
+        $response->assertOk();
+        $response->assertSeeText(__('app.email_change_confirm_button'));
+        $response->assertSee(route('email.change.confirm.perform', ['token' => $tokens['confirm']]));
+
+        $refreshed = $user->fresh();
+        $this->assertSame('alt@example.com', $refreshed?->email);
+        $this->assertSame('neu@example.com', $refreshed->pending_email);
+        $this->assertSame(0, Activity::query()->count());
+    }
+
     public function testValidTokenSwapsEmailAndShowsConfirmedView(): void
     {
         $user = User::factory()->create(['email' => 'alt@example.com']);
         $tokens = $this->seedPendingChange($user, 'neu@example.com');
 
-        $response = $this->get(route('email.change.confirm', ['token' => $tokens['confirm']]));
+        $response = $this->post(route('email.change.confirm.perform', ['token' => $tokens['confirm']]));
 
         $response->assertOk();
         $response->assertSeeText(__('app.email_change_confirmed_message'));
@@ -35,7 +56,7 @@ final class ConfirmEmailChangeControllerTest extends TestCase
         $user = User::factory()->create(['email' => 'alt@example.com']);
         $tokens = $this->seedPendingChange($user, 'neu@example.com', Carbon::now()->subHours(2));
 
-        $response = $this->get(route('email.change.confirm', ['token' => $tokens['confirm']]));
+        $response = $this->post(route('email.change.confirm.perform', ['token' => $tokens['confirm']]));
 
         $response->assertOk();
         $response->assertSeeText(__('app.email_change_expired_message'));
@@ -45,7 +66,7 @@ final class ConfirmEmailChangeControllerTest extends TestCase
 
     public function testUnknownTokenShowsInvalidView(): void
     {
-        $response = $this->get(route('email.change.confirm', ['token' => str_repeat('0', 64)]));
+        $response = $this->post(route('email.change.confirm.perform', ['token' => str_repeat('0', 64)]));
 
         $response->assertOk();
         $response->assertSeeText(__('app.email_change_invalid_message'));
@@ -57,7 +78,7 @@ final class ConfirmEmailChangeControllerTest extends TestCase
         $user = User::factory()->create(['email' => 'alt@example.com']);
         $tokens = $this->seedPendingChange($user, 'belegt@example.com');
 
-        $response = $this->get(route('email.change.confirm', ['token' => $tokens['confirm']]));
+        $response = $this->post(route('email.change.confirm.perform', ['token' => $tokens['confirm']]));
 
         $response->assertOk();
         $response->assertSeeText(__('app.email_change_conflict_message'));
@@ -73,7 +94,7 @@ final class ConfirmEmailChangeControllerTest extends TestCase
         $tokens = $this->seedPendingChange($user, 'neu@example.com');
         $user->deleteOrFail();
 
-        $response = $this->get(route('email.change.confirm', ['token' => $tokens['confirm']]));
+        $response = $this->post(route('email.change.confirm.perform', ['token' => $tokens['confirm']]));
 
         $response->assertOk();
         // Bewusst SELBER View wie bei unbekanntem Token — sonst leakt das UI,
@@ -81,23 +102,23 @@ final class ConfirmEmailChangeControllerTest extends TestCase
         $response->assertSeeText(__('app.email_change_invalid_message'));
     }
 
-    public function testSecondClickOnSameTokenLandsInInvalidView(): void
+    public function testSecondSubmitOnSameTokenLandsInInvalidView(): void
     {
-        // Mail-Prefetch durch Antivirus + manueller User-Klick: der erste
-        // Aufruf gewinnt, der zweite findet die `pending_email*`-Felder bereits
-        // geräumt vor und läuft in den Invalid-Pfad — ohne State zu zerstören
-        // (Tausch bereits durchgeführt, nichts mehr zu tun).
+        // Doppel-Submit (Doppelklick auf den Button, Browser-Resubmit): der
+        // erste POST gewinnt, der zweite findet die `pending_email*`-Felder
+        // bereits geräumt vor und läuft in den Invalid-Pfad — ohne State zu
+        // zerstören (Tausch bereits durchgeführt, nichts mehr zu tun).
         $user = User::factory()->create(['email' => 'alt@example.com']);
         $tokens = $this->seedPendingChange($user, 'neu@example.com');
 
-        $first = $this->get(route('email.change.confirm', ['token' => $tokens['confirm']]));
+        $first = $this->post(route('email.change.confirm.perform', ['token' => $tokens['confirm']]));
         $first->assertOk();
 
-        $second = $this->get(route('email.change.confirm', ['token' => $tokens['confirm']]));
+        $second = $this->post(route('email.change.confirm.perform', ['token' => $tokens['confirm']]));
         $second->assertOk();
         $second->assertSeeText(__('app.email_change_invalid_message'));
 
-        // Status nach dem ersten Klick stabil
+        // Status nach dem ersten Submit stabil
         $this->assertSame('neu@example.com', $user->fresh()?->email);
     }
 
@@ -105,7 +126,7 @@ final class ConfirmEmailChangeControllerTest extends TestCase
     {
         Activity::query()->delete();
 
-        $this->get(route('email.change.confirm', ['token' => str_repeat('a', 64)]));
+        $this->post(route('email.change.confirm.perform', ['token' => str_repeat('a', 64)]));
 
         $this->assertSame(0, Activity::query()->where('event', 'email_changed')->count());
     }
@@ -119,7 +140,7 @@ final class ConfirmEmailChangeControllerTest extends TestCase
         $user = User::factory()->create(['email' => 'alt@example.com']);
         $tokens = $this->seedPendingChange($user, 'neu@example.com');
 
-        $response = $this->get(route('email.change.confirm', ['token' => $tokens['cancel']]));
+        $response = $this->post(route('email.change.confirm.perform', ['token' => $tokens['cancel']]));
 
         $response->assertOk();
         $response->assertSeeText(__('app.email_change_invalid_message'));

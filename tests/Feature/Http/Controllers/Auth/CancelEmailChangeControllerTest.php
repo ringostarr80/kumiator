@@ -14,12 +14,32 @@ final class CancelEmailChangeControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function testGetShowsLandingPageWithoutSideEffects(): void
+    {
+        // Die Hinweis-Mail geht an die ALTE Adresse — ein Link-Scanner dort
+        // würde per GET jede legitime Änderung abbrechen, bevor der User den
+        // Confirm-Link klicken kann. Die Landingpage ist deshalb
+        // nebenwirkungsfrei; erst der POST des Formulars bricht ab.
+        $user = User::factory()->create(['email' => 'alt@example.com']);
+        $plainToken = $this->seedPendingChange($user, 'neu@example.com');
+        Activity::query()->delete();
+
+        $response = $this->get(route('email.change.cancel', ['token' => $plainToken]));
+
+        $response->assertOk();
+        $response->assertSeeText(__('app.email_change_cancel_button'));
+        $response->assertSee(route('email.change.cancel.perform', ['token' => $plainToken]));
+
+        $this->assertSame('neu@example.com', $user->fresh()?->pending_email);
+        $this->assertSame(0, Activity::query()->count());
+    }
+
     public function testValidTokenCancelsPendingChangeAndShowsCancelledView(): void
     {
         $user = User::factory()->create(['email' => 'alt@example.com']);
         $plainToken = $this->seedPendingChange($user, 'neu@example.com');
 
-        $response = $this->get(route('email.change.cancel', ['token' => $plainToken]));
+        $response = $this->post(route('email.change.cancel.perform', ['token' => $plainToken]));
 
         $response->assertOk();
         $response->assertSeeText(__('app.email_change_cancelled_message'));
@@ -39,7 +59,7 @@ final class CancelEmailChangeControllerTest extends TestCase
     {
         Activity::query()->delete();
 
-        $response = $this->get(route('email.change.cancel', ['token' => str_repeat('0', 64)]));
+        $response = $this->post(route('email.change.cancel.perform', ['token' => str_repeat('0', 64)]));
 
         $response->assertOk();
         $response->assertSeeText(__('app.email_change_cancelled_message'));
@@ -59,7 +79,7 @@ final class CancelEmailChangeControllerTest extends TestCase
         $user = User::factory()->create();
         $plainToken = $this->seedPendingChange($user, 'neu@example.com', Carbon::now()->subDay());
 
-        $response = $this->get(route('email.change.cancel', ['token' => $plainToken]));
+        $response = $this->post(route('email.change.cancel.perform', ['token' => $plainToken]));
 
         $response->assertOk();
         $this->assertNull($user->fresh()?->pending_email);

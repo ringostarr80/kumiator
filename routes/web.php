@@ -76,14 +76,20 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'throttle:6
 //
 // Confirm-Link aus der Verifizierungs-Mail an die NEUE Adresse → Tausch.
 // Cancel-Link aus der Hinweis-Mail an die ALTE Adresse → Hijack-Schutz.
-// Beides via GET, analog zu Laravels Verify-Email-Pattern. IP-basiertes
-// Rate-Limit gegen Token-Probieren (siehe `AppServiceProvider`).
+// GET liefert nur eine nebenwirkungsfreie Landingpage — Mail-Scanner-Prefetch
+// darf weder bestätigen noch abbrechen. Die Aktion läuft über den POST des
+// Formular-Buttons. IP-basiertes Rate-Limit gegen Token-Probieren (siehe
+// `AppServiceProvider`).
 // ──────────────────────────────────────────────────────────────────────────────
 Route::middleware('throttle:email-change-link')->group(static function (): void {
-    Route::get('/email/change/confirm/{token}', ConfirmEmailChangeController::class)
+    Route::get('/email/change/confirm/{token}', [ConfirmEmailChangeController::class, 'show'])
         ->name('email.change.confirm');
-    Route::get('/email/change/cancel/{token}', CancelEmailChangeController::class)
+    Route::post('/email/change/confirm/{token}', [ConfirmEmailChangeController::class, 'confirm'])
+        ->name('email.change.confirm.perform');
+    Route::get('/email/change/cancel/{token}', [CancelEmailChangeController::class, 'show'])
         ->name('email.change.cancel');
+    Route::post('/email/change/cancel/{token}', [CancelEmailChangeController::class, 'cancel'])
+        ->name('email.change.cancel.perform');
 });
 
 // ──────────────────────────────────────────────────────────────────────────────

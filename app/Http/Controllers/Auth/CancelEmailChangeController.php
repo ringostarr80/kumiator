@@ -17,6 +17,11 @@ use Illuminate\Contracts\View\View;
  * meine E-Mail geändert") setzt voraus, dass das Opfer auch ohne aktive
  * Session den Vorgang abbrechen kann.
  *
+ * GET rendert nur eine Landingpage mit Abbrechen-Button — bewusst ohne
+ * Token-Lookup und ohne Seiteneffekt: Ein Link-Scanner in der Mailbox der
+ * alten Adresse würde sonst jede legitime Änderung abbrechen, bevor der
+ * User den Confirm-Link klicken kann. Erst der POST des Formulars bricht ab.
+ *
  * Es wird IMMER derselbe Erfolgs-View ausgeliefert — egal, ob tatsächlich
  * eine Anfrage abgebrochen wurde oder ob der Token unbekannt war. Eine
  * Differenzierung wäre forensisch wertvoll, würde aber die Existenz einer
@@ -24,7 +29,12 @@ use Illuminate\Contracts\View\View;
  */
 final class CancelEmailChangeController extends Controller
 {
-    public function __invoke(string $token, UserEmailChangerContract $emailChanger): View
+    public function show(string $token): View
+    {
+        return view('auth.email-change-cancel', ['token' => $token]);
+    }
+
+    public function cancel(string $token, UserEmailChangerContract $emailChanger): View
     {
         $emailChanger->cancelChange($token);
 

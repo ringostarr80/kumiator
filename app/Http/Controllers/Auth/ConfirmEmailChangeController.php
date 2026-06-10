@@ -21,16 +21,24 @@ use Illuminate\Contracts\View\View;
  * wäre eine Sackgasse, wenn der User die Mail auf einem anderen Gerät öffnet
  * (analog zur Begründung im `VerifyEmailController`).
  *
- * GET (statt POST): konsistent mit Laravels Email-Verify-Pattern. Risiko
- * Link-Prefetch durch Antiviren/Mail-Clients wurde bewusst akzeptiert
- * (Plan-Festlegung). Der Service ist nicht idempotent — ein zweiter Klick
- * auf denselben Token landet im Invalid-Pfad, weil die `pending_email*`-
- * Felder beim Erfolg geräumt wurden. Das ist akzeptabel, weil der erste
- * Klick (Prefetch oder User) immer die korrekte State-Transition vornimmt.
+ * GET rendert nur eine Landingpage mit Bestätigen-Button — bewusst ohne
+ * Token-Lookup und ohne Seiteneffekt, damit Link-Prefetch durch
+ * Antiviren/Mail-Scanner den Tausch nicht auslösen kann (bei einem
+ * Tippfehler in der neuen Adresse würde sonst das fremde Mailsystem den
+ * Wechsel vollziehen und den User aussperren). Erst der POST des Formulars
+ * führt die Aktion aus. Der Service ist nicht idempotent — ein zweiter
+ * Submit desselben Tokens landet im Invalid-Pfad, weil die
+ * `pending_email*`-Felder beim Erfolg geräumt wurden. Das ist akzeptabel,
+ * weil der erste Submit immer die korrekte State-Transition vornimmt.
  */
 final class ConfirmEmailChangeController extends Controller
 {
-    public function __invoke(string $token, UserEmailChangerContract $emailChanger): View
+    public function show(string $token): View
+    {
+        return view('auth.email-change-confirm', ['token' => $token]);
+    }
+
+    public function confirm(string $token, UserEmailChangerContract $emailChanger): View
     {
         try {
             $emailChanger->confirmChange($token);

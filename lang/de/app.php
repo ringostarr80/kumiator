@@ -353,6 +353,14 @@ return [
     'email_change_requested_ttl' => 'Die Anfrage läuft nach 60 Minuten automatisch ab.',
     'email_change_requested_self_hint' => 'Wenn du die Änderung selbst angestoßen hast, ist nichts weiter zu tun.',
 
+    // E-Mail-Änderung: Landingpages (GET nebenwirkungsfrei, Aktion per POST)
+    'email_change_confirm_prompt' => 'Hier bestätigst du die Änderung deiner E-Mail-Adresse. Erst mit dem Klick'
+        . ' auf den Button wird die neue Adresse übernommen.',
+    'email_change_confirm_button' => 'Neue E-Mail-Adresse bestätigen',
+    'email_change_cancel_prompt' => 'Hier brichst du die beantragte Änderung deiner E-Mail-Adresse ab. Deine'
+        . ' bisherige Adresse bleibt erhalten.',
+    'email_change_cancel_button' => 'Änderung abbrechen',
+
     // E-Mail-Änderung: View-Nachrichten
     'email_change_confirmed_message' => 'Deine neue E-Mail-Adresse ist jetzt aktiv. Du kannst dich ab sofort mit'
         . ' ihr anmelden.',

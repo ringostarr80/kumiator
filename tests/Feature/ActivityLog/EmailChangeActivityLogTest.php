@@ -85,7 +85,7 @@ final class EmailChangeActivityLogTest extends TestCase
 
         $token = $this->extractTokenFromVerifyNotification($user->fresh());
 
-        $this->get(route('email.change.confirm', ['token' => $token]))->assertOk();
+        $this->post(route('email.change.confirm.perform', ['token' => $token]))->assertOk();
 
         $this->assertSame('neu@example.com', $user->fresh()?->email);
 
@@ -114,7 +114,7 @@ final class EmailChangeActivityLogTest extends TestCase
 
         $token = $this->extractTokenFromRequestedNotification($user->fresh());
 
-        $this->get(route('email.change.cancel', ['token' => $token]))->assertOk();
+        $this->post(route('email.change.cancel.perform', ['token' => $token]))->assertOk();
 
         $refreshed = $user->fresh();
         $this->assertNotNull($refreshed);
