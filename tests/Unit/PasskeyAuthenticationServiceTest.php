@@ -101,7 +101,7 @@ final class PasskeyAuthenticationServiceTest extends TestCase
         ]);
 
         $this->expectException(AuthenticatorResponseVerificationException::class);
-        $this->expectExceptionMessage(__('app.passkey_credential_not_found'));
+        $this->expectExceptionMessageIs(__('app.passkey_credential_not_found'));
 
         $this->service->verify($rawResponse, $options, 'localhost');
     }

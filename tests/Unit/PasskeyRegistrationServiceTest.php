@@ -105,7 +105,7 @@ final class PasskeyRegistrationServiceTest extends TestCase
         ]);
 
         $this->expectException(AuthenticatorResponseVerificationException::class);
-        $this->expectExceptionMessage(__('app.passkey_invalid_response_type'));
+        $this->expectExceptionMessageIs(__('app.passkey_invalid_response_type'));
 
         $this->service->verifyAndSave($user, $rawResponse, $options, 'Test Key', 'localhost');
     }

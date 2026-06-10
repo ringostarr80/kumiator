@@ -54,7 +54,7 @@ final class PasskeyManagerFormTest extends TestCase
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
             ->assertSet('passkeys.0.id', $new->id)
-            ->assertSet('passkeys.1.id', $old->id); // @phpstan-ignore method.nonObject
+            ->assertSet('passkeys.1.id', $old->id);
     }
 
     public function testLoadPasskeysAbortsWhenAuthUserIsNull(): void
@@ -82,8 +82,8 @@ final class PasskeyManagerFormTest extends TestCase
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
             ->assertCount('passkeys', 1)
-            ->call('deletePasskey', $passkey->id) // @phpstan-ignore method.nonObject
-            ->assertCount('passkeys', 0); // @phpstan-ignore method.nonObject
+            ->call('deletePasskey', $passkey->id)
+            ->assertCount('passkeys', 0);
     }
 
     public function testPasskeyRegisteredEventRefreshesPasskeyList(): void
@@ -96,7 +96,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         PasskeyCredential::factory()->for($user)->create();
 
-        $component->dispatch('passkey-registered') // @phpstan-ignore method.nonObject
+        $component->dispatch('passkey-registered')
             ->assertCount('passkeys', 1); // @phpstan-ignore method.nonObject
     }
 
@@ -123,7 +123,7 @@ final class PasskeyManagerFormTest extends TestCase
             ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
             ->call('startRenaming', $passkey->id)
             ->assertSet('editingPasskeyId', $passkey->id)
-            ->assertSet('editingPasskeyName', 'Mein iPhone'); // @phpstan-ignore method.nonObject
+            ->assertSet('editingPasskeyName', 'Mein iPhone');
     }
 
     public function testCancelRenamingResetsEditingState(): void
@@ -136,7 +136,7 @@ final class PasskeyManagerFormTest extends TestCase
             ->call('startRenaming', $passkey->id)
             ->call('cancelRenaming')
             ->assertSet('editingPasskeyId', null)
-            ->assertSet('editingPasskeyName', ''); // @phpstan-ignore method.nonObject
+            ->assertSet('editingPasskeyName', '');
     }
 
     public function testOwnerCanRenamePasskey(): void
@@ -150,7 +150,7 @@ final class PasskeyManagerFormTest extends TestCase
             ->set('editingPasskeyName', 'Neu')
             ->call('renamePasskey')
             ->assertSet('editingPasskeyId', null)
-            ->assertSet('editingPasskeyName', ''); // @phpstan-ignore method.nonObject
+            ->assertSet('editingPasskeyName', '');
 
         $this->assertSame('Neu', $passkey->fresh()?->name);
     }
