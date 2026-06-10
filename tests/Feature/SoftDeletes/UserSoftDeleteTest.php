@@ -12,6 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\PendingCommand;
 use Laravel\Sanctum\PersonalAccessToken;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -151,6 +152,39 @@ final class UserSoftDeleteTest extends TestCase
         $this->assertSame(
             0,
             DB::table('model_has_roles')
+                ->where('model_type', $user->getMorphClass())
+                ->where('model_id', $user->getKey())
+                ->count(),
+        );
+    }
+
+    /**
+     * Anders als bei den Rollen-Pivots räumt hier NICHT der UserHardDeleter
+     * auf: Direkt-Permission-Pivots verschwinden allein durch Spaties
+     * `deleting`-Hook, der beim Force-Delete still (ohne Event) detacht.
+     * Ändert ein Spatie-Update dieses Verhalten, blieben Berechtigungen als
+     * verwaiste Pivot-Zeilen zurück (DSGVO-relevant) und könnten bei
+     * ID-Wiederverwendung wieder aufleben — dieser Test schlägt dann an.
+     */
+    public function testSelfDeleteHardDeletesDirectPermissionPivots(): void
+    {
+        $user = User::factory()->create();
+        Permission::findOrCreate('activity-log.view');
+        $user->givePermissionTo('activity-log.view');
+
+        $this->assertSame(
+            1,
+            DB::table('model_has_permissions')
+                ->where('model_type', $user->getMorphClass())
+                ->where('model_id', $user->getKey())
+                ->count(),
+        );
+
+        app(DeleteUser::class)->delete($user);
+
+        $this->assertSame(
+            0,
+            DB::table('model_has_permissions')
                 ->where('model_type', $user->getMorphClass())
                 ->where('model_id', $user->getKey())
                 ->count(),

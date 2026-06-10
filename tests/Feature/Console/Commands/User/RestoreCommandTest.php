@@ -7,6 +7,7 @@ namespace Tests\Feature\Console\Commands\User;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\PendingCommand;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 final class RestoreCommandTest extends TestCase
@@ -34,6 +35,35 @@ final class RestoreCommandTest extends TestCase
         $restored = User::where('email', self::TEST_EMAIL)->first();
         $this->assertNotNull($restored);
         $this->assertNull($restored->deleted_at);
+    }
+
+    /**
+     * Soft-Delete entfernt Rollen-/Permission-Pivots bewusst nicht — eine
+     * sensible Direkt-Permission wie `activity-log.view` gilt nach dem
+     * Restore sofort wieder. Der Output muss das sichtbar machen, damit der
+     * Admin die Wiederherstellung bewusst auch als Privilegien-Restore
+     * entscheidet.
+     */
+    public function testRestoreHintsThatPermissionsApplyAgain(): void
+    {
+        $user = User::factory()->create(['email' => self::TEST_EMAIL]);
+        Permission::findOrCreate('activity-log.view');
+        $user->givePermissionTo('activity-log.view');
+        $user->deleteOrFail();
+
+        $command = $this->artisan('user:restore');
+        assert($command instanceof PendingCommand);
+
+        $command
+            ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
+            ->expectsOutputToContain(__('commands.restore_user.permissions_hint'))
+            ->expectsConfirmation(__('commands.restore_user.confirm_restore'), 'yes')
+            ->assertSuccessful()
+            ->run();
+
+        $restored = User::where('email', self::TEST_EMAIL)->first();
+        $this->assertNotNull($restored);
+        $this->assertTrue($restored->hasPermissionTo('activity-log.view'));
     }
 
     public function testRestoreCanBeCancelled(): void

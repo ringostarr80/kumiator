@@ -36,6 +36,8 @@ return [
         'hint' => 'Note: API tokens, passkeys and sessions were removed on deletion'
             . ' and will not be restored. The user must log in again and re-register'
             . ' their passkeys if applicable.',
+        'permissions_hint' => 'Warning: Roles and direct permissions (e.g. activity-log.view)'
+            . ' were not removed on deletion and apply again immediately after restoring.',
         'failed' => 'Restoring ":email" was aborted.',
         'success' => 'User ":name" (:email) was successfully restored.',
     ],

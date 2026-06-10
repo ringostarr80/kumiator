@@ -15,7 +15,10 @@ use Illuminate\Console\Command;
  * Pendant zum admin-initiierten Soft-Delete (`user:delete`). Tokens, Passkeys
  * und Sessions wurden dort hart gelöscht — sie kommen beim Restore NICHT
  * zurück; der User muss sich neu anmelden und ggf. seine Passkeys neu
- * registrieren. Das wird im Output prominent ausgegeben.
+ * registrieren. Rollen und Direkt-Permissions blieben dagegen erhalten und
+ * gelten sofort wieder. Beides wird im Output prominent ausgegeben, damit
+ * der Admin die Wiederherstellung bewusst auch als Privilegien-Restore
+ * entscheidet.
  *
  * Activity-Log: Spatie schreibt das `restored`-Event automatisch via dem
  * `LogsActivity`-Trait des Users — kein expliziter Audit-Eintrag nötig.
@@ -52,6 +55,7 @@ class Restore extends Command
             'deleted_at' => $user->deleted_at?->format('d.m.Y H:i') ?? '—',
         ]));
         $this->warn(__('commands.restore_user.hint'));
+        $this->warn(__('commands.restore_user.permissions_hint'));
 
         if (!$this->confirm(__('commands.restore_user.confirm_restore'))) {
             $this->info(__('commands.restore_user.aborted'));
