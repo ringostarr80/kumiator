@@ -83,8 +83,9 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     ];
 
     /**
-     * Returns a stable string identifier used as the WebAuthn user handle.
-     * The handle is the integer primary key cast to string; it must be stable and opaque.
+     * Der WebAuthn-User-Handle muss über die Lebensdauer des Kontos stabil
+     * bleiben und nach außen bedeutungslos sein — daher der unveränderliche
+     * Integer-Primärschlüssel.
      */
     public function getWebAuthnUserHandle(): string
     {
@@ -105,28 +106,24 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     }
 
     /**
-     * Activity-Log-Konfiguration.
+     * `logOnly` ist eine Allowlist — nur die drei genannten Felder landen im
+     * `user`-Log; alles andere, insbesondere sämtliche Secrets, bleibt
+     * konstruktionsbedingt draußen.
      *
-     * Geloggt werden nur fachlich relevante Felder — Secrets (Passwort, 2FA-Seed,
-     * Recovery-Codes, Remember-Token) erscheinen NIEMALS im Log.
-     *
-     * `email_verified_at` wird bewusst NICHT geloggt: die E-Mail-Verifizierung
-     * landet als dedizierter `email_verified`-Eintrag im `auth`-Log (siehe
-     * `LogAuthenticationActivityListener::handleVerified()`). Ein zusätzlicher
+     * `email_verified_at` fehlt bewusst: die E-Mail-Verifizierung landet als
+     * dedizierter `email_verified`-Eintrag im `auth`-Log. Ein zusätzlicher
      * generischer `user.updated`-Eintrag würde denselben Vorgang doppelt zählen.
      *
-     * `email` wird aus demselben Grund NICHT geloggt: der zweistufige
-     * Änderungsvorgang (Antrag → Bestätigung → Tausch) wird über drei
-     * dedizierte `auth`-Channel-Events dokumentiert
-     * (`email_change_requested`, `email_changed`, `email_change_cancelled`)
-     * — siehe `App\Services\User\UserEmailChanger`. Wer die `email`-Spalte
-     * außerhalb dieses Pfades direkt verändert, umgeht damit absichtlich den
-     * Audit-Pfad; das ist heute nur in Tests/Seedern der Fall.
+     * `email` fehlt aus demselben Grund: der zweistufige Änderungsvorgang
+     * (Antrag → Bestätigung → Tausch) wird über drei dedizierte `auth`-Events
+     * dokumentiert (`email_change_requested`, `email_changed`,
+     * `email_change_cancelled`) — Quelle: `App\Services\User\UserEmailChanger`.
+     * Wer die `email`-Spalte außerhalb dieses Pfades direkt verändert, umgeht
+     * den Audit-Pfad bewusst; das ist heute nur in Tests/Seedern der Fall.
      *
-     * Die `pending_email*`-Spalten sind ebenfalls NICHT in `logOnly`: ihr
-     * Lebenszyklus ist vollständig über die `auth`-Events abgedeckt;
-     * Audit-Inhalte am `user`-Channel wären redundant und würden Konflikte
-     * mit der Hash-Speicherung des Tokens provozieren.
+     * Die `pending_email*`-Spalten fehlen ebenfalls: ihr Lebenszyklus ist
+     * vollständig über die `auth`-Events abgedeckt; ein `user`-Eintrag wäre
+     * redundant und würde Token-Hashes ins Audit ziehen.
      */
     public function getActivitylogOptions(): LogOptions
     {
@@ -138,23 +135,14 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     }
 
     /**
-     * Mappt das generische Eloquent-Event eines User-Activity-Eintrags
-     * (created/updated/deleted/restored) auf einen fachlichen Code
-     * (user_created/user_approved/user_renamed/user_deleted/user_restored),
-     * bevor der Eintrag gespeichert wird. Aufgerufen aus einem
-     * `Activity::saving`-Listener im {@see \App\Providers\AppServiceProvider}.
+     * Hebt vor dem Insert das generische Eloquent-Event (`created`/`updated`/…)
+     * auf den fachlichen `user_*`-Code an.
      *
-     * Hintergrund analog {@see PasskeyCredential::applyEventLabelToActivity}:
-     * Der `LogsActivity`-Trait dieser Spatie-Version bietet keinen
-     * `tapActivity`-Hook; ein globaler `saving`-Listener ist der einzige
-     * stabile Punkt zwischen Trait-Setup und Insert. Die Mapping-Logik
-     * gehört in die Domain, der Listener hängt nur dran.
-     *
-     * Channel-agnostisch: liefert dieselben fachlichen Codes unabhängig
-     * davon, ob der Vorgang per CLI, Web-Admin (künftig) oder Web-Self-Reg
-     * ausgelöst wurde. Der Auslöse-Kanal wird über das `cli_actor`-Property
-     * (CLI) bzw. einen nachgelagerten `Activity::saving`-Hook
-     * (Self-Registration → `user_self_registered`) gekennzeichnet.
+     * Channel-agnostisch — dasselbe Mapping, egal ob CLI, Web-Admin oder
+     * Self-Registration den Vorgang auslöste; den Auslöse-Kanal markieren
+     * separate Hooks (`cli_actor`-Property, Self-Reg-Remap), nicht dieses Mapping.
+     * Die Verdrahtung über einen `Activity::saving`-Listener ist am Hook im
+     * `AppServiceProvider` begründet.
      */
     public static function applyEventLabelToActivity(ActivityModel $activity): void
     {
@@ -200,10 +188,11 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     }
 
     /**
-     * Unterscheidet einen Approval-Save (Setzen von `approved_at`) von einer
-     * sonstigen Aktualisierung (heute realistisch nur `name`). `deleted_at`
-     * wird via Eloquent als eigenes `event = 'deleted'`/`'restored'` geführt,
-     * nicht als `updated` — daher hier keine Sonderbehandlung.
+     * Der `updated`-Pfad kennt nur zwei fachliche Ausgänge: ein gesetztes
+     * `approved_at` im Diff ist ein Approval, andernfalls eine Namensänderung
+     * (`name` ist heute das einzige weitere geloggte, via `updated` änderbare
+     * Feld). `deleted_at` taucht hier nicht auf — Soft-Deletes laufen via
+     * Eloquent als eigenes `event = 'deleted'`/`'restored'`, nicht als `updated`.
      *
      * `approved_at` schlägt jeden anderen Diff-Inhalt, weil ein kombinierter
      * Save (Approval + Namensänderung) fachlich als Approval-Vorgang dominiert.
