@@ -133,6 +133,65 @@ final class ActivityLogAccessTest extends TestCase
             ->assertForbidden();
     }
 
+    /**
+     * Folge-Requests laufen ohne erneuten `mount()` — ohne Re-Check in
+     * `hydrate()` überlebte eine bereits geöffnete Admin-Seite den
+     * Permission-Entzug bis zum Page-Reload. Der Wire-Call muss abgelehnt
+     * werden, bevor die Aktion Properties in den State lädt, und der Versuch
+     * muss wie der abgelehnte Erst-Zugriff auditiert werden.
+     */
+    public function testActionAfterPermissionRevocationIsForbiddenAndAudited(): void
+    {
+        $admin = $this->makeAuditor();
+
+        ActivityFacade::useLog('with-props')
+            ->withProperties(['key' => 'value'])
+            ->event('demo')
+            ->log('Eintrag mit Properties');
+
+        $activity = Activity::query()
+            ->where('log_name', 'with-props')
+            ->latest('id')
+            ->firstOrFail();
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->assertOk();
+
+        $admin->revokePermissionTo('activity-log.view');
+
+        $component->call('showProperties', $activity->id);
+        $component->assertForbidden();
+        $component->assertSet('showPropertiesModal', false);
+        $component->assertSet('selectedProperties', null);
+
+        $entry = Activity::query()
+            ->where('log_name', 'security')
+            ->where('event', 'authorization_denied')
+            ->firstOrFail();
+
+        $this->assertSame($admin->getKey(), $entry->causer_id);
+        $properties = $entry->properties?->toArray() ?? [];
+        $this->assertSame('activity-log.view', $properties['ability'] ?? null);
+    }
+
+    /**
+     * Der Entzug muss auch die `render()`-Pfade schließen: Filter-Updates
+     * (stellvertretend für Sortierung/Pagination) laden bei jedem Wire-Request
+     * frische Zeilen — nicht nur das Properties-Modal.
+     */
+    public function testFilterUpdateAfterPermissionRevocationIsForbidden(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->assertOk();
+
+        $admin->revokePermissionTo('activity-log.view');
+
+        $component->set('filterChannel', 'auth');
+        $component->assertForbidden();
+    }
+
     public function testComponentRendersExistingActivityEntries(): void
     {
         $user = $this->makeAuditor();

@@ -92,6 +92,23 @@ final class ActivityLogTable extends Component
     }
 
     /**
+     * Folge-Requests (Filter, Sortierung, Pagination, Properties-Modal) laufen
+     * ohne erneuten `mount()` — ohne diesen Hook überlebte eine bereits
+     * geöffnete Seite den Permission-Entzug bis zum Page-Reload, und jeder
+     * Wire-Request lädt über `render()` frische Daten. Abgelehnte Versuche
+     * werden wie in `mount()` auditiert; der Zugriffs-Eintrag selbst bleibt
+     * dagegen bewusst auf den Mount beschränkt (ein Eintrag pro Seitenaufruf).
+     */
+    public function hydrate(): void
+    {
+        if (Gate::denies('activity-log.view')) {
+            $this->recordAuthorizationDenied();
+        }
+
+        $this->authorize('activity-log.view');
+    }
+
+    /**
      * Lädt die Properties einer Activity und öffnet das Modal.
      *
      * Wird absichtlich erst beim Klick aufgerufen, damit die initiale Page
