@@ -64,6 +64,10 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
      */
     protected $hidden = [
         'password',
+        'pending_email',
+        'pending_email_cancel_token_hash',
+        'pending_email_confirm_token_hash',
+        'pending_email_sent_at',
         'remember_token',
         'two_factor_recovery_codes',
         'two_factor_secret',
