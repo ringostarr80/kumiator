@@ -1,3 +1,6 @@
+# Local development only — never use this setup as a production template:
+# the PHP, entrypoint and nginx configs deliberately trade security for dev
+# convenience. Production deploys via `composer deploy` (see docs/deployment.md).
 services:
   app:
     build:

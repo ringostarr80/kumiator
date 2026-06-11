@@ -1,4 +1,6 @@
 #!/bin/sh
+# Local development only — world-writable storage and composer/npm builds
+# at container runtime have no place in production (see docs/deployment.md).
 set -e
 
 # Ensure writable directories have correct permissions
