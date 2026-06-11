@@ -28,10 +28,13 @@ use Spatie\Activitylog\Models\Activity as ActivityModel;
  * zurück (Brücke zwischen DSGVO Art. 17 und Art. 32). Der admin-initiierte
  * Soft-Delete (`user:delete`) verzichtet bewusst auf diesen Purge.
  *
- * `DB::table()`-Ausnahmen (Default ist Eloquent):
- *  - Sessions: kein Default-Eloquent-Model, Tabellenname konfigurierbar.
- *  - `model_has_roles`: Pivot ohne öffentliches Spatie-Model; `roles()->detach()`
- *    würde `RoleDetachedEvent` feuern und damit den Purge wieder unterlaufen.
+ * `DB::table()`-Ausnahme (Default ist Eloquent): Sessions haben kein
+ * Default-Eloquent-Model, der Tabellenname ist konfigurierbar.
+ *
+ * Rollen- und Direkt-Permission-Pivots brauchen keinen eigenen Purge:
+ * Spaties `deleting`-Hooks detachen beide beim Force-Delete still — ohne
+ * Spatie-Event, es entsteht also kein Activity-Eintrag, der den Purge
+ * unterliefe.
  *
  * Session-Treiber: Die Session-Löschung wirkt nur bei `session.driver = database`.
  * Bei Redis/File/Cookie bleiben Payloads bis zum TTL-Ablauf liegen; für den
@@ -56,23 +59,13 @@ final class UserHardDeleter implements UserHardDeleterContract
 
             PasskeyCredential::query()->where('user_id', $user->getKey())->delete();
 
-            // DB::table-Ausnahme #1 (Sessions): kein Default-Eloquent-Model,
+            // DB::table-Ausnahme (Sessions): kein Default-Eloquent-Model,
             // Tabellenname konfigurierbar.
             if (Config::string('session.driver') === 'database') {
                 DB::table(Config::string('session.table', 'sessions'))
                     ->where('user_id', $user->getKey())
                     ->delete();
             }
-
-            // DB::table-Ausnahme #2 (Spatie-Pivot): `roles()->detach()` würde
-            // `RoleDetachedEvent` → `LogRoleChangeListener` triggern und genau
-            // den Activity-Eintrag erzeugen, den wir hier vermeiden wollen.
-            // `Model::withoutEvents()` greift nur Eloquent-Events, nicht die
-            // Spatie-eigenen — direkter DELETE ist der einzige saubere Weg.
-            DB::table('model_has_roles')
-                ->where('model_type', $user->getMorphClass())
-                ->where('model_id', $user->getKey())
-                ->delete();
 
             // Sonst schriebe `forceDelete()` unten einen `deleted`-Eintrag
             // mit `subject_id = $user->getKey()`.

@@ -159,12 +159,12 @@ final class UserSoftDeleteTest extends TestCase
     }
 
     /**
-     * Anders als bei den Rollen-Pivots räumt hier NICHT der UserHardDeleter
-     * auf: Direkt-Permission-Pivots verschwinden allein durch Spaties
-     * `deleting`-Hook, der beim Force-Delete still (ohne Event) detacht.
-     * Ändert ein Spatie-Update dieses Verhalten, blieben Berechtigungen als
-     * verwaiste Pivot-Zeilen zurück (DSGVO-relevant) und könnten bei
-     * ID-Wiederverwendung wieder aufleben — dieser Test schlägt dann an.
+     * Direkt-Permission-Pivots verschwinden — wie die Rollen-Pivots — allein
+     * durch Spaties `deleting`-Hook, der beim Force-Delete still (ohne Event)
+     * detacht. Ändert ein Spatie-Update dieses Verhalten, blieben
+     * Berechtigungen als verwaiste Pivot-Zeilen zurück (DSGVO-relevant) und
+     * könnten bei ID-Wiederverwendung wieder aufleben — dieser Test schlägt
+     * dann an.
      */
     public function testSelfDeleteHardDeletesDirectPermissionPivots(): void
     {
