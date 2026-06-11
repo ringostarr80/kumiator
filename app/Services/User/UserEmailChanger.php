@@ -122,7 +122,19 @@ final class UserEmailChanger implements UserEmailChangerContract
 
         $pendingEmail = (string)$user->pending_email;
 
-        if (User::query()->where('email', $pendingEmail)->whereKeyNot($user->getKey())->exists()) {
+        // `withTrashed()`: auch ein soft-gelöschter Halter blockiert den
+        // Tausch — er kann per Restore zurückkommen, und der DB-Unique-Index
+        // verbietet das Duplikat ohnehin. Konsistent zur Request-Validierung
+        // (`Rule::unique` zählt Trashed mit); ohne den Scope liefe der Save
+        // unten in eine unbehandelte Unique-Verletzung statt in den
+        // Conflict-Pfad.
+        $taken = User::query()
+            ->withTrashed()
+            ->where('email', $pendingEmail)
+            ->whereKeyNot($user->getKey())
+            ->exists();
+
+        if ($taken) {
             // Analog zum expired-Pfad: State-Mutation via `cancelChangeForUser()`
             // mit `cancelled_via='target_taken_on_confirm'`. Dokumentiert sowohl
             // den Confirm-Fehlversuch als auch die durchgeführte Bereinigung
