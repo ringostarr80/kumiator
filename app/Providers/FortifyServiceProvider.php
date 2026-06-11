@@ -79,7 +79,19 @@ class FortifyServiceProvider extends ServiceProvider
 
             $user = User::where('email', $email)->first();
 
-            if ($user === null || !Hash::check($password, $user->password)) {
+            if ($user === null) {
+                // Timing-Angleichung gegen E-Mail-Enumeration: Ohne KDF-Lauf
+                // antwortet der Unbekannt-Pfad messbar schneller als „bekannte
+                // E-Mail, falsches Passwort". `Hash::make` kostet einen Lauf
+                // wie `Hash::check` und folgt Treiber und Cost der
+                // Konfiguration — dasselbe Muster wie der Fake-Lookup im
+                // Passkey-Options-Endpoint.
+                Hash::make($password);
+
+                return null;
+            }
+
+            if (!Hash::check($password, $user->password)) {
                 return null;
             }
 

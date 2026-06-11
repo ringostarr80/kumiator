@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 final class AuthenticationTest extends TestCase
@@ -44,6 +45,24 @@ final class AuthenticationTest extends TestCase
         ]);
 
         $this->assertGuest();
+    }
+
+    public function testUnknownEmailLoginRunsDummyHashAgainstTimingEnumeration(): void
+    {
+        // Die Antwortzeit selbst ist hier nicht messbar (BCRYPT_ROUNDS=4 in
+        // der Test-Umgebung, ~1 ms gegen Request-Rauschen) — der Spy pinnt
+        // stattdessen die Invariante, dass auch der Unbekannt-Pfad genau
+        // einen KDF-Lauf ausführt. Bewusste Ausnahme von der
+        // Mocks-vermeiden-Regel.
+        $hash = Hash::spy();
+
+        $this->post(self::LOGIN_URL_PATH, [
+            'email' => 'unbekannt@example.com',
+            'password' => 'irrelevant-password',
+        ]);
+
+        $this->assertGuest();
+        $hash->shouldHaveReceived('make')->once();
     }
 
     public function testUnapprovedUsersCanNotAuthenticate(): void
