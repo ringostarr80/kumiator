@@ -65,7 +65,13 @@ class UpdateUserPassword implements UpdatesUserPasswords
      */
     private function recordFailedCurrentPasswordCheck(User $user, ValidationException $e): void
     {
-        if (!array_key_exists('current_password', $e->errors())) {
+        // Prüfung über `failed()` (verletzte Rule) statt bloßer Key-Existenz
+        // in `errors()`: ein `required`-Verstoß (Feld fehlt bei direktem
+        // HTTP-Call) ist kein geprüfter Mismatch und darf nicht als solcher
+        // auditiert werden.
+        $failedRules = $e->validator->failed()['current_password'] ?? [];
+
+        if (!is_array($failedRules) || !array_key_exists('CurrentPassword', $failedRules)) {
             return;
         }
 

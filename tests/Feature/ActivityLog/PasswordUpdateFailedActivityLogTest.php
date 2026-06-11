@@ -114,6 +114,34 @@ final class PasswordUpdateFailedActivityLogTest extends TestCase
         );
     }
 
+    public function testMissingCurrentPasswordIsNotLogged(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('correct-old-password')]);
+        $this->actingAs($user);
+        Activity::query()->delete();
+
+        try {
+            (new UpdateUserPassword())->update($user, [
+                'password' => 'BrandNewStrongPass!123',
+                'password_confirmation' => 'BrandNewStrongPass!123',
+            ]);
+            $this->fail('Expected ValidationException was not thrown.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('current_password', $e->errors());
+        }
+
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('log_name', 'auth')
+                ->where('event', 'password_update_failed')
+                ->count(),
+            'Ein fehlendes current_password-Feld (required-Verstoß, z. B. direkter '
+            . 'HTTP-Call) ist kein geprüfter Mismatch und darf nicht als '
+            . 'current_password_mismatch im Audit-Log landen.',
+        );
+    }
+
     public function testSuccessfulPasswordUpdateDoesNotLogFailureEntry(): void
     {
         $user = User::factory()->create(['password' => Hash::make('correct-old-password')]);
