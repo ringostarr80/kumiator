@@ -28,14 +28,17 @@ use Spatie\Activitylog\Facades\Activity;
  * `login_unapproved`-Eintrags, damit Passkey- und Passwort-Pfad denselben
  * Code teilen (Hashing, Properties, Marker-Setzung, Translation-Key).
  *
- * Statisches Design ist hier vertretbar, weil PHP-Requests einen frischen
- * Prozess-Zustand haben (kein Carry-over zwischen Requests). In Tests muss
- * `clear()` zwischen Szenarien aufgerufen werden — der TestCase tut das
- * automatisch im `setUp()`.
+ * Der Marker lebt als Instanz-State hinter einer `scoped()`-Bindung im
+ * Container: Setz- und Lesestelle liegen in verschiedenen Call-Frames
+ * (Fortify-Closure bzw. `Failed`-Listener) und teilen sich die Instanz über
+ * den Container. Anders als ein statisches Feld überlebt der Zustand damit
+ * auch unter Long-Running-Workern (Octane) keinen Request-Wechsel — ein
+ * hängender Marker würde dort prozessweit echte `login_failed`-Audits
+ * unterdrücken.
  */
 final class UnapprovedLoginContext implements UnapprovedLoginContextContract
 {
-    private static bool $active = false;
+    private bool $active = false;
 
     /**
      * Schreibt einen `login_unapproved`-Audit-Eintrag und setzt den Marker.
@@ -53,7 +56,7 @@ final class UnapprovedLoginContext implements UnapprovedLoginContextContract
      */
     public function record(User $user, string $guard, ?string $email): void
     {
-        self::markActive();
+        $this->markActive();
 
         $properties = ['guard' => $guard];
 
@@ -71,18 +74,18 @@ final class UnapprovedLoginContext implements UnapprovedLoginContextContract
             ->log(ActivityEvent::LOGIN_UNAPPROVED->description());
     }
 
-    public static function markActive(): void
+    public function markActive(): void
     {
-        self::$active = true;
+        $this->active = true;
     }
 
-    public static function isActive(): bool
+    public function isActive(): bool
     {
-        return self::$active;
+        return $this->active;
     }
 
-    public static function clear(): void
+    public function clear(): void
     {
-        self::$active = false;
+        $this->active = false;
     }
 }

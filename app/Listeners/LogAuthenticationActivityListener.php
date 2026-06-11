@@ -8,8 +8,8 @@ use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Services\Audit\AuditEmailHasher;
 use App\Services\Audit\AuditIpTruncator;
+use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\Auth\OtherDeviceLogoutContext;
-use App\Services\Auth\UnapprovedLoginContext;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
@@ -50,6 +50,10 @@ use Spatie\Activitylog\Facades\Activity;
  */
 final class LogAuthenticationActivityListener
 {
+    public function __construct(private readonly UnapprovedLoginContextContract $unapprovedLoginContext)
+    {
+    }
+
     public function handleLogin(Login $event): void
     {
         // Die Passkey-Anmeldung löst über `Auth::login()` ebenfalls ein `Login`-
@@ -116,7 +120,7 @@ final class LogAuthenticationActivityListener
         // anschließend zusätzlich `Failed` — den blenden wir hier aus, damit
         // pro unapproved-Versuch nur ein einziger, fachlich präziser Eintrag
         // entsteht (sonst würden Reports doppelt zählen).
-        if (UnapprovedLoginContext::isActive()) {
+        if ($this->unapprovedLoginContext->isActive()) {
             return;
         }
 

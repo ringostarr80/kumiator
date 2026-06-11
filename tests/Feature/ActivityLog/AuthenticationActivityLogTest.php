@@ -12,7 +12,6 @@ use App\Models\User;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\Auth\OtherDeviceLogoutContext;
 use App\Services\Auth\SelfRegistrationContext;
-use App\Services\Auth\UnapprovedLoginContext;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
@@ -455,13 +454,9 @@ final class AuthenticationActivityLogTest extends TestCase
     {
         Activity::query()->delete();
 
-        UnapprovedLoginContext::markActive();
+        app(UnapprovedLoginContextContract::class)->markActive();
 
-        try {
-            Event::dispatch(new Failed('web', null, ['email' => 'opfer@example.com']));
-        } finally {
-            UnapprovedLoginContext::clear();
-        }
+        Event::dispatch(new Failed('web', null, ['email' => 'opfer@example.com']));
 
         $this->assertSame(
             0,
@@ -470,6 +465,22 @@ final class AuthenticationActivityLogTest extends TestCase
                 ->where('event', 'login_failed')
                 ->count(),
         );
+    }
+
+    /**
+     * Octane-Sicherheit: Der Marker lebt im scoped Container-State statt in
+     * einem statischen Feld. Long-Running-Worker rufen zwischen zwei Requests
+     * `forgetScopedInstances()` auf — ein im Vorgänger-Request gesetzter
+     * Marker darf den Folge-Request nicht erreichen, sonst unterdrückte er
+     * dort prozessweit echte `login_failed`-Audits.
+     */
+    public function testUnapprovedMarkerDoesNotSurviveScopeFlush(): void
+    {
+        app(UnapprovedLoginContextContract::class)->markActive();
+
+        $this->app->forgetScopedInstances();
+
+        $this->assertFalse(app(UnapprovedLoginContextContract::class)->isActive());
     }
 
     public function testLockoutIsLogged(): void
@@ -1021,7 +1032,6 @@ final class AuthenticationActivityLogTest extends TestCase
         // Marker zwischen Tests sauber halten — statische Felder überleben
         // sonst über die Test-Grenze hinweg.
         PasskeyLoginContext::clear();
-        UnapprovedLoginContext::clear();
         SelfRegistrationContext::clearStatically();
         OtherDeviceLogoutContext::clearStatically();
     }

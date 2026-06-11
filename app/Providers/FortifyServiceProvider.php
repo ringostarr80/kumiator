@@ -32,7 +32,9 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(UnapprovedLoginContextContract::class, UnapprovedLoginContext::class);
+        // `scoped` statt `bind`: Marker-Setzer (Fortify-Closure) und -Leser
+        // (`Failed`-Listener) müssen dieselbe Request-Instanz sehen.
+        $this->app->scoped(UnapprovedLoginContextContract::class, UnapprovedLoginContext::class);
         $this->app->bind(SelfRegistrationContextContract::class, SelfRegistrationContext::class);
     }
 
@@ -68,9 +70,7 @@ class FortifyServiceProvider extends ServiceProvider
             return false;
         });
 
-        $unapprovedContext = $this->app->make(UnapprovedLoginContextContract::class);
-
-        Fortify::authenticateUsing(static function (Request $request) use ($unapprovedContext): ?User {
+        Fortify::authenticateUsing(static function (Request $request): ?User {
             /** @var string $email */
             $email = $request->input('email');
 
@@ -90,7 +90,11 @@ class FortifyServiceProvider extends ServiceProvider
             // den Fortify nach dem `null`-Return über `Auth\Events\Failed`
             // auslöst (siehe `LogAuthenticationActivityListener::handleFailed`).
             if ($user->approved_at === null) {
-                $unapprovedContext->record($user, 'web', $email);
+                // Lazy auflösen: Die Closure wird einmal pro Prozess registriert
+                // und überlebt den Request — eine beim Boot gecapturte Instanz
+                // wäre unter Long-Running-Workern nicht die scoped Instanz des
+                // laufenden Requests.
+                app(UnapprovedLoginContextContract::class)->record($user, 'web', $email);
 
                 return null;
             }
