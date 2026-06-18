@@ -16,38 +16,38 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * Represents a registered WebAuthn / Passkey credential for a user.
+ * Repräsentiert ein registriertes WebAuthn-/Passkey-Credential eines Nutzers.
  *
- * The full PublicKeyCredentialSource from the webauthn-lib is serialised to
- * JSON and stored in the `credential_public_key` column so that the Eloquent
- * model stays decoupled from the library's internal structure.
+ * Die vollständige PublicKeyCredentialSource aus der webauthn-lib wird als JSON
+ * serialisiert in der Spalte `credential_public_key` abgelegt, damit das
+ * Eloquent-Model von der internen Struktur der Library entkoppelt bleibt.
  *
- * @property string $id UUID primary key (via HasUuids).
- * @property int $user_id Foreign key to the users table.
- * @property string $credential_id Base64URL-encoded (no padding) raw credential ID as returned
- *           by the authenticator.
- * @property string $credential_public_key The full PublicKeyCredentialSource serialised to JSON
- *           by the webauthn-lib Symfony serializer.
- * @property int $counter Signature counter incremented by the authenticator on every use.
- *           The server rejects any assertion whose counter is not greater than the stored value
- *           (or equal to 0 for platform authenticators that opt out), which detects cloned credentials.
- * @property array<int, string>|null $transports Authenticator transport hints reported during
- *           registration (e.g. "internal", "usb", "nfc", "ble"). Used to populate the
- *           PublicKeyCredentialDescriptor so the browser can find the right authenticator.
- *           Null when the authenticator did not report any transports.
- * @property bool $backup_eligible Whether the credential is stored in a way that allows it to
- *           be backed up and synced across devices (CTAP 2.1 BE flag). True for most platform
- *           passkeys (iCloud Keychain, Google Password Manager, etc.), false for hardware keys.
- * @property bool $backup_state Whether the credential is currently backed up / synced (CTAP 2.1
- *           BS flag). Can change between authentications as the user's sync state changes.
- * @property string $aaguid Authenticator Attestation GUID — a UUID that identifies the make and
- *           model of the authenticator (e.g. all YubiKey 5 NFC share the same AAGUID).
- *           Stored as a UUID string. All-zeros ("00000000-0000-0000-0000-000000000000") means
- *           the authenticator chose not to disclose its model.
- * @property string $name Human-readable label chosen by the user at registration time
- *           (e.g. "iPhone", "MacBook", "YubiKey").
- * @property \Illuminate\Support\Carbon|null $last_used_at Timestamp of the most recent successful
- *           assertion. Null if the credential has never been used for authentication after registration.
+ * @property string $id UUID-Primärschlüssel (über HasUuids).
+ * @property int $user_id Fremdschlüssel auf die users-Tabelle.
+ * @property string $credential_id Base64URL-kodierte (ohne Padding) rohe Credential-ID, wie vom
+ *           Authenticator zurückgegeben.
+ * @property string $credential_public_key Die vollständige, vom Symfony-Serializer der webauthn-lib
+ *           als JSON serialisierte PublicKeyCredentialSource.
+ * @property int $counter Signatur-Zähler, den der Authenticator bei jeder Nutzung hochzählt.
+ *           Der Server weist jede Assertion ab, deren Zähler nicht größer als der gespeicherte Wert ist
+ *           (oder gleich 0 bei Plattform-Authenticatoren, die darauf verzichten) — erkennt geklonte Credentials.
+ * @property array<int, string>|null $transports Bei der Registrierung gemeldete Transport-Hinweise
+ *           des Authenticators (z. B. "internal", "usb", "nfc", "ble"). Füllen den
+ *           PublicKeyCredentialDescriptor, damit der Browser den passenden Authenticator findet.
+ *           Null, wenn der Authenticator keine Transports gemeldet hat.
+ * @property bool $backup_eligible Ob das Credential so abgelegt ist, dass es gesichert und
+ *           geräteübergreifend synchronisiert werden kann (CTAP-2.1-BE-Flag). True bei den meisten
+ *           Plattform-Passkeys (iCloud-Schlüsselbund, Google Passwortmanager usw.), false bei Hardware-Keys.
+ * @property bool $backup_state Ob das Credential aktuell gesichert/synchronisiert ist (CTAP-2.1-BS-Flag).
+ *           Kann sich zwischen Authentifizierungen ändern, wenn sich der Sync-Status des Nutzers ändert.
+ * @property string $aaguid Authenticator Attestation GUID — eine UUID, die Hersteller und Modell des
+ *           Authenticators identifiziert (z. B. teilen sich alle YubiKey 5 NFC dieselbe AAGUID).
+ *           Als UUID-String gespeichert. Nur Nullen ("00000000-0000-0000-0000-000000000000") bedeutet,
+ *           dass der Authenticator sein Modell nicht preisgibt.
+ * @property string $name Menschenlesbare Bezeichnung, die der Nutzer bei der Registrierung wählt
+ *           (z. B. "iPhone", "MacBook", "YubiKey").
+ * @property \Illuminate\Support\Carbon|null $last_used_at Zeitpunkt der letzten erfolgreichen Assertion.
+ *           Null, wenn das Credential seit der Registrierung nie zur Authentifizierung genutzt wurde.
  * @property \Illuminate\Support\Carbon $created_at
  * @property \Illuminate\Support\Carbon $updated_at
  */
@@ -78,17 +78,14 @@ final class PasskeyCredential extends Model
     }
 
     /**
-     * Gilt für die automatischen Eloquent-Lifecycle-Events (created/updated/deleted):
-     * geloggt werden ausschließlich `name` und `aaguid` — Schlüsselmaterial
-     * (`credential_public_key`, `credential_id`, `counter`, …) bleibt ohne
-     * Ausnahme in der `passkey_credentials`-Tabelle.
+     * `logOnly` ist eine Allowlist — nur `name` und `aaguid` landen im
+     * `passkey`-Log; alles andere, insbesondere sämtliches Schlüsselmaterial,
+     * bleibt konstruktionsbedingt draußen.
      *
-     * `last_used_at` ist bewusst NICHT in `logOnly`: Login-Updates bestehen
-     * im Wesentlichen aus Secret-Feldern + `last_used_at` und sollen nicht
-     * den generischen `event=updated`-Pfad triggern. Stattdessen schreibt
-     * `recordSuccessfulLoginActivity()` einen dedizierten Eintrag mit
-     * fachlichem `event`-Code (`passkey_login_succeeded`) und übersetzter
-     * Description.
+     * `last_used_at` fehlt bewusst, obwohl es eine reguläre Spalte ist: ein Login
+     * aktualisiert nur `last_used_at` plus interne Secret-Felder und soll keinen
+     * generischen `updated`-Eintrag erzeugen. Den Login dokumentiert stattdessen
+     * ein dedizierter `passkey_login_succeeded`-Eintrag.
      */
     public function getActivitylogOptions(): LogOptions
     {
@@ -103,11 +100,9 @@ final class PasskeyCredential extends Model
     }
 
     /**
-     * Schreibt einen dedizierten Activity-Log-Eintrag für eine erfolgreiche
-     * Passkey-Anmeldung. Auf dem erfolgreichen Login-Pfad aufzurufen, nachdem
-     * die Signatur des Authenticators verifiziert wurde.
-     *
-     * Warum hier explizit (statt über den `LogsActivity`-Trait):
+     * Auf dem erfolgreichen Login-Pfad aufzurufen, nachdem die Signatur des
+     * Authenticators verifiziert wurde. Bewusst manuell statt über den
+     * `LogsActivity`-Trait, weil:
      *  - `event` wird auf `passkey_login_succeeded` gesetzt — der Eloquent-
      *    `updated` ist ein Implementierungsdetail, fachlich passiert ein Login.
      *    Der spezifische Code erlaubt scharfes Filtern/Reporting.
@@ -133,11 +128,10 @@ final class PasskeyCredential extends Model
     }
 
     /**
-     * Wie der Passwort-`login_failed`-Pfad: unter `log_name=forensic`
-     * (anonyme Dritt-Daten → verkürzte Retention, Art. 5(1)(e) DSGVO; siehe
-     * {@see ActivityChannel::FORENSIC}), ohne Causer und ohne Subject (selbst
-     * bei gefundener Credential ist „Owner = Causer" forensisch falsch — ein
-     * Angreifer könnte die Credential-ID gestohlen haben).
+     * Wie der Passwort-`login_failed`-Pfad: anonyme Dritt-Daten, daher
+     * `log_name=forensic` (verkürzte Retention dort begründet), ohne Causer und
+     * ohne Subject (selbst bei gefundener Credential ist „Owner = Causer"
+     * forensisch falsch — ein Angreifer könnte die Credential-ID gestohlen haben).
      *
      * Datenminimierung (DSGVO Art. 5 Abs. 1 lit. c): Klartext-`credential_id`
      * landet niemals im Log; stattdessen ein SHA-256-Hash über die vom
@@ -179,7 +173,7 @@ final class PasskeyCredential extends Model
     /**
      * Gegenstück zum erfolgreichen Lifecycle-Pfad (`created` → `passkey_registered`):
      * gleicher Channel `passkey`, Causer ist der bereits eingeloggte User
-     * (Registrier-Endpoint ist auth-pflichtig — `auth:sanctum + verified + approved`).
+     * (Registrier-Endpoint ist auth-pflichtig).
      *
      * Bewusst KEIN `performedOn`: der Vorgang ist genau das Scheitern, eine
      * Credential zu erzeugen — es existiert kein Subject. Ebenfalls bewusst
@@ -210,10 +204,9 @@ final class PasskeyCredential extends Model
     }
 
     /**
-     * Macht einen still abgelehnten Autorisierungs-Versuch auf eine Passkey-
-     * Credential sichtbar: ohne diesen Eintrag bliebe der HTTP-403 unsichtbar
-     * im Log — ein authentifizierter User probiert, eine fremde Credential
-     * umzubenennen oder zu löschen, und nichts dokumentiert es.
+     * Ohne diesen Eintrag bliebe ein abgelehnter Zugriff (HTTP-403) auf eine
+     * fremde Passkey-Credential unsichtbar im Log — ein authentifizierter User
+     * probiert, sie umzubenennen oder zu löschen, und nichts dokumentiert es.
      *
      * Channel `security`: bewusst NICHT `passkey`, weil der Eintrag kein
      * Lifecycle-Event ist, sondern eine Cross-Cutting-Auth-Verletzung.
@@ -248,16 +241,11 @@ final class PasskeyCredential extends Model
     }
 
     /**
-     * Mappt das generische Eloquent-Event eines Passkey-Activity-Eintrags
-     * (created/updated/deleted) auf einen fachlichen Code, bevor der Eintrag
-     * gespeichert wird. Aufgerufen aus einem `Activity::saving`-Listener im
-     * {@see \App\Providers\AppServiceProvider}.
+     * Hebt vor dem Insert das generische Eloquent-Event (`created`/`updated`/…)
+     * auf den fachlichen `passkey_*`-Code an.
      *
-     * Hintergrund: Der `LogsActivity`-Trait persistiert das Event direkt via
-     * `ActivityLogger::event()`. Ein globaler `Activity::saving`-Listener auf
-     * dem Activity-Model ist daher die einzige Stelle, an der sich der Wert
-     * nach Spatie-eigenem Setup, aber vor dem Insert anpassen lässt. Die
-     * Mapping-Logik bleibt hier in der Domain, der Listener hängt nur dran.
+     * Die Verdrahtung über einen `Activity::saving`-Listener ist am Hook im
+     * `AppServiceProvider` begründet.
      */
     public static function applyEventLabelToActivity(ActivityModel $activity): void
     {
@@ -296,7 +284,6 @@ final class PasskeyCredential extends Model
     }
 
     /**
-     * Mappt die Eloquent-Lifecycle-Events auf den fachlichen `ActivityEvent`.
      * Da `aaguid` post-create unveränderlich ist, kann `updated` realistisch nur
      * durch eine Namensänderung ausgelöst werden — daher `PASSKEY_RENAMED`.
      * `null` für Events ohne fachliches Pendant (kein Remapping/keine Description).
@@ -315,14 +302,9 @@ final class PasskeyCredential extends Model
      * Die vom Browser gemeldeten Werte (`rawId`/`id`) sind bereits Base64URL-
      * codiert (WebAuthn-Norm) — wir hashen die Repräsentation, nicht die
      * dekodierten Bytes, das reicht für die Korrelation gleicher Versuche.
-     * `null`, wenn kein brauchbares Feld extrahierbar ist.
      */
     private static function hashCredentialIdFromBody(string $rawBody): ?string
     {
-        if ($rawBody === '') {
-            return null;
-        }
-
         $decoded = json_decode($rawBody, associative: true);
 
         if (!is_array($decoded)) {

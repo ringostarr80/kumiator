@@ -47,9 +47,6 @@ final class ActivityLogTable extends Component
         | JSON_UNESCAPED_UNICODE
         | JSON_THROW_ON_ERROR;
 
-    /**
-     * Sortierrichtung der Zeitpunkt-Spalte; Default `desc` = neueste zuerst.
-     */
     public string $sortDirection = 'desc';
 
     /**
@@ -109,10 +106,8 @@ final class ActivityLogTable extends Component
     }
 
     /**
-     * Lädt die Properties einer Activity und öffnet das Modal.
-     *
      * Wird absichtlich erst beim Klick aufgerufen, damit die initiale Page
-     * nicht alle Properties-Blobs aller 25 Rows an den Client schickt.
+     * nicht alle Properties-Blobs aller Rows der Seite an den Client schickt.
      *
      * Für Activities ohne Properties bleibt die Methode ein No-Op — das
      * UI blendet das Icon für solche Rows ohnehin aus, der Frühzeitig-
