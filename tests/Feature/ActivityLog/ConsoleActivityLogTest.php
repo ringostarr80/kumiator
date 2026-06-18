@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\ActivityLog;
 
+use App\Listeners\CaptureConsoleActorListener;
 use App\Models\Activity;
 use App\Models\User;
 use App\Services\Console\ConsoleActorContext;
 use App\Services\Console\Contracts\ConsoleActorContextContract;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithConsoleEvents;
 use Illuminate\Support\Facades\Hash;
@@ -17,6 +19,8 @@ use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use PragmaRX\Google2FA\Google2FA;
 use Spatie\Activitylog\Facades\Activity as ActivityFacade;
 use Spatie\Permission\Models\Role;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\NullOutput;
 use Tests\Support\FixedSecretTwoFactorProvider;
 use Tests\TestCase;
 
@@ -798,6 +802,46 @@ final class ConsoleActivityLogTest extends TestCase
             $properties,
             'Nach Command-Ende darf der nachfolgende Schreibvorgang kein cli_actor erben.',
         );
+    }
+
+    /**
+     * Langlebige Worker (`queue:work` & Co.) feuern `CommandStarting` einmal
+     * beim Start; bliebe der Marker aktiv, würde jeder im Worker verarbeitete
+     * Queue-Job seinen echten Causer verlieren und fälschlich `cli_actor`
+     * erben. Der Listener muss solche Commands von der Aktivierung ausnehmen.
+     */
+    public function testLongRunningWorkerCommandDoesNotActivateCliMarker(): void
+    {
+        $listener = $this->app->make(CaptureConsoleActorListener::class);
+        $context = $this->app->make(ConsoleActorContextContract::class);
+
+        $listener->handleStarting(
+            new CommandStarting('queue:work', new ArrayInput([]), new NullOutput()),
+        );
+
+        $this->assertFalse(
+            $context->isActive(),
+            'queue:work ist ein langlebiger Worker — der CLI-Marker darf nicht über die Prozesslaufzeit aktiv bleiben.',
+        );
+    }
+
+    public function testSingleShotCommandStillActivatesCliMarker(): void
+    {
+        $listener = $this->app->make(CaptureConsoleActorListener::class);
+        $context = $this->app->make(ConsoleActorContextContract::class);
+
+        $listener->handleStarting(
+            new CommandStarting('user:approve', new ArrayInput([]), new NullOutput()),
+        );
+
+        try {
+            $this->assertTrue(
+                $context->isActive(),
+                'Single-Shot-Commands müssen den CLI-Marker weiterhin aktivieren.',
+            );
+        } finally {
+            $context->clear();
+        }
     }
 
     protected function setUp(): void

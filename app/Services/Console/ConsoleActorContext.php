@@ -13,10 +13,13 @@ use Spatie\Activitylog\Models\Activity;
  * Marker-Konzept und die Verdrahtung (DI-Listener) stehen im Interface.
  *
  * Lifecycle: bei `CommandStarting` gefüllt, bei `CommandFinished` geräumt —
- * pro Artisan-Invocation genau ein Aktiv-Aus-Zyklus. Nested Commands kommen
- * im Projekt aktuell nicht vor; riefe ein Command einen anderen auf, würde der
- * innere `Finished` den Outer-Kontext zu früh leeren — bewusst akzeptiert, weil
- * das Pattern dann sowieso überdacht werden muss.
+ * pro Artisan-Invocation genau ein Aktiv-Aus-Zyklus. Langlebige Worker spannen
+ * mit diesem Eventpaar die gesamte Prozesslaufzeit auf und werden daher vom
+ * `CaptureConsoleActorListener` von der Aktivierung ausgenommen; sonst erbte
+ * jeder in einem Job geschriebene Eintrag den CLI-Marker samt genulltem Causer.
+ * Nested Commands kommen im Projekt aktuell nicht vor; riefe ein Command einen
+ * anderen auf, würde der innere `Finished` den Outer-Kontext zu früh leeren —
+ * bewusst akzeptiert, weil das Pattern dann sowieso überdacht werden muss.
  *
  * Statisches Design ist hier vertretbar (analog `SelfRegistrationContext`):
  * PHP-CLI ist single-process, single-threaded, und der Lebenszyklus ist

@@ -9,8 +9,8 @@ use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 
 /**
- * Hängt sich an den Artisan-Lifecycle, um pro Command-Invocation den
- * `ConsoleActorContext`-Marker mit OS-User, Hostname und Command-Signatur
+ * Hängt sich an den Artisan-Lifecycle, um pro Single-Shot-Command-Invocation
+ * den `ConsoleActorContext`-Marker mit OS-User, Hostname und Command-Signatur
  * zu füllen — Quelle für das `cli_actor`-Property im Activity-Log.
  *
  * Registrierung läuft über Laravels Listener-Auto-Discovery (Type-Hints der
@@ -26,12 +26,35 @@ use Illuminate\Console\Events\CommandStarting;
  */
 final class CaptureConsoleActorListener
 {
+    /**
+     * Langlebige Worker feuern `CommandStarting` einmal beim Start und
+     * `CommandFinished` erst beim Shutdown; der Marker spannte sonst die
+     * gesamte Prozesslaufzeit auf und markierte jeden in einem Queue-/
+     * Scheduler-Job geschriebenen Eintrag fälschlich als CLI-Aktion mit
+     * genulltem Causer. Solche Commands hosten fremde Arbeit und sind selbst
+     * kein Admin-Akteur.
+     */
+    private const LONG_RUNNING_COMMANDS = [
+        'queue:work',
+        'queue:listen',
+        'schedule:work',
+        'horizon',
+        'horizon:work',
+        'horizon:supervisor',
+        'octane:start',
+        'reverb:start',
+    ];
+
     public function __construct(private readonly ConsoleActorContextContract $context)
     {
     }
 
     public function handleStarting(CommandStarting $event): void
     {
+        if (in_array($event->command, self::LONG_RUNNING_COMMANDS, true)) {
+            return;
+        }
+
         $this->context->activate([
             'os_user' => self::resolveOsUser(),
             'hostname' => self::resolveHostname(),
