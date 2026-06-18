@@ -252,11 +252,16 @@ final class ActivityLogTable extends Component
      */
     private function applyNameSearch(Builder $query, string $relation, string $term): void
     {
+        // %/_ sind LIKE-Wildcards: ohne Escaping träfe `foo_bar` auch `fooXbar`
+        // und `?causer=%` jede Zeile. SQLite kennt kein Default-Escape-Zeichen,
+        // daher die explizite ESCAPE-Klausel (nur über whereRaw setzbar).
+        $escaped = addcslashes($term, '\\%_');
+
         $query->whereHasMorph(
             $relation,
             ['user', 'passkey', 'role'],
-            static function (Builder $related) use ($term): void {
-                $related->where('name', 'like', '%' . $term . '%');
+            static function (Builder $related) use ($escaped): void {
+                $related->whereRaw('name like ? escape ?', ['%' . $escaped . '%', '\\']);
             },
         );
     }

@@ -729,6 +729,71 @@ final class ActivityLogAccessTest extends TestCase
     }
 
     /**
+     * Regression: `%`/`_` im Suchbegriff sind LIKE-Wildcards und müssen als
+     * Literale behandelt werden — sonst träfe `?causer=%` jede Zeile. SQLite
+     * hat kein Default-Escape-Zeichen, daher die explizite ESCAPE-Klausel.
+     */
+    public function testNameFilterTreatsLikeWildcardsAsLiterals(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $match = User::factory()->create(['name' => '100%']);
+        $miss = User::factory()->create(['name' => 'Alice']);
+
+        ActivityFacade::useLog('test')->event('treffer_percent')->causedBy($match)->log('');
+        ActivityFacade::useLog('test')->event('treffer_alice')->causedBy($miss)->log('');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filterCauser', '%');
+
+        $component->assertSee('treffer_percent');
+        $component->assertDontSee('treffer_alice');
+    }
+
+    /**
+     * Ergänzung zu `%`: Auch `_` (genau ein Zeichen) muss als Literal gelten —
+     * sonst träfe die Suche nach `a_b` auch `axb`.
+     */
+    public function testNameFilterTreatsUnderscoreAsLiteral(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $match = User::factory()->create(['name' => 'a_b']);
+        $miss = User::factory()->create(['name' => 'axb']);
+
+        ActivityFacade::useLog('test')->event('treffer_underscore')->causedBy($match)->log('');
+        ActivityFacade::useLog('test')->event('treffer_axb')->causedBy($miss)->log('');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filterCauser', 'a_b');
+
+        $component->assertSee('treffer_underscore');
+        $component->assertDontSee('treffer_axb');
+    }
+
+    /**
+     * Das Escape-Zeichen selbst muss escapt werden: Ein `\` im Suchbegriff darf
+     * weder die ESCAPE-Klausel kapern noch (mangels Folge-Wildcard) eine
+     * ungültige Escape-Sequenz erzeugen. `a\b` trifft nur `a\b`, nicht `axb`.
+     */
+    public function testNameFilterTreatsBackslashAsLiteral(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $match = User::factory()->create(['name' => 'a\\b']);
+        $miss = User::factory()->create(['name' => 'axb']);
+
+        ActivityFacade::useLog('test')->event('treffer_backslash')->causedBy($match)->log('');
+        ActivityFacade::useLog('test')->event('treffer_axb_bs')->causedBy($miss)->log('');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filterCauser', 'a\\b');
+
+        $component->assertSee('treffer_backslash');
+        $component->assertDontSee('treffer_axb_bs');
+    }
+
+    /**
      * Analog zum Sortier-Toggle muss jede Filter-Änderung (`updated`-Hook)
      * zurück auf Seite 1 springen, sonst bliebe der Cursor auf einer in der
      * gefilterten Treffermenge nicht mehr existierenden Seite stehen.
