@@ -274,6 +274,8 @@ return [
     'activity_log_filter_date_to' => 'Bis',
     'activity_log_filter_all' => 'Alle',
     'activity_log_filter_reset' => 'Filter zurücksetzen',
+    'activity_log_filter_date_invalid' => 'Bitte ein gültiges Datum (JJJJ-MM-TT) angeben.',
+    'activity_log_filter_date_range' => 'Das Bis-Datum darf nicht vor dem Von-Datum liegen.',
     'activity_log_no_matches' => 'Keine Einträge für die aktuelle Filterauswahl.',
 
     // Activity-Log: fachliche Ereignis-Beschreibungen

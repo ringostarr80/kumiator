@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\MessageBag;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -215,11 +217,16 @@ final class ActivityLogTable extends Component
      */
     private function applyFilters(Builder $query): void
     {
-        if ($this->filterDateFrom !== '') {
+        $errors = $this->validateDateFilters();
+
+        // Nur geprüfte Datumsgrenzen erreichen whereDate. Eine am Format
+        // gescheiterte oder die Range verletzende Grenze wird übersprungen,
+        // statt still zu einem Unsinns-Filter zu verpuffen.
+        if ($this->filterDateFrom !== '' && !$errors->has('filterDateFrom')) {
             $query->whereDate('created_at', '>=', $this->filterDateFrom);
         }
 
-        if ($this->filterDateTo !== '') {
+        if ($this->filterDateTo !== '' && !$errors->has('filterDateTo')) {
             $query->whereDate('created_at', '<=', $this->filterDateTo);
         }
 
@@ -238,6 +245,49 @@ final class ActivityLogTable extends Component
         if ($this->filterSubject !== '') {
             $this->applyNameSearch($query, 'subject', $this->filterSubject);
         }
+    }
+
+    /**
+     * Datumsfilter stammen über `#[Url]` auch als roher Query-String
+     * (`?from=garbage`) und umgehen so den `type="date"`-Constraint des Inputs.
+     * Ungeprüft verpuffen sie in `whereDate` still zu einem Unsinns-Filter;
+     * daher hier prüfen und dem Admin als Fehler melden. Die Prüfung läuft im
+     * Render-Pfad (nicht nur im `updated()`-Hook), damit auch beim Mount per URL
+     * injizierte Werte erfasst werden.
+     *
+     * @return MessageBag die geprüften Filter-Fehler (auch auf der Komponente gesetzt)
+     */
+    private function validateDateFilters(): MessageBag
+    {
+        $validator = Validator::make(
+            [
+                'filterDateFrom' => $this->filterDateFrom ?: null,
+                'filterDateTo' => $this->filterDateTo ?: null,
+            ],
+            [
+                'filterDateFrom' => ['nullable', 'date_format:Y-m-d'],
+                'filterDateTo' => ['nullable', 'date_format:Y-m-d'],
+            ],
+            ['date_format' => __('app.activity_log_filter_date_invalid')],
+        );
+
+        $errors = $validator->errors();
+
+        // Range-Check erst, wenn beide Grenzen formal gültig sind — sonst meldeten
+        // wir „Bis vor Von" für eine Grenze, die schon am Format scheitert. Beide
+        // Werte sind dann valides Y-m-d, ihr String-Vergleich ist chronologisch.
+        if (
+            $errors->isEmpty()
+            && $this->filterDateFrom !== ''
+            && $this->filterDateTo !== ''
+            && $this->filterDateTo < $this->filterDateFrom
+        ) {
+            $errors->add('filterDateTo', __('app.activity_log_filter_date_range'));
+        }
+
+        $this->setErrorBag($errors);
+
+        return $errors;
     }
 
     /**

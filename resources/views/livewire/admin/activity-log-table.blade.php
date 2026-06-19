@@ -30,11 +30,13 @@
                 <div>
                     <x-label for="filter-date-from" value="{{ __('app.activity_log_filter_date_from') }}" />
                     <x-input id="filter-date-from" class="block mt-1 w-full" type="date" wire:model.live="filterDateFrom" />
+                    <x-input-error for="filterDateFrom" class="mt-2" />
                 </div>
 
                 <div>
                     <x-label for="filter-date-to" value="{{ __('app.activity_log_filter_date_to') }}" />
                     <x-input id="filter-date-to" class="block mt-1 w-full" type="date" wire:model.live="filterDateTo" />
+                    <x-input-error for="filterDateTo" class="mt-2" />
                 </div>
 
                 <div>

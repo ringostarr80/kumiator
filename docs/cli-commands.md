@@ -21,6 +21,9 @@ Die Sprache der Ausgaben richtet sich nach der in `.env` gesetzten `APP_LOCALE`.
   - [Rolle zuweisen (`role:assign`)](#rolle-zuweisen-roleassign)
   - [Rollen auflisten (`role:list`)](#rollen-auflisten-rolelist)
   - [Rolle löschen (`role:delete`)](#rolle-löschen-roledelete)
+- [Activity-Log-Berechtigung](#activity-log-berechtigung)
+  - [Zugriff gewähren (`activity-log:grant`)](#activity-log-zugriff-gewähren-activity-loggrant)
+  - [Zugriff entziehen (`activity-log:revoke`)](#activity-log-zugriff-entziehen-activity-logrevoke)
 
 ---
 
@@ -283,3 +286,63 @@ Rolle gefunden: admin (1 Benutzer zugewiesen)
 
 Rolle "admin" wurde erfolgreich gelöscht.
 ```
+
+---
+
+# Activity-Log-Berechtigung
+
+Das Recht, den Mitglieder-Audit-Trail (`/admin/activity-log`) einzusehen, ist
+bewusst **keiner Rolle** zugeordnet – auch nicht `admin`. Weil das Log
+personenbezogene Daten aller Mitglieder bündelt, wird die Permission
+`activity-log.view` nach dem Need-to-know-Prinzip (Art. 32 DSGVO) **pro Person**
+vergeben und entzogen. Jede Vergabe und jeder Entzug wird im Activity-Log
+auditiert.
+
+Die Permission selbst wird vom `RoleSeeder` angelegt, der bei `composer setup`
+und `composer deploy` automatisch läuft. Fehlt sie auf einer manuell migrierten
+Datenbank, schlagen die folgenden Kommandos mit `PermissionDoesNotExist` fehl –
+in dem Fall einmalig den Seeder nachziehen:
+
+```bash
+php artisan db:seed --class=RoleSeeder
+```
+
+## Activity-Log-Zugriff gewähren (`activity-log:grant`)
+
+Gewährt einem Benutzer das Recht, das Activity-Log einzusehen:
+
+```bash
+php artisan activity-log:grant
+```
+
+Der Befehl fragt nach der E-Mail-Adresse des Benutzers:
+
+```
+Activity-Log-Zugriff gewähren
+-----------------------------
+ E-Mail: max@example.com
+
+Benutzer "Max Mustermann" (max@example.com) darf das Activity-Log jetzt einsehen.
+```
+
+Darf der Benutzer das Activity-Log bereits einsehen, gibt das Kommando eine
+Warnung aus und endet erfolgreich ohne Änderung.
+
+## Activity-Log-Zugriff entziehen (`activity-log:revoke`)
+
+Entzieht einem Benutzer das Recht wieder – das Gegenstück zu `activity-log:grant`:
+
+```bash
+php artisan activity-log:revoke
+```
+
+```
+Activity-Log-Zugriff entziehen
+------------------------------
+ E-Mail: max@example.com
+
+Der Activity-Log-Zugriff für Benutzer "Max Mustermann" (max@example.com) wurde entzogen.
+```
+
+Hat der Benutzer keinen Activity-Log-Zugriff, gibt das Kommando eine Warnung aus
+und endet erfolgreich ohne Änderung.

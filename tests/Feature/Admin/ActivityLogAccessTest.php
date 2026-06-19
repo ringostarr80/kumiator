@@ -794,6 +794,82 @@ final class ActivityLogAccessTest extends TestCase
     }
 
     /**
+     * Regression: Datumsfilter kommen via `#[Url]` auch als roher Query-String
+     * (`?from=garbage`) und umgehen den `type="date"`-Constraint. Ein ungültiger
+     * Wert wird als Fehler gemeldet und der Filter übersprungen — die Zeile
+     * bleibt sichtbar, statt dass ein Unsinns-`whereDate` alles ausblendet.
+     */
+    public function testInvalidDateFromIsRejectedAndFilterSkipped(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $user = User::factory()->create();
+        ActivityFacade::useLog('test')->event('treffer_from_invalid')->causedBy($user)->log('');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filterDateFrom', 'garbage');
+
+        $component->assertHasErrors('filterDateFrom');
+        $component->assertSee('treffer_from_invalid');
+    }
+
+    /**
+     * Wie der Von-Fall, aber für die Bis-Grenze — fängt eine Implementierung ab,
+     * die nur `filterDateFrom` prüft.
+     */
+    public function testInvalidDateToIsRejectedAndFilterSkipped(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $user = User::factory()->create();
+        ActivityFacade::useLog('test')->event('treffer_to_invalid')->causedBy($user)->log('');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filterDateTo', '2026-13-40');
+
+        $component->assertHasErrors('filterDateTo');
+        $component->assertSee('treffer_to_invalid');
+    }
+
+    /**
+     * Ein Bis-Datum vor dem Von-Datum ist widersprüchlich: Der Fehler hängt an
+     * `Bis`, nur diese Grenze wird übersprungen; das gültige `Von` greift weiter.
+     */
+    public function testDateRangeRejectsToBeforeFrom(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $user = User::factory()->create();
+        ActivityFacade::useLog('test')->event('treffer_range')->causedBy($user)->log('');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filterDateFrom', '2000-01-02');
+        $component->set('filterDateTo', '2000-01-01');
+
+        $component->assertHasErrors('filterDateTo');
+        $component->assertHasNoErrors('filterDateFrom');
+        $component->assertSee('treffer_range');
+    }
+
+    /**
+     * Gegenprobe: Ein gültiges Datum wird angewandt. Eine in der Zukunft liegende
+     * Von-Grenze filtert die heutigen Einträge fehlerfrei heraus.
+     */
+    public function testValidDateFromIsApplied(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $user = User::factory()->create();
+        ActivityFacade::useLog('test')->event('treffer_valid')->causedBy($user)->log('');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filterDateFrom', '2999-01-01');
+
+        $component->assertHasNoErrors('filterDateFrom');
+        $component->assertDontSee('treffer_valid');
+    }
+
+    /**
      * Analog zum Sortier-Toggle muss jede Filter-Änderung (`updated`-Hook)
      * zurück auf Seite 1 springen, sonst bliebe der Cursor auf einer in der
      * gefilterten Treffermenge nicht mehr existierenden Seite stehen.
