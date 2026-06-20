@@ -32,10 +32,9 @@ use Spatie\Activitylog\Facades\Activity;
  * Datenminimierung (DSGVO Art. 5 Abs. 1 lit. c): Bei `Failed`/`Lockout` ist
  * kein Causer bekannt, und die eingegebene E-Mail kann zu beliebigen Dritten
  * gehören (Tippfehler, Brute-Force gegen fremde Konten). Sie wird daher
- * **nicht im Klartext** abgelegt, sondern als SHA-256-Hash über die
- * normalisierte (`strtolower` + `trim`) Eingabe — das erlaubt Korrelation
- * gleicher Angreifer-Versuche, ohne personenbezogene Klartext-Daten zu
- * speichern.
+ * **nicht im Klartext** abgelegt, sondern nur als Hash (Verfahren und
+ * Begründung in `AuditEmailHasher`) — das erlaubt Korrelation gleicher
+ * Angreifer-Versuche, ohne personenbezogene Klartext-Daten zu speichern.
  *
  * Kanal-Wahl (DSGVO Art. 5 Abs. 1 lit. e — Speicherbegrenzung): Die anonymen
  * Dritt-Forensik-Einträge `login_failed`, `login_locked_out` und
