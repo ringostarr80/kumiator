@@ -63,3 +63,7 @@ services:
         class: Tests\Architecture\NamingConventionsTest
         tags:
             - phpat.test
+    -
+        class: Tests\Architecture\ListenersAreIndependentTest
+        tags:
+            - phpat.test

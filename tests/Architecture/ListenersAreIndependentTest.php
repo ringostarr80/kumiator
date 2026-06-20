@@ -20,6 +20,11 @@ final class ListenersAreIndependentTest
                 Selector::inNamespace('App\\Models'),
                 // App\Enums: zentrale Activity-Event-/Channel-Codes (Magic-String-Ersatz).
                 Selector::inNamespace('App\\Enums'),
+                // App\Services: Listener orchestrieren fachliche Logik über den Service-Layer
+                // (Context-Marker, Audit-Helfer), statt sie selbst zu enthalten.
+                Selector::inNamespace('App\\Services'),
+                // App\Listeners: geteilte abstrakte Basis innerhalb derselben Schicht.
+                Selector::inNamespace('App\\Listeners'),
                 Selector::inNamespace('Illuminate'),
                 Selector::inNamespace('Laravel'),
                 Selector::inNamespace('Spatie\\Activitylog'),
@@ -28,12 +33,13 @@ final class ListenersAreIndependentTest
             ->because(
                 'Listener reagieren auf Events und schreiben in der Regel nur in infrastrukturelle '
                 . 'Gegenstellen (Activity-Log, Notifications, Queues). Sie dürfen daher auf Models, '
+                . 'Enums, den Service-Layer (den sie orchestrieren), eine geteilte Listener-Basis, '
                 . 'Illuminate, Laravel sowie explizit freigegebene Vendor-Pakete '
                 . '(Spatie\\Activitylog, Spatie\\Permission) zugreifen.',
-                'Abhängigkeiten zu höheren Schichten (Http, Livewire, Console, Services, Repositories, '
-                . 'Actions, ...) sind nicht erlaubt — Listener sind schmale Adapter, die Events in '
-                . 'Infrastruktur-Aktionen übersetzen. Fachliche Logik gehört in einen Service oder '
-                . 'eine Action, die der Listener aufruft (nicht umgekehrt).',
+                'Abhängigkeiten zu höheren Schichten (Http, Livewire, Console, Controllers, '
+                . 'Middleware, Repositories, Actions, ...) sind nicht erlaubt — Listener sind schmale '
+                . 'Adapter, die Events in Infrastruktur-Aktionen übersetzen und fachliche Logik über '
+                . 'Services orchestrieren, statt sie selbst zu enthalten.',
             );
     }
 }
