@@ -7,10 +7,7 @@ namespace App\Listeners;
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
 use Spatie\Activitylog\Facades\Activity;
-use Spatie\Permission\Contracts\Role as RoleContract;
 use Spatie\Permission\Events\RoleAttachedEvent;
 use Spatie\Permission\Events\RoleDetachedEvent;
 use Spatie\Permission\Models\Role;
@@ -40,7 +37,7 @@ use Spatie\Permission\Models\Role;
  * Vor Einführung eines weiteren Guards muss dieser Listener so erweitert
  * werden, dass `guard_name` mit ins Property-Set wandert.
  */
-final class LogRoleChangeListener
+final class LogRoleChangeListener extends LogAssignmentChangeListener
 {
     public function handleAttached(RoleAttachedEvent $event): void
     {
@@ -54,7 +51,11 @@ final class LogRoleChangeListener
 
     private function log(Model $subject, mixed $rolesOrIds, ActivityEvent $event): void
     {
-        $roleNames = $this->resolveRoleNames($rolesOrIds);
+        $roleNames = $this->resolveAssignmentNames(
+            $rolesOrIds,
+            Role::class,
+            'LogRoleChangeListener: unknown role IDs received',
+        );
 
         if ($roleNames === []) {
             return;
@@ -67,62 +68,5 @@ final class LogRoleChangeListener
             ->withProperties(['roles' => $roleNames])
             ->event($event->value)
             ->log($event->description());
-    }
-
-    /**
-     * Normalisiert den heterogenen `$rolesOrIds`-Parameter zu einer Liste von Rollen-Namen.
-     *
-     * @return list<string>
-     */
-    private function resolveRoleNames(mixed $rolesOrIds): array
-    {
-        if ($rolesOrIds instanceof Collection) {
-            $rolesOrIds = $rolesOrIds->all();
-        }
-
-        if (!is_array($rolesOrIds)) {
-            $rolesOrIds = [$rolesOrIds];
-        }
-
-        $ids = [];
-        $names = [];
-
-        foreach ($rolesOrIds as $item) {
-            if ($item instanceof RoleContract) {
-                $names[] = $item->name;
-
-                continue;
-            }
-
-            if (is_int($item) || is_string($item)) {
-                $ids[] = $item;
-            }
-        }
-
-        if ($ids !== []) {
-            $found = Role::query()->whereIn('id', $ids)->get();
-
-            // Drift sichtbar machen: Spatie liefert die `$rolesOrIds`-Liste
-            // unbearbeitet weiter — wenn dort eine ID steht, die in der
-            // `roles`-Tabelle nicht (mehr) existiert, würde der Name sonst
-            // still aus dem Activity-Log fallen. Ein Log::warning surface-t
-            // das, ohne den Activity-Log-Schreibvorgang abzubrechen.
-            $missing = array_values(array_diff($ids, $found->modelKeys()));
-
-            if ($missing !== []) {
-                Log::warning('LogRoleChangeListener: unknown role IDs received', [
-                    'missing_ids' => $missing,
-                ]);
-            }
-
-            foreach ($found as $role) {
-                $names[] = $role->name;
-            }
-        }
-
-        $names = array_values(array_unique($names));
-        sort($names);
-
-        return $names;
     }
 }
