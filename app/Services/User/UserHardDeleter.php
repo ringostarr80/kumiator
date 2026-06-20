@@ -19,9 +19,9 @@ use Spatie\Activitylog\Models\Activity as ActivityModel;
 /**
  * DSGVO-konformer Hard-Delete für einen Benutzer.
  *
- * Aufrufer:
- *  - `App\Actions\Jetstream\DeleteUser` (Self-Delete; Event `account_self_deleted`)
- *  - `App\Console\Commands\User\ForceDelete` (Admin-Pfad; Event `account_admin_force_deleted`)
+ * Das `$event`-Argument trägt die fachliche Löschvariante: Self-Delete
+ * (`account_self_deleted`) oder administrativer Force-Delete
+ * (`account_admin_force_deleted`).
  *
  * Nach Abschluss darf kein personenbezogenes Restmaterial des Users in der
  * `activity_log`-Tabelle stehen — ein einziger anonymer Audit-Eintrag bleibt

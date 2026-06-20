@@ -9,8 +9,7 @@ use App\Models\User;
 /**
  * Administrativer Soft-Delete-Pfad für einen Benutzer.
  *
- * Aufrufer ist heute der `user:delete`-Command. Im Gegensatz zum Hard-Delete
- * (siehe {@see UserHardDeleterContract}) bleibt die fachliche Historie
+ * Im Gegensatz zum Hard-Delete bleibt die fachliche Historie
  * — insbesondere die Activity-Log-Verweise auf den Benutzer — erhalten;
  * gelöscht werden ausschließlich aktive Zugriffsmittel (Sessions, Sanctum-
  * Tokens, Passkeys), damit ein späteres `restore()` keinen Wieder-Zugang
