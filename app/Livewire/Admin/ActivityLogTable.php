@@ -8,10 +8,10 @@ use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Models\Activity;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -34,7 +34,6 @@ use Spatie\Activitylog\Facades\Activity as ActivityLogger;
  */
 final class ActivityLogTable extends Component
 {
-    use AuthorizesRequests;
     use WithPagination;
 
     private const int PER_PAGE = 25;
@@ -83,9 +82,9 @@ final class ActivityLogTable extends Component
     {
         if (Gate::denies('activity-log.view')) {
             $this->recordAuthorizationDenied();
-        }
 
-        $this->authorize('activity-log.view');
+            throw new AuthorizationException();
+        }
 
         $this->recordAccessGranted();
     }
@@ -102,9 +101,9 @@ final class ActivityLogTable extends Component
     {
         if (Gate::denies('activity-log.view')) {
             $this->recordAuthorizationDenied();
-        }
 
-        $this->authorize('activity-log.view');
+            throw new AuthorizationException();
+        }
     }
 
     /**
