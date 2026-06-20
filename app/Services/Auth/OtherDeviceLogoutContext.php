@@ -24,10 +24,8 @@ use App\Services\Auth\Contracts\OtherDeviceLogoutContextContract;
  * Livewire-Architektur-Regel; der Listener und Tests greifen statisch
  * darauf zu (zwei Pfade, ein State — analog zu `SelfRegistrationContext`).
  *
- * Statisches Design ist hier vertretbar, weil PHP-Requests einen frischen
- * Prozess-Zustand haben (kein Carry-over zwischen Requests). In Tests muss
- * `clear()` zwischen Szenarien aufgerufen werden — der TestCase tut das
- * automatisch im `setUp()`.
+ * Static-Design vertretbar (frischer Prozess je Request, Test-Reset im
+ * `setUp()`) — Begründung analog `SelfRegistrationContext`.
  */
 final class OtherDeviceLogoutContext implements OtherDeviceLogoutContextContract
 {

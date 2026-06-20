@@ -24,10 +24,8 @@ namespace App\Services\WebAuthn;
  *       PasskeyLoginContext::clear();
  *   }
  *
- * Statisches Design ist hier vertretbar, weil PHP-Requests einen frischen
- * Prozess-Zustand haben (kein Carry-over zwischen Requests). In Tests muss
- * `clear()` zwischen Szenarien aufgerufen werden — der TestCase tut das
- * automatisch im `setUp()`.
+ * Static-Design vertretbar (frischer Prozess je Request, Test-Reset im
+ * `setUp()`) — Begründung analog `SelfRegistrationContext`.
  */
 final class PasskeyLoginContext
 {

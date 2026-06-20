@@ -24,7 +24,7 @@ namespace App\Services\Permission;
  *       PermissionSeederContext::clear();
  *   }
  *
- * Statisches Design analog zu `PasskeyLoginContext`: ein Seeder-Lauf läuft
+ * Statisches Design analog zu `SelfRegistrationContext`: ein Seeder-Lauf läuft
  * in einem frischen Prozess, kein Carry-over zwischen Requests. In Tests
  * muss `clear()` zwischen Szenarien aufgerufen werden.
  */
