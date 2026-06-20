@@ -132,7 +132,7 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            if (!SelfRegistrationContext::isActiveStatically()) {
+            if (!SelfRegistrationContext::isActive()) {
                 return;
             }
 

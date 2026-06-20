@@ -164,9 +164,8 @@ final class SelfRegistrationActivityLogTest extends TestCase
             // Exception ist erwartet — nur der Marker-Zustand ist relevant.
         }
 
-        $context = $this->app->make(SelfRegistrationContextContract::class);
         $this->assertFalse(
-            $context->isActive(),
+            SelfRegistrationContext::isActive(),
             'Marker hängt nach Fehlschlag fest — `try/finally` in CreateNewUser greift nicht.',
         );
     }

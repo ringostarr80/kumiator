@@ -37,23 +37,18 @@ final class SelfRegistrationContext implements SelfRegistrationContextContract
         self::$active = true;
     }
 
-    public function isActive(): bool
-    {
-        return self::$active;
-    }
-
     public function clear(): void
     {
         self::$active = false;
     }
 
     /**
-     * Statische Variante für den `Activity::saving`-Listener im
-     * `AppServiceProvider`: dieser läuft im globalen Bootstrapping-Pfad,
-     * eine DI-Auflösung pro Activity-Insert wäre unnötig teuer und brächte
-     * keinen Nutzen — der Marker-Zustand ist Prozess-global.
+     * Static gelesen vom `Activity::saving`-Listener im `AppServiceProvider`:
+     * dieser läuft im globalen Bootstrapping-Pfad, eine DI-Auflösung pro
+     * Activity-Insert wäre unnötig teuer und brächte keinen Nutzen — der
+     * Marker-Zustand ist Prozess-global.
      */
-    public static function isActiveStatically(): bool
+    public static function isActive(): bool
     {
         return self::$active;
     }
