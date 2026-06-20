@@ -56,12 +56,10 @@ class UpdateUserPassword implements UpdatesUserPasswords
      * für Session-Hijacking, fremder Nutzer am Endgerät, Shoulder-Surfing).
      *
      * Bewusst KEIN resilienter `try/catch`: PHPAt verbietet `\Throwable`
-     * in Actions ({@see \Tests\Architecture\ActionsAreIndependentTest}),
-     * und der Erfolgs-Pfad
-     * ({@see \App\Listeners\LogAuthenticationActivityListener::handlePasswordUpdated})
-     * loggt symmetrisch ohne Resilienz. Ein Activity-Log-DB-Fehler würde
-     * also auch im Erfolgsfall die Antwort verderben — der Failure-Pfad
-     * bekommt damit identische Garantien.
+     * in Actions, und der Erfolgs-Pfad (das Loggen des erfolgreichen
+     * Passwortwechsels) verfährt symmetrisch ohne Resilienz. Ein
+     * Activity-Log-DB-Fehler würde also auch im Erfolgsfall die Antwort
+     * verderben — der Failure-Pfad bekommt damit identische Garantien.
      */
     private function recordFailedCurrentPasswordCheck(User $user, ValidationException $e): void
     {

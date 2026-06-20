@@ -18,7 +18,7 @@ use Spatie\Activitylog\Facades\Activity;
 /**
  * Schreibt Activity-Log-Einträge für Fortify-2FA-Ereignisse: Aktivierung,
  * Bestätigung, Deaktivierung sowie Recovery-Code-Lifecycle und fehlgeschlagene
- * Code-Eingaben. Symmetrie zum {@see LogAuthenticationActivityListener},
+ * Code-Eingaben. Symmetrie zum `LogAuthenticationActivityListener`,
  * gleicher `log_name` ('auth'), damit der gesamte Authentifizierungs-Trail in
  * einem Filter abrufbar ist.
  *
@@ -29,8 +29,8 @@ use Spatie\Activitylog\Facades\Activity;
  *
  * Bewusst NICHT geloggt:
  *  - `ValidTwoFactorAuthenticationCodeProvided` — der nachfolgende `Login`
- *    wird bereits in {@see LogAuthenticationActivityListener::handleLogin}
- *    erfasst; ein zusätzlicher Eintrag wäre redundant.
+ *    wird bereits vom `LogAuthenticationActivityListener` erfasst; ein
+ *    zusätzlicher Eintrag wäre redundant.
  *  - `TwoFactorAuthenticationChallenged` — feuert bei jedem Login eines
  *    2FA-Users und wäre nur Rauschen.
  *
