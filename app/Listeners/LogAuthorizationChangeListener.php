@@ -19,7 +19,7 @@ use Spatie\Permission\Contracts\Role as RoleContract;
  * eindeutiger Namen ist für Rollen und Permissions Zeile für Zeile
  * identisch und lebt darum hier statt doppelt in jedem Listener.
  */
-abstract class LogAssignmentChangeListener
+abstract class LogAuthorizationChangeListener
 {
     /**
      * @template TModel of \Spatie\Permission\Models\Role|\Spatie\Permission\Models\Permission
@@ -27,7 +27,7 @@ abstract class LogAssignmentChangeListener
      * @param string $unknownIdsWarning Log-Nachricht, falls eine ID kein (mehr existierendes) Model trifft
      * @return list<string>
      */
-    protected function resolveAssignmentNames(mixed $modelsOrIds, string $modelClass, string $unknownIdsWarning): array
+    protected function resolveModelNames(mixed $modelsOrIds, string $modelClass, string $unknownIdsWarning): array
     {
         if ($modelsOrIds instanceof Collection) {
             $modelsOrIds = $modelsOrIds->all();

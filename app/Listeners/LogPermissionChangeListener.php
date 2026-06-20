@@ -49,7 +49,7 @@ use Spatie\Permission\Models\Permission;
  *    `web`-Guard); bei Einführung weiterer Guards muss `guard_name`
  *    ergänzt werden — gleiche Bedingung wie in `LogRoleChangeListener`.
  */
-final class LogPermissionChangeListener extends LogAssignmentChangeListener
+final class LogPermissionChangeListener extends LogAuthorizationChangeListener
 {
     public function handleAttached(PermissionAttachedEvent $event): void
     {
@@ -67,7 +67,7 @@ final class LogPermissionChangeListener extends LogAssignmentChangeListener
             return;
         }
 
-        $permissionNames = $this->resolveAssignmentNames(
+        $permissionNames = $this->resolveModelNames(
             $permissionsOrIds,
             Permission::class,
             'LogPermissionChangeListener: unknown permission IDs received',

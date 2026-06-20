@@ -37,7 +37,7 @@ use Spatie\Permission\Models\Role;
  * Vor Einführung eines weiteren Guards muss dieser Listener so erweitert
  * werden, dass `guard_name` mit ins Property-Set wandert.
  */
-final class LogRoleChangeListener extends LogAssignmentChangeListener
+final class LogRoleChangeListener extends LogAuthorizationChangeListener
 {
     public function handleAttached(RoleAttachedEvent $event): void
     {
@@ -51,7 +51,7 @@ final class LogRoleChangeListener extends LogAssignmentChangeListener
 
     private function log(Model $subject, mixed $rolesOrIds, ActivityEvent $event): void
     {
-        $roleNames = $this->resolveAssignmentNames(
+        $roleNames = $this->resolveModelNames(
             $rolesOrIds,
             Role::class,
             'LogRoleChangeListener: unknown role IDs received',
