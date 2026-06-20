@@ -33,12 +33,17 @@ final class UserEmailChangerTest extends TestCase
     private const string OLD_EMAIL = 'alt@example.com';
     private const string NEW_EMAIL = 'neu@example.com';
     private const string TAKEN_EMAIL = 'belegt@example.com';
+    private const string EXPECTED_CONFLICT = 'Expected EmailChangeConflictException';
 
     private UserEmailChangerContract $service;
 
     // Capturing INSIDE der assertSentTo-Callback über ein Property, damit
     // kein `use (&$var)` by reference nötig ist (verbietet PHPCS).
     private string $capturedToken = '';
+
+    // Re-Entry-Guard für den Race-Injektions-Hook (gleicher Grund: kein
+    // `use (&$var)` by reference erlaubt).
+    private bool $raceTargetInjected = false;
 
     public function testRequestChangePersistsPendingFieldsAndSendsBothMails(): void
     {
@@ -309,7 +314,7 @@ final class UserEmailChangerTest extends TestCase
 
         try {
             $this->service->confirmChange($tokens['confirm']);
-            $this->fail('Expected EmailChangeConflictException');
+            $this->fail(self::EXPECTED_CONFLICT);
         } catch (EmailChangeConflictException) {
             // expected
         }
@@ -352,7 +357,7 @@ final class UserEmailChangerTest extends TestCase
 
         try {
             $this->service->confirmChange($tokens['confirm']);
-            $this->fail('Expected EmailChangeConflictException');
+            $this->fail(self::EXPECTED_CONFLICT);
         } catch (EmailChangeConflictException) {
             // expected
         }
@@ -376,6 +381,57 @@ final class UserEmailChangerTest extends TestCase
         $properties = $cancelled->properties?->toArray() ?? [];
         $this->assertSame('target_taken_on_confirm', $properties['cancelled_via'] ?? null);
         $this->assertSame(AuditEmailHasher::hash(self::TAKEN_EMAIL), $properties['pending_email_hash'] ?? null);
+    }
+
+    public function testConfirmChangeTranslatesConcurrentUniqueViolationToConflict(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => self::OLD_EMAIL]);
+        $tokens = $this->seedPendingChange($user, self::TAKEN_EMAIL);
+        Activity::query()->delete();
+
+        // Race deterministisch nachstellen: Erst beim finalen Email-Save (nicht
+        // beim Seed darüber) belegt ein paralleler Confirm die Zieladresse —
+        // also genau zwischen exists()-Prüfung und Save. Ein echtes zweites
+        // Insert, kein Mock. Der Guard verhindert Re-Entry durch das Insert
+        // selbst; der Hook leakt nicht, da pro Test der Model-Event-Dispatcher
+        // neu gebootet wird.
+        User::saving(function (User $model): void {
+            if ($this->raceTargetInjected || $model->email !== self::TAKEN_EMAIL) {
+                return;
+            }
+
+            $this->raceTargetInjected = true;
+            User::factory()->create(['email' => self::TAKEN_EMAIL]);
+        });
+
+        try {
+            $this->service->confirmChange($tokens['confirm']);
+            $this->fail(self::EXPECTED_CONFLICT);
+        } catch (EmailChangeConflictException) {
+            // expected
+        }
+
+        $refreshed = $user->fresh();
+        $this->assertNotNull($refreshed);
+        $this->assertSame(self::OLD_EMAIL, $refreshed->email);
+        $this->assertNull($refreshed->pending_email);
+        $this->assertNull($refreshed->pending_email_confirm_token_hash);
+        $this->assertNull($refreshed->pending_email_cancel_token_hash);
+
+        $cancelled = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'email_change_cancelled')
+            ->latest('id')
+            ->first();
+        $this->assertNotNull($cancelled);
+        $this->assertNull($cancelled->causer_id);
+        $this->assertSame($user->getKey(), $cancelled->subject_id);
+
+        $properties = $cancelled->properties?->toArray() ?? [];
+        $this->assertSame('target_taken_on_confirm', $properties['cancelled_via'] ?? null);
+        $this->assertSame(AuditEmailHasher::hash(self::TAKEN_EMAIL), $properties['pending_email_hash'] ?? null);
+        $this->assertArrayNotHasKey('pending_email', $properties);
     }
 
     public function testCancelChangeClearsPendingAndWritesAnonymousAudit(): void

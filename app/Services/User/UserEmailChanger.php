@@ -15,6 +15,7 @@ use App\Services\User\Exceptions\EmailChangeConflictException;
 use App\Services\User\Exceptions\EmailChangeTargetNotEligibleException;
 use App\Services\User\Exceptions\EmailChangeTokenExpiredException;
 use App\Services\User\Exceptions\EmailChangeTokenInvalidException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Activitylog\Facades\Activity;
@@ -143,14 +144,29 @@ final class UserEmailChanger implements UserEmailChangerContract
             throw new EmailChangeConflictException();
         }
 
-        $user->forceFill([
-            'email' => $pendingEmail,
-            'email_verified_at' => Carbon::now(),
-            'pending_email' => null,
-            'pending_email_confirm_token_hash' => null,
-            'pending_email_cancel_token_hash' => null,
-            'pending_email_sent_at' => null,
-        ])->saveOrFail();
+        try {
+            $user->forceFill([
+                'email' => $pendingEmail,
+                'email_verified_at' => Carbon::now(),
+                'pending_email' => null,
+                'pending_email_confirm_token_hash' => null,
+                'pending_email_cancel_token_hash' => null,
+                'pending_email_sent_at' => null,
+            ])->saveOrFail();
+        } catch (UniqueConstraintViolationException) {
+            // Race zwischen der `exists()`-Prüfung oben und diesem Save: ein
+            // paralleler Confirm hat die Zieladresse zwischenzeitlich belegt.
+            // Der Unique-Index ist die eigentliche Serialisierung — die rohe
+            // Verletzung in denselben Conflict-Pfad wie die Vorprüfung
+            // übersetzen. `refresh()` verwirft die dirty, aber nicht
+            // persistierten `email`/`pending_*`-Attribute: sonst loggte
+            // `cancelChangeForUser()` einen leeren `pending_email`-Hash und
+            // liefe beim eigenen Save erneut in den Unique-Index.
+            $user->refresh();
+            $this->cancelChangeForUser($user, 'target_taken_on_confirm');
+
+            throw new EmailChangeConflictException();
+        }
 
         // Bewusst keine Properties: `subject` und `causer` zeigen beide auf
         // den User selbst, der Vorgang ist damit eindeutig zuordenbar.
