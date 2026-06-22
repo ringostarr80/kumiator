@@ -55,9 +55,8 @@ class UpdateUserPassword implements UpdatesUserPasswords
      * relevante Mismatch des aktuellen Passworts wird festgehalten (Indiz
      * für Session-Hijacking, fremder Nutzer am Endgerät, Shoulder-Surfing).
      *
-     * Bewusst KEIN resilienter `try/catch`: PHPAt verbietet `\Throwable`
-     * in Actions, und der Erfolgs-Pfad (das Loggen des erfolgreichen
-     * Passwortwechsels) verfährt symmetrisch ohne Resilienz. Ein
+     * Bewusst KEIN resilienter `try/catch`: Der Erfolgs-Pfad (das Loggen des
+     * erfolgreichen Passwortwechsels) verfährt symmetrisch ohne Resilienz. Ein
      * Activity-Log-DB-Fehler würde also auch im Erfolgsfall die Antwort
      * verderben — der Failure-Pfad bekommt damit identische Garantien.
      */

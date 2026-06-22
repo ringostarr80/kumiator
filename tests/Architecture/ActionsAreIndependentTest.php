@@ -23,6 +23,12 @@ final class ActionsAreIndependentTest
                 // App\Enums: zentrale Activity-Event-/Channel-Codes (Magic-String-Ersatz).
                 Selector::inNamespace('App\\Enums'),
                 Selector::inNamespace('/^App\\\\Services\\\\.*\\\\Contracts$/', true),
+                // Throwables: Eine Action darf jede Exception fangen/werfen und
+                // in eine ValidationException übersetzen. Exception-Typen sind
+                // Cross-Layer-Signale, kein Vorbei-Greifen an der Persistenz —
+                // konkrete Services sind keine Throwables und bleiben blockiert.
+                Selector::classname(\Throwable::class),
+                Selector::isThrowable(),
                 Selector::inNamespace('Illuminate'),
                 Selector::inNamespace('Laravel'),
                 // Activity-Logging direkt aus Actions für DSGVO-relevante
@@ -33,8 +39,8 @@ final class ActionsAreIndependentTest
             )
             ->because(
                 'Actions dürfen nur von Models, DTOs, Service-Contracts, '
-                . 'anderen Actions, Illuminate, Laravel und der Activity-'
-                . 'Facade abhängen.',
+                . 'der `\\Throwable`-Hierarchie, anderen Actions, Illuminate, '
+                . 'Laravel und der Activity-Facade abhängen.',
                 'Sie sind von Fortify/Jetstream vorgegebene Einstiegspunkte '
                 . 'für Benutzeraktionen. Model-Abhängigkeiten sind erlaubt, '
                 . 'weil Fortify/Jetstream Models als Eingabeparameter '

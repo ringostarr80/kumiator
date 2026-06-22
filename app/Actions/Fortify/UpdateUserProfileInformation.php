@@ -9,6 +9,7 @@ use App\Enums\ActivityEvent;
 use App\Models\User;
 use App\Services\Upload\Contracts\ProfilePhotoOptimizerContract;
 use App\Services\Upload\Contracts\UploadLimitResolverContract;
+use App\Services\Upload\Exceptions\ProfilePhotoOptimizationException;
 use App\Services\User\Contracts\UserEmailChangerContract;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
@@ -73,7 +74,19 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
 
             // Nicht das Original speichern: der Optimizer rechnet das Foto auf
             // ein quadratisches AVIF-Thumbnail herunter (inkl. EXIF-Korrektur).
-            $user->updateProfilePhoto($this->profilePhotoOptimizer->optimize($input['photo']));
+            try {
+                $optimized = $this->profilePhotoOptimizer->optimize($input['photo']);
+            } catch (ProfilePhotoOptimizationException $e) {
+                // Pixel-/Decode-/Encode-Fehler bestehen `mimes:`+`max:`, sind aber
+                // kein Server-Defekt: Die Maße liegen erst nach dem Decode vor. Als
+                // Feld-Validierung am `photo`-Feld melden, statt als HTTP 500
+                // durchschlagen zu lassen.
+                throw ValidationException::withMessages([
+                    'photo' => $e->getMessage(),
+                ])->errorBag('updateProfileInformation');
+            }
+
+            $user->updateProfilePhoto($optimized);
 
             $newPath = $user->getAttribute('profile_photo_path');
 

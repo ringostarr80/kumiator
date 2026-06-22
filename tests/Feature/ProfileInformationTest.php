@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Livewire\Profile\UpdateProfileInformationForm;
 use App\Models\Activity;
 use App\Models\User;
+use GdImage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
@@ -350,6 +351,27 @@ final class ProfileInformationTest extends TestCase
         $this->assertNull($user->fresh()?->profile_photo_path);
     }
 
+    public function testHugePixelImageIsRejectedWithFieldErrorInsteadOfServerError(): void
+    {
+        Storage::fake();
+
+        $this->actingAs($user = User::factory()->create());
+
+        // Eine Datei mit >25 MP im Header, aber winziger Größe besteht
+        // `mimes:`+`max:` und löst erst im Optimizer den Bomben-Schutz aus. Der
+        // Nutzer muss eine Feld-Validierung am `photo`-Feld sehen, keine
+        // durchschlagende HTTP 500.
+        $component = Livewire::test(UpdateProfileInformationForm::class)
+            ->set('photo', $this->pngDeclaringDimensions(25_000_001, 1))
+            ->set('state', ['name' => $user->name, 'email' => $user->email])
+            ->call('updateProfileInformation');
+
+        $component->assertHasErrors('photo');
+        $component->assertSee(__('app.profile_photo_optimizer_too_many_pixels', ['max_megapixels' => 25]));
+
+        $this->assertNull($user->fresh()?->profile_photo_path);
+    }
+
     public function testInfrastructureUploadFailureShowsTheEffectiveLimitInTheErrorMessage(): void
     {
         // 1 MB liegt unter dem PHP-Limit der Testumgebung — damit ist das
@@ -454,5 +476,26 @@ final class ProfileInformationTest extends TestCase
         yield 'png' => ['photo.png'];
         yield 'webp' => ['photo.webp'];
         yield 'avif' => ['photo.avif'];
+    }
+
+    /**
+     * PNG, dessen IHDR-Header `$width`×`$height` deklariert, dessen Pixeldaten
+     * aber von einem 1×1-Bild stammen: eine Dekompressions-Bombe, die
+     * `mimes:`+`max:` besteht, aber den Pixel-Guard des Optimizers auslöst.
+     */
+    private function pngDeclaringDimensions(int $width, int $height): UploadedFile
+    {
+        $image = imagecreatetruecolor(1, 1);
+        $this->assertInstanceOf(GdImage::class, $image);
+
+        ob_start();
+        imagepng($image);
+        $png = ob_get_clean();
+        $this->assertIsString($png);
+
+        // IHDR: Breite ab Byte 16, Höhe ab Byte 20 (je 4 Bytes, big-endian).
+        $png = substr_replace($png, pack('N2', $width, $height), 16, 8);
+
+        return UploadedFile::fake()->createWithContent('photo.png', $png);
     }
 }
