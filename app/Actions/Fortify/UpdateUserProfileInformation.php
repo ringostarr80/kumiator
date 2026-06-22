@@ -78,7 +78,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             // Pfad VOR dem Trait-Aufruf snapshotten — `updateProfilePhoto()`
             // überschreibt `profile_photo_path` per `forceFill()->save()`,
             // danach wäre der alte Wert verloren.
-            $previousPhotoPath = $user->getAttribute('profile_photo_path');
+            $previousPhotoPath = $this->stringOrNull($user->getAttribute('profile_photo_path'));
 
             // Optimierung VOR der Transaktion: schlägt der Bomben-/Decode-Schutz
             // an, wird das als Feld-Validierung gemeldet, ohne dafür eine (leere)
@@ -113,29 +113,53 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
         // zurück. Die Confirm-/Cancel-Mails sind `ShouldQueueAfterCommit` und
         // gehen damit erst nach erfolgreichem Commit raus — ein Rollback
         // verschickt keine Mail für eine nicht persistierte Änderung.
-        DB::transaction(function () use ($user, $name, $email, $optimizedPhoto, $previousPhotoPath): void {
-            if ($optimizedPhoto !== null) {
-                $user->updateProfilePhoto($optimizedPhoto);
+        DB::transaction(fn () => $this->persistProfileChanges(
+            $user,
+            $name,
+            $email,
+            $optimizedPhoto,
+            $previousPhotoPath,
+        ));
+    }
 
-                $newPath = $user->getAttribute('profile_photo_path');
+    /**
+     * Schreibt Foto, Name und den Deferred-E-Mail-Antrag innerhalb der
+     * aufrufenden `update()`-Transaktion — die Atomaritäts- und
+     * After-Commit-Begründung steht dort.
+     */
+    private function persistProfileChanges(
+        User $user,
+        string $name,
+        string $email,
+        ?UploadedFile $optimizedPhoto,
+        ?string $previousPhotoPath,
+    ): void {
+        if ($optimizedPhoto !== null) {
+            $user->updateProfilePhoto($optimizedPhoto);
 
-                Activity::useLog(ActivityChannel::USER->value)
-                    ->event(ActivityEvent::PROFILE_PHOTO_UPDATED->value)
-                    ->causedBy($user)
-                    ->performedOn($user)
-                    ->withProperties([
-                        'profile_photo_path' => is_string($newPath) ? $newPath : null,
-                        'previous_profile_photo_path' => is_string($previousPhotoPath) ? $previousPhotoPath : null,
-                    ])
-                    ->log(ActivityEvent::PROFILE_PHOTO_UPDATED->description());
-            }
+            Activity::useLog(ActivityChannel::USER->value)
+                ->event(ActivityEvent::PROFILE_PHOTO_UPDATED->value)
+                ->causedBy($user)
+                ->performedOn($user)
+                ->withProperties([
+                    'profile_photo_path' => $this->stringOrNull($user->getAttribute('profile_photo_path')),
+                    'previous_profile_photo_path' => $previousPhotoPath,
+                ])
+                ->log(ActivityEvent::PROFILE_PHOTO_UPDATED->description());
+        }
 
-            $user->forceFill(['name' => $name])->saveOrFail();
+        $user->forceFill(['name' => $name])->saveOrFail();
 
-            if (strcasecmp($email, $user->email) !== 0) {
-                $this->emailChanger->requestChange($user, $email);
-            }
-        });
+        if (strcasecmp($email, $user->email) !== 0) {
+            $this->emailChanger->requestChange($user, $email);
+        }
+    }
+
+    private function stringOrNull(mixed $value): ?string
+    {
+        return is_string($value)
+            ? $value
+            : null;
     }
 
     /**
