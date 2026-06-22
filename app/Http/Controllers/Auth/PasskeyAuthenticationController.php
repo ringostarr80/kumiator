@@ -91,7 +91,7 @@ final class PasskeyAuthenticationController extends Controller
         }
 
         try {
-            $user = $this->authenticationService->verify(
+            $credential = $this->authenticationService->verify(
                 rawResponse: $rawResponse,
                 storedOptions: $storedOptions,
                 host: WebauthnConfig::effectiveHost(),
@@ -107,6 +107,19 @@ final class PasskeyAuthenticationController extends Controller
             return response()->json(
                 ['message' => __('app.passkey_authentication_failed')],
                 Response::HTTP_INTERNAL_SERVER_ERROR,
+            );
+        }
+
+        $user = $credential->user;
+
+        if ($user === null) {
+            // Credential ohne Owner ist ein Integritätsbruch (der FK verhindert
+            // ihn praktisch); wie eine fehlgeschlagene Verifikation behandeln.
+            PasskeyCredential::recordFailedLoginActivity('verification_failed', $rawResponse);
+
+            return response()->json(
+                ['message' => __('app.passkey_credential_not_found')],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
             );
         }
 
@@ -129,6 +142,12 @@ final class PasskeyAuthenticationController extends Controller
         // siehe `LogAuthenticationActivityListener`). Session-Regeneration
         // bleibt im Controller, weil Session-Handling Web-Layer-Sache ist.
         $this->authenticationService->loginAuthenticatedUser($user);
+
+        // Erfolg erst hier protokollieren — nach bestandenem Freischaltungs-Gate
+        // und tatsächlichem Login. Symmetrisch zum Passwort-Pfad, der für
+        // unapproved Konten ebenfalls keinen Erfolg schreibt.
+        $credential->recordSuccessfulLoginActivity();
+
         $request->session()->regenerate();
 
         return response()->json(['redirect' => config('fortify.home', '/dashboard')]);

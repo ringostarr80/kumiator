@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
@@ -194,43 +195,73 @@ final class PasskeyAuthenticationTest extends TestCase
     public function testSuccessfulAuthenticationLogsInUser(): void
     {
         $user = User::factory()->create();
+        $credential = PasskeyCredential::factory()->for($user)->create();
 
         // Populate the session via the real options endpoint
         $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
 
-        $this->partialMock(PasskeyAuthenticationContract::class, function (MockInterface $mock) use ($user): void {
-            $mock->shouldReceive('verify')->andReturn($user);
-            // `loginAuthenticatedUser` ist nun Teil des Contracts; im
+        $this->partialMock(
+            PasskeyAuthenticationContract::class,
+            function (MockInterface $mock) use ($credential): void {
+                $mock->shouldReceive('verify')->andReturn($credential);
+                // `loginAuthenticatedUser` ist nun Teil des Contracts; im
             // Test-Doppel muss es gegen das echte `Auth::login()` delegieren,
-            // damit `assertAuthenticatedAs()` greift.
-            $mock->shouldReceive('loginAuthenticatedUser')
-                ->with($user)
-                ->andReturnUsing(function (User $u): void {
-                    Auth::login($u);
-                });
-        });
+            // damit `assertAuthenticatedAs()` greift. Der Controller übergibt
+            // den aus der Credential abgeleiteten Owner — daher kein `->with()`.
+                $mock->shouldReceive('loginAuthenticatedUser')
+                    ->andReturnUsing(function (User $u): void {
+                        Auth::login($u);
+                    });
+            },
+        );
 
         $response = $this->postJson(self::AUTHENTICATE_URL, []);
 
         $response->assertOk();
         $response->assertJsonStructure(['redirect']);
         $this->assertAuthenticatedAs($user);
+
+        // Erfolgseintrag entsteht erst nach bestandenem Gate im Controller.
+        $this->assertSame(
+            1,
+            Activity::query()
+                ->where('log_name', 'passkey')
+                ->where('event', 'passkey_login_succeeded')
+                ->where('subject_id', $credential->getKey())
+                ->count(),
+        );
     }
 
     public function testUnapprovedUserCannotAuthenticateViaPasskey(): void
     {
         $user = User::factory()->unapproved()->create();
+        $credential = PasskeyCredential::factory()->for($user)->create();
 
         $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
 
-        $this->partialMock(PasskeyAuthenticationContract::class, function (MockInterface $mock) use ($user): void {
-            $mock->shouldReceive('verify')->andReturn($user);
-        });
+        $this->partialMock(
+            PasskeyAuthenticationContract::class,
+            function (MockInterface $mock) use ($credential): void {
+                $mock->shouldReceive('verify')->andReturn($credential);
+            },
+        );
 
         $response = $this->postJson(self::AUTHENTICATE_URL, []);
 
         $response->assertUnauthorized();
         $this->assertGuest();
+
+        // Kern des Fixes: Ein vom Freischaltungs-Gate abgewiesener Passkey-Login
+        // darf KEINEN `passkey_login_succeeded`-Eintrag erzeugen — sonst entstünde
+        // eine widersprüchliche Audit-Spur (Erfolg + `login_unapproved`, aber
+        // ohne Session).
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('log_name', 'passkey')
+                ->where('event', 'passkey_login_succeeded')
+                ->count(),
+        );
     }
 
     protected function setUp(): void

@@ -29,7 +29,7 @@ use Webauthn\TrustPath\EmptyTrustPath;
  *      Serialise it to JSON and send to the browser. Store it in the session.
  *   2. The browser calls navigator.credentials.get() and POSTs the result.
  *   3. Call verify() with the raw JSON, the stored options and an optional
- *      user hint. On success, the authenticated User model is returned.
+ *      user hint. On success, the matched PasskeyCredential is returned.
  */
 final class PasskeyAuthenticationService implements PasskeyAuthenticationContract
 {
@@ -70,16 +70,22 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
     /**
      * Validate the browser assertion response.
      *
-     * Returns the authenticated User on success.
-     * Throws AuthenticatorResponseVerificationException on client errors, \LogicException on data integrity violations.
+     * Returns the matched PasskeyCredential on success. The successful-login
+     * audit entry and the approval gate are the caller's job, AFTER the login
+     * actually completes — so an unapproved user (rejected by the gate) never
+     * produces a `passkey_login_succeeded` entry.
+     * Throws AuthenticatorResponseVerificationException on client errors.
      *
      * @param string $rawResponse JSON string as received from the browser
      * @param PublicKeyCredentialRequestOptions $storedOptions The options stored
      *        in the session when createOptions() was called
      * @param string $host The effective domain (e.g. "localhost")
      */
-    public function verify(string $rawResponse, PublicKeyCredentialRequestOptions $storedOptions, string $host): User
-    {
+    public function verify(
+        string $rawResponse,
+        PublicKeyCredentialRequestOptions $storedOptions,
+        string $host,
+    ): PasskeyCredential {
         $publicKeyCredential = $this->serializer->deserialize($rawResponse, PublicKeyCredential::class, 'json');
 
         $response = $publicKeyCredential->response;
@@ -115,22 +121,7 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
             $updatedRecord->backupStatus ?? false,
         );
 
-        // Fachlicher Activity-Log-Eintrag für die Anmeldung. Der `LogsActivity`-
-        // Trait würde lediglich einen generischen `updated`-Eintrag erzeugen
-        // (Counter/Backup-Flags); hier wollen wir den Login als eigenes Ereignis
-        // dokumentieren — mit übersetzter Beschreibung und dem Owner als Causer
-        // (`auth()->user()` ist zu diesem Zeitpunkt noch null).
-        $passkeyModel->recordSuccessfulLoginActivity();
-
-        $user = $passkeyModel->user;
-
-        if ($user === null) {
-            throw new AuthenticatorResponseVerificationException(
-                __('app.passkey_credential_not_found'),
-            );
-        }
-
-        return $user;
+        return $passkeyModel;
     }
 
     /**
@@ -138,7 +129,7 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
      * `PasskeyLoginContext::markActive()`/`clear()`. Der Marker signalisiert
      * dem `LogAuthenticationActivityListener::handleLogin()`, dass der gerade
      * laufende `Login`-Event aus dem Passkey-Pfad stammt — der dedizierte
-     * Activity-Eintrag aus `verify()` (über `recordSuccessfulLoginActivity()`)
+     * Activity-Eintrag des Controllers (über `recordSuccessfulLoginActivity()`)
      * würde sonst von einem zusätzlichen `password_login_succeeded`-Eintrag
      * begleitet.
      *
