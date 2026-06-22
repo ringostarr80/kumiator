@@ -285,6 +285,35 @@ final class AuthenticationActivityLogTest extends TestCase
     }
 
     /**
+     * Der User-Agent-Header ist auf den anonymen Pfaden angreiferkontrolliert
+     * und würde ungekürzt die langlebig aufbewahrte Forensik-Tabelle aufblähen.
+     * Übergroße Header werden daher hart auf 255 Zeichen gekappt.
+     */
+    public function testFailedLoginTruncatesOverlongUserAgent(): void
+    {
+        Activity::query()->delete();
+
+        $this->app->instance('request', Request::create(
+            '/login',
+            'POST',
+            ['email' => 'opfer@example.com'],
+            server: ['REMOTE_ADDR' => '203.0.113.7', 'HTTP_USER_AGENT' => str_repeat('A', 500)],
+        ));
+
+        Event::dispatch(new Failed('web', null, ['email' => 'opfer@example.com']));
+
+        $activity = Activity::query()
+            ->where('log_name', 'forensic')
+            ->where('event', 'login_failed')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame(str_repeat('A', 255), $properties['user_agent'] ?? null);
+    }
+
+    /**
      * Ohne Request-IP (z. B. CLI-Auth-Versuch) darf weder `ip` noch
      * `user_agent` entstehen — statt eines wertlosen Platzhalters.
      */

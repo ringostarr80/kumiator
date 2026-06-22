@@ -21,6 +21,7 @@ use Illuminate\Auth\Events\PasswordResetLinkSent;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Laravel\Fortify\Events\PasswordUpdatedViaController;
 use Spatie\Activitylog\Facades\Activity;
 
@@ -264,7 +265,10 @@ final class LogAuthenticationActivityListener
 
     /**
      * Forensische Properties für anonyme Fehlversuche: gekürzte IP (Netz statt
-     * Host — DSGVO-Datenminimierung) und User-Agent, jeweils nur wenn vorhanden.
+     * Host — DSGVO-Datenminimierung) und der auf 255 Zeichen begrenzte
+     * User-Agent, jeweils nur wenn vorhanden. Der User-Agent ist auf den
+     * anonymen Pfaden angreiferkontrolliert; der Längen-Cap verhindert, dass
+     * beliebig lange Header die langlebig aufbewahrte Forensik-Tabelle aufblähen.
      * Ohne Request-IP (z. B. CLI-Auth) bleibt das Array leer.
      *
      * @return array<string, string>
@@ -282,7 +286,7 @@ final class LogAuthenticationActivityListener
         $userAgent = $request->userAgent();
 
         if ($userAgent !== null) {
-            $properties['user_agent'] = $userAgent;
+            $properties['user_agent'] = Str::limit($userAgent, 255, '');
         }
 
         return $properties;
