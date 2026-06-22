@@ -12,6 +12,7 @@ use App\Services\Upload\Contracts\UploadLimitResolverContract;
 use App\Services\Upload\Exceptions\ProfilePhotoOptimizationException;
 use App\Services\User\Contracts\UserEmailChangerContract;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -70,39 +71,29 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             throw $e;
         }
 
+        $optimizedPhoto = null;
+        $previousPhotoPath = null;
+
         if (isset($input['photo']) && $input['photo'] instanceof UploadedFile) {
             // Pfad VOR dem Trait-Aufruf snapshotten — `updateProfilePhoto()`
             // überschreibt `profile_photo_path` per `forceFill()->save()`,
             // danach wäre der alte Wert verloren.
-            $previousPath = $user->getAttribute('profile_photo_path');
+            $previousPhotoPath = $user->getAttribute('profile_photo_path');
 
-            // Nicht das Original speichern: der Optimizer rechnet das Foto auf
-            // ein quadratisches AVIF-Thumbnail herunter (inkl. EXIF-Korrektur).
+            // Optimierung VOR der Transaktion: schlägt der Bomben-/Decode-Schutz
+            // an, wird das als Feld-Validierung gemeldet, ohne dafür eine (leere)
+            // Transaktion zu öffnen. Nicht das Original speichern: der Optimizer
+            // rechnet das Foto auf ein quadratisches AVIF-Thumbnail herunter
+            // (inkl. EXIF-Korrektur). Pixel-/Decode-/Encode-Fehler bestehen
+            // `mimes:`+`max:`, sind aber kein Server-Defekt: Die Maße liegen erst
+            // nach dem Decode vor — als Feld-Fehler melden, nicht als HTTP 500.
             try {
-                $optimized = $this->profilePhotoOptimizer->optimize($input['photo']);
+                $optimizedPhoto = $this->profilePhotoOptimizer->optimize($input['photo']);
             } catch (ProfilePhotoOptimizationException $e) {
-                // Pixel-/Decode-/Encode-Fehler bestehen `mimes:`+`max:`, sind aber
-                // kein Server-Defekt: Die Maße liegen erst nach dem Decode vor. Als
-                // Feld-Validierung am `photo`-Feld melden, statt als HTTP 500
-                // durchschlagen zu lassen.
                 throw ValidationException::withMessages([
                     'photo' => $e->getMessage(),
                 ])->errorBag('updateProfileInformation');
             }
-
-            $user->updateProfilePhoto($optimized);
-
-            $newPath = $user->getAttribute('profile_photo_path');
-
-            Activity::useLog(ActivityChannel::USER->value)
-                ->event(ActivityEvent::PROFILE_PHOTO_UPDATED->value)
-                ->causedBy($user)
-                ->performedOn($user)
-                ->withProperties([
-                    'profile_photo_path' => is_string($newPath) ? $newPath : null,
-                    'previous_profile_photo_path' => is_string($previousPath) ? $previousPath : null,
-                ])
-                ->log(ActivityEvent::PROFILE_PHOTO_UPDATED->description());
         }
 
         $name = $input['name'];
@@ -115,11 +106,36 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             return;
         }
 
-        $user->forceFill(['name' => $name])->saveOrFail();
+        // Atomar: Foto-Pfad, Name und der Deferred-E-Mail-Antrag (samt ihrer
+        // Audit-Einträge) committen gemeinsam oder gar nicht. Sonst bliebe bei
+        // einem Fehler im E-Mail-Schritt ein bereits gespeichertes und
+        // auditiertes Foto oder ein hängender `pending_email`-Teilzustand
+        // zurück. Die Confirm-/Cancel-Mails sind `ShouldQueueAfterCommit` und
+        // gehen damit erst nach erfolgreichem Commit raus — ein Rollback
+        // verschickt keine Mail für eine nicht persistierte Änderung.
+        DB::transaction(function () use ($user, $name, $email, $optimizedPhoto, $previousPhotoPath): void {
+            if ($optimizedPhoto !== null) {
+                $user->updateProfilePhoto($optimizedPhoto);
 
-        if (strcasecmp($email, $user->email) !== 0) {
-            $this->emailChanger->requestChange($user, $email);
-        }
+                $newPath = $user->getAttribute('profile_photo_path');
+
+                Activity::useLog(ActivityChannel::USER->value)
+                    ->event(ActivityEvent::PROFILE_PHOTO_UPDATED->value)
+                    ->causedBy($user)
+                    ->performedOn($user)
+                    ->withProperties([
+                        'profile_photo_path' => is_string($newPath) ? $newPath : null,
+                        'previous_profile_photo_path' => is_string($previousPhotoPath) ? $previousPhotoPath : null,
+                    ])
+                    ->log(ActivityEvent::PROFILE_PHOTO_UPDATED->description());
+            }
+
+            $user->forceFill(['name' => $name])->saveOrFail();
+
+            if (strcasecmp($email, $user->email) !== 0) {
+                $this->emailChanger->requestChange($user, $email);
+            }
+        });
     }
 
     /**

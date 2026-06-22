@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Livewire\Profile\UpdateProfileInformationForm;
 use App\Models\Activity;
 use App\Models\User;
@@ -187,6 +188,53 @@ final class ProfileInformationTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         $this->assertSame('neu@example.com', $user->fresh()?->pending_email);
+    }
+
+    public function testProfileUpdateRollsBackAllWritesWhenEmailRequestFails(): void
+    {
+        Storage::fake();
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create([
+            'name' => 'Original',
+            'email' => 'original@example.com',
+        ]));
+        Activity::query()->delete();
+
+        // Fehler im LETZTEN Schritt erzwingen: Der `pending_email`-Save in
+        // `requestChange()` wirft. Ein echter Save-Hook, kein Mock. Foto, Name
+        // und der Foto-Audit-Eintrag davor müssen per Transaktion zurückrollen.
+        User::saving(function (User $model): void {
+            if ($model->isDirty('pending_email')) {
+                throw new \RuntimeException('boom beim pending_email-Save');
+            }
+        });
+
+        try {
+            app(UpdateUserProfileInformation::class)->update($user, [
+                'name' => 'Geändert',
+                'email' => 'neu@example.com',
+                'current_password' => 'password',
+                'photo' => UploadedFile::fake()->image('photo.jpg'),
+            ]);
+            $this->fail('Erwartete RuntimeException aus dem pending_email-Save.');
+        } catch (\RuntimeException) {
+            // erwartet
+        }
+
+        $refreshed = $user->fresh();
+        $this->assertNotNull($refreshed);
+
+        // Atomarität: KEINE der drei Schreibungen überlebt den Rollback.
+        $this->assertSame('Original', $refreshed->name);
+        $this->assertNull($refreshed->profile_photo_path);
+        $this->assertNull($refreshed->pending_email);
+        $this->assertSame(
+            0,
+            Activity::query()->where('event', 'profile_photo_updated')->count(),
+        );
+
+        // `ShouldQueueAfterCommit`: Bei Rollback geht keine Mail raus.
+        Notification::assertNothingSent();
     }
 
     public function testProfilePhotoCanBeUpdated(): void

@@ -6,7 +6,7 @@ namespace App\Notifications;
 
 use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -20,13 +20,16 @@ use Illuminate\Notifications\Notification;
  * Notification trotzdem als Konstruktor-Argument mitgegeben, damit die
  * Anrede personalisiert werden kann.
  *
- * `ShouldQueue`: konsistent mit Laravels Default `VerifyEmail`-Notification.
- * Der Klartext-Token landet damit zwischenzeitlich im Queue-Payload (Redis/
- * DB). Wir nehmen das in Kauf, weil die TTL (60 Min) kurz ist und ein
- * Queue-Datenleck im Projekt-Threat-Model bereits andere kompromittierte
- * Pfade implizieren würde.
+ * `ShouldQueueAfterCommit`: Der Versand wird über `Notification::route()` aus
+ * `UserEmailChanger::requestChange()` ausgelöst, das innerhalb der
+ * Profil-Update-Transaktion läuft. Erst nach deren Commit darf die Mail raus —
+ * sonst verschickt ein zurückgerollter Antrag einen Confirm-Link auf einen
+ * `pending_email`-Zustand, der nie persistiert wurde. Der Klartext-Token landet
+ * dabei zwischenzeitlich im Queue-Payload (Redis/DB); das nehmen wir in Kauf,
+ * weil die TTL (60 Min) kurz ist und ein Queue-Datenleck im Projekt-Threat-
+ * Model bereits andere kompromittierte Pfade implizieren würde.
  */
-final class VerifyEmailChangeNotification extends Notification implements ShouldQueue
+final class VerifyEmailChangeNotification extends Notification implements ShouldQueueAfterCommit
 {
     use Queueable;
 

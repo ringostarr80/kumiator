@@ -6,7 +6,7 @@ namespace App\Notifications;
 
 use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -20,8 +20,12 @@ use Illuminate\Notifications\Notification;
  * Routing: `$user->notify(...)` reicht — `pending_email` wurde noch nicht in
  * die `email`-Spalte übernommen, also zielt die Default-Route von Notifiable
  * korrekt auf die alte Adresse.
+ *
+ * `ShouldQueueAfterCommit`: wie die Confirm-Mail erst nach Commit der
+ * Profil-Update-Transaktion versenden — ein Rollback darf keine Hinweis-Mail
+ * für eine nicht persistierte Änderung auslösen.
  */
-final class EmailChangeRequestedNotification extends Notification implements ShouldQueue
+final class EmailChangeRequestedNotification extends Notification implements ShouldQueueAfterCommit
 {
     use Queueable;
 
