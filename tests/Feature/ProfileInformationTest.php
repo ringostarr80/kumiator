@@ -76,6 +76,28 @@ final class ProfileInformationTest extends TestCase
         $this->assertNotNull($refreshedUser->email_verified_at);
     }
 
+    public function testOwnEmailInDifferentCaseIsNotTreatedAsChange(): void
+    {
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create(['email' => 'john@example.com']));
+
+        // Eigene Adresse nur in abweichender Schreibweise ist via NOCASE
+        // identisch — kein Wechsel: weder `current_password` noch der
+        // Deferred-Flow (Confirm-/Cancel-Mails) dürfen ausgelöst werden.
+        Livewire::test(UpdateProfileInformationForm::class)
+            ->set('state', ['name' => 'Neuer Name', 'email' => 'John@Example.COM'])
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors('current_password');
+
+        $refreshedUser = $user->fresh();
+
+        $this->assertNotNull($refreshedUser);
+        $this->assertSame('Neuer Name', $refreshedUser->name);
+        $this->assertSame('john@example.com', $refreshedUser->email);
+        $this->assertNull($refreshedUser->pending_email);
+        Notification::assertNothingSent();
+    }
+
     public function testEmailChangeWithoutCurrentPasswordIsRejected(): void
     {
         Notification::fake();
