@@ -17,10 +17,9 @@ use App\Models\User;
  * ruft `sendEmailVerificationNotification()` direkt auf), deshalb liegt
  * Versand + Audit hier im Service statt in einem Listener.
  *
- * Idempotenz-Hinweis: Der Aufrufer
- * ({@see \App\Http\Controllers\Auth\ResendEmailVerificationController}) prüft
- * `hasVerifiedEmail()` und ruft `resend()` nur für noch nicht verifizierte
- * User — dieser Service versendet bedingungslos und loggt.
+ * Idempotenz-Hinweis: Der Aufrufer prüft `hasVerifiedEmail()` und ruft
+ * `resend()` nur für noch nicht verifizierte User — dieser Service versendet
+ * bedingungslos und loggt.
  */
 interface EmailVerificationResenderContract
 {

@@ -218,8 +218,7 @@ final class PasskeyRegistrationTest extends TestCase
         // Audit-Symmetrie zum Erfolgs-Pfad (`passkey_registered`): jeder
         // gescheiterte Attest-Verify hinterlässt einen Eintrag mit dem
         // authentifizierten User als Causer und `failure_reason` in den
-        // Properties. Domain-Verhalten der statischen Methode separat in
-        // {@see \Tests\Feature\ActivityLog\PasskeyRegistrationFailedActivityLogTest}.
+        // Properties.
         $activity = Activity::query()
             ->where('log_name', 'passkey')
             ->where('event', 'passkey_registration_failed')
