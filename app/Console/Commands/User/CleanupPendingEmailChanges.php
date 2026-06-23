@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
 
 /**
  * Räumt abgelaufene `pending_email*`-Datensätze (TTL 60 Min). Wird vom
- * Scheduler täglich aufgerufen (siehe `routes/console.php`). Jeder bereinigte
+ * Scheduler aufgerufen (Frequenz siehe `routes/console.php`). Jeder bereinigte
  * Datensatz erzeugt einen `email_change_cancelled`-Audit-Eintrag mit
  * `cancelled_via = 'ttl_expired'`, sodass die Lebenszyklus-Spur einer Anfrage
  * lückenlos im `auth`-Log liegt — auch wenn der User sie nicht aktiv abbricht.
