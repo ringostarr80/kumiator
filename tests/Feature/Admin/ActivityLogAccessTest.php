@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Activitylog\Facades\Activity as ActivityFacade;
 use Tests\TestCase;
 
@@ -658,9 +659,9 @@ final class ActivityLogAccessTest extends TestCase
     }
 
     /**
-     * Zeitpunkt-Range: `von`/`bis` sind beide tag-inklusiv (whereDate). Drei
-     * Einträge in unterschiedlichen Monaten (via `travelTo`), das Fenster
-     * Februar–April lässt nur den März-Eintrag durch.
+     * Zeitpunkt-Range: `von`/`bis` sind beide tag-inklusiv. Drei Einträge in
+     * unterschiedlichen Monaten (via `travelTo`), das Fenster Februar–April
+     * lässt nur den März-Eintrag durch.
      */
     public function testFilterByDateRangeLimitsResults(): void
     {
@@ -683,6 +684,36 @@ final class ActivityLogAccessTest extends TestCase
         $component->assertSee('range_mar');
         $component->assertDontSee('range_jan');
         $component->assertDontSee('range_mai');
+    }
+
+    /**
+     * Off-by-one-Regression: `created_at` liegt in UTC vor, gefiltert wird aber
+     * nach Kalendertagen der Anzeige-Zeitzone. Die Datasets decken beide
+     * Zonen-Offsets (Sommer +2, Winter +1) und die inklusiven Tagesgrenzen ab;
+     * der alte `whereDate` auf dem UTC-Datumsteil verhielt sich an der lokalen
+     * Mitternacht jeweils umgekehrt.
+     */
+    #[DataProvider('displayTimezoneBoundaryProvider')]
+    public function testDateFilterUsesDisplayTimezoneBoundaries(
+        string $createdAtUtc,
+        string $filterField,
+        string $filterValue,
+        bool $shouldSee,
+    ): void {
+        $admin = $this->makeAuditor();
+
+        $this->travelTo(Carbon::parse($createdAtUtc, 'UTC'), function (): void {
+            ActivityFacade::useLog('test')->event('grenzfall')->log('');
+        });
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set($filterField, $filterValue);
+
+        if ($shouldSee) {
+            $component->assertSee('grenzfall');
+        } else {
+            $component->assertDontSee('grenzfall');
+        }
     }
 
     /**
@@ -949,6 +980,23 @@ final class ActivityLogAccessTest extends TestCase
 
         $component->set('filterChannel', 'auth');
         $component->assertSeeHtml('{ open: true }');
+    }
+
+    /**
+     * @return array<string, array{string, string, string, bool}>
+     */
+    public static function displayTimezoneBoundaryProvider(): array
+    {
+        return [
+            'Sommer (+2), from=Folgetag: sichtbar' => ['2026-06-20 23:00:00', 'filterDateFrom', '2026-06-21', true],
+            'Sommer (+2), to=Vortag: ausgeblendet' => ['2026-06-20 23:00:00', 'filterDateTo', '2026-06-20', false],
+            'Winter (+1), from=Folgetag: sichtbar' => ['2026-12-20 23:30:00', 'filterDateFrom', '2026-12-21', true],
+            'Winter (+1), to=Vortag: ausgeblendet' => ['2026-12-20 23:30:00', 'filterDateTo', '2026-12-20', false],
+            'untere Grenze exakt: sichtbar' => ['2026-06-19 22:00:00', 'filterDateFrom', '2026-06-20', true],
+            'kurz vor unterer Grenze: ausgeblendet' => ['2026-06-19 21:59:59', 'filterDateFrom', '2026-06-20', false],
+            'obere Grenze exakt: sichtbar' => ['2026-06-20 21:59:59', 'filterDateTo', '2026-06-20', true],
+            'kurz nach oberer Grenze: ausgeblendet' => ['2026-06-20 22:00:00', 'filterDateTo', '2026-06-20', false],
+        ];
     }
 
     /**

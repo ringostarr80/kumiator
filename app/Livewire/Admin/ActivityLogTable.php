@@ -6,12 +6,14 @@ namespace App\Livewire\Admin;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
+use App\Enums\AppTimezone;
 use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -218,15 +220,24 @@ final class ActivityLogTable extends Component
     {
         $errors = $this->validateDateFilters();
 
-        // Nur geprüfte Datumsgrenzen erreichen whereDate. Eine am Format
-        // gescheiterte oder die Range verletzende Grenze wird übersprungen,
-        // statt still zu einem Unsinns-Filter zu verpuffen.
+        // created_at liegt in UTC vor, gefiltert wird aber nach Kalendertagen
+        // der Anzeige-Zeitzone (so zeigt die Tabelle die Zeit). Daher die
+        // lokale Tagesgrenze dort bilden und nach UTC umrechnen, statt den
+        // UTC-Datumsteil zu vergleichen — sonst fiele ein Eintrag nahe
+        // Mitternacht (Zonen-Offset) auf den Nachbartag. Nur geprüfte
+        // Grenzen werden angewandt.
         if ($this->filterDateFrom !== '' && !$errors->has('filterDateFrom')) {
-            $query->whereDate('created_at', '>=', $this->filterDateFrom);
+            $from = Carbon::parse($this->filterDateFrom, AppTimezone::DISPLAY->value)
+                ->startOfDay()
+                ->utc();
+            $query->where('created_at', '>=', $from);
         }
 
         if ($this->filterDateTo !== '' && !$errors->has('filterDateTo')) {
-            $query->whereDate('created_at', '<=', $this->filterDateTo);
+            $to = Carbon::parse($this->filterDateTo, AppTimezone::DISPLAY->value)
+                ->endOfDay()
+                ->utc();
+            $query->where('created_at', '<=', $to);
         }
 
         if ($this->filterChannel !== '') {
@@ -249,10 +260,10 @@ final class ActivityLogTable extends Component
     /**
      * Datumsfilter stammen über `#[Url]` auch als roher Query-String
      * (`?from=garbage`) und umgehen so den `type="date"`-Constraint des Inputs.
-     * Ungeprüft verpuffen sie in `whereDate` still zu einem Unsinns-Filter;
-     * daher hier prüfen und dem Admin als Fehler melden. Die Prüfung läuft im
-     * Render-Pfad (nicht nur im `updated()`-Hook), damit auch beim Mount per URL
-     * injizierte Werte erfasst werden.
+     * Ungeprüft verpuffen sie still zu einem Unsinns-Filter; daher hier prüfen
+     * und dem Admin als Fehler melden. Die Prüfung läuft im Render-Pfad (nicht
+     * nur im `updated()`-Hook), damit auch beim Mount per URL injizierte Werte
+     * erfasst werden.
      *
      * @return MessageBag die geprüften Filter-Fehler (auch auf der Komponente gesetzt)
      */

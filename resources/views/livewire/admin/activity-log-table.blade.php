@@ -133,7 +133,7 @@
                     @foreach ($activities as $activity)
                         <tr wire:key="activity-{{ $activity->id }}">
                             <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-200 whitespace-nowrap">
-                                {{ $activity->created_at?->timezone('Europe/Berlin')->isoFormat('L LTS') }}
+                                {{ $activity->created_at?->timezone(\App\Enums\AppTimezone::DISPLAY->value)->isoFormat('L LTS') }}
                             </td>
                             <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-200 whitespace-nowrap">
                                 {{ $activity->log_name ?? '—' }}
