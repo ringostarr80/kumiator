@@ -9,9 +9,8 @@ use App\Livewire\Profile\ApiTokenManager;
 use App\Livewire\Profile\LogoutOtherBrowserSessionsForm;
 use App\Models\Activity;
 use App\Models\User;
+use App\Services\Auth\Contracts\OtherDeviceLogoutContextContract;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
-use App\Services\Auth\OtherDeviceLogoutContext;
-use App\Services\Auth\SelfRegistrationContext;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
@@ -74,12 +73,12 @@ final class AuthenticationActivityLogTest extends TestCase
         $user = User::factory()->create();
         Activity::query()->delete();
 
-        PasskeyLoginContext::markActive();
+        app(PasskeyLoginContext::class)->markActive();
 
         try {
             Event::dispatch(new Login('web', $user, false));
         } finally {
-            PasskeyLoginContext::clear();
+            app(PasskeyLoginContext::class)->clear();
         }
 
         $this->assertSame(
@@ -829,12 +828,12 @@ final class AuthenticationActivityLogTest extends TestCase
         $user = User::factory()->create();
         Activity::query()->delete();
 
-        (new OtherDeviceLogoutContext())->markActive();
+        app(OtherDeviceLogoutContextContract::class)->markActive();
 
         try {
             Event::dispatch(new OtherDeviceLogout('web', $user));
         } finally {
-            OtherDeviceLogoutContext::clearStatically();
+            app(OtherDeviceLogoutContextContract::class)->clear();
         }
 
         $this->assertSame(
@@ -1052,16 +1051,5 @@ final class AuthenticationActivityLogTest extends TestCase
             0,
             Activity::query()->where('log_name', 'auth')->count(),
         );
-    }
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        // Marker zwischen Tests sauber halten — statische Felder überleben
-        // sonst über die Test-Grenze hinweg.
-        PasskeyLoginContext::clear();
-        SelfRegistrationContext::clearStatically();
-        OtherDeviceLogoutContext::clearStatically();
     }
 }

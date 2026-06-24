@@ -10,13 +10,15 @@ namespace App\Services\Auth\Contracts;
  * Die Trennung in ein Interface ist nötig, weil Livewire-Komponenten laut
  * Architektur-Regel (`LivewireComponentsAreIndependentTest`) keine konkreten
  * Services kennen dürfen — DI erfolgt ausschließlich über Contracts. Das
- * `LogoutOtherBrowserSessionsForm` injiziert dieses Contract per `boot()`,
- * der `LogAuthenticationActivityListener` (Listeners sind von der Regel
- * ausgenommen) ruft die konkrete Implementation statisch.
+ * `LogoutOtherBrowserSessionsForm` injiziert dieses Contract per `boot()`;
+ * der `LogAuthenticationActivityListener` löst dieselbe scoped Instanz über
+ * dieses Contract auf, um den Marker zu lesen.
  */
 interface OtherDeviceLogoutContextContract
 {
     public function markActive(): void;
+
+    public function isActive(): bool;
 
     public function clear(): void;
 }

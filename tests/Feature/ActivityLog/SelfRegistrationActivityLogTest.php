@@ -8,7 +8,6 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Models\Activity;
 use App\Models\User;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
-use App\Services\Auth\SelfRegistrationContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Activitylog\Facades\Activity as ActivityFacade;
 use Spatie\Permission\Models\Role;
@@ -165,7 +164,7 @@ final class SelfRegistrationActivityLogTest extends TestCase
         }
 
         $this->assertFalse(
-            SelfRegistrationContext::isActive(),
+            $this->app->make(SelfRegistrationContextContract::class)->isActive(),
             'Marker hängt nach Fehlschlag fest — `try/finally` in CreateNewUser greift nicht.',
         );
     }
@@ -200,10 +199,6 @@ final class SelfRegistrationActivityLogTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        // Marker zwischen Tests sauber halten — statische Felder überleben
-        // sonst über die Test-Grenze hinweg.
-        SelfRegistrationContext::clearStatically();
 
         // CreateNewUser weist die `member`-Rolle zu — die muss existieren,
         // sonst scheitert die Registration mit `RoleDoesNotExist`.

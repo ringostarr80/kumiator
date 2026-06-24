@@ -848,8 +848,8 @@ final class ConsoleActivityLogTest extends TestCase
     {
         parent::setUp();
 
-        // Statisches Marker-Feld zwischen Tests sauber halten — analog
-        // SelfRegistrationContext-Cleanup im Schwester-Test.
+        // Statisches Marker-Feld zwischen Tests sauber halten (ConsoleActorContext
+        // hält den Zustand prozessweit über die Test-Grenze hinweg).
         ConsoleActorContext::clearStatically();
 
         Role::findOrCreate('admin');

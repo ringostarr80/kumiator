@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Auth;
 
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
+use App\Services\Concerns\MarksRequestScope;
 
 /**
  * Request-scoped Marker, der signalisiert, dass das gerade laufende
@@ -22,44 +23,8 @@ use App\Services\Auth\Contracts\SelfRegistrationContextContract;
  * `AppServiceProvider` prüft den Marker und labelt den `created`-Event auf
  * `user_self_registered` um (inkl. übersetzter Description). Ohne Marker
  * (CLI-Pfad, Tests, andere User-Anlagen) bleibt der Eintrag generisch.
- *
- * Statisches Design ist hier vertretbar, weil PHP-Requests einen frischen
- * Prozess-Zustand haben (kein Carry-over zwischen Requests). In Tests muss
- * `clear()` zwischen Szenarien aufgerufen werden — das bestehende Setup
- * im `AuthenticationActivityLogTest` tut das automatisch im `setUp()`.
  */
 final class SelfRegistrationContext implements SelfRegistrationContextContract
 {
-    private static bool $active = false;
-
-    public function markActive(): void
-    {
-        self::$active = true;
-    }
-
-    public function clear(): void
-    {
-        self::$active = false;
-    }
-
-    /**
-     * Static gelesen vom `Activity::saving`-Listener im `AppServiceProvider`:
-     * dieser läuft im globalen Bootstrapping-Pfad, eine DI-Auflösung pro
-     * Activity-Insert wäre unnötig teuer und brächte keinen Nutzen — der
-     * Marker-Zustand ist Prozess-global.
-     */
-    public static function isActive(): bool
-    {
-        return self::$active;
-    }
-
-    /**
-     * Statische Variante für Test-Teardown / TestCase-`setUp()`. Die
-     * Instanz-Methoden würden via Container aufgelöst werden müssen,
-     * was beim Marker-Reset unnötig Indirektion einführt.
-     */
-    public static function clearStatically(): void
-    {
-        self::$active = false;
-    }
+    use MarksRequestScope;
 }

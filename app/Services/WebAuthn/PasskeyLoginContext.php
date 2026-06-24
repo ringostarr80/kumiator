@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\WebAuthn;
 
+use App\Services\Concerns\MarksRequestScope;
+
 /**
  * Request-scoped Marker, der signalisiert, dass das gerade laufende
  * `Auth::login()` aus dem Passkey-Pfad stammt.
@@ -16,33 +18,10 @@ namespace App\Services\WebAuthn;
  * würde jede Passkey-Anmeldung doppelt geloggt (einmal als Passkey, einmal
  * als Passwort).
  *
- * Verwendung im Passkey-Controller:
- *   PasskeyLoginContext::markActive();
- *   try {
- *       Auth::login($user);
- *   } finally {
- *       PasskeyLoginContext::clear();
- *   }
- *
- * Static-Design vertretbar (frischer Prozess je Request, Test-Reset im
- * `setUp()`) — Begründung analog `SelfRegistrationContext`.
+ * Setzer (`PasskeyAuthenticationService`) und Leser (`LogAuthenticationActivityListener`)
+ * teilen sich die Instanz über die `scoped()`-Bindung im Container.
  */
 final class PasskeyLoginContext
 {
-    private static bool $active = false;
-
-    public static function markActive(): void
-    {
-        self::$active = true;
-    }
-
-    public static function isActive(): bool
-    {
-        return self::$active;
-    }
-
-    public static function clear(): void
-    {
-        self::$active = false;
-    }
+    use MarksRequestScope;
 }

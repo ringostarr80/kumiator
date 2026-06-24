@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Auth;
 
 use App\Services\Auth\Contracts\OtherDeviceLogoutContextContract;
+use App\Services\Concerns\MarksRequestScope;
 
 /**
  * Request-scoped Marker, der signalisiert, dass das gerade laufende
@@ -19,40 +20,8 @@ use App\Services\Auth\Contracts\OtherDeviceLogoutContextContract;
  * `other_sessions_logged_out`-Eintrag mit `terminated_session_count` — ohne
  * Marker würde derselbe Vorgang doppelt erscheinen. Der Marker drückt den
  * Listener-Eintrag im Form-Pfad weg, der native Pfad bleibt unbeeinflusst.
- *
- * Hybrid-API: Instanzmethoden auf einem Contract erfüllen die
- * Livewire-Architektur-Regel; der Listener und Tests greifen statisch
- * darauf zu (zwei Pfade, ein State — analog zu `SelfRegistrationContext`).
- *
- * Static-Design vertretbar (frischer Prozess je Request, Test-Reset im
- * `setUp()`) — Begründung analog `SelfRegistrationContext`.
  */
 final class OtherDeviceLogoutContext implements OtherDeviceLogoutContextContract
 {
-    private static bool $active = false;
-
-    public function markActive(): void
-    {
-        self::$active = true;
-    }
-
-    public function clear(): void
-    {
-        self::$active = false;
-    }
-
-    public static function isActive(): bool
-    {
-        return self::$active;
-    }
-
-    /**
-     * Statische Variante für Test-Teardown / TestCase-`setUp()`. Die
-     * Instanz-Methode würde via Container aufgelöst werden müssen, was
-     * beim Marker-Reset unnötig Indirektion einführt.
-     */
-    public static function clearStatically(): void
-    {
-        self::$active = false;
-    }
+    use MarksRequestScope;
 }

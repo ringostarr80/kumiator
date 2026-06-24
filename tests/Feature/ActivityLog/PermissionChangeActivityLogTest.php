@@ -161,12 +161,12 @@ final class PermissionChangeActivityLogTest extends TestCase
         $permission = Permission::findOrCreate('test.permission');
         Activity::query()->delete();
 
-        PermissionSeederContext::markActive();
+        app(PermissionSeederContext::class)->markActive();
 
         try {
             $admin->givePermissionTo($permission);
         } finally {
-            PermissionSeederContext::clear();
+            app(PermissionSeederContext::class)->clear();
         }
 
         $this->assertSame(0, Activity::query()->where('log_name', 'permission')->count());
@@ -363,6 +363,5 @@ final class PermissionChangeActivityLogTest extends TestCase
 
         Role::findOrCreate('member');
         Role::findOrCreate('admin');
-        PermissionSeederContext::clear();
     }
 }

@@ -8,8 +8,8 @@ use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Services\Audit\AuditEmailHasher;
 use App\Services\Audit\AuditIpTruncator;
+use App\Services\Auth\Contracts\OtherDeviceLogoutContextContract;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
-use App\Services\Auth\OtherDeviceLogoutContext;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
@@ -57,10 +57,10 @@ final class LogAuthenticationActivityListener
     public function handleLogin(Login $event): void
     {
         // Die Passkey-Anmeldung löst über `Auth::login()` ebenfalls ein `Login`-
-        // Event aus; der Passkey-Pfad setzt davor `PasskeyLoginContext::markActive()`.
+        // Event aus; der Passkey-Pfad setzt davor den `PasskeyLoginContext`-Marker.
         // Hier überspringen, damit der Passkey-Login nicht zusätzlich als
         // generischer Passwort-Login erscheint (Doppel-Eintrag).
-        if (PasskeyLoginContext::isActive()) {
+        if (app(PasskeyLoginContext::class)->isActive()) {
             return;
         }
 
@@ -226,7 +226,7 @@ final class LogAuthenticationActivityListener
      */
     public function handleOtherDeviceLogout(OtherDeviceLogout $event): void
     {
-        if (OtherDeviceLogoutContext::isActive()) {
+        if (app(OtherDeviceLogoutContextContract::class)->isActive()) {
             return;
         }
 

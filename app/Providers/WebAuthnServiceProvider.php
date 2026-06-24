@@ -11,6 +11,7 @@ use App\Services\WebAuthn\Contracts\PasskeyRegistrationContract;
 use App\Services\WebAuthn\Contracts\WebAuthnCeremonySessionContract;
 use App\Services\WebAuthn\Contracts\WebAuthnValidatorFactoryContract;
 use App\Services\WebAuthn\PasskeyAuthenticationService;
+use App\Services\WebAuthn\PasskeyLoginContext;
 use App\Services\WebAuthn\PasskeyRegistrationService;
 use App\Services\WebAuthn\WebAuthnCeremonySession;
 use App\Services\WebAuthn\WebAuthnValidatorFactory;
@@ -50,6 +51,10 @@ final class WebAuthnServiceProvider extends ServiceProvider
 
         $this->app->bind(PasskeyCredentialRepositoryContract::class, PasskeyCredentialRepository::class);
 
+        // `scoped`, damit Setzer (`PasskeyAuthenticationService`) und Leser
+        // (`LogAuthenticationActivityListener`) dieselbe Request-Instanz sehen.
+        $this->app->scoped(PasskeyLoginContext::class);
+
         $this->app->bind(
             PasskeyRegistrationContract::class,
             fn (): PasskeyRegistrationService => new PasskeyRegistrationService(
@@ -65,6 +70,7 @@ final class WebAuthnServiceProvider extends ServiceProvider
                 $this->app->make(WebAuthnValidatorFactoryContract::class),
                 $this->app->make(PasskeyCredentialRepositoryContract::class),
                 $this->app->make(SerializerInterface::class),
+                $this->app->make(PasskeyLoginContext::class),
             ),
         );
     }

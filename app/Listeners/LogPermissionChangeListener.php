@@ -63,7 +63,7 @@ final class LogPermissionChangeListener extends LogAuthorizationChangeListener
 
     private function log(Model $subject, mixed $permissionsOrIds, ActivityEvent $event): void
     {
-        if (PermissionSeederContext::isActive()) {
+        if (app(PermissionSeederContext::class)->isActive()) {
             return;
         }
 

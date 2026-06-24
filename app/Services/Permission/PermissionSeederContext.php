@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Permission;
 
+use App\Services\Concerns\MarksRequestScope;
+
 /**
- * Process-scoped Marker, der signalisiert, dass die gerade laufende
+ * Request-scoped Marker, der signalisiert, dass die gerade laufende
  * Permission-Zuweisung aus einem Seeder stammt und nicht im Activity-Log
  * landen soll.
  *
@@ -16,34 +18,10 @@ namespace App\Services\Permission;
  * würde jeder Deploy einen falsch-positiven `permission_attached`-Eintrag
  * produzieren und damit das DSGVO-Audit-Log verdrecken.
  *
- * Verwendung im Seeder:
- *   PermissionSeederContext::markActive();
- *   try {
- *       $admin->givePermissionTo($activityLogView);
- *   } finally {
- *       PermissionSeederContext::clear();
- *   }
- *
- * Statisches Design analog zu `SelfRegistrationContext`: ein Seeder-Lauf läuft
- * in einem frischen Prozess, kein Carry-over zwischen Requests. In Tests
- * muss `clear()` zwischen Szenarien aufgerufen werden.
+ * Setzer (Seeder) und Leser (`LogPermissionChangeListener`) teilen sich die
+ * Instanz über die `scoped()`-Bindung im Container.
  */
 final class PermissionSeederContext
 {
-    private static bool $active = false;
-
-    public static function markActive(): void
-    {
-        self::$active = true;
-    }
-
-    public static function isActive(): bool
-    {
-        return self::$active;
-    }
-
-    public static function clear(): void
-    {
-        self::$active = false;
-    }
+    use MarksRequestScope;
 }

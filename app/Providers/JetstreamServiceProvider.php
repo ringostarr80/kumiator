@@ -23,7 +23,9 @@ class JetstreamServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(OtherDeviceLogoutContextContract::class, OtherDeviceLogoutContext::class);
+        // `scoped`, damit Setzer (`LogoutOtherBrowserSessionsForm`) und Leser
+        // (`LogAuthenticationActivityListener`) dieselbe Request-Instanz sehen.
+        $this->app->scoped(OtherDeviceLogoutContextContract::class, OtherDeviceLogoutContext::class);
     }
 
     /**

@@ -11,9 +11,10 @@ use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Observers\RoleLifecycleObserver;
 use App\Policies\PasskeyCredentialPolicy;
-use App\Services\Auth\SelfRegistrationContext;
+use App\Services\Auth\Contracts\SelfRegistrationContextContract;
 use App\Services\Console\ConsoleActorContext;
 use App\Services\Console\Contracts\ConsoleActorContextContract;
+use App\Services\Permission\PermissionSeederContext;
 use App\Services\Schedule\HealthcheckPingPhase;
 use App\Services\Schedule\ScheduleHealthcheckPinger;
 use App\Services\Upload\Contracts\ProfilePhotoOptimizerContract;
@@ -61,6 +62,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UploadLimitResolverContract::class, UploadLimitResolver::class);
         $this->app->bind(ProfilePhotoOptimizerContract::class, ProfilePhotoOptimizer::class);
         $this->app->singleton(ConsoleActorContextContract::class, ConsoleActorContext::class);
+
+        // `scoped`, damit Setzer (Seeder) und Leser (`LogPermissionChangeListener`)
+        // dieselbe Request-Instanz sehen.
+        $this->app->scoped(PermissionSeederContext::class);
 
         // Beim Löschen einer Rolle räumt Spatie die User-Zuordnungen still ab
         // (ohne Event) — der Entzug würde sonst nicht im Activity-Log landen.
@@ -132,7 +137,7 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            if (!SelfRegistrationContext::isActive()) {
+            if (!app(SelfRegistrationContextContract::class)->isActive()) {
                 return;
             }
 

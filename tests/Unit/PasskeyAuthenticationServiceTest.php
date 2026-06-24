@@ -8,6 +8,7 @@ use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
 use App\Services\WebAuthn\PasskeyAuthenticationService;
+use App\Services\WebAuthn\PasskeyLoginContext;
 use App\Services\WebAuthn\WebAuthnValidatorFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use ParagonIE\ConstantTime\Base64UrlSafe;
@@ -131,6 +132,7 @@ final class PasskeyAuthenticationServiceTest extends TestCase
             new WebAuthnValidatorFactory(),
             new PasskeyCredentialRepository(),
             $serializer,
+            new PasskeyLoginContext(),
         );
     }
 }

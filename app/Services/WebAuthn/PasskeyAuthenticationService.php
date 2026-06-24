@@ -37,6 +37,7 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
         private readonly WebAuthnValidatorFactoryContract $validatorFactory,
         private readonly PasskeyCredentialRepositoryContract $repository,
         private readonly SerializerInterface $serializer,
+        private readonly PasskeyLoginContext $loginContext,
     ) {
     }
 
@@ -125,8 +126,8 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
     }
 
     /**
-     * Schließt die Passkey-Anmeldung ab: Login im Web-Guard, gewrappt von
-     * `PasskeyLoginContext::markActive()`/`clear()`. Der Marker signalisiert
+     * Schließt die Passkey-Anmeldung ab: Login im Web-Guard, gewrappt vom
+     * `PasskeyLoginContext`-Marker (`markActive()`/`clear()`). Der Marker signalisiert
      * dem `LogAuthenticationActivityListener::handleLogin()`, dass der gerade
      * laufende `Login`-Event aus dem Passkey-Pfad stammt — der dedizierte
      * Activity-Eintrag des Controllers (über `recordSuccessfulLoginActivity()`)
@@ -140,12 +141,12 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
      */
     public function loginAuthenticatedUser(User $user): void
     {
-        PasskeyLoginContext::markActive();
+        $this->loginContext->markActive();
 
         try {
             Auth::login($user);
         } finally {
-            PasskeyLoginContext::clear();
+            $this->loginContext->clear();
         }
     }
 

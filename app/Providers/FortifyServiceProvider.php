@@ -32,10 +32,11 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // `scoped` statt `bind`: Marker-Setzer (Fortify-Closure) und -Leser
-        // (`Failed`-Listener) müssen dieselbe Request-Instanz sehen.
+        // `scoped` statt `bind`: Marker-Setzer und -Leser müssen dieselbe
+        // Request-Instanz sehen (UnapprovedLogin: Fortify-Closure ↔ `Failed`-
+        // Listener; SelfRegistration: `CreateNewUser` ↔ `Activity::saving`-Hook).
         $this->app->scoped(UnapprovedLoginContextContract::class, UnapprovedLoginContext::class);
-        $this->app->bind(SelfRegistrationContextContract::class, SelfRegistrationContext::class);
+        $this->app->scoped(SelfRegistrationContextContract::class, SelfRegistrationContext::class);
     }
 
     /**

@@ -19,5 +19,7 @@ interface SelfRegistrationContextContract
 {
     public function markActive(): void;
 
+    public function isActive(): bool;
+
     public function clear(): void;
 }
