@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
+use App\Models\Contracts\AuthorizationAuditable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -51,7 +52,7 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property \Illuminate\Support\Carbon $created_at
  * @property \Illuminate\Support\Carbon $updated_at
  */
-final class PasskeyCredential extends Model
+final class PasskeyCredential extends Model implements AuthorizationAuditable
 {
     /** @use HasFactory<\Database\Factories\PasskeyCredentialFactory> */
     use HasFactory;
@@ -198,43 +199,6 @@ final class PasskeyCredential extends Model
                 ->causedBy($user)
                 ->withProperties(['failure_reason' => $reason])
                 ->log(ActivityEvent::PASSKEY_REGISTRATION_FAILED->description());
-        } catch (\Throwable $e) {
-            report($e);
-        }
-    }
-
-    /**
-     * Ohne diesen Eintrag bliebe ein abgelehnter Zugriff (HTTP-403) auf eine
-     * fremde Passkey-Credential unsichtbar im Log — ein authentifizierter User
-     * probiert, sie umzubenennen oder zu löschen, und nichts dokumentiert es.
-     *
-     * Channel `security`: bewusst NICHT `passkey`, weil der Eintrag kein
-     * Lifecycle-Event ist, sondern eine Cross-Cutting-Auth-Verletzung.
-     *
-     * Datenminimierung (DSGVO Art. 5 Abs. 1 lit. c): die Klartext-UUID der
-     * Ziel-Credential geht nicht ins Log, stattdessen ein SHA-256-Hash —
-     * analog zum `credential_id_hash` bei Login-Failures. So bleibt
-     * Korrelation wiederholter Versuche gegen dieselbe Credential möglich
-     * (Indikator für gezielten Mass-Probing-Angriff), ohne den ID-Wert zu
-     * duplizieren.
-     *
-     * Resilient gegen Activity-Log-Ausfälle: ein Schreibfehler darf den
-     * Request-Pfad nicht beeinflussen — der ursprüngliche 403 muss raus.
-     *
-     * @param string $ability Spatie/Laravel-Ability-Name (`update`, `delete`).
-     */
-    public static function recordAuthorizationDeniedActivity(User $user, string $ability, self $target): void
-    {
-        try {
-            Activity::useLog(ActivityChannel::SECURITY->value)
-                ->event(ActivityEvent::AUTHORIZATION_DENIED->value)
-                ->causedBy($user)
-                ->withProperties([
-                    'ability' => $ability,
-                    'target_type' => 'passkey_credential',
-                    'target_id_hash' => hash('sha256', $target->id),
-                ])
-                ->log(ActivityEvent::AUTHORIZATION_DENIED->description());
         } catch (\Throwable $e) {
             report($e);
         }

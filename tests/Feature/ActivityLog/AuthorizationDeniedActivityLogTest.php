@@ -9,7 +9,10 @@ use App\Livewire\Profile\PasskeyManagerForm;
 use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
+use App\Services\Audit\AuthorizationAuditor;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -29,40 +32,57 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function testRecorderWritesActivityWithExpectedShape(): void
+    public function testDeniedResponseResultIsLogged(): void
     {
         $user = User::factory()->create();
-        $target = PasskeyCredential::factory()->for($user)->create();
+        $passkey = PasskeyCredential::factory()->for($user)->create();
 
-        PasskeyCredential::recordAuthorizationDeniedActivity($user, 'update', $target);
+        app(AuthorizationAuditor::class)->record($user, 'delete', Response::deny(), [$passkey]);
 
-        $activity = $this->latestAuthorizationDenied();
-
-        $this->assertNotNull($activity);
-        $this->assertSame(__('app.activity_authorization_denied'), $activity->description);
-        $this->assertSame($user->getKey(), $activity->causer_id);
-        $this->assertSame($user->getMorphClass(), $activity->causer_type);
-        $this->assertNull($activity->subject_id);
-        $this->assertNull($activity->subject_type);
-
-        $properties = $activity->properties?->toArray() ?? [];
-        $this->assertSame('update', $properties['ability'] ?? null);
-        $this->assertSame('passkey_credential', $properties['target_type'] ?? null);
-        $this->assertSame(hash('sha256', $target->id), $properties['target_id_hash'] ?? null);
+        $this->assertAuthorizationDeniedLogged($user, 'delete', $passkey);
     }
 
-    public function testRecorderAcceptsDeleteAbility(): void
+    public function testGrantedResponseResultIsNotLogged(): void
     {
         $user = User::factory()->create();
-        $target = PasskeyCredential::factory()->for($user)->create();
+        $passkey = PasskeyCredential::factory()->for($user)->create();
 
-        PasskeyCredential::recordAuthorizationDeniedActivity($user, 'delete', $target);
+        app(AuthorizationAuditor::class)->record($user, 'update', Response::allow(), [$passkey]);
 
-        $activity = $this->latestAuthorizationDenied();
+        $this->assertNull(
+            $this->latestAuthorizationDenied(),
+            'Ein erlaubter Zugriff (Response::allow) darf keinen authorization_denied-Eintrag erzeugen.',
+        );
+    }
 
-        $this->assertNotNull($activity);
-        $properties = $activity->properties?->toArray() ?? [];
-        $this->assertSame('delete', $properties['ability'] ?? null);
+    public function testGateDenialWithoutAuditableSubjectIsNotLogged(): void
+    {
+        $user = User::factory()->create();
+
+        // Wie der reine Sichtbarkeits-`@can('activity-log.view')` im Navigationsmenü:
+        // subjektlos, kein Marker-Subjekt — darf den Hook NICHT auslösen, sonst
+        // entstünde pro Seitenaufruf jedes Nicht-Admins ein Eintrag.
+        $this->assertTrue(Gate::forUser($user)->denies('activity-log.view'));
+
+        $this->assertNull(
+            $this->latestAuthorizationDenied(),
+            'Ein subjektloser Gate-Check darf über den globalen Hook nichts loggen.',
+        );
+    }
+
+    public function testGateDenialOnNonAuditableSubjectIsNotLogged(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+
+        // `User` ist morph-gemappt, aber kein AuthorizationAuditable — die
+        // Ablehnung darf nicht auditiert werden (Marker-Opt-in ist Pflicht).
+        $this->assertTrue(Gate::forUser($user)->denies('update', $other));
+
+        $this->assertNull(
+            $this->latestAuthorizationDenied(),
+            'Ohne Marker-Tag am Subjekt darf der Hook nichts loggen.',
+        );
     }
 
     public function testPasskeyManagerStartRenamingByNonOwnerIsLogged(): void
@@ -186,12 +206,15 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
             $activity,
             sprintf("Kein authorization_denied-Eintrag für ability='%s' gefunden.", $ability),
         );
+        $this->assertSame(__('app.activity_authorization_denied'), $activity->description);
         $this->assertSame($causer->getKey(), $activity->causer_id);
         $this->assertSame($causer->getMorphClass(), $activity->causer_type);
+        $this->assertNull($activity->subject_id);
+        $this->assertNull($activity->subject_type);
 
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertSame($ability, $properties['ability'] ?? null);
-        $this->assertSame('passkey_credential', $properties['target_type'] ?? null);
+        $this->assertSame($target->getMorphClass(), $properties['target_type'] ?? null);
         $this->assertSame(hash('sha256', $target->id), $properties['target_id_hash'] ?? null);
     }
 

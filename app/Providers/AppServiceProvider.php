@@ -11,6 +11,7 @@ use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Observers\RoleLifecycleObserver;
 use App\Policies\PasskeyCredentialPolicy;
+use App\Services\Audit\AuthorizationAuditor;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
 use App\Services\Console\ConsoleActorContext;
 use App\Services\Console\Contracts\ConsoleActorContextContract;
@@ -39,6 +40,7 @@ use App\Services\User\UserPasswordResetter;
 use App\Services\User\UserSoftDeleter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Event as ScheduledEvent;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -96,6 +98,24 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         Gate::policy(PasskeyCredential::class, PasskeyCredentialPolicy::class);
+
+        // Zentrale Audit-Vorsorge für abgelehnte Autorisierungen: ein einziger
+        // Hook schreibt den `authorization_denied`-Eintrag, statt das Muster pro
+        // Aufrufstelle zu kopieren. Auditiert wird nur, wenn das Subjekt sich per
+        // `AuthorizationAuditable` anmeldet (Details + Warum opt-in im Auditor).
+        // Rückgabe muss void/null bleiben, sonst kippt der Hook über `$result ??=`
+        // die Entscheidung einer undefinierten Ability.
+        /** @param array<array-key, mixed> $arguments */
+        $auditDeniedAuthorization = static function (
+            ?Authenticatable $user,
+            string $ability,
+            mixed $result,
+            array $arguments,
+        ): void {
+            app(AuthorizationAuditor::class)->record($user, $ability, $result, $arguments);
+        };
+
+        Gate::after($auditDeniedAuthorization);
 
         // Vor dem Persistieren eines Passkey-Activity-Log-Eintrags den generischen
         // Eloquent-Event-Namen (created/updated/deleted) auf einen fachlichen Code
