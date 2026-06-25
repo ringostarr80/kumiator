@@ -7,8 +7,8 @@ namespace App\Services\User;
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Models\User;
+use App\Services\Session\Contracts\UserSessionTerminatorContract;
 use App\Services\User\Contracts\UserSoftDeleterContract;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\Facades\Activity;
 
@@ -38,14 +38,14 @@ use Spatie\Activitylog\Facades\Activity;
  */
 final class UserSoftDeleter implements UserSoftDeleterContract
 {
+    public function __construct(private readonly UserSessionTerminatorContract $sessionTerminator)
+    {
+    }
+
     public function softDelete(User $user): void
     {
-        DB::transaction(static function () use ($user): void {
-            if (Config::string('session.driver') === 'database') {
-                DB::table(Config::string('session.table', 'sessions'))
-                    ->where('user_id', $user->getKey())
-                    ->delete();
-            }
+        DB::transaction(function () use ($user): void {
+            $this->sessionTerminator->deleteForUser($user);
 
             // Symmetrie zum UI-Pfad (`ApiTokenManager::deleteApiToken()`):
             // Sanctums `PersonalAccessToken` hat kein `LogsActivity`-Trait,

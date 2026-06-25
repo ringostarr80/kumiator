@@ -7,11 +7,11 @@ namespace App\Livewire\Profile;
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Services\Auth\Contracts\OtherDeviceLogoutContextContract;
+use App\Services\Session\Contracts\UserSessionTerminatorContract;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
 use Laravel\Jetstream\Http\Livewire\LogoutOtherBrowserSessionsForm as JetstreamLogoutOtherBrowserSessionsForm;
 use Spatie\Activitylog\Facades\Activity;
 
@@ -28,15 +28,20 @@ final class LogoutOtherBrowserSessionsForm extends JetstreamLogoutOtherBrowserSe
 {
     private OtherDeviceLogoutContextContract $logoutContext;
 
+    private UserSessionTerminatorContract $sessionTerminator;
+
     /**
      * Livewire's `boot()` ist Container-aware und löst Type-Hints per DI auf —
-     * wir können den Parameter nicht in `logoutOtherBrowserSessions()` selbst
+     * wir können die Parameter nicht in `logoutOtherBrowserSessions()` selbst
      * deklarieren, weil ein zusätzlicher Pflichtparameter dort die Parent-
      * Signatur brechen würde (LSP).
      */
-    public function boot(OtherDeviceLogoutContextContract $logoutContext): void
-    {
+    public function boot(
+        OtherDeviceLogoutContextContract $logoutContext,
+        UserSessionTerminatorContract $sessionTerminator,
+    ): void {
         $this->logoutContext = $logoutContext;
+        $this->sessionTerminator = $sessionTerminator;
     }
 
     public function logoutOtherBrowserSessions(StatefulGuard $guard): void
@@ -86,25 +91,15 @@ final class LogoutOtherBrowserSessionsForm extends JetstreamLogoutOtherBrowserSe
 
     private function countOtherSessions(): int
     {
-        if (Config::string('session.driver') !== 'database') {
-            return 0;
-        }
-
         $userId = Auth::user()?->getAuthIdentifier();
 
-        if ($userId === null) {
+        if (!is_int($userId) && !is_string($userId)) {
             return 0;
         }
 
-        $connection = Config::get('session.connection');
-        $connection = is_string($connection)
-            ? $connection
-            : null;
-
-        return DB::connection($connection)
-            ->table(Config::string('session.table', 'sessions'))
-            ->where('user_id', $userId)
-            ->where('id', '!=', request()->session()->getId())
-            ->count();
+        return $this->sessionTerminator->countOtherSessionsForUser(
+            $userId,
+            request()->session()->getId(),
+        );
     }
 }

@@ -8,9 +8,9 @@ use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Models\PasskeyCredential;
 use App\Models\User;
+use App\Services\Session\Contracts\UserSessionTerminatorContract;
 use App\Services\User\Contracts\UserHardDeleterContract;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\PersonalAccessToken;
 use Spatie\Activitylog\Facades\Activity;
@@ -28,9 +28,6 @@ use Spatie\Activitylog\Models\Activity as ActivityModel;
  * zurück (Brücke zwischen DSGVO Art. 17 und Art. 32). Der admin-initiierte
  * Soft-Delete (`user:delete`) verzichtet bewusst auf diesen Purge.
  *
- * `DB::table()`-Ausnahme (Default ist Eloquent): Sessions haben kein
- * Default-Eloquent-Model, der Tabellenname ist konfigurierbar.
- *
  * Rollen- und Direkt-Permission-Pivots brauchen keinen eigenen Purge:
  * Spaties `deleting`-Hooks detachen beide beim Force-Delete still — ohne
  * Spatie-Event, es entsteht also kein Activity-Eintrag, der den Purge
@@ -43,9 +40,13 @@ use Spatie\Activitylog\Models\Activity as ActivityModel;
  */
 final class UserHardDeleter implements UserHardDeleterContract
 {
+    public function __construct(private readonly UserSessionTerminatorContract $sessionTerminator)
+    {
+    }
+
     public function forceDelete(User $user, ActivityEvent $event): void
     {
-        DB::transaction(static function () use ($user, $event): void {
+        DB::transaction(function () use ($user, $event): void {
             // Mass-`delete()` statt `each->deleteOrFail()`: vermeidet, dass der
             // `LogsActivity`-Trait pro Token/Passkey Activity-Einträge mit
             // Causer/Subject-Verweis auf den gleich danach hart gelöschten User
@@ -59,13 +60,7 @@ final class UserHardDeleter implements UserHardDeleterContract
 
             PasskeyCredential::query()->where('user_id', $user->getKey())->delete();
 
-            // DB::table-Ausnahme (Sessions): kein Default-Eloquent-Model,
-            // Tabellenname konfigurierbar.
-            if (Config::string('session.driver') === 'database') {
-                DB::table(Config::string('session.table', 'sessions'))
-                    ->where('user_id', $user->getKey())
-                    ->delete();
-            }
+            $this->sessionTerminator->deleteForUser($user);
 
             // Sonst schriebe `forceDelete()` unten einen `deleted`-Eintrag
             // mit `subject_id = $user->getKey()`.

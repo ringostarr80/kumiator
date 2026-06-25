@@ -18,6 +18,8 @@ use App\Services\Console\Contracts\ConsoleActorContextContract;
 use App\Services\Permission\PermissionSeederContext;
 use App\Services\Schedule\HealthcheckPingPhase;
 use App\Services\Schedule\ScheduleHealthcheckPinger;
+use App\Services\Session\Contracts\UserSessionTerminatorContract;
+use App\Services\Session\UserSessionTerminator;
 use App\Services\Upload\Contracts\ProfilePhotoOptimizerContract;
 use App\Services\Upload\Contracts\UploadLimitResolverContract;
 use App\Services\Upload\ProfilePhotoOptimizer;
@@ -63,6 +65,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UserPasswordResetterContract::class, UserPasswordResetter::class);
         $this->app->bind(UploadLimitResolverContract::class, UploadLimitResolver::class);
         $this->app->bind(ProfilePhotoOptimizerContract::class, ProfilePhotoOptimizer::class);
+        $this->app->bind(UserSessionTerminatorContract::class, UserSessionTerminator::class);
         $this->app->singleton(ConsoleActorContextContract::class, ConsoleActorContext::class);
 
         // `scoped`, damit Setzer (Seeder) und Leser (`LogPermissionChangeListener`)
