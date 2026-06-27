@@ -50,6 +50,20 @@ final class ActivityLogTable extends Component
         | JSON_UNESCAPED_UNICODE
         | JSON_THROW_ON_ERROR;
 
+    /**
+     * Eine Quelle für `resetFilters()` und `hasActiveFilters()`. Die `#[Url]`-
+     * Filter-Properties selbst bleiben separat deklariert, weil Livewire nur
+     * deklarierte, typisierte Properties an den Query-String bindet.
+     */
+    private const array FILTER_FIELDS = [
+        'filterDateFrom',
+        'filterDateTo',
+        'filterChannel',
+        'filterEvent',
+        'filterCauser',
+        'filterSubject',
+    ];
+
     public string $sortDirection = 'desc';
 
     /**
@@ -162,14 +176,7 @@ final class ActivityLogTable extends Component
 
     public function resetFilters(): void
     {
-        $this->reset([
-            'filterDateFrom',
-            'filterDateTo',
-            'filterChannel',
-            'filterEvent',
-            'filterCauser',
-            'filterSubject',
-        ]);
+        $this->reset(self::FILTER_FIELDS);
         $this->resetPage();
     }
 
@@ -332,12 +339,10 @@ final class ActivityLogTable extends Component
      */
     private function hasActiveFilters(): bool
     {
-        return $this->filterDateFrom !== ''
-            || $this->filterDateTo !== ''
-            || $this->filterChannel !== ''
-            || $this->filterEvent !== ''
-            || $this->filterCauser !== ''
-            || $this->filterSubject !== '';
+        return array_any(
+            self::FILTER_FIELDS,
+            fn (string $field): bool => $this->{$field} !== '',
+        );
     }
 
     /**
