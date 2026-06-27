@@ -120,58 +120,44 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::after($auditDeniedAuthorization);
 
-        // Vor dem Persistieren eines Passkey-Activity-Log-Eintrags den generischen
-        // Eloquent-Event-Namen (created/updated/deleted) auf einen fachlichen Code
-        // umlabeln. Spatie's `LogsActivity`-Trait schreibt den Eintrag automatisch
-        // über die Eloquent-Lifecycle-Events, ohne Callback zum Anpassen des
-        // `event`-Felds; ein `saving`-Listener auf dem Activity-Model ist daher der
-        // einzige stabile Punkt zwischen Trait-Setup und Insert. Die Mapping-Logik
-        // selbst bleibt im Domain-Model (PasskeyCredential), hier hängt nur der
-        // Listener dran.
-        Activity::saving(static fn (Activity $activity) => PasskeyCredential::applyEventLabelToActivity($activity));
-
-        // Analog zum Passkey-Hook, für das User-Model: generische Eloquent-Lifecycle-
-        // Events (created/updated/deleted/restored) auf fachliche Codes umlabeln.
-        // Channel-agnostisch — derselbe Code, egal ob CLI, Web oder Seeder den Vorgang
-        // ausgelöst hat; der Auslöse-Kanal wird separat über Properties und
-        // nachgelagerte Hooks markiert.
-        Activity::saving(static fn (Activity $activity) => User::applyEventLabelToActivity($activity));
-
-        // User-Self-Registration vs. Admin/CLI-Anlage unterscheidbar machen: beide
-        // erzeugen denselben `user_created`-Eintrag (vom Hook darüber aus dem rohen
-        // `created` aufgewertet), sind fachlich aber grundverschieden — Public-Endpoint
-        // vs. interner Admin-Akt. Nur der Web-Self-Reg-Pfad setzt vor `User::create()`
-        // einen request-scoped Marker (`SelfRegistrationContext`); fehlt er
-        // (CLI/Tests/Seeder), bleibt der Eintrag `user_created`.
-        //
-        // Reihenfolge ist wichtig: dieser Hook muss NACH dem User-Mapper laufen, weil
-        // er auf den bereits aufgewerteten Code `user_created` matched, nicht auf den
-        // rohen Eloquent-`created`.
-        //
-        // Warum hier statt im `User`-Model: unsere Architektur-Regel verbietet Models
-        // den Zugriff auf `App\Services`, die Remap braucht aber den Marker-Zustand aus
-        // dem Service-Layer — also gehört sie ins Bootstrapping.
+        // Alle Vor-Insert-Anpassungen am Audit-Eintrag in einer `Activity::saving`-
+        // Closure: Spatie's `LogsActivity`-Trait schreibt den Eintrag automatisch über
+        // die Eloquent-Lifecycle-Events, ohne Callback zum Anpassen der Felder; ein
+        // `saving`-Listener auf dem Activity-Model ist daher der einzige stabile Punkt
+        // zwischen Trait-Setup und Insert. Ein Listener statt vier spart pro Insert drei
+        // Dispatcher-Durchläufe und erzwingt die unten nötige Reihenfolge strukturell.
         Activity::saving(static function (Activity $activity): void {
-            if ($activity->log_name !== ActivityChannel::USER->value) {
-                return;
+            // Generischen Eloquent-Event-Namen (created/updated/deleted/restored) auf
+            // einen fachlichen Code umlabeln; die Mapping-Logik selbst bleibt im
+            // jeweiligen Domain-Model, hier wird sie nur angestoßen. Das User-Mapping ist
+            // channel-agnostisch — derselbe Code, egal ob CLI, Web oder Seeder den Vorgang
+            // auslöst; der Auslöse-Kanal wird separat über Properties und nachgelagerte
+            // Hooks markiert.
+            PasskeyCredential::applyEventLabelToActivity($activity);
+            User::applyEventLabelToActivity($activity);
+
+            // User-Self-Registration vs. Admin/CLI-Anlage unterscheidbar machen: beide
+            // erzeugen denselben `user_created`-Eintrag (oben aus dem rohen `created`
+            // aufgewertet), sind fachlich aber grundverschieden — Public-Endpoint vs.
+            // interner Admin-Akt. Nur der Web-Self-Reg-Pfad setzt vor `User::create()`
+            // einen request-scoped Marker (`SelfRegistrationContext`); fehlt er (CLI/
+            // Tests/Seeder), bleibt der Eintrag `user_created`. Steht nach dem User-Mapper,
+            // weil der Match auf dem bereits aufgewerteten `user_created` beruht, nicht auf
+            // rohem `created`. Liegt hier statt im `User`-Model, weil die Architektur-Regel
+            // Models den Zugriff auf `App\Services` (Marker-Zustand) verbietet.
+            if (
+                $activity->log_name === ActivityChannel::USER->value
+                && $activity->event === ActivityEvent::USER_CREATED->value
+                && app(SelfRegistrationContextContract::class)->isActive()
+            ) {
+                $activity->event = ActivityEvent::USER_SELF_REGISTERED->value;
             }
 
-            if ($activity->event !== ActivityEvent::USER_CREATED->value) {
-                return;
-            }
-
-            if (!app(SelfRegistrationContextContract::class)->isActive()) {
-                return;
-            }
-
-            $activity->event = ActivityEvent::USER_SELF_REGISTERED->value;
+            // CLI-Effekte (cli_actor-Property + Causer-Anonymisierung) an jeden Eintrag
+            // hängen, der während eines Artisan-Commands entsteht. Details im Klassen-
+            // PHPDoc von ConsoleActorContext.
+            ConsoleActorContext::applyToActivity($activity);
         });
-
-        // CLI-Effekte (cli_actor-Property + Causer-Anonymisierung) an jeden
-        // Activity-Log-Eintrag hängen, der während eines Artisan-Commands
-        // entsteht. Was genau passiert und warum, steht im Klassen-PHPDoc von
-        // ConsoleActorContext.
-        Activity::saving(static fn (Activity $activity) => ConsoleActorContext::applyToActivity($activity));
 
         // Rollen-Lifecycle (Anlage/Löschung) ins Activity-Log spiegeln; warum
         // per Observer statt Trait, steht im Klassen-PHPDoc von
