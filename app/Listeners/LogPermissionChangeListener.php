@@ -6,7 +6,6 @@ namespace App\Listeners;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
-use App\Services\Permission\PermissionSeederContext;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Facades\Activity;
 use Spatie\Permission\Events\PermissionAttachedEvent;
@@ -27,12 +26,6 @@ use Spatie\Permission\Models\Permission;
  * Registrierung: Läuft über Laravels Event-Auto-Discovery (Type-Hints
  * der `handle*`-Methoden). NICHT zusätzlich via `Event::listen()`
  * registrieren — sonst feuert der Listener doppelt.
- *
- * Seeder-Skip: `PermissionSeederContext` unterdrückt das Logging während
- * idempotenter Seeder-Läufe. Spatie feuert `PermissionAttachedEvent` auch
- * dann, wenn der interne `attach()` ein No-Op ist (Berechtigung war
- * bereits gesetzt) — ohne diesen Skip würde jeder Deploy einen unechten
- * Audit-Eintrag erzeugen.
  *
  * Bekannte Spatie-Quirks:
  *  - `syncPermissions()` macht intern `permissions()->detach()` **ohne
@@ -63,10 +56,6 @@ final class LogPermissionChangeListener extends LogAuthorizationChangeListener
 
     private function log(Model $subject, mixed $permissionsOrIds, ActivityEvent $event): void
     {
-        if (app(PermissionSeederContext::class)->isActive()) {
-            return;
-        }
-
         $permissionNames = $this->resolveModelNames(
             $permissionsOrIds,
             Permission::class,

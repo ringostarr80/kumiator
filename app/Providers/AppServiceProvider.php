@@ -15,7 +15,6 @@ use App\Services\Audit\AuthorizationAuditor;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
 use App\Services\Console\ConsoleActorContext;
 use App\Services\Console\Contracts\ConsoleActorContextContract;
-use App\Services\Permission\PermissionSeederContext;
 use App\Services\Schedule\HealthcheckPingPhase;
 use App\Services\Schedule\ScheduleHealthcheckPinger;
 use App\Services\Session\Contracts\UserSessionTerminatorContract;
@@ -67,10 +66,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ProfilePhotoOptimizerContract::class, ProfilePhotoOptimizer::class);
         $this->app->bind(UserSessionTerminatorContract::class, UserSessionTerminator::class);
         $this->app->singleton(ConsoleActorContextContract::class, ConsoleActorContext::class);
-
-        // `scoped`, damit Setzer (Seeder) und Leser (`LogPermissionChangeListener`)
-        // dieselbe Request-Instanz sehen.
-        $this->app->scoped(PermissionSeederContext::class);
 
         // Beim Löschen einer Rolle räumt Spatie die User-Zuordnungen still ab
         // (ohne Event) — der Entzug würde sonst nicht im Activity-Log landen.

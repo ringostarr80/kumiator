@@ -7,7 +7,6 @@ namespace Tests\Feature\ActivityLog;
 use App\Listeners\LogPermissionChangeListener;
 use App\Models\Activity;
 use App\Models\User;
-use App\Services\Permission\PermissionSeederContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\Log;
@@ -146,30 +145,6 @@ final class PermissionChangeActivityLogTest extends TestCase
         $this->assertNotNull($activity);
         $this->assertSame($actor->getMorphClass(), $activity->causer_type);
         $this->assertSame($actor->getKey(), $activity->causer_id);
-    }
-
-    /**
-     * Schützt den Seeder-Skip-Pfad: Solange `PermissionSeederContext` aktiv
-     * ist, muss der Listener jede Permission-Änderung verwerfen. Ohne
-     * diesen Skip würde jeder Deploy einen falsch-positiven
-     * `permission_attached`-Eintrag erzeugen, weil Spatie's
-     * `givePermissionTo()` das Event auch bei No-Op-Attaches feuert.
-     */
-    public function testSeederContextSkipsActivityLogging(): void
-    {
-        $admin = Role::findByName('admin');
-        $permission = Permission::findOrCreate('test.permission');
-        Activity::query()->delete();
-
-        app(PermissionSeederContext::class)->markActive();
-
-        try {
-            $admin->givePermissionTo($permission);
-        } finally {
-            app(PermissionSeederContext::class)->clear();
-        }
-
-        $this->assertSame(0, Activity::query()->where('log_name', 'permission')->count());
     }
 
     /**
