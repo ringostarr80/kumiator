@@ -50,45 +50,26 @@ final class ActivityLogTable extends Component
         | JSON_UNESCAPED_UNICODE
         | JSON_THROW_ON_ERROR;
 
-    /**
-     * Eine Quelle für `resetFilters()` und `hasActiveFilters()`. Die `#[Url]`-
-     * Filter-Properties selbst bleiben separat deklariert, weil Livewire nur
-     * deklarierte, typisierte Properties an den Query-String bindet.
-     */
-    private const array FILTER_FIELDS = [
-        'filterDateFrom',
-        'filterDateTo',
-        'filterChannel',
-        'filterEvent',
-        'filterCauser',
-        'filterSubject',
-    ];
-
     public string $sortDirection = 'desc';
 
     /**
-     * Spaltenfilter (UND-verknüpft). Leerer String = inaktiv. Per `#[Url]` in
-     * den Query-String gespiegelt, damit gefilterte Audit-Ansichten teil- und
-     * bookmarkbar sind und einen Reload überstehen; der leere Default hält die
-     * URL sauber, solange nicht gefiltert wird.
+     * Spaltenfilter (UND-verknüpft, leerer String = inaktiv) als ein Array, damit
+     * `resetFilters()`, `hasActiveFilters()` und das Hinzufügen eines Filters aus
+     * einer einzigen Quelle schöpfen. Per `#[Url]` in den Query-String gespiegelt
+     * (`?filters[...]`), damit gefilterte Audit-Ansichten teil- und bookmarkbar
+     * sind und einen Reload überstehen; leere Werte halten die URL sauber.
+     *
+     * @var array<string, string>
      */
-    #[Url(as: 'from')]
-    public string $filterDateFrom = '';
-
-    #[Url(as: 'to')]
-    public string $filterDateTo = '';
-
-    #[Url(as: 'channel')]
-    public string $filterChannel = '';
-
-    #[Url(as: 'event')]
-    public string $filterEvent = '';
-
-    #[Url(as: 'causer')]
-    public string $filterCauser = '';
-
-    #[Url(as: 'subject')]
-    public string $filterSubject = '';
+    #[Url]
+    public array $filters = [
+        'dateFrom' => '',
+        'dateTo' => '',
+        'channel' => '',
+        'event' => '',
+        'causer' => '',
+        'subject' => '',
+    ];
 
     public bool $showPropertiesModal = false;
 
@@ -169,25 +150,44 @@ final class ActivityLogTable extends Component
      */
     public function updated(string $name): void
     {
-        if (str_starts_with($name, 'filter')) {
+        if (str_starts_with($name, 'filters.')) {
             $this->resetPage();
         }
     }
 
     public function resetFilters(): void
     {
-        $this->reset(self::FILTER_FIELDS);
+        $this->reset('filters');
         $this->resetPage();
     }
 
     public function render(): View
     {
+        $this->normalizeFilters();
+
         return view('livewire.admin.activity-log-table', [
             'activities' => $this->loadActivities(),
             'channels' => ActivityChannel::cases(),
             'events' => ActivityEvent::cases(),
             'hasActiveFilters' => $this->hasActiveFilters(),
         ]);
+    }
+
+    /**
+     * `#[Url]`/Client können pro Filter-Key statt eines Strings ein
+     * verschachteltes Array einschleusen (`?filters[causer][]=x`); ungeprüft
+     * liefe das in `where()`/`applyNameSearch(string)` und bräche die Seite mit
+     * 500. Nicht-Strings daher auf '' klemmen — der Filter gilt dann als inaktiv.
+     */
+    private function normalizeFilters(): void
+    {
+        /** @var array<string, mixed> $raw */
+        $raw = $this->filters;
+
+        $this->filters = array_map(
+            static fn (mixed $value): string => is_string($value) ? $value : '',
+            $raw,
+        );
     }
 
     /**
@@ -233,40 +233,40 @@ final class ActivityLogTable extends Component
         // UTC-Datumsteil zu vergleichen — sonst fiele ein Eintrag nahe
         // Mitternacht (Zonen-Offset) auf den Nachbartag. Nur geprüfte
         // Grenzen werden angewandt.
-        if ($this->filterDateFrom !== '' && !$errors->has('filterDateFrom')) {
-            $from = Carbon::parse($this->filterDateFrom, AppTimezone::DISPLAY->value)
+        if ($this->filters['dateFrom'] !== '' && !$errors->has('filters.dateFrom')) {
+            $from = Carbon::parse($this->filters['dateFrom'], AppTimezone::DISPLAY->value)
                 ->startOfDay()
                 ->utc();
             $query->where('created_at', '>=', $from);
         }
 
-        if ($this->filterDateTo !== '' && !$errors->has('filterDateTo')) {
-            $to = Carbon::parse($this->filterDateTo, AppTimezone::DISPLAY->value)
+        if ($this->filters['dateTo'] !== '' && !$errors->has('filters.dateTo')) {
+            $to = Carbon::parse($this->filters['dateTo'], AppTimezone::DISPLAY->value)
                 ->endOfDay()
                 ->utc();
             $query->where('created_at', '<=', $to);
         }
 
-        if ($this->filterChannel !== '') {
-            $query->where('log_name', $this->filterChannel);
+        if ($this->filters['channel'] !== '') {
+            $query->where('log_name', $this->filters['channel']);
         }
 
-        if ($this->filterEvent !== '') {
-            $query->where('event', $this->filterEvent);
+        if ($this->filters['event'] !== '') {
+            $query->where('event', $this->filters['event']);
         }
 
-        if ($this->filterCauser !== '') {
-            $this->applyNameSearch($query, 'causer', $this->filterCauser);
+        if ($this->filters['causer'] !== '') {
+            $this->applyNameSearch($query, 'causer', $this->filters['causer']);
         }
 
-        if ($this->filterSubject !== '') {
-            $this->applyNameSearch($query, 'subject', $this->filterSubject);
+        if ($this->filters['subject'] !== '') {
+            $this->applyNameSearch($query, 'subject', $this->filters['subject']);
         }
     }
 
     /**
      * Datumsfilter stammen über `#[Url]` auch als roher Query-String
-     * (`?from=garbage`) und umgehen so den `type="date"`-Constraint des Inputs.
+     * (`?filters[dateFrom]=garbage`) und umgehen so den `type="date"`-Constraint des Inputs.
      * Ungeprüft verpuffen sie still zu einem Unsinns-Filter; daher hier prüfen
      * und dem Admin als Fehler melden. Die Prüfung läuft im Render-Pfad (nicht
      * nur im `updated()`-Hook), damit auch beim Mount per URL injizierte Werte
@@ -278,12 +278,14 @@ final class ActivityLogTable extends Component
     {
         $validator = Validator::make(
             [
-                'filterDateFrom' => $this->filterDateFrom ?: null,
-                'filterDateTo' => $this->filterDateTo ?: null,
+                'filters' => [
+                    'dateFrom' => $this->filters['dateFrom'] ?: null,
+                    'dateTo' => $this->filters['dateTo'] ?: null,
+                ],
             ],
             [
-                'filterDateFrom' => ['nullable', 'date_format:Y-m-d'],
-                'filterDateTo' => ['nullable', 'date_format:Y-m-d'],
+                'filters.dateFrom' => ['nullable', 'date_format:Y-m-d'],
+                'filters.dateTo' => ['nullable', 'date_format:Y-m-d'],
             ],
             ['date_format' => __('app.activity_log_filter_date_invalid')],
         );
@@ -295,11 +297,11 @@ final class ActivityLogTable extends Component
         // Werte sind dann valides Y-m-d, ihr String-Vergleich ist chronologisch.
         if (
             $errors->isEmpty()
-            && $this->filterDateFrom !== ''
-            && $this->filterDateTo !== ''
-            && $this->filterDateTo < $this->filterDateFrom
+            && $this->filters['dateFrom'] !== ''
+            && $this->filters['dateTo'] !== ''
+            && $this->filters['dateTo'] < $this->filters['dateFrom']
         ) {
-            $errors->add('filterDateTo', __('app.activity_log_filter_date_range'));
+            $errors->add('filters.dateTo', __('app.activity_log_filter_date_range'));
         }
 
         $this->setErrorBag($errors);
@@ -339,10 +341,7 @@ final class ActivityLogTable extends Component
      */
     private function hasActiveFilters(): bool
     {
-        return array_any(
-            self::FILTER_FIELDS,
-            fn (string $field): bool => $this->{$field} !== '',
-        );
+        return array_any($this->filters, fn (string $value): bool => $value !== '');
     }
 
     /**

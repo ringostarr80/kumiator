@@ -189,7 +189,7 @@ final class ActivityLogAccessTest extends TestCase
 
         $admin->revokePermissionTo('activity-log.view');
 
-        $component->set('filterChannel', 'auth');
+        $component->set('filters.channel', 'auth');
         $component->assertForbidden();
     }
 
@@ -633,7 +633,7 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('user')->event('marker_user')->log('');
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
-        $component->set('filterChannel', 'auth');
+        $component->set('filters.channel', 'auth');
 
         $component->assertSee('marker_auth');
         $component->assertDontSee('marker_user');
@@ -652,7 +652,7 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('auth')->event('marker_event_b')->log('');
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
-        $component->set('filterEvent', 'marker_event_a');
+        $component->set('filters.event', 'marker_event_a');
 
         $component->assertSee('marker_event_a');
         $component->assertDontSee('marker_event_b');
@@ -678,8 +678,8 @@ final class ActivityLogAccessTest extends TestCase
         });
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
-        $component->set('filterDateFrom', '2026-02-01');
-        $component->set('filterDateTo', '2026-04-01');
+        $component->set('filters.dateFrom', '2026-02-01');
+        $component->set('filters.dateTo', '2026-04-01');
 
         $component->assertSee('range_mar');
         $component->assertDontSee('range_jan');
@@ -732,7 +732,7 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('test')->event('demo')->causedBy($other)->log('Tat des Anderen');
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
-        $component->set('filterCauser', 'Gesuchter');
+        $component->set('filters.causer', 'Gesuchter');
 
         $component->assertSee('Gesuchter Verursacher');
         $component->assertDontSee('Irrelevanter Verursacher');
@@ -753,7 +753,7 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('test')->event('demo')->performedOn($other)->log('Vorgang am Anderen');
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
-        $component->set('filterSubject', 'Gesuchtes');
+        $component->set('filters.subject', 'Gesuchtes');
 
         $component->assertSee('Gesuchtes Subjekt');
         $component->assertDontSee('Irrelevantes Subjekt');
@@ -775,7 +775,7 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('test')->event('treffer_alice')->causedBy($miss)->log('');
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
-        $component->set('filterCauser', '%');
+        $component->set('filters.causer', '%');
 
         $component->assertSee('treffer_percent');
         $component->assertDontSee('treffer_alice');
@@ -796,7 +796,7 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('test')->event('treffer_axb')->causedBy($miss)->log('');
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
-        $component->set('filterCauser', 'a_b');
+        $component->set('filters.causer', 'a_b');
 
         $component->assertSee('treffer_underscore');
         $component->assertDontSee('treffer_axb');
@@ -818,7 +818,7 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('test')->event('treffer_axb_bs')->causedBy($miss)->log('');
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
-        $component->set('filterCauser', 'a\\b');
+        $component->set('filters.causer', 'a\\b');
 
         $component->assertSee('treffer_backslash');
         $component->assertDontSee('treffer_axb_bs');
@@ -838,15 +838,15 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('test')->event('treffer_from_invalid')->causedBy($user)->log('');
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
-        $component->set('filterDateFrom', 'garbage');
+        $component->set('filters.dateFrom', 'garbage');
 
-        $component->assertHasErrors('filterDateFrom');
+        $component->assertHasErrors('filters.dateFrom');
         $component->assertSee('treffer_from_invalid');
     }
 
     /**
      * Wie der Von-Fall, aber für die Bis-Grenze — fängt eine Implementierung ab,
-     * die nur `filterDateFrom` prüft.
+     * die nur `filters.dateFrom` prüft.
      */
     public function testInvalidDateToIsRejectedAndFilterSkipped(): void
     {
@@ -856,9 +856,9 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('test')->event('treffer_to_invalid')->causedBy($user)->log('');
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
-        $component->set('filterDateTo', '2026-13-40');
+        $component->set('filters.dateTo', '2026-13-40');
 
-        $component->assertHasErrors('filterDateTo');
+        $component->assertHasErrors('filters.dateTo');
         $component->assertSee('treffer_to_invalid');
     }
 
@@ -874,11 +874,11 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('test')->event('treffer_range')->causedBy($user)->log('');
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
-        $component->set('filterDateFrom', '2000-01-02');
-        $component->set('filterDateTo', '2000-01-01');
+        $component->set('filters.dateFrom', '2000-01-02');
+        $component->set('filters.dateTo', '2000-01-01');
 
-        $component->assertHasErrors('filterDateTo');
-        $component->assertHasNoErrors('filterDateFrom');
+        $component->assertHasErrors('filters.dateTo');
+        $component->assertHasNoErrors('filters.dateFrom');
         $component->assertSee('treffer_range');
     }
 
@@ -894,9 +894,9 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('test')->event('treffer_valid')->causedBy($user)->log('');
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
-        $component->set('filterDateFrom', '2999-01-01');
+        $component->set('filters.dateFrom', '2999-01-01');
 
-        $component->assertHasNoErrors('filterDateFrom');
+        $component->assertHasNoErrors('filters.dateFrom');
         $component->assertDontSee('treffer_valid');
     }
 
@@ -920,7 +920,7 @@ final class ActivityLogAccessTest extends TestCase
         $component->call('gotoPage', 2);
         $component->assertSet('paginators.page', 2);
 
-        $component->set('filterChannel', 'user');
+        $component->set('filters.channel', 'user');
         $component->assertSet('paginators.page', 1);
     }
 
@@ -929,21 +929,21 @@ final class ActivityLogAccessTest extends TestCase
         $admin = $this->makeAuditor();
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
-        $component->set('filterChannel', 'auth');
-        $component->set('filterEvent', 'logout');
-        $component->set('filterCauser', 'irgendwer');
-        $component->set('filterSubject', 'irgendwas');
-        $component->set('filterDateFrom', '2026-01-01');
-        $component->set('filterDateTo', '2026-12-31');
+        $component->set('filters.channel', 'auth');
+        $component->set('filters.event', 'logout');
+        $component->set('filters.causer', 'irgendwer');
+        $component->set('filters.subject', 'irgendwas');
+        $component->set('filters.dateFrom', '2026-01-01');
+        $component->set('filters.dateTo', '2026-12-31');
 
         $component->call('resetFilters');
 
-        $component->assertSet('filterChannel', '');
-        $component->assertSet('filterEvent', '');
-        $component->assertSet('filterCauser', '');
-        $component->assertSet('filterSubject', '');
-        $component->assertSet('filterDateFrom', '');
-        $component->assertSet('filterDateTo', '');
+        $component->assertSet('filters.channel', '');
+        $component->assertSet('filters.event', '');
+        $component->assertSet('filters.causer', '');
+        $component->assertSet('filters.subject', '');
+        $component->assertSet('filters.dateFrom', '');
+        $component->assertSet('filters.dateTo', '');
     }
 
     /**
@@ -958,10 +958,28 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('test')->event('demo')->log('Irgendein Eintrag');
 
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
-        $component->set('filterCauser', 'Garantiert Kein Treffer XYZ');
+        $component->set('filters.causer', 'Garantiert Kein Treffer XYZ');
 
         $component->assertSee(__('app.activity_log_no_matches'));
         $component->assertDontSee(__('app.activity_log_empty'));
+    }
+
+    /**
+     * Über `#[Url]`/Client kann ein Filter-Key statt eines Strings ein
+     * verschachteltes Array tragen (`?filters[causer][]=x`). Ohne Normalisierung
+     * liefe das in `applyNameSearch(string $term)`/`where()` und bräche die
+     * — ohnehin nur Admins zugängliche — Seite mit 500. Der Safeguard klemmt
+     * Nicht-Strings auf '' und behandelt den Filter damit als inaktiv.
+     */
+    public function testNonStringFilterValueIsCoercedToInactive(): void
+    {
+        $admin = $this->makeAuditor();
+        ActivityFacade::useLog('test')->event('safeguard_marker')->log('');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filters.causer', ['x']);
+
+        $component->assertSee('safeguard_marker');
     }
 
     /**
@@ -978,7 +996,7 @@ final class ActivityLogAccessTest extends TestCase
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
         $component->assertSeeHtml('{ open: false }');
 
-        $component->set('filterChannel', 'auth');
+        $component->set('filters.channel', 'auth');
         $component->assertSeeHtml('{ open: true }');
     }
 
@@ -988,14 +1006,14 @@ final class ActivityLogAccessTest extends TestCase
     public static function displayTimezoneBoundaryProvider(): array
     {
         return [
-            'Sommer (+2), from=Folgetag: sichtbar' => ['2026-06-20 23:00:00', 'filterDateFrom', '2026-06-21', true],
-            'Sommer (+2), to=Vortag: ausgeblendet' => ['2026-06-20 23:00:00', 'filterDateTo', '2026-06-20', false],
-            'Winter (+1), from=Folgetag: sichtbar' => ['2026-12-20 23:30:00', 'filterDateFrom', '2026-12-21', true],
-            'Winter (+1), to=Vortag: ausgeblendet' => ['2026-12-20 23:30:00', 'filterDateTo', '2026-12-20', false],
-            'untere Grenze exakt: sichtbar' => ['2026-06-19 22:00:00', 'filterDateFrom', '2026-06-20', true],
-            'kurz vor unterer Grenze: ausgeblendet' => ['2026-06-19 21:59:59', 'filterDateFrom', '2026-06-20', false],
-            'obere Grenze exakt: sichtbar' => ['2026-06-20 21:59:59', 'filterDateTo', '2026-06-20', true],
-            'kurz nach oberer Grenze: ausgeblendet' => ['2026-06-20 22:00:00', 'filterDateTo', '2026-06-20', false],
+            'Sommer (+2), from=Folgetag: sichtbar' => ['2026-06-20 23:00:00', 'filters.dateFrom', '2026-06-21', true],
+            'Sommer (+2), to=Vortag: ausgeblendet' => ['2026-06-20 23:00:00', 'filters.dateTo', '2026-06-20', false],
+            'Winter (+1), from=Folgetag: sichtbar' => ['2026-12-20 23:30:00', 'filters.dateFrom', '2026-12-21', true],
+            'Winter (+1), to=Vortag: ausgeblendet' => ['2026-12-20 23:30:00', 'filters.dateTo', '2026-12-20', false],
+            'untere Grenze exakt: sichtbar' => ['2026-06-19 22:00:00', 'filters.dateFrom', '2026-06-20', true],
+            'kurz vor unterer Grenze: ausgeblendet' => ['2026-06-19 21:59:59', 'filters.dateFrom', '2026-06-20', false],
+            'obere Grenze exakt: sichtbar' => ['2026-06-20 21:59:59', 'filters.dateTo', '2026-06-20', true],
+            'kurz nach oberer Grenze: ausgeblendet' => ['2026-06-20 22:00:00', 'filters.dateTo', '2026-06-20', false],
         ];
     }
 

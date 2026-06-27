@@ -29,19 +29,19 @@
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                     <x-label for="filter-date-from" value="{{ __('app.activity_log_filter_date_from') }}" />
-                    <x-input id="filter-date-from" class="block mt-1 w-full" type="date" wire:model.live="filterDateFrom" />
-                    <x-input-error for="filterDateFrom" class="mt-2" />
+                    <x-input id="filter-date-from" class="block mt-1 w-full" type="date" wire:model.live="filters.dateFrom" />
+                    <x-input-error for="filters.dateFrom" class="mt-2" />
                 </div>
 
                 <div>
                     <x-label for="filter-date-to" value="{{ __('app.activity_log_filter_date_to') }}" />
-                    <x-input id="filter-date-to" class="block mt-1 w-full" type="date" wire:model.live="filterDateTo" />
-                    <x-input-error for="filterDateTo" class="mt-2" />
+                    <x-input id="filter-date-to" class="block mt-1 w-full" type="date" wire:model.live="filters.dateTo" />
+                    <x-input-error for="filters.dateTo" class="mt-2" />
                 </div>
 
                 <div>
                     <x-label for="filter-channel" value="{{ __('app.activity_log_log_name') }}" />
-                    <select id="filter-channel" wire:model.live="filterChannel" class="{{ $selectClasses }}">
+                    <select id="filter-channel" wire:model.live="filters.channel" class="{{ $selectClasses }}">
                         <option value="">{{ __('app.activity_log_filter_all') }}</option>
                         @foreach ($channels as $channel)
                             <option value="{{ $channel->value }}">{{ $channel->value }}</option>
@@ -51,7 +51,7 @@
 
                 <div>
                     <x-label for="filter-event" value="{{ __('app.activity_log_event') }}" />
-                    <select id="filter-event" wire:model.live="filterEvent" class="{{ $selectClasses }}">
+                    <select id="filter-event" wire:model.live="filters.event" class="{{ $selectClasses }}">
                         <option value="">{{ __('app.activity_log_filter_all') }}</option>
                         @foreach ($events as $event)
                             <option value="{{ $event->value }}">{{ $event->description() }}</option>
@@ -61,12 +61,12 @@
 
                 <div>
                     <x-label for="filter-causer" value="{{ __('app.activity_log_causer') }}" />
-                    <x-input id="filter-causer" class="block mt-1 w-full" type="text" wire:model.live.debounce.400ms="filterCauser" />
+                    <x-input id="filter-causer" class="block mt-1 w-full" type="text" wire:model.live.debounce.400ms="filters.causer" />
                 </div>
 
                 <div>
                     <x-label for="filter-subject" value="{{ __('app.activity_log_subject') }}" />
-                    <x-input id="filter-subject" class="block mt-1 w-full" type="text" wire:model.live.debounce.400ms="filterSubject" />
+                    <x-input id="filter-subject" class="block mt-1 w-full" type="text" wire:model.live.debounce.400ms="filters.subject" />
                 </div>
             </div>
 
