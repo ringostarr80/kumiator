@@ -9,39 +9,35 @@ use App\Enums\ActivityEvent;
 use App\Models\User;
 use App\Services\Audit\AuditEmailHasher;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
+use App\Services\Concerns\MarksRequestScope;
 use Spatie\Activitylog\Facades\Activity;
 
 /**
- * Request-scoped Marker + Audit-Helfer für nicht freigeschaltete Logins.
+ * Audit-Schreiber für nicht freigeschaltete Logins plus der Marker, der den
+ * im Passwort-Pfad sonst entstehenden Doppel-Eintrag verhindert.
  *
- * Marker-Aspekt: Im Passwort-Pfad (`FortifyServiceProvider::authenticateUsing()`)
- * gibt das Closure `null` zurück, sobald der Account zwar valide Credentials
- * hat, aber noch nicht freigeschaltet ist (`approved_at === null`). Fortify
- * feuert daraufhin `Illuminate\Auth\Events\Failed`, das ohne Marker als
- * generischer `login_failed`-Eintrag landen würde — und zwar zusätzlich zum
- * bereits geschriebenen `login_unapproved`-Eintrag. Mit dem Marker überspringt
- * `LogAuthenticationActivityListener::handleFailed()` diesen Doppel-Log:
- * `login_unapproved` ist die fachlich präzise Aussage, `login_failed` wäre
- * redundant und würde Reports/Korrelationen verzerren.
+ * Im Passwort-Pfad (`FortifyServiceProvider::authenticateUsing()`) gibt das
+ * Closure `null` zurück, sobald der Account valide Credentials hat, aber noch
+ * nicht freigeschaltet ist (`approved_at === null`). Fortify feuert daraufhin
+ * `Illuminate\Auth\Events\Failed`, das ohne Marker — zusätzlich zum bereits
+ * geschriebenen `login_unapproved`-Eintrag — als generischer `login_failed`
+ * landen würde. Der Marker lässt `LogAuthenticationActivityListener::handleFailed()`
+ * diesen Doppel-Log überspringen: `login_unapproved` ist die fachlich präzise
+ * Aussage, `login_failed` wäre redundant und würde Reports verzerren.
  *
- * Audit-Helfer-Aspekt: `record()` kapselt das eigentliche Schreiben des
- * `login_unapproved`-Eintrags, damit Passkey- und Passwort-Pfad denselben
- * Code teilen (Hashing, Properties, Marker-Setzung, Translation-Key).
- *
- * Der Marker lebt als Instanz-State hinter einer `scoped()`-Bindung im
- * Container: Setz- und Lesestelle liegen in verschiedenen Call-Frames
- * (Fortify-Closure bzw. `Failed`-Listener) und teilen sich die Instanz über
- * den Container. Anders als ein statisches Feld überlebt der Zustand damit
- * auch unter Long-Running-Workern (Octane) keinen Request-Wechsel — ein
- * hängender Marker würde dort prozessweit echte `login_failed`-Audits
- * unterdrücken.
+ * `record()` schreibt nur den Audit-Eintrag und wird von Passwort- und
+ * Passkey-Pfad geteilt; den Marker setzt allein der Passwort-Pfad, weil nur
+ * dort ein `Failed`-Event folgt. Die scoped-Lebensdauer des Markers begründet
+ * der `MarksRequestScope`-Trait.
  */
 final class UnapprovedLoginContext implements UnapprovedLoginContextContract
 {
-    private bool $active = false;
+    use MarksRequestScope;
 
     /**
-     * Schreibt einen `login_unapproved`-Audit-Eintrag und setzt den Marker.
+     * Geteilter Schreibpfad für den `login_unapproved`-Eintrag, damit Passwort-
+     * und Passkey-Pfad Hashing, Properties und Translation-Key nicht doppelt
+     * pflegen.
      *
      * Causer/Subject werden bewusst auf den User gesetzt: anders als bei
      * anonymen `login_failed`-Versuchen ist hier die Identität verifiziert
@@ -49,15 +45,9 @@ final class UnapprovedLoginContext implements UnapprovedLoginContextContract
      * Doppel-Speicherung als `email_hash` UND `causer_id` ist für die
      * Symmetrie zum `login_failed`-Pfad ausdrücklich gewünscht (erlaubt
      * Reports, die nur über `email_hash` korrelieren, ohne Causer aufzulösen).
-     *
-     * Der Marker wird auch dann gesetzt, wenn das eigentliche `Activity::log()`
-     * fehlschlägt — sonst würde im Passwort-Pfad bei einem kaputten Audit-Pfad
-     * trotzdem der nachfolgende `login_failed`-Eintrag rauschen.
      */
     public function record(User $user, string $guard, ?string $email): void
     {
-        $this->markActive();
-
         $properties = ['guard' => $guard];
 
         $emailHash = AuditEmailHasher::hash($email);
@@ -72,20 +62,5 @@ final class UnapprovedLoginContext implements UnapprovedLoginContextContract
             ->performedOn($user)
             ->withProperties($properties)
             ->log(ActivityEvent::LOGIN_UNAPPROVED->description());
-    }
-
-    public function markActive(): void
-    {
-        $this->active = true;
-    }
-
-    public function isActive(): bool
-    {
-        return $this->active;
-    }
-
-    public function clear(): void
-    {
-        $this->active = false;
     }
 }

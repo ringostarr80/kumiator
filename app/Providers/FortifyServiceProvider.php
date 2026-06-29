@@ -107,7 +107,14 @@ class FortifyServiceProvider extends ServiceProvider
                 // und überlebt den Request — eine beim Boot gecapturte Instanz
                 // wäre unter Long-Running-Workern nicht die scoped Instanz des
                 // laufenden Requests.
-                app(UnapprovedLoginContextContract::class)->record($user, 'web', $email);
+                $unapprovedLoginContext = app(UnapprovedLoginContextContract::class);
+
+                // Marker VOR dem Audit-Schreiben setzen: Selbst wenn der
+                // Audit-Insert wirft, soll der nachgelagerte `Failed`-Event
+                // unterdrückt bleiben — sonst rauschte trotzdem ein doppelter
+                // `login_failed`-Eintrag.
+                $unapprovedLoginContext->markActive();
+                $unapprovedLoginContext->record($user, 'web', $email);
 
                 return null;
             }

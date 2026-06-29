@@ -121,6 +121,13 @@ final class LogAuthenticationActivityListener
         // pro unapproved-Versuch nur ein einziger, fachlich präziser Eintrag
         // entsteht (sonst würden Reports doppelt zählen).
         if ($this->unapprovedLoginContext->isActive()) {
+            // Consume-once: den Marker direkt nach dem Unterdrücken räumen.
+            // Setz- (Fortify-Closure) und Lesestelle liegen in getrennten
+            // Frames, es gibt also kein umschließendes `finally` — bliebe der
+            // Marker stehen, verschluckte er in einem wiederverwendeten
+            // Container den nächsten echten `login_failed`-Eintrag.
+            $this->unapprovedLoginContext->clear();
+
             return;
         }
 

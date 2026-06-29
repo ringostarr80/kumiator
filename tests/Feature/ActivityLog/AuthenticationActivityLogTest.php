@@ -511,6 +511,45 @@ final class AuthenticationActivityLogTest extends TestCase
         $this->assertFalse(app(UnapprovedLoginContextContract::class)->isActive());
     }
 
+    /**
+     * `record()` ist reiner Audit-Schreiber: nur der Passwort-Pfad setzt den
+     * Marker selbst. Würde `record()` ihn setzen, bliebe er im Passkey-Pfad
+     * (dem kein `Failed`-Event folgt) ungeräumt hängen.
+     */
+    public function testRecordDoesNotSetTheMarker(): void
+    {
+        $user = User::factory()->unapproved()->create([
+            'email' => 'unapproved@example.com',
+        ]);
+
+        app(UnapprovedLoginContextContract::class)->record($user, 'web', $user->email);
+
+        $this->assertFalse(app(UnapprovedLoginContextContract::class)->isActive());
+    }
+
+    /**
+     * Consume-once: nach dem unterdrückten `Failed` muss der Marker geräumt
+     * sein, sonst verschluckte er in einem wiederverwendeten Container (z. B.
+     * zwei Login-Versuche in einer Methode) den nächsten echten `login_failed`.
+     */
+    public function testActiveMarkerIsConsumedSoTheNextFailedStillLogs(): void
+    {
+        Activity::query()->delete();
+
+        app(UnapprovedLoginContextContract::class)->markActive();
+
+        Event::dispatch(new Failed('web', null, ['email' => 'erst@example.com']));
+        Event::dispatch(new Failed('web', null, ['email' => 'dann@example.com']));
+
+        $this->assertSame(
+            1,
+            Activity::query()
+                ->where('log_name', 'forensic')
+                ->where('event', 'login_failed')
+                ->count(),
+        );
+    }
+
     public function testLockoutIsLogged(): void
     {
         Activity::query()->delete();

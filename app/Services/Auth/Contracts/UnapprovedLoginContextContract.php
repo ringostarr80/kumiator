@@ -12,16 +12,15 @@ use App\Models\User;
  * Die Trennung in ein Interface ist nötig, weil Controller laut Architektur-
  * Regel (`ControllersAreIndependentTest`) keine konkreten Services kennen
  * dürfen — DI erfolgt ausschließlich über Contracts. Der Marker-Zustand
- * wandert über die scoped Container-Instanz: alle Pfade (Passkey-Controller,
- * Passwort-Closure, `Failed`-Listener) müssen dieses Contract auflösen,
- * damit sie dieselbe Request-Instanz sehen.
+ * wandert über die scoped Container-Instanz: Setzer (Passwort-Closure) und
+ * Leser (`Failed`-Listener) müssen dieses Contract auflösen, damit sie
+ * dieselbe Request-Instanz sehen.
  */
 interface UnapprovedLoginContextContract
 {
     /**
-     * Schreibt einen `login_unapproved`-Audit-Eintrag und setzt den
-     * Request-scoped Marker, damit der nachfolgende `Failed`-Event nicht
-     * zusätzlich als generischer `login_failed`-Eintrag landet.
+     * Geteilter Schreibpfad für den `login_unapproved`-Audit-Eintrag, den
+     * Passwort- und Passkey-Pfad nutzen.
      */
     public function record(User $user, string $guard, ?string $email): void;
 
