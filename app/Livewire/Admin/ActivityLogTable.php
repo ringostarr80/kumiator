@@ -10,6 +10,7 @@ use App\Enums\AppTimezone;
 use App\Enums\PermissionName;
 use App\Models\Activity;
 use App\Models\User;
+use App\Services\Audit\Contracts\AuthorizationAuditorContract;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
@@ -75,6 +76,13 @@ final class ActivityLogTable extends Component
     public bool $showPropertiesModal = false;
 
     public ?string $selectedProperties = null;
+
+    private AuthorizationAuditorContract $authorizationAuditor;
+
+    public function boot(AuthorizationAuditorContract $authorizationAuditor): void
+    {
+        $this->authorizationAuditor = $authorizationAuditor;
+    }
 
     public function mount(): void
     {
@@ -340,7 +348,10 @@ final class ActivityLogTable extends Component
     private function denyUnlessAuthorized(): void
     {
         if (Gate::denies(PermissionName::ACTIVITY_LOG_VIEW->value)) {
-            $this->recordAuthorizationDenied();
+            $this->authorizationAuditor->recordSubjectlessDenial(
+                Auth::user(),
+                PermissionName::ACTIVITY_LOG_VIEW->value,
+            );
 
             throw new AuthorizationException();
         }
@@ -378,37 +389,6 @@ final class ActivityLogTable extends Component
                 ->event(ActivityEvent::ACTIVITY_LOG_VIEWED->value)
                 ->causedBy($causer)
                 ->log(ActivityEvent::ACTIVITY_LOG_VIEWED->description());
-        } catch (\Throwable $e) {
-            report($e);
-        }
-    }
-
-    /**
-     * Inline statt über eine statische Recorder-Methode auf einem Domain-Model —
-     * für diese Ability gibt es schlicht kein passendes Domain-Objekt
-     * (PermissionName::ACTIVITY_LOG_VIEW->value ist eine reine Anzeige-Permission).
-     *
-     * Resilient gegen Activity-Log-Ausfälle: der ursprüngliche 403 muss raus,
-     * ein kaputter Audit-Pfad darf das nicht blockieren.
-     */
-    private function recordAuthorizationDenied(): void
-    {
-        $causer = Auth::user();
-
-        if (!($causer instanceof User)) {
-            return;
-        }
-
-        try {
-            ActivityLogger::useLog(ActivityChannel::SECURITY->value)
-                ->event(ActivityEvent::AUTHORIZATION_DENIED->value)
-                ->causedBy($causer)
-                ->withProperties([
-                    'ability' => PermissionName::ACTIVITY_LOG_VIEW->value,
-                    'target_type' => null,
-                    'target_id_hash' => null,
-                ])
-                ->log(ActivityEvent::AUTHORIZATION_DENIED->description());
         } catch (\Throwable $e) {
             report($e);
         }

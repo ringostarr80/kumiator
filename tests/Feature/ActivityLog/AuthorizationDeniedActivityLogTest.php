@@ -85,6 +85,36 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
         );
     }
 
+    public function testSubjectlessDenialIsLoggedWithNullTarget(): void
+    {
+        $user = User::factory()->create();
+
+        app(AuthorizationAuditor::class)->recordSubjectlessDenial($user, 'activity-log.view');
+
+        $activity = $this->latestAuthorizationDenied();
+
+        $this->assertNotNull($activity);
+        $this->assertSame($user->getKey(), $activity->causer_id);
+        $this->assertSame($user->getMorphClass(), $activity->causer_type);
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('activity-log.view', $properties['ability'] ?? null);
+        $this->assertArrayHasKey('target_type', $properties);
+        $this->assertNull($properties['target_type']);
+        $this->assertArrayHasKey('target_id_hash', $properties);
+        $this->assertNull($properties['target_id_hash']);
+    }
+
+    public function testSubjectlessDenialWithoutUserCauserIsNotLogged(): void
+    {
+        app(AuthorizationAuditor::class)->recordSubjectlessDenial(null, 'activity-log.view');
+
+        $this->assertNull(
+            $this->latestAuthorizationDenied(),
+            'Ohne User-Causer darf recordSubjectlessDenial nichts loggen.',
+        );
+    }
+
     public function testPasskeyManagerStartRenamingByNonOwnerIsLogged(): void
     {
         $owner = User::factory()->create();
