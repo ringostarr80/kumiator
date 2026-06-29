@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Livewire\Profile;
 
-use App\Enums\ActivityChannel;
-use App\Enums\ActivityEvent;
 use App\Models\User;
+use App\Services\Audit\Contracts\SanctumTokenAuditorContract;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Jetstream\Http\Livewire\ApiTokenManager as JetstreamApiTokenManager;
-use Spatie\Activitylog\Facades\Activity;
 
 /**
  * Erweiterung der Jetstream-Komponente um Activity-Log-Erfassung.
@@ -41,6 +39,18 @@ use Spatie\Activitylog\Facades\Activity;
  */
 final class ApiTokenManager extends JetstreamApiTokenManager
 {
+    private SanctumTokenAuditorContract $tokenAuditor;
+
+    /**
+     * Livewires `boot()` ist Container-aware und löst Type-Hints per DI auf —
+     * die Aktions-Methoden können den Auditor nicht selbst entgegennehmen, ohne
+     * die parameterlose Parent-Signatur zu brechen (LSP).
+     */
+    public function boot(SanctumTokenAuditorContract $tokenAuditor): void
+    {
+        $this->tokenAuditor = $tokenAuditor;
+    }
+
     public function createApiToken(): void
     {
         parent::createApiToken();
@@ -57,16 +67,7 @@ final class ApiTokenManager extends JetstreamApiTokenManager
             return;
         }
 
-        Activity::useLog(ActivityChannel::AUTH->value)
-            ->event(ActivityEvent::API_TOKEN_CREATED->value)
-            ->causedBy($user)
-            ->performedOn($user)
-            ->withProperties([
-                'token_id' => $accessToken->getKey(),
-                'token_name' => $accessToken->getAttribute('name'),
-                'abilities' => $accessToken->getAttribute('abilities'),
-            ])
-            ->log(ActivityEvent::API_TOKEN_CREATED->description());
+        $this->tokenAuditor->recordCreated($user, $accessToken);
     }
 
     public function deleteApiToken(): void
@@ -85,15 +86,6 @@ final class ApiTokenManager extends JetstreamApiTokenManager
             return;
         }
 
-        Activity::useLog(ActivityChannel::AUTH->value)
-            ->event(ActivityEvent::API_TOKEN_REVOKED->value)
-            ->causedBy($user)
-            ->performedOn($user)
-            ->withProperties([
-                'token_id' => $token->getKey(),
-                'token_name' => $token->getAttribute('name'),
-                'abilities' => $token->getAttribute('abilities'),
-            ])
-            ->log(ActivityEvent::API_TOKEN_REVOKED->description());
+        $this->tokenAuditor->recordRevoked($user, $token);
     }
 }

@@ -12,6 +12,8 @@ use App\Models\User;
 use App\Observers\RoleLifecycleObserver;
 use App\Policies\PasskeyCredentialPolicy;
 use App\Services\Audit\AuthorizationAuditor;
+use App\Services\Audit\Contracts\SanctumTokenAuditorContract;
+use App\Services\Audit\SanctumTokenAuditor;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
 use App\Services\Console\ConsoleActorContext;
 use App\Services\Console\Contracts\ConsoleActorContextContract;
@@ -65,6 +67,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UploadLimitResolverContract::class, UploadLimitResolver::class);
         $this->app->bind(ProfilePhotoOptimizerContract::class, ProfilePhotoOptimizer::class);
         $this->app->bind(UserSessionTerminatorContract::class, UserSessionTerminator::class);
+        $this->app->bind(SanctumTokenAuditorContract::class, SanctumTokenAuditor::class);
         $this->app->singleton(ConsoleActorContextContract::class, ConsoleActorContext::class);
 
         // Beim Löschen einer Rolle räumt Spatie die User-Zuordnungen still ab
