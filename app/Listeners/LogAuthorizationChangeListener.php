@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Enums\ActivityChannel;
+use App\Enums\ActivityEvent;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Spatie\Activitylog\Facades\Activity;
 use Spatie\Permission\Contracts\Permission as PermissionContract;
 use Spatie\Permission\Contracts\Role as RoleContract;
 
@@ -13,14 +17,46 @@ use Spatie\Permission\Contracts\Role as RoleContract;
  * Gemeinsame Basis der Listener, die Spatie-Zuweisungen (Rollen,
  * Permissions) ins Activity-Log spiegeln.
  *
+ * Der Schreibvorgang ist für beide bis auf vier Konstanten (Channel,
+ * Property-Key, Model-Klasse, Warntext) identisch und lebt darum hier; die
+ * Subklassen liefern diese vier über abstrakte Akzessoren. So wird etwa ein
+ * künftiges `guard_name`-Property nur an einer Stelle ergänzt.
+ *
  * Spatie reicht die geänderten Subjekte je nach Codepfad als Array roher
- * IDs, als einzelne Contract-Instanz oder als Collection durch. Die
- * Normalisierung dieses heterogenen Parameters auf eine sortierte Liste
- * eindeutiger Namen ist für Rollen und Permissions Zeile für Zeile
- * identisch und lebt darum hier statt doppelt in jedem Listener.
+ * IDs, als einzelne Contract-Instanz oder als Collection durch; die
+ * Normalisierung auf eine sortierte Liste eindeutiger Namen lebt darum
+ * ebenfalls hier.
  */
 abstract class LogAuthorizationChangeListener
 {
+    abstract protected function activityChannel(): ActivityChannel;
+
+    abstract protected function propertyKey(): string;
+
+    /**
+     * @return class-string<\Spatie\Permission\Models\Role|\Spatie\Permission\Models\Permission>
+     */
+    abstract protected function modelClass(): string;
+
+    abstract protected function unknownIdsWarning(): string;
+
+    protected function log(Model $subject, mixed $modelsOrIds, ActivityEvent $event): void
+    {
+        $names = $this->resolveModelNames($modelsOrIds, $this->modelClass(), $this->unknownIdsWarning());
+
+        if ($names === []) {
+            return;
+        }
+
+        // `event->value` ist der stabile Maschinen-Code (für Filter/Reports),
+        // `description()` die übersetzte Klartext-Beschreibung für die UI.
+        Activity::useLog($this->activityChannel()->value)
+            ->performedOn($subject)
+            ->withProperties([$this->propertyKey() => $names])
+            ->event($event->value)
+            ->log($event->description());
+    }
+
     /**
      * @template TModel of \Spatie\Permission\Models\Role|\Spatie\Permission\Models\Permission
      * @param class-string<TModel> $modelClass Model zum Nachschlagen roher IDs

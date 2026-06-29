@@ -6,8 +6,6 @@ namespace App\Listeners;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
-use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\Facades\Activity;
 use Spatie\Permission\Events\RoleAttachedEvent;
 use Spatie\Permission\Events\RoleDetachedEvent;
 use Spatie\Permission\Models\Role;
@@ -49,24 +47,26 @@ final class LogRoleChangeListener extends LogAuthorizationChangeListener
         $this->log($event->model, $event->rolesOrIds, ActivityEvent::ROLE_DETACHED);
     }
 
-    private function log(Model $subject, mixed $rolesOrIds, ActivityEvent $event): void
+    protected function activityChannel(): ActivityChannel
     {
-        $roleNames = $this->resolveModelNames(
-            $rolesOrIds,
-            Role::class,
-            'LogRoleChangeListener: unknown role IDs received',
-        );
+        return ActivityChannel::ROLE;
+    }
 
-        if ($roleNames === []) {
-            return;
-        }
+    protected function propertyKey(): string
+    {
+        return 'roles';
+    }
 
-        // `event->value` ist der stabile Maschinen-Code (für Filter/Reports),
-        // `description()` die übersetzte Klartext-Beschreibung für die UI.
-        Activity::useLog(ActivityChannel::ROLE->value)
-            ->performedOn($subject)
-            ->withProperties(['roles' => $roleNames])
-            ->event($event->value)
-            ->log($event->description());
+    /**
+     * @return class-string<Role>
+     */
+    protected function modelClass(): string
+    {
+        return Role::class;
+    }
+
+    protected function unknownIdsWarning(): string
+    {
+        return 'LogRoleChangeListener: unknown role IDs received';
     }
 }

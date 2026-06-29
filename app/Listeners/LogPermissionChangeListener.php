@@ -6,8 +6,6 @@ namespace App\Listeners;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
-use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\Facades\Activity;
 use Spatie\Permission\Events\PermissionAttachedEvent;
 use Spatie\Permission\Events\PermissionDetachedEvent;
 use Spatie\Permission\Models\Permission;
@@ -54,25 +52,26 @@ final class LogPermissionChangeListener extends LogAuthorizationChangeListener
         $this->log($event->model, $event->permissionsOrIds, ActivityEvent::PERMISSION_DETACHED);
     }
 
-    private function log(Model $subject, mixed $permissionsOrIds, ActivityEvent $event): void
+    protected function activityChannel(): ActivityChannel
     {
-        $permissionNames = $this->resolveModelNames(
-            $permissionsOrIds,
-            Permission::class,
-            'LogPermissionChangeListener: unknown permission IDs received',
-        );
+        return ActivityChannel::PERMISSION;
+    }
 
-        if ($permissionNames === []) {
-            return;
-        }
+    protected function propertyKey(): string
+    {
+        return 'permissions';
+    }
 
-        // `event->value` ist der stabile Maschinen-Code (für Filter/Reports),
-        // `description()` die übersetzte Klartext-Beschreibung für die UI
-        // (analog zum Role-Listener).
-        Activity::useLog(ActivityChannel::PERMISSION->value)
-            ->performedOn($subject)
-            ->withProperties(['permissions' => $permissionNames])
-            ->event($event->value)
-            ->log($event->description());
+    /**
+     * @return class-string<Permission>
+     */
+    protected function modelClass(): string
+    {
+        return Permission::class;
+    }
+
+    protected function unknownIdsWarning(): string
+    {
+        return 'LogPermissionChangeListener: unknown permission IDs received';
     }
 }
