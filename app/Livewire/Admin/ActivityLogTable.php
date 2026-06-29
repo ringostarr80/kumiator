@@ -78,11 +78,7 @@ final class ActivityLogTable extends Component
 
     public function mount(): void
     {
-        if (Gate::denies(PermissionName::ACTIVITY_LOG_VIEW->value)) {
-            $this->recordAuthorizationDenied();
-
-            throw new AuthorizationException();
-        }
+        $this->denyUnlessAuthorized();
 
         $this->recordAccessGranted();
     }
@@ -97,11 +93,7 @@ final class ActivityLogTable extends Component
      */
     public function hydrate(): void
     {
-        if (Gate::denies(PermissionName::ACTIVITY_LOG_VIEW->value)) {
-            $this->recordAuthorizationDenied();
-
-            throw new AuthorizationException();
-        }
+        $this->denyUnlessAuthorized();
     }
 
     /**
@@ -343,6 +335,15 @@ final class ActivityLogTable extends Component
     private function hasActiveFilters(): bool
     {
         return array_any($this->filters, fn (string $value): bool => $value !== '');
+    }
+
+    private function denyUnlessAuthorized(): void
+    {
+        if (Gate::denies(PermissionName::ACTIVITY_LOG_VIEW->value)) {
+            $this->recordAuthorizationDenied();
+
+            throw new AuthorizationException();
+        }
     }
 
     /**
