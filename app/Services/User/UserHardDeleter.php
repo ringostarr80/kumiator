@@ -60,8 +60,6 @@ final class UserHardDeleter implements UserHardDeleterContract
 
             PasskeyCredential::query()->where('user_id', $user->getKey())->delete();
 
-            $this->sessionTerminator->deleteForUser($user);
-
             // Sonst schriebe `forceDelete()` unten einen `deleted`-Eintrag
             // mit `subject_id = $user->getKey()`.
             $user->disableLogging();
@@ -91,6 +89,11 @@ final class UserHardDeleter implements UserHardDeleterContract
                 ->causedByAnonymous()
                 ->log($event->description());
         });
+
+        // Wie `deleteProfilePhoto()` ein nicht-rollbackbarer Seiteneffekt nach
+        // dem Commit: `session.connection` kann auf einer anderen Connection
+        // liegen als die Transaktion und gehörte dann nicht zu deren Rollback.
+        $this->sessionTerminator->deleteForUser($user);
 
         $user->deleteProfilePhoto();
     }

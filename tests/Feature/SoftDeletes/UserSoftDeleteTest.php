@@ -5,13 +5,20 @@ declare(strict_types=1);
 namespace Tests\Feature\SoftDeletes;
 
 use App\Actions\Jetstream\DeleteUser;
+use App\Enums\ActivityEvent;
 use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
+use App\Services\User\Contracts\UserHardDeleterContract;
+use App\Services\User\Contracts\UserSoftDeleterContract;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Testing\PendingCommand;
 use Laravel\Sanctum\PersonalAccessToken;
+use RuntimeException;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -347,5 +354,93 @@ final class UserSoftDeleteTest extends TestCase
                 ->where('tokenable_id', $user->getKey())
                 ->count(),
         );
+    }
+
+    /**
+     * Regressionsschutz: Liegt `session.connection` auf einer anderen
+     * Connection als die Lösch-Transaktion, darf ein Fehler in der Transaktion
+     * die Session-Zeile NICHT bereits gelöscht haben — sonst wäre der Nutzer
+     * ausgeloggt, das Konto aber noch aktiv. Beide Deleter löschen Sessions
+     * deshalb erst nach dem Commit.
+     */
+    public function testSoftDeleteKeepsSessionWhenTransactionRollsBackOnSeparateConnection(): void
+    {
+        $user = User::factory()->create();
+        $this->prepareSeparateSessionStoreFor($user);
+
+        User::deleting(static function (): void {
+            throw new RuntimeException('Lösch-Transaktion abgebrochen');
+        });
+
+        try {
+            app(UserSoftDeleterContract::class)->softDelete($user);
+            $this->fail('Erwartete Ausnahme aus der Lösch-Transaktion blieb aus.');
+        } catch (RuntimeException) {
+            // Erwartet: der `deleting`-Hook bricht die Transaktion ab.
+        }
+
+        $this->assertSame(
+            1,
+            DB::connection('session_store')->table('sessions')->where('user_id', $user->getKey())->count(),
+            'Die Session auf der separaten Connection muss den Transaktions-Rollback überleben.',
+        );
+    }
+
+    public function testHardDeleteKeepsSessionWhenTransactionRollsBackOnSeparateConnection(): void
+    {
+        $user = User::factory()->create();
+        $this->prepareSeparateSessionStoreFor($user);
+
+        User::deleting(static function (): void {
+            throw new RuntimeException('Lösch-Transaktion abgebrochen');
+        });
+
+        try {
+            app(UserHardDeleterContract::class)->forceDelete($user, ActivityEvent::ACCOUNT_SELF_DELETED);
+            $this->fail('Erwartete Ausnahme aus der Lösch-Transaktion blieb aus.');
+        } catch (RuntimeException) {
+            // Erwartet: der `deleting`-Hook bricht die Transaktion ab.
+        }
+
+        $this->assertSame(
+            1,
+            DB::connection('session_store')->table('sessions')->where('user_id', $user->getKey())->count(),
+            'Die Session auf der separaten Connection muss den Transaktions-Rollback überleben.',
+        );
+    }
+
+    /**
+     * Sessions auf eine eigene, physisch getrennte Connection (zweites
+     * In-Memory-SQLite) legen und eine Zeile für $user einsetzen — so liegt das
+     * Session-Delete außerhalb der Default-Connection-Transaktion der Deleter.
+     */
+    private function prepareSeparateSessionStoreFor(User $user): void
+    {
+        Config::set('database.connections.session_store', [
+            'driver' => 'sqlite',
+            'database' => ':memory:',
+            'prefix' => '',
+            'foreign_key_constraints' => false,
+        ]);
+        Config::set('session.driver', 'database');
+        Config::set('session.connection', 'session_store');
+
+        Schema::connection('session_store')->create('sessions', static function (Blueprint $table): void {
+            $table->string('id')->primary();
+            $table->foreignId('user_id')->nullable()->index();
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
+            $table->longText('payload');
+            $table->integer('last_activity')->index();
+        });
+
+        DB::connection('session_store')->table('sessions')->insert([
+            'id' => 'sess-on-store',
+            'user_id' => $user->getKey(),
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'phpunit',
+            'payload' => '',
+            'last_activity' => time(),
+        ]);
     }
 }

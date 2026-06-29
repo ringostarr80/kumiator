@@ -18,8 +18,7 @@ use Spatie\Activitylog\Facades\Activity;
  * Siehe {@see UserSoftDeleterContract} für den Gesamt-Kontrakt und die
  * Abgrenzung zum Hard-Delete-Pfad.
  *
- * Reihenfolge in der Transaktion: zuerst Session-Reihen entfernen (nur bei
- * `session.driver = database`), dann pro Sanctum-Token das DB-Delete und
+ * Reihenfolge in der Transaktion: pro Sanctum-Token das DB-Delete und
  * direkt im Anschluss der `api_token_revoked`-Eintrag (Past-Tense-Semantik:
  * der Eintrag beschreibt einen abgeschlossenen Vorgang; die In-Memory-
  * Eloquent-Instanz behält ihre Attribute auch nach `deleteOrFail()`).
@@ -29,6 +28,9 @@ use Spatie\Activitylog\Facades\Activity;
  * schreibt. Zuletzt der Soft-Delete des Users selbst. Alles in einer
  * `DB::transaction()`: wirft ein Delete, wird der zugehörige Audit-Insert
  * mit zurückgerollt.
+ *
+ * Die Session-Reihen (nur bei `session.driver = database`) entfernt der
+ * Terminator bewusst erst nach dem Commit.
  *
  * Audit-Symmetrie zum UI-Pfad: `ApiTokenManager::deleteApiToken()` schreibt
  * dieselbe Event-Form (`api_token_revoked`, mit `token_id`/`token_name`/
@@ -45,8 +47,6 @@ final class UserSoftDeleter implements UserSoftDeleterContract
     public function softDelete(User $user): void
     {
         DB::transaction(function () use ($user): void {
-            $this->sessionTerminator->deleteForUser($user);
-
             // Symmetrie zum UI-Pfad (`ApiTokenManager::deleteApiToken()`):
             // Sanctums `PersonalAccessToken` hat kein `LogsActivity`-Trait,
             // ohne expliziten Eintrag würden die Tokens beim Admin-Delete
@@ -79,5 +79,11 @@ final class UserSoftDeleter implements UserSoftDeleterContract
 
             $user->deleteOrFail();
         });
+
+        // Erst nach erfolgreichem Commit: Liegt `session.connection` auf einer
+        // anderen Connection als die Transaktion oben, gehörte das Session-
+        // Delete nicht zu deren Rollback — ein Fehler im Block ließe den Nutzer
+        // sonst ausgeloggt zurück, während das Konto aktiv bliebe.
+        $this->sessionTerminator->deleteForUser($user);
     }
 }
