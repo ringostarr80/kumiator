@@ -7,18 +7,16 @@ namespace App\Enums;
 /**
  * Fachliche Event-Codes des Activity-Logs (Spatie `event`).
  *
- * Zentralisiert die zuvor verstreuten Magic-Strings (CLAUDE.md: Enums statt
- * Magic-Strings). Der `value` ist der stabile Maschinen-Code, der in der DB
+ * Bündelt die `event`-Codes als Enum statt als Magic-Strings (CLAUDE.md: Enums
+ * statt Magic-Strings). Der `value` ist der stabile Maschinen-Code, der in der DB
  * landet und gegen den Reports/Tests filtern — er darf sich nicht ändern.
  *
- * {@see self::description()} leitet aus dem Code den Übersetzungs-Schlüssel ab
- * (`app.activity_<value>`) und ersetzt damit die bisher an jeder Schreib-Site
- * wiederholte `__('app.activity_...')`-Konstruktion. Jeder Case MUSS daher einen
- * passenden `activity_<value>`-Eintrag in `lang/{de,en}/app.php` haben — der
- * Unit-Test `ActivityEventTest` sichert das ab.
+ * Die Methode `description()` leitet aus dem Code den Übersetzungs-Schlüssel ab
+ * (`app.activity_<value>`). Jeder Case MUSS daher einen passenden
+ * `activity_<value>`-Eintrag in `lang/{de,en}/app.php` haben.
  *
- * Gruppiert nach Kanal ({@see ActivityChannel}); die Kanal-Zuordnung selbst
- * bleibt bewusst an der Schreib-Site (manche Vorgänge sind kanalübergreifend).
+ * Gruppiert nach Kanal (`ActivityChannel`); die Kanal-Zuordnung selbst bleibt
+ * bewusst an der Schreib-Site (manche Vorgänge sind kanalübergreifend).
  */
 enum ActivityEvent: string
 {
