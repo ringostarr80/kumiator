@@ -103,14 +103,20 @@ class AppServiceProvider extends ServiceProvider
         // `AuthorizationAuditable` anmeldet (Details + Warum opt-in im Auditor).
         // Rückgabe muss void/null bleiben, sonst kippt der Hook über `$result ??=`
         // die Entscheidung einer undefinierten Ability.
+        //
+        // Der Auditor ist zustandslos und wird darum einmal aufgelöst und ins
+        // Closure geschlossen, statt ihn bei jeder Autorisierungsprüfung neu aus
+        // dem Container zu bauen.
+        $authorizationAuditor = $this->app->make(AuthorizationAuditor::class);
+
         /** @param array<array-key, mixed> $arguments */
         $auditDeniedAuthorization = static function (
             ?Authenticatable $user,
             string $ability,
             mixed $result,
             array $arguments,
-        ): void {
-            app(AuthorizationAuditor::class)->record($user, $ability, $result, $arguments);
+        ) use ($authorizationAuditor): void {
+            $authorizationAuditor->record($user, $ability, $result, $arguments);
         };
 
         Gate::after($auditDeniedAuthorization);
