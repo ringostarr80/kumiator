@@ -17,6 +17,7 @@ use App\Services\User\Exceptions\EmailChangeTokenExpiredException;
 use App\Services\User\Exceptions\EmailChangeTokenInvalidException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Activitylog\Facades\Activity;
 
@@ -45,31 +46,38 @@ final class UserEmailChanger implements UserEmailChangerContract
         $plainConfirmToken = bin2hex(random_bytes(32));
         $plainCancelToken = bin2hex(random_bytes(32));
 
-        $user->forceFill([
-            'pending_email' => $newEmail,
-            'pending_email_confirm_token_hash' => hash('sha256', $plainConfirmToken),
-            'pending_email_cancel_token_hash' => hash('sha256', $plainCancelToken),
-            'pending_email_sent_at' => Carbon::now(),
-        ])->saveOrFail();
+        // Pending-State und sein Audit-Eintrag gemeinsam klammern: wirft der
+        // Insert, darf kein Pending-Wechsel ohne Spur zurückbleiben.
+        DB::transaction(function () use ($user, $newEmail, $plainConfirmToken, $plainCancelToken): void {
+            $user->forceFill([
+                'pending_email' => $newEmail,
+                'pending_email_confirm_token_hash' => hash('sha256', $plainConfirmToken),
+                'pending_email_cancel_token_hash' => hash('sha256', $plainCancelToken),
+                'pending_email_sent_at' => Carbon::now(),
+            ])->saveOrFail();
 
+            // DSGVO Art. 5(1)(c): `pending_email` kann eine fremde Adresse sein
+            // (Tippfehler des Antragstellers, oder ein Angreifer auf einem
+            // übernommenen Konto, der gegen eine Wegwerf-Adresse wechselt).
+            // Klartext-Speicherung über 365 Tage wäre Datenverarbeitung Dritter
+            // ohne Rechtsgrundlage. Hash erlaubt Korrelation (wiederholte
+            // Versuche an dieselbe Zieladresse), ohne den Klartext zu halten —
+            // dasselbe Muster wie `login_failed` (siehe `AuditEmailHasher`).
+            Activity::useLog(ActivityChannel::AUTH->value)
+                ->event(ActivityEvent::EMAIL_CHANGE_REQUESTED->value)
+                ->causedBy($user)
+                ->performedOn($user)
+                ->withProperties(['pending_email_hash' => AuditEmailHasher::hash($newEmail)])
+                ->log(ActivityEvent::EMAIL_CHANGE_REQUESTED->description());
+        });
+
+        // Mail-Versand erst nach dem Commit: ein nicht-rollbackbarer
+        // Seiteneffekt. Rollt die Transaktion zurück, darf kein Confirm-/Cancel-
+        // Link für einen nicht persistierten Pending-Wechsel rausgehen.
         Notification::route('mail', $newEmail)
             ->notify(new VerifyEmailChangeNotification($user, $plainConfirmToken, $newEmail));
 
         $user->notify(new EmailChangeRequestedNotification($plainCancelToken, $newEmail));
-
-        // DSGVO Art. 5(1)(c): `pending_email` kann eine fremde Adresse sein
-        // (Tippfehler des Antragstellers, oder ein Angreifer auf einem
-        // übernommenen Konto, der gegen eine Wegwerf-Adresse wechselt).
-        // Klartext-Speicherung über 365 Tage wäre Datenverarbeitung Dritter
-        // ohne Rechtsgrundlage. Hash erlaubt Korrelation (wiederholte
-        // Versuche an dieselbe Zieladresse), ohne den Klartext zu halten —
-        // dasselbe Muster wie `login_failed` (siehe `AuditEmailHasher`).
-        Activity::useLog(ActivityChannel::AUTH->value)
-            ->event(ActivityEvent::EMAIL_CHANGE_REQUESTED->value)
-            ->causedBy($user)
-            ->performedOn($user)
-            ->withProperties(['pending_email_hash' => AuditEmailHasher::hash($newEmail)])
-            ->log(ActivityEvent::EMAIL_CHANGE_REQUESTED->description());
     }
 
     public function recordRequestFailed(User $user, ?string $attemptedEmail): void
@@ -145,14 +153,30 @@ final class UserEmailChanger implements UserEmailChangerContract
         }
 
         try {
-            $user->forceFill([
-                'email' => $pendingEmail,
-                'email_verified_at' => Carbon::now(),
-                'pending_email' => null,
-                'pending_email_confirm_token_hash' => null,
-                'pending_email_cancel_token_hash' => null,
-                'pending_email_sent_at' => null,
-            ])->saveOrFail();
+            // Swap und sein `email_changed`-Audit gemeinsam klammern: wirft der
+            // Insert nach dem committeten Swap, bliebe eine sicherheitsrelevante
+            // Identitätsänderung committet, aber unauditiert (DSGVO Art. 32) —
+            // bei bereits verbrauchtem Token. Der Rollback hält den Token gültig.
+            DB::transaction(function () use ($user, $pendingEmail): void {
+                $user->forceFill([
+                    'email' => $pendingEmail,
+                    'email_verified_at' => Carbon::now(),
+                    'pending_email' => null,
+                    'pending_email_confirm_token_hash' => null,
+                    'pending_email_cancel_token_hash' => null,
+                    'pending_email_sent_at' => null,
+                ])->saveOrFail();
+
+                // Bewusst keine Properties: `subject` und `causer` zeigen beide
+                // auf den User selbst, der Vorgang ist damit eindeutig
+                // zuordenbar. Die alte Adresse 365 Tage zusätzlich vorzuhalten
+                // geht über Art. 5(1)(c) Datenminimierung hinaus.
+                Activity::useLog(ActivityChannel::AUTH->value)
+                    ->event(ActivityEvent::EMAIL_CHANGED->value)
+                    ->causedBy($user)
+                    ->performedOn($user)
+                    ->log(ActivityEvent::EMAIL_CHANGED->description());
+            });
         } catch (UniqueConstraintViolationException) {
             // Race zwischen der `exists()`-Prüfung oben und diesem Save: ein
             // paralleler Confirm hat die Zieladresse zwischenzeitlich belegt.
@@ -167,16 +191,6 @@ final class UserEmailChanger implements UserEmailChangerContract
 
             throw new EmailChangeConflictException();
         }
-
-        // Bewusst keine Properties: `subject` und `causer` zeigen beide auf
-        // den User selbst, der Vorgang ist damit eindeutig zuordenbar.
-        // Die alte Adresse 365 Tage zusätzlich vorzuhalten geht über
-        // Art. 5(1)(c) Datenminimierung hinaus.
-        Activity::useLog(ActivityChannel::AUTH->value)
-            ->event(ActivityEvent::EMAIL_CHANGED->value)
-            ->causedBy($user)
-            ->performedOn($user)
-            ->log(ActivityEvent::EMAIL_CHANGED->description());
 
         return $user;
     }
@@ -213,19 +227,23 @@ final class UserEmailChanger implements UserEmailChangerContract
     {
         $pendingEmail = (string)$user->pending_email;
 
-        $this->clearPendingFields($user);
+        // Feld-Bereinigung und ihr Audit-Eintrag gemeinsam klammern: wirft der
+        // Insert, darf der Pending-State nicht halb geräumt zurückbleiben.
+        DB::transaction(function () use ($user, $pendingEmail, $cancelledVia): void {
+            $this->clearPendingFields($user);
 
-        // Causer ist anonym; `pending_email` würde sonst eine ggf. fremde
-        // Adresse (siehe `requestChange()`-Kommentar) 365 Tage halten.
-        Activity::useLog(ActivityChannel::AUTH->value)
-            ->event(ActivityEvent::EMAIL_CHANGE_CANCELLED->value)
-            ->causedByAnonymous()
-            ->performedOn($user)
-            ->withProperties([
-                'pending_email_hash' => AuditEmailHasher::hash($pendingEmail),
-                'cancelled_via' => $cancelledVia,
-            ])
-            ->log(ActivityEvent::EMAIL_CHANGE_CANCELLED->description());
+            // Causer ist anonym; `pending_email` würde sonst eine ggf. fremde
+            // Adresse (siehe `requestChange()`-Kommentar) 365 Tage halten.
+            Activity::useLog(ActivityChannel::AUTH->value)
+                ->event(ActivityEvent::EMAIL_CHANGE_CANCELLED->value)
+                ->causedByAnonymous()
+                ->performedOn($user)
+                ->withProperties([
+                    'pending_email_hash' => AuditEmailHasher::hash($pendingEmail),
+                    'cancelled_via' => $cancelledVia,
+                ])
+                ->log(ActivityEvent::EMAIL_CHANGE_CANCELLED->description());
+        });
     }
 
     /**

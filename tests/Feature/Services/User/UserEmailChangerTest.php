@@ -18,6 +18,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -34,6 +35,7 @@ final class UserEmailChangerTest extends TestCase
     private const string NEW_EMAIL = 'neu@example.com';
     private const string TAKEN_EMAIL = 'belegt@example.com';
     private const string EXPECTED_CONFLICT = 'Expected EmailChangeConflictException';
+    private const string EXPECTED_AUDIT_THROW = 'Erwartete Ausnahme aus dem Audit-Insert blieb aus.';
 
     private UserEmailChangerContract $service;
 
@@ -170,6 +172,34 @@ final class UserEmailChangerTest extends TestCase
         $this->assertSame('zweite@example.com', $refreshed->pending_email);
     }
 
+    public function testRequestChangeRollsBackPendingFieldsWhenAuditInsertFails(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => self::OLD_EMAIL]);
+        Activity::query()->delete();
+        $this->failAuditInsertForEvent('email_change_requested');
+
+        try {
+            $this->service->requestChange($user, self::NEW_EMAIL);
+            $this->fail(self::EXPECTED_AUDIT_THROW);
+        } catch (RuntimeException) {
+            // Erwartet: der Audit-Insert bricht die Transaktion ab.
+        }
+
+        // Save und Audit teilen sich eine Transaktion: der Pending-Save ist
+        // mit zurückgerollt, kein halber Zustand bleibt zurück.
+        $refreshed = $user->fresh();
+        $this->assertNotNull($refreshed);
+        $this->assertNull($refreshed->pending_email);
+        $this->assertNull($refreshed->pending_email_confirm_token_hash);
+
+        $this->assertSame(0, Activity::query()->where('event', 'email_change_requested')->count());
+
+        // Mail-Versand liegt nach dem Commit: bricht die Transaktion ab, darf
+        // kein Confirm-/Cancel-Link rausgegangen sein.
+        Notification::assertNothingSent();
+    }
+
     public function testConfirmChangeSwapsEmailAndWritesAudit(): void
     {
         Notification::fake();
@@ -209,6 +239,35 @@ final class UserEmailChangerTest extends TestCase
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertArrayNotHasKey('old_email', $properties);
         $this->assertSame([], $properties);
+    }
+
+    public function testConfirmChangeRollsBackEmailSwapWhenAuditInsertFails(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create([
+            'email' => self::OLD_EMAIL,
+            'email_verified_at' => Carbon::now()->subDay(),
+        ]);
+        $tokens = $this->seedPendingChange($user, self::NEW_EMAIL);
+        Activity::query()->delete();
+        $this->failAuditInsertForEvent('email_changed');
+
+        try {
+            $this->service->confirmChange($tokens['confirm']);
+            $this->fail(self::EXPECTED_AUDIT_THROW);
+        } catch (RuntimeException) {
+            // Erwartet: der Audit-Insert bricht die Transaktion ab.
+        }
+
+        // Swap und Audit teilen sich eine Transaktion: die Identität ist NICHT
+        // getauscht, der Confirm-Token bleibt gültig (erneut bestätigbar).
+        $refreshed = $user->fresh();
+        $this->assertNotNull($refreshed);
+        $this->assertSame(self::OLD_EMAIL, $refreshed->email);
+        $this->assertSame(self::NEW_EMAIL, $refreshed->pending_email);
+        $this->assertNotNull($refreshed->pending_email_confirm_token_hash);
+
+        $this->assertSame(0, Activity::query()->where('event', 'email_changed')->count());
     }
 
     public function testConfirmChangeWithUnknownTokenThrowsAndWritesNoAudit(): void
@@ -464,6 +523,31 @@ final class UserEmailChangerTest extends TestCase
         $this->assertArrayNotHasKey('pending_email', $properties);
     }
 
+    public function testCancelChangeRollsBackPendingClearWhenAuditInsertFails(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+        $tokens = $this->seedPendingChange($user, self::NEW_EMAIL);
+        Activity::query()->delete();
+        $this->failAuditInsertForEvent('email_change_cancelled');
+
+        try {
+            $this->service->cancelChange($tokens['cancel']);
+            $this->fail(self::EXPECTED_AUDIT_THROW);
+        } catch (RuntimeException) {
+            // Erwartet: der Audit-Insert bricht die Transaktion ab.
+        }
+
+        // Bereinigung und Audit teilen sich eine Transaktion: der Pending-State
+        // bleibt vollständig erhalten (Abbruch erneut versuchbar).
+        $refreshed = $user->fresh();
+        $this->assertNotNull($refreshed);
+        $this->assertSame(self::NEW_EMAIL, $refreshed->pending_email);
+        $this->assertNotNull($refreshed->pending_email_cancel_token_hash);
+
+        $this->assertSame(0, Activity::query()->where('event', 'email_change_cancelled')->count());
+    }
+
     public function testCancelChangeWithUnknownTokenIsNoOp(): void
     {
         Activity::query()->delete();
@@ -582,6 +666,23 @@ final class UserEmailChangerTest extends TestCase
         ])->saveOrFail();
 
         return ['confirm' => $plainConfirmToken, 'cancel' => $plainCancelToken];
+    }
+
+    /**
+     * Lässt den Activity-Insert des gegebenen Event-Codes werfen — simuliert
+     * einen DB-Fehler beim Audit-Schreiben nach erfolgreichem State-Save.
+     * Regressionsschutz: State-Mutation und ihr Audit-Eintrag müssen in
+     * einer gemeinsamen Transaktion liegen, sonst bliebe die Mutation
+     * committet, aber unauditiert (DSGVO Art. 32). Der Hook leakt nicht, da
+     * pro Test der Model-Event-Dispatcher neu gebootet wird.
+     */
+    private function failAuditInsertForEvent(string $event): void
+    {
+        Activity::creating(static function (Activity $activity) use ($event): void {
+            if ($activity->event === $event) {
+                throw new RuntimeException('Audit-Insert abgebrochen');
+            }
+        });
     }
 
     private function tokenFromActionUrl(string $url): string
