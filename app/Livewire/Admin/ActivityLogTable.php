@@ -7,6 +7,7 @@ namespace App\Livewire\Admin;
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Enums\AppTimezone;
+use App\Enums\PermissionName;
 use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -32,7 +33,7 @@ use Spatie\Activitylog\Facades\Activity as ActivityLogger;
  * entstünde dann nie. So wird auch der abgelehnte Zugriff protokolliert.
  *
  * Spatie-Permissions sind als Gate-Abilities registriert, daher greift
- * `Gate::denies('activity-log.view')` hier direkt.
+ * `Gate::denies(PermissionName::ACTIVITY_LOG_VIEW->value)` hier direkt.
  */
 final class ActivityLogTable extends Component
 {
@@ -77,7 +78,7 @@ final class ActivityLogTable extends Component
 
     public function mount(): void
     {
-        if (Gate::denies('activity-log.view')) {
+        if (Gate::denies(PermissionName::ACTIVITY_LOG_VIEW->value)) {
             $this->recordAuthorizationDenied();
 
             throw new AuthorizationException();
@@ -96,7 +97,7 @@ final class ActivityLogTable extends Component
      */
     public function hydrate(): void
     {
-        if (Gate::denies('activity-log.view')) {
+        if (Gate::denies(PermissionName::ACTIVITY_LOG_VIEW->value)) {
             $this->recordAuthorizationDenied();
 
             throw new AuthorizationException();
@@ -384,7 +385,7 @@ final class ActivityLogTable extends Component
     /**
      * Inline statt über eine statische Recorder-Methode auf einem Domain-Model —
      * für diese Ability gibt es schlicht kein passendes Domain-Objekt
-     * (`activity-log.view` ist eine reine Anzeige-Permission).
+     * (PermissionName::ACTIVITY_LOG_VIEW->value ist eine reine Anzeige-Permission).
      *
      * Resilient gegen Activity-Log-Ausfälle: der ursprüngliche 403 muss raus,
      * ein kaputter Audit-Pfad darf das nicht blockieren.
@@ -402,7 +403,7 @@ final class ActivityLogTable extends Component
                 ->event(ActivityEvent::AUTHORIZATION_DENIED->value)
                 ->causedBy($causer)
                 ->withProperties([
-                    'ability' => 'activity-log.view',
+                    'ability' => PermissionName::ACTIVITY_LOG_VIEW->value,
                     'target_type' => null,
                     'target_id_hash' => null,
                 ])

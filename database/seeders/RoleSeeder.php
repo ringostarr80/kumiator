@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Enums\PermissionName;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -17,7 +18,7 @@ use Spatie\Permission\Models\Role;
  * wenn sie bereits existieren.
  *
  * **Permissions werden hier NICHT an Rollen gebunden.** Insbesondere
- * `activity-log.view` wird bewusst keiner Rolle (auch nicht `admin`) zugewiesen:
+ * PermissionName::ACTIVITY_LOG_VIEW->value wird bewusst keiner Rolle (auch nicht `admin`) zugewiesen:
  * Das Recht, den Mitglieder-Audit-Trail einzusehen, ist eine sicherheits- und
  * datenschutzsensible Berechtigung (Least Privilege / Need-to-know, Art. 32
  * DSGVO). Sie wird pro Person über `activity-log:grant` vergeben und über
@@ -40,6 +41,6 @@ class RoleSeeder extends Seeder
         Role::findOrCreate('member');
         Role::findOrCreate('admin');
 
-        Permission::findOrCreate('activity-log.view');
+        Permission::findOrCreate(PermissionName::ACTIVITY_LOG_VIEW->value);
     }
 }

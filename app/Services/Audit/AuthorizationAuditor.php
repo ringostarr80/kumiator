@@ -20,8 +20,9 @@ use Spatie\Activitylog\Facades\Activity;
  *
  * Auditiert wird nur, wenn das geprüfte Subjekt sich per `AuthorizationAuditable`
  * dazu anmeldet — sonst flutete jeder Sichtbarkeits-`@can` das Log. Der
- * subjektlose Zugriffsschutz (`activity-log.view`) bleibt darum bewusst an seiner
- * Aufrufstelle, die als Einzige weiß, dass ein echter Zugriffsversuch vorliegt.
+ * subjektlose Zugriffsschutz (PermissionName::ACTIVITY_LOG_VIEW->value) bleibt
+ * darum bewusst an seiner Aufrufstelle, die als Einzige weiß, dass ein echter
+ * Zugriffsversuch vorliegt.
  */
 final class AuthorizationAuditor
 {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\ActivityLog;
 
+use App\Enums\PermissionName;
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -41,7 +42,7 @@ class Revoke extends Command
             return self::FAILURE;
         }
 
-        if (!$user->hasDirectPermission('activity-log.view')) {
+        if (!$user->hasDirectPermission(PermissionName::ACTIVITY_LOG_VIEW->value)) {
             $this->warn(__('commands.activity_log_revoke.not_granted', [
                 'name' => $user->name,
                 'email' => $email,
@@ -50,7 +51,7 @@ class Revoke extends Command
             return self::SUCCESS;
         }
 
-        $user->revokePermissionTo('activity-log.view');
+        $user->revokePermissionTo(PermissionName::ACTIVITY_LOG_VIEW->value);
 
         $this->info(__('commands.activity_log_revoke.success', [
             'name' => $user->name,

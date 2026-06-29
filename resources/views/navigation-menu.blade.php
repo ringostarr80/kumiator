@@ -16,7 +16,7 @@
                         {{ __('app.dashboard') }}
                     </x-nav-link>
 
-                    @can('activity-log.view')
+                    @can(\App\Enums\PermissionName::ACTIVITY_LOG_VIEW->value)
                         <x-nav-link href="{{ route('admin.activity-log') }}" :active="request()->routeIs('admin.activity-log')">
                             {{ __('app.activity_log') }}
                         </x-nav-link>
@@ -153,7 +153,7 @@
                 {{ __('app.dashboard') }}
             </x-responsive-nav-link>
 
-            @can('activity-log.view')
+            @can(\App\Enums\PermissionName::ACTIVITY_LOG_VIEW->value)
                 <x-responsive-nav-link href="{{ route('admin.activity-log') }}" :active="request()->routeIs('admin.activity-log')">
                     {{ __('app.activity_log') }}
                 </x-responsive-nav-link>

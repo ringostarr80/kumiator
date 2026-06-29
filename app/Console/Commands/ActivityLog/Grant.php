@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\ActivityLog;
 
+use App\Enums\PermissionName;
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -11,8 +12,8 @@ use Illuminate\Console\Command;
 
 /**
  * Gewährt einem einzelnen Benutzer das Recht, das Activity-Log einzusehen
- * (Direkt-Permission `activity-log.view`, nicht über eine Rolle — siehe
- * `RoleSeeder` und `App\Console\Commands\ActivityLog\Revoke`).
+ * (Direkt-Permission, nicht über eine Rolle — siehe `RoleSeeder` und
+ * `App\Console\Commands\ActivityLog\Revoke`).
  *
  * Die Vergabe wird über den `LogPermissionChangeListener` automatisch als
  * `permission_attached` auditiert (Causer auf der CLI anonymisiert, Akteur im
@@ -42,7 +43,7 @@ class Grant extends Command
             return self::FAILURE;
         }
 
-        if ($user->hasDirectPermission('activity-log.view')) {
+        if ($user->hasDirectPermission(PermissionName::ACTIVITY_LOG_VIEW->value)) {
             $this->warn(__('commands.activity_log_grant.already_granted', [
                 'name' => $user->name,
                 'email' => $email,
@@ -51,7 +52,7 @@ class Grant extends Command
             return self::SUCCESS;
         }
 
-        $user->givePermissionTo('activity-log.view');
+        $user->givePermissionTo(PermissionName::ACTIVITY_LOG_VIEW->value);
 
         $this->info(__('commands.activity_log_grant.success', [
             'name' => $user->name,
