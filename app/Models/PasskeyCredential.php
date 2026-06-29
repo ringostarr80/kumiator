@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
+use App\Models\Concerns\RemapsActivityEvent;
 use App\Models\Contracts\AuthorizationAuditable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -58,6 +59,7 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
     use HasFactory;
     use HasUuids;
     use LogsActivity;
+    use RemapsActivityEvent;
 
     protected $fillable = [
         'user_id',
@@ -205,34 +207,6 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
     }
 
     /**
-     * Hebt vor dem Insert das generische Eloquent-Event (`created`/`updated`/…)
-     * auf den fachlichen `passkey_*`-Code an.
-     *
-     * Die Verdrahtung über einen `Activity::saving`-Listener ist am Hook im
-     * `AppServiceProvider` begründet.
-     */
-    public static function applyEventLabelToActivity(ActivityModel $activity): void
-    {
-        if ($activity->log_name !== ActivityChannel::PASSKEY->value) {
-            return;
-        }
-
-        $event = $activity->event;
-
-        if (!is_string($event)) {
-            return;
-        }
-
-        $mapped = self::mapLifecycleEvent($event);
-
-        if ($mapped === null) {
-            return;
-        }
-
-        $activity->event = $mapped->value;
-    }
-
-    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -245,6 +219,16 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
             'counter' => 'integer',
             'last_used_at' => 'datetime',
         ];
+    }
+
+    protected static function activityRemapChannel(): string
+    {
+        return ActivityChannel::PASSKEY->value;
+    }
+
+    protected static function mapActivityEvent(string $eventName, ActivityModel $activity): ?ActivityEvent
+    {
+        return self::mapLifecycleEvent($eventName);
     }
 
     /**

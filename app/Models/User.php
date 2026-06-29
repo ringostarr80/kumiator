@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
+use App\Models\Concerns\RemapsActivityEvent;
 use App\Models\Contracts\MustBeApproved;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -43,6 +44,7 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     use HasProfilePhoto;
     use LogsActivity;
     use Notifiable;
+    use RemapsActivityEvent;
     use SoftDeletes;
     use TwoFactorAuthenticatable;
 
@@ -146,43 +148,6 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     }
 
     /**
-     * Hebt vor dem Insert das generische Eloquent-Event (`created`/`updated`/…)
-     * auf den fachlichen `user_*`-Code an.
-     *
-     * Channel-agnostisch — dasselbe Mapping, egal ob CLI, Web-Admin oder
-     * Self-Registration den Vorgang auslöste; den Auslöse-Kanal markieren
-     * separate Hooks (`cli_actor`-Property, Self-Reg-Remap), nicht dieses Mapping.
-     * Die Verdrahtung über einen `Activity::saving`-Listener ist am Hook im
-     * `AppServiceProvider` begründet.
-     */
-    public static function applyEventLabelToActivity(ActivityModel $activity): void
-    {
-        if ($activity->log_name !== ActivityChannel::USER->value) {
-            return;
-        }
-
-        $event = $activity->event;
-
-        if (!is_string($event)) {
-            return;
-        }
-
-        $mapped = match ($event) {
-            'created' => ActivityEvent::USER_CREATED,
-            'updated' => self::mapUpdatedEvent($activity),
-            'deleted' => ActivityEvent::USER_DELETED,
-            'restored' => ActivityEvent::USER_RESTORED,
-            default => null,
-        };
-
-        if ($mapped === null) {
-            return;
-        }
-
-        $activity->event = $mapped->value;
-    }
-
-    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -196,6 +161,22 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
             'approved_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    protected static function activityRemapChannel(): string
+    {
+        return ActivityChannel::USER->value;
+    }
+
+    protected static function mapActivityEvent(string $eventName, ActivityModel $activity): ?ActivityEvent
+    {
+        return match ($eventName) {
+            'created' => ActivityEvent::USER_CREATED,
+            'updated' => self::mapUpdatedEvent($activity),
+            'deleted' => ActivityEvent::USER_DELETED,
+            'restored' => ActivityEvent::USER_RESTORED,
+            default => null,
+        };
     }
 
     /**
