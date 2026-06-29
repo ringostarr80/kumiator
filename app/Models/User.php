@@ -98,6 +98,17 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     }
 
     /**
+     * Macht die (im `HasProfilePhoto`-Trait `protected`) Disk-Auflösung für die
+     * Profilfoto-Action zugänglich, die das Schreiben/Löschen der Datei aus der
+     * Lösch-Transaktion heraushebt — eine zweite Quelle der Wahrheit für die
+     * Disk-Wahl entfällt damit.
+     */
+    public function profilePhotoDiskName(): string
+    {
+        return $this->profilePhotoDisk();
+    }
+
+    /**
      * @return HasMany<PasskeyCredential, $this>
      */
     public function passkeyCredentials(): HasMany

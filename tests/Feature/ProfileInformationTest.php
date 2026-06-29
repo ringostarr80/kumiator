@@ -192,7 +192,7 @@ final class ProfileInformationTest extends TestCase
 
     public function testProfileUpdateRollsBackAllWritesWhenEmailRequestFails(): void
     {
-        Storage::fake();
+        Storage::fake('public');
         Notification::fake();
         $this->actingAs($user = User::factory()->create([
             'name' => 'Original',
@@ -237,9 +237,65 @@ final class ProfileInformationTest extends TestCase
         Notification::assertNothingSent();
     }
 
+    public function testFailedEmailRequestKeepsTheExistingPhotoFileAndRemovesTheNewOne(): void
+    {
+        // Profilfotos liegen auf der `public`-Disk; gezielt diese isolieren, damit
+        // das Verzeichnis-Assert unten nur die Dateien dieses Tests sieht.
+        Storage::fake('public');
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create([
+            'name' => 'Original',
+            'email' => 'original@example.com',
+        ]));
+
+        // Vorhandenes Foto aufsetzen, dessen Datei der Rollback NICHT anfassen darf.
+        app(UpdateUserProfileInformation::class)->update($user, [
+            'name' => $user->name,
+            'email' => $user->email,
+            'photo' => UploadedFile::fake()->image('first.jpg'),
+        ]);
+        $existingPath = $user->fresh()?->profile_photo_path;
+        $this->assertIsString($existingPath);
+        Storage::disk('public')->assertExists($existingPath);
+
+        Activity::query()->delete();
+
+        // Fehler im LETZTEN Schritt erzwingen: Der `pending_email`-Save wirft.
+        // Ein echter Save-Hook, kein Mock.
+        User::saving(function (User $model): void {
+            if ($model->isDirty('pending_email')) {
+                throw new \RuntimeException('boom beim pending_email-Save');
+            }
+        });
+
+        try {
+            app(UpdateUserProfileInformation::class)->update($user, [
+                'name' => 'Geändert',
+                'email' => 'neu@example.com',
+                'current_password' => 'password',
+                'photo' => UploadedFile::fake()->image('second.jpg'),
+            ]);
+            $this->fail('Erwartete RuntimeException aus dem pending_email-Save.');
+        } catch (\RuntimeException) {
+            // erwartet
+        }
+
+        $refreshed = $user->fresh();
+        $this->assertNotNull($refreshed);
+
+        // DB rollt auf das alte Foto zurück — und dessen Datei lebt noch (Avatar
+        // bleibt heil), weil sie nicht synchron in der Transaktion gelöscht wird.
+        $this->assertSame($existingPath, $refreshed->profile_photo_path);
+        Storage::disk('public')->assertExists($existingPath);
+
+        // Die neu geschriebene Datei wurde nach dem Rollback wieder entfernt:
+        // im Verzeichnis liegt nur noch das alte Foto, kein verwaister Rest.
+        $this->assertSame([$existingPath], Storage::disk('public')->files('profile-photos'));
+    }
+
     public function testProfilePhotoCanBeUpdated(): void
     {
-        Storage::fake();
+        Storage::fake('public');
 
         $this->actingAs($user = User::factory()->create());
 
@@ -285,7 +341,7 @@ final class ProfileInformationTest extends TestCase
 
     public function testReplacingProfilePhotoLogsBothPaths(): void
     {
-        Storage::fake();
+        Storage::fake('public');
 
         $this->actingAs($user = User::factory()->create());
 
@@ -316,11 +372,17 @@ final class ProfileInformationTest extends TestCase
         $this->assertSame($firstPath, $properties['previous_profile_photo_path'] ?? null);
         $this->assertNotNull($properties['profile_photo_path'] ?? null);
         $this->assertNotSame($firstPath, $properties['profile_photo_path']);
+
+        // Nach erfolgreichem Commit ist die alte Datei gelöscht, die neue da.
+        $secondPath = $properties['profile_photo_path'];
+        $this->assertIsString($secondPath);
+        Storage::disk('public')->assertMissing($firstPath);
+        Storage::disk('public')->assertExists($secondPath);
     }
 
     public function testProfilePhotoCanBeRemoved(): void
     {
-        Storage::fake();
+        Storage::fake('public');
 
         $this->actingAs($user = User::factory()->create());
 
@@ -359,7 +421,7 @@ final class ProfileInformationTest extends TestCase
 
     public function testRemovingNonexistentProfilePhotoDoesNotLog(): void
     {
-        Storage::fake();
+        Storage::fake('public');
 
         $this->actingAs($user = User::factory()->create());
 
@@ -406,7 +468,7 @@ final class ProfileInformationTest extends TestCase
 
     public function testProfilePhotoExceedingTheEffectiveLimitIsRejected(): void
     {
-        Storage::fake();
+        Storage::fake('public');
         config(['jetstream.profile_photo_max_kilobytes' => 1_024]);
 
         $this->actingAs($user = User::factory()->create());
@@ -423,7 +485,7 @@ final class ProfileInformationTest extends TestCase
 
     public function testHugePixelImageIsRejectedWithFieldErrorInsteadOfServerError(): void
     {
-        Storage::fake();
+        Storage::fake('public');
 
         $this->actingAs($user = User::factory()->create());
 
@@ -492,7 +554,7 @@ final class ProfileInformationTest extends TestCase
     #[DataProvider('acceptedProfilePhotoExtensionProvider')]
     public function testEachConfiguredExtensionIsAccepted(string $filename): void
     {
-        Storage::fake();
+        Storage::fake('public');
 
         $this->actingAs($user = User::factory()->create());
 
@@ -508,7 +570,7 @@ final class ProfileInformationTest extends TestCase
 
     public function testUnacceptedExtensionIsRejected(): void
     {
-        Storage::fake();
+        Storage::fake('public');
 
         $this->actingAs($user = User::factory()->create());
 

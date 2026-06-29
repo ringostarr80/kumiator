@@ -13,6 +13,7 @@ use App\Services\Upload\Exceptions\ProfilePhotoOptimizationException;
 use App\Services\User\Contracts\UserEmailChangerContract;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -75,9 +76,9 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
         $previousPhotoPath = null;
 
         if (isset($input['photo']) && $input['photo'] instanceof UploadedFile) {
-            // Pfad VOR dem Trait-Aufruf snapshotten — `updateProfilePhoto()`
-            // überschreibt `profile_photo_path` per `forceFill()->save()`,
-            // danach wäre der alte Wert verloren.
+            // Alten Pfad snapshotten: Die Datei dahinter wird erst NACH einem
+            // erfolgreichen Commit gelöscht (s. unten), nicht synchron in der
+            // Transaktion — ein Rollback könnte sie sonst nicht wiederherstellen.
             $previousPhotoPath = $this->stringOrNull($user->getAttribute('profile_photo_path'));
 
             // Optimierung VOR der Transaktion: schlägt der Bomben-/Decode-Schutz
@@ -106,24 +107,50 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             return;
         }
 
-        // Atomar: Foto-Pfad, Name und der Deferred-E-Mail-Antrag (samt ihrer
-        // Audit-Einträge) committen gemeinsam oder gar nicht. Sonst bliebe bei
-        // einem Fehler im E-Mail-Schritt ein bereits gespeichertes und
-        // auditiertes Foto oder ein hängender `pending_email`-Teilzustand
-        // zurück. Die Confirm-/Cancel-Mails sind `ShouldQueueAfterCommit` und
-        // gehen damit erst nach erfolgreichem Commit raus — ein Rollback
-        // verschickt keine Mail für eine nicht persistierte Änderung.
-        DB::transaction(fn () => $this->persistProfileChanges(
-            $user,
-            $name,
-            $email,
-            $optimizedPhoto,
-            $previousPhotoPath,
-        ));
+        // Die neue Foto-Datei VOR der Transaktion auf die Platte legen: ein
+        // Datei-Schreibvorgang ist nicht rückrollbar und gehört darum nicht in
+        // die DB-Transaktion. In der Transaktion wird nur der Pfad-Zeiger atomar
+        // mit Name + E-Mail-Antrag umgelegt.
+        $photoDisk = $user->profilePhotoDiskName();
+        $newPhotoPath = null;
+
+        if ($optimizedPhoto !== null) {
+            $newPhotoPath = $optimizedPhoto->storePublicly('profile-photos', ['disk' => $photoDisk]) ?: null;
+        }
+
+        try {
+            // Atomar: Foto-Pfad, Name und der Deferred-E-Mail-Antrag (samt ihrer
+            // Audit-Einträge) committen gemeinsam oder gar nicht. Sonst bliebe bei
+            // einem Fehler im E-Mail-Schritt ein bereits gespeicherter und
+            // auditierter Foto-Pfad oder ein hängender `pending_email`-Teilzustand
+            // zurück. Die Confirm-/Cancel-Mails sind `ShouldQueueAfterCommit` und
+            // gehen damit erst nach erfolgreichem Commit raus — ein Rollback
+            // verschickt keine Mail für eine nicht persistierte Änderung.
+            DB::transaction(fn () => $this->persistProfileChanges(
+                $user,
+                $name,
+                $email,
+                $newPhotoPath,
+                $previousPhotoPath,
+            ));
+        } catch (\Throwable $e) {
+            // Rollback: die DB zeigt wieder auf das alte Foto, also die soeben
+            // geschriebene neue Datei wieder entfernen, sonst verwaist sie.
+            if ($newPhotoPath !== null) {
+                Storage::disk($photoDisk)->delete($newPhotoPath);
+            }
+
+            throw $e;
+        }
+
+        // Erst nach erfolgreichem Commit: die alte, jetzt ersetzte Datei löschen.
+        if ($newPhotoPath !== null && $previousPhotoPath !== null) {
+            Storage::disk($photoDisk)->delete($previousPhotoPath);
+        }
     }
 
     /**
-     * Schreibt Foto, Name und den Deferred-E-Mail-Antrag innerhalb der
+     * Schreibt Foto-Pfad, Name und den Deferred-E-Mail-Antrag innerhalb der
      * aufrufenden `update()`-Transaktion — die Atomaritäts- und
      * After-Commit-Begründung steht dort.
      */
@@ -131,18 +158,18 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
         User $user,
         string $name,
         string $email,
-        ?UploadedFile $optimizedPhoto,
+        ?string $newPhotoPath,
         ?string $previousPhotoPath,
     ): void {
-        if ($optimizedPhoto !== null) {
-            $user->updateProfilePhoto($optimizedPhoto);
+        if ($newPhotoPath !== null) {
+            $user->forceFill(['profile_photo_path' => $newPhotoPath])->saveOrFail();
 
             Activity::useLog(ActivityChannel::USER->value)
                 ->event(ActivityEvent::PROFILE_PHOTO_UPDATED->value)
                 ->causedBy($user)
                 ->performedOn($user)
                 ->withProperties([
-                    'profile_photo_path' => $this->stringOrNull($user->getAttribute('profile_photo_path')),
+                    'profile_photo_path' => $newPhotoPath,
                     'previous_profile_photo_path' => $previousPhotoPath,
                 ])
                 ->log(ActivityEvent::PROFILE_PHOTO_UPDATED->description());
