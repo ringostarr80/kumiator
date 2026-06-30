@@ -63,15 +63,7 @@ class Restore extends Command
             return self::SUCCESS;
         }
 
-        // Laravel 13 bietet kein `restoreOrFail()`; `restore()` gibt `false` nur
-        // zurück, wenn ein `restoring`-Listener abbricht. In diesem Projekt gibt
-        // es derzeit keinen solchen Listener — der Branch ist Defensive-Coding
-        // gegen zukünftige Erweiterungen, ohne neue Exception-Typen einzuführen.
-        if ($user->restore() === false) {
-            $this->error(__('commands.restore_user.failed', ['email' => $email]));
-
-            return self::FAILURE;
-        }
+        $user->restore();
 
         $this->info(__('commands.restore_user.success', ['name' => $user->name, 'email' => $email]));
 

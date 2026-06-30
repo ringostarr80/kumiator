@@ -39,7 +39,6 @@ return [
         'permissions_hint' => 'Achtung: Rollen und Direkt-Berechtigungen (z. B. activity-log.view)'
             . ' wurden beim Löschen nicht entfernt und gelten nach der Wiederherstellung'
             . ' sofort wieder.',
-        'failed' => 'Wiederherstellung von ":email" wurde abgebrochen.',
         'success' => 'Benutzer ":name" (:email) wurde erfolgreich wiederhergestellt.',
     ],
 
