@@ -8,57 +8,43 @@ use App\Enums\PermissionName;
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
-use Illuminate\Console\Command;
 
 /**
  * Gewährt einem einzelnen Benutzer das Recht, das Activity-Log einzusehen
- * (Direkt-Permission, nicht über eine Rolle — siehe `RoleSeeder` und
- * `App\Console\Commands\ActivityLog\Revoke`).
+ * (Direkt-Permission, nicht über eine Rolle — siehe `RoleSeeder`).
  *
  * Die Vergabe wird über den `LogPermissionChangeListener` automatisch als
  * `permission_attached` auditiert (Causer auf der CLI anonymisiert, Akteur im
  * `cli_actor`-Property). `givePermissionTo()` feuert das Attach-Event auch bei
- * einem No-Op; deshalb fängt der `hasDirectPermission()`-Guard eine doppelte
- * Vergabe vor dem Aufruf ab, damit kein falsch-positiver Audit-Eintrag entsteht.
+ * einem No-Op; deshalb fängt der No-Op-Guard eine doppelte Vergabe vor dem
+ * Aufruf ab, damit kein falsch-positiver Audit-Eintrag entsteht.
  */
 #[Signature('activity-log:grant')]
 #[Description('Gewährt einem Benutzer das Recht, das Activity-Log einzusehen')]
-class Grant extends Command
+class Grant extends ActivityLogPermissionCommand
 {
-    public function handle(): int
+    protected function titleKey(): string
     {
-        $title = __('commands.activity_log_grant.title');
-        $this->info($title);
-        $this->line(str_repeat('-', mb_strlen($title)));
+        return 'commands.activity_log_grant.title';
+    }
 
-        /** @var string $email */
-        $email = $this->ask(__('commands.common.ask_email')) ?? '';
+    protected function noOpMessageKey(): string
+    {
+        return 'commands.activity_log_grant.already_granted';
+    }
 
-        /** @var ?User $user */
-        $user = User::where('email', $email)->first();
+    protected function successMessageKey(): string
+    {
+        return 'commands.activity_log_grant.success';
+    }
 
-        if ($user === null) {
-            $this->error(__('commands.common.not_found', ['email' => $email]));
+    protected function isNoOp(User $user): bool
+    {
+        return $user->hasDirectPermission(PermissionName::ACTIVITY_LOG_VIEW->value);
+    }
 
-            return self::FAILURE;
-        }
-
-        if ($user->hasDirectPermission(PermissionName::ACTIVITY_LOG_VIEW->value)) {
-            $this->warn(__('commands.activity_log_grant.already_granted', [
-                'name' => $user->name,
-                'email' => $email,
-            ]));
-
-            return self::SUCCESS;
-        }
-
+    protected function applyPermissionChange(User $user): void
+    {
         $user->givePermissionTo(PermissionName::ACTIVITY_LOG_VIEW->value);
-
-        $this->info(__('commands.activity_log_grant.success', [
-            'name' => $user->name,
-            'email' => $email,
-        ]));
-
-        return self::SUCCESS;
     }
 }
