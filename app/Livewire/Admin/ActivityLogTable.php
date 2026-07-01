@@ -327,6 +327,11 @@ final class ActivityLogTable extends Component
         // daher die explizite ESCAPE-Klausel (nur über whereRaw setzbar).
         $escaped = addcslashes($term, '\\%_');
 
+        // Bewusst eine explizite Liste, nicht array_keys(morphMap()) oder '*':
+        // die Closure sucht `name like` in jeder gelisteten Typ-Tabelle,
+        // das sind nur Morph-Aliase mit `name`-Spalte. Ein künftiges
+        // Morph-Model ohne `name` gehört hier nicht rein (sonst SQL-Fehler);
+        // die Liste wird deshalb getrennt von der Morph-Map gepflegt.
         $query->whereHasMorph(
             $relation,
             ['user', 'passkey', 'role'],

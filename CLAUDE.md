@@ -7,7 +7,7 @@ Jeder Verein hat dabei seine eigene unabhängige Instanz (URL) zur Verfügung.
 
 ## Harte Regeln
 
-1. **Verifikations-Pipeline nach jeder Code-Änderung** – folgende Kommandos nacheinander ausführen und nach jedem auf Fehler prüfen und korrigieren, bevor das nächste startet:
+1. **Verifikations-Pipeline nach jeder Code-Änderung, außer bei reinen Kommentaränderungen** – folgende Kommandos nacheinander ausführen und nach jedem auf Fehler prüfen und korrigieren, bevor das nächste startet:
     - `composer run dev:lint:phpcs`
     - `composer run dev:analyze:phpstan`
     - `composer run dev:analyze:phpat`
