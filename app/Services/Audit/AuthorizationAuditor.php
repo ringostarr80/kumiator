@@ -96,8 +96,7 @@ final class AuthorizationAuditor implements AuthorizationAuditorContract
                     'ability' => $ability,
                     // Morph-Alias statt FQCN — konsistent zu subject_type/causer_type.
                     'target_type' => $subject?->getMorphClass(),
-                    // SHA-256 der ID statt Klartext (DSGVO-Datenminimierung).
-                    'target_id_hash' => is_scalar($key) ? hash('sha256', (string) $key) : null,
+                    'target_id_hash' => AuditIdHasher::hash($key),
                 ])
                 ->log(ActivityEvent::AUTHORIZATION_DENIED->description());
         } catch (\Throwable $e) {

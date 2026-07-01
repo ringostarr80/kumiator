@@ -9,6 +9,7 @@ use App\Livewire\Profile\PasskeyManagerForm;
 use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
+use App\Services\Audit\AuditIdHasher;
 use App\Services\Audit\AuthorizationAuditor;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -245,7 +246,7 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertSame($ability, $properties['ability'] ?? null);
         $this->assertSame($target->getMorphClass(), $properties['target_type'] ?? null);
-        $this->assertSame(hash('sha256', $target->id), $properties['target_id_hash'] ?? null);
+        $this->assertSame(AuditIdHasher::hash($target->id), $properties['target_id_hash'] ?? null);
     }
 
     private function latestAuthorizationDenied(): ?Activity
