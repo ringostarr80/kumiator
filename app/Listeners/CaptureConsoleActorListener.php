@@ -33,6 +33,11 @@ final class CaptureConsoleActorListener
      * Scheduler-Job geschriebenen Eintrag fälschlich als CLI-Aktion mit
      * genulltem Causer. Solche Commands hosten fremde Arbeit und sind selbst
      * kein Admin-Akteur.
+     *
+     * Bewusst eine Namens-Denylist und kein generelles Signal: Laravel kennt
+     * keine Daemon-Kennzeichnung (kein gemeinsames Interface, `CommandStarting`
+     * trägt nur den Namen). Die Liste deckt die First-Party-Worker ab; ein
+     * eigener Daemon kommt als ein Eintrag dazu.
      */
     private const LONG_RUNNING_COMMANDS = [
         'queue:work',
