@@ -16,6 +16,7 @@ use Spatie\Activitylog\Facades\Activity;
 
 class UpdateUserPassword implements UpdatesUserPasswords
 {
+    use DetectsFailedCurrentPassword;
     use PasswordValidationRules;
 
     /**
@@ -62,13 +63,7 @@ class UpdateUserPassword implements UpdatesUserPasswords
      */
     private function recordFailedCurrentPasswordCheck(User $user, ValidationException $e): void
     {
-        // Prüfung über `failed()` (verletzte Rule) statt bloßer Key-Existenz
-        // in `errors()`: ein `required`-Verstoß (Feld fehlt bei direktem
-        // HTTP-Call) ist kein geprüfter Mismatch und darf nicht als solcher
-        // auditiert werden.
-        $failedRules = $e->validator->failed()['current_password'] ?? [];
-
-        if (!is_array($failedRules) || !array_key_exists('CurrentPassword', $failedRules)) {
+        if (!$this->currentPasswordRuleFailed($e)) {
             return;
         }
 

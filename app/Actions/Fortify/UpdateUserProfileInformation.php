@@ -22,6 +22,8 @@ use Spatie\Activitylog\Facades\Activity;
 
 class UpdateUserProfileInformation implements UpdatesUserProfileInformation
 {
+    use DetectsFailedCurrentPassword;
+
     public function __construct(
         private readonly UserEmailChangerContract $emailChanger,
         private readonly UploadLimitResolverContract $uploadLimitResolver,
@@ -192,9 +194,8 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
     /**
      * Auditiert NUR den Mismatch des aktuellen Passworts (Forensik-Signal für
      * eine gekaperte Session), nicht den `required`-Verstoß — der ist ein
-     * UX-Eingabefehler ohne Sicherheitsaussage. Darum die Prüfung über
-     * `failed()` (verletzte Regel) statt bloßer Key-Existenz in `errors()`;
-     * Audit-Symmetrie zum `password_update_failed`-Event beim Passwort-Wechsel.
+     * UX-Eingabefehler ohne Sicherheitsaussage. Audit-Symmetrie zum
+     * `password_update_failed`-Event beim Passwort-Wechsel.
      *
      * Das Schreiben delegiert an den `UserEmailChanger`-Service, weil dort
      * alle `email_change_*`-Audits inkl. des E-Mail-Hashings liegen — Actions
@@ -205,9 +206,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
      */
     private function recordFailedCurrentPasswordCheck(User $user, array $input, ValidationException $e): void
     {
-        $failedRules = $e->validator->failed()['current_password'] ?? [];
-
-        if (!is_array($failedRules) || !array_key_exists('CurrentPassword', $failedRules)) {
+        if (!$this->currentPasswordRuleFailed($e)) {
             return;
         }
 
