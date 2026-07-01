@@ -318,6 +318,12 @@ final class ActivityLogTable extends Component
      * `whereHasMorph` erzeugt EXISTS-Subqueries, also keine zusätzliche Query
      * pro Row — das Query-Budget bleibt gewahrt.
      *
+     * Das führende Wildcard (`%term%`, s. u.) ist nicht indizierbar, aber
+     * bewusst: Substring-Treffer sind gewolltes Admin-UX, und die EXISTS
+     * korreliert über den PK der Instanz-Tabelle (ein Verein je Instanz →
+     * klein), sodass das LIKE pro Zeile nur eine per PK geholte Row filtert
+     * statt `users`/`passkeys`/`roles` zu scannen.
+     *
      * @param Builder<Activity> $query
      */
     private function applyNameSearch(Builder $query, string $relation, string $term): void
