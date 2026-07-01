@@ -22,10 +22,13 @@ use Illuminate\Auth\Events\PasswordResetLinkSent;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\GenericUser;
 use Illuminate\Contracts\Auth\CanResetPassword;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Events\PasswordUpdatedViaController;
 use Livewire\Livewire;
@@ -1077,6 +1080,67 @@ final class AuthenticationActivityLogTest extends TestCase
         $this->assertSame('Audit-Revoke-Token', $properties['token_name'] ?? null);
         $this->assertSame($token->id, $properties['token_id'] ?? null);
         $this->assertSame(['read', 'delete'], $properties['abilities'] ?? null);
+    }
+
+    /**
+     * Der UI-Erstellungspfad auditiert erst, nachdem Sanctum den Token bereits
+     * persistiert hat. Bricht der Audit-Insert, darf das die abgeschlossene
+     * Token-Erstellung nicht als 500 verkleiden — der Fehler wird gemeldet und
+     * verschluckt, der Token bleibt bestehen.
+     */
+    public function testApiTokenCreationSurvivesFailingAuditWrite(): void
+    {
+        Exceptions::fake();
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $this->actingAs($user);
+
+        // Audit-Sink gezielt unbrauchbar machen: Der Insert ins Activity-Log
+        // wirft dann, während `personal_access_tokens` intakt bleibt.
+        Schema::drop('activity_log');
+
+        Livewire::test(ApiTokenManager::class)
+            ->set(['createApiTokenForm' => [
+                'name' => 'Resilienz-Token',
+                'permissions' => ['read'],
+            ]])
+            ->call('createApiToken');
+
+        $tokens = $user->fresh()?->tokens;
+        $this->assertNotNull($tokens);
+        $this->assertCount(1, $tokens);
+        Exceptions::assertReported(QueryException::class);
+    }
+
+    /**
+     * Symmetrisch zur Erstellung: Der UI-Widerruf auditiert nach
+     * `parent::deleteApiToken()`, also nachdem der Token schon gelöscht ist.
+     * Ein brechender Audit-Insert darf den erfolgreichen Widerruf nicht als 500
+     * verkleiden.
+     */
+    public function testApiTokenRevocationSurvivesFailingAuditWrite(): void
+    {
+        Exceptions::fake();
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $this->actingAs($user);
+
+        $token = $user->tokens()->create([
+            'name' => 'Resilienz-Revoke-Token',
+            'token' => Str::random(40),
+            'abilities' => ['read'],
+        ]);
+
+        Schema::drop('activity_log');
+
+        Livewire::test(ApiTokenManager::class)
+            ->set(['apiTokenIdBeingDeleted' => $token->id])
+            ->call('deleteApiToken');
+
+        $tokens = $user->fresh()?->tokens;
+        $this->assertNotNull($tokens);
+        $this->assertCount(0, $tokens);
+        Exceptions::assertReported(QueryException::class);
     }
 
     public function testPasswordUpdateWithNonEloquentAuthenticatableIsSilentlySkipped(): void

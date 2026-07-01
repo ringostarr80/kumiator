@@ -15,17 +15,35 @@ final class SanctumTokenAuditor implements SanctumTokenAuditorContract
 {
     public function recordCreated(User $subject, Model $token): void
     {
-        $this->write(ActivityEvent::API_TOKEN_CREATED, $subject, $token, false);
+        $this->writeResilient(ActivityEvent::API_TOKEN_CREATED, $subject, $token);
     }
 
     public function recordRevoked(User $subject, Model $token): void
     {
-        $this->write(ActivityEvent::API_TOKEN_REVOKED, $subject, $token, false);
+        $this->writeResilient(ActivityEvent::API_TOKEN_REVOKED, $subject, $token);
     }
 
     public function recordRevokedAnonymously(User $subject, Model $token): void
     {
+        // Bewusst ohne Auffangen: der CLI-Lösch-Pfad ruft dies innerhalb einer
+        // Transaktion auf, in der Token-Delete und dieser Insert gemeinsam
+        // klammern — ein verschluckter Fehler verhinderte den gewollten Rollback.
         $this->write(ActivityEvent::API_TOKEN_REVOKED, $subject, $token, true);
+    }
+
+    /**
+     * Die UI-Pfade auditieren erst, nachdem der Parent-Aufruf die Token-Mutation
+     * schon committet hat. Ein hier geworfener Insert-Fehler dürfte diese
+     * abgeschlossene Operation nicht als 500 verkleiden — deshalb melden statt
+     * durchreichen, symmetrisch zum `AuthorizationAuditor`.
+     */
+    private function writeResilient(ActivityEvent $event, User $subject, Model $token): void
+    {
+        try {
+            $this->write($event, $subject, $token, false);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     private function write(ActivityEvent $event, User $subject, Model $token, bool $anonymous): void
@@ -39,9 +57,6 @@ final class SanctumTokenAuditor implements SanctumTokenAuditorContract
             $activity->causedBy($subject);
         }
 
-        // Kein try/catch: im CLI-Lösch-Pfad läuft der Insert in einer
-        // Transaktion, ein verschluckter Fehler verhinderte dort den
-        // gewollten Rollback des Token-Deletes.
         $activity
             ->performedOn($subject)
             ->withProperties([
