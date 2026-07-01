@@ -194,7 +194,6 @@ final class ProfilePhotoOptimizerTest extends TestCase
         ob_start();
         imagejpeg($image, null, 95);
         $jpeg = ob_get_clean();
-        $this->assertIsString($jpeg);
 
         if ($orientation !== null) {
             // Minimaler EXIF-APP1-Block (big-endian) mit nur dem Orientation-Tag
@@ -227,7 +226,6 @@ final class ProfilePhotoOptimizerTest extends TestCase
         ob_start();
         imagejpeg($image, null, 90);
         $jpeg = ob_get_clean();
-        $this->assertIsString($jpeg);
 
         // APP1-Länge 0x10: 2 Längenbytes + "Exif\0\0" (6) + "ZZ" (2) +
         // TIFF-Magic/Offset (6). Die Längenangabe bleibt gültig, nur der
@@ -257,7 +255,6 @@ final class ProfilePhotoOptimizerTest extends TestCase
         ob_start();
         imagepng($image);
         $png = ob_get_clean();
-        $this->assertIsString($png);
 
         // IHDR: Breite ab Byte 16, Höhe ab Byte 20 (je 4 Bytes, big-endian).
         $png = substr_replace($png, pack('N2', $width, $height), 16, 8);

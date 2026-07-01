@@ -623,7 +623,6 @@ final class ProfileInformationTest extends TestCase
         ob_start();
         imagepng($image);
         $png = ob_get_clean();
-        $this->assertIsString($png);
 
         // IHDR: Breite ab Byte 16, Höhe ab Byte 20 (je 4 Bytes, big-endian).
         $png = substr_replace($png, pack('N2', $width, $height), 16, 8);
