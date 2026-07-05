@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\PendingCommand;
 use Laravel\Sanctum\PersonalAccessToken;
 use RuntimeException;
@@ -315,6 +316,34 @@ final class UserSoftDeleteTest extends TestCase
                 ->where('subject_type', $bystander->getMorphClass())
                 ->where('subject_id', $bystander->getKey())
                 ->count(),
+        );
+    }
+
+    /**
+     * Regression: Der Foto-Aufräumschritt nach dem Commit darf den hart
+     * gelöschten User nicht wieder anlegen. Jetstreams `deleteProfilePhoto()`
+     * endet mit `->save()`; auf dem per `forceDelete()` bereits entfernten Model
+     * (`exists=false`) ist das ein INSERT — der User käme samt E-Mail und
+     * Passwort-Hash mit `deleted_at=null` als aktiver Account zurück und
+     * unterliefe die DSGVO-Löschung. Ohne Profilfoto greift der Early-Return im
+     * Trait, weshalb die übrigen Lösch-Tests den Pfad nicht treffen.
+     */
+    public function testSelfDeleteWithProfilePhotoDoesNotResurrectUser(): void
+    {
+        Config::set('jetstream.profile_photo_disk', $disk = 'public');
+        Storage::fake($disk);
+
+        $user = User::factory()->create();
+        Storage::disk($disk)->put($photoPath = 'profile-photos/avatar.jpg', 'binary');
+        $user->forceFill(['profile_photo_path' => $photoPath])->saveQuietly();
+
+        $userId = $user->getKey();
+
+        app(DeleteUser::class)->delete($user);
+
+        $this->assertNull(
+            User::query()->withTrashed()->find($userId),
+            'Der hart gelöschte User darf durch das Foto-Aufräumen nicht wieder in der DB auftauchen.',
         );
     }
 

@@ -12,6 +12,7 @@ use App\Services\Session\Contracts\UserSessionTerminatorContract;
 use App\Services\User\Contracts\UserHardDeleterContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
 use Spatie\Activitylog\Facades\Activity;
 use Spatie\Activitylog\Models\Activity as ActivityModel;
@@ -90,11 +91,19 @@ final class UserHardDeleter implements UserHardDeleterContract
                 ->log($event->description());
         });
 
-        // Wie `deleteProfilePhoto()` ein nicht-rollbackbarer Seiteneffekt nach
-        // dem Commit: `session.connection` kann auf einer anderen Connection
-        // liegen als die Transaktion und gehörte dann nicht zu deren Rollback.
+        // Nicht-rollbackbarer Seiteneffekt bewusst NACH dem Commit:
+        // `session.connection` kann auf einer anderen Connection liegen als die
+        // Transaktion und gehörte dann nicht zu deren Rollback.
         $this->sessionTerminator->deleteForUser($user);
 
-        $user->deleteProfilePhoto();
+        // Die Foto-Datei direkt über den Storage abräumen statt über
+        // `deleteProfilePhoto()`: dessen abschließendes `save()` liefe auf dem
+        // per `forceDelete()` entfernten Model (`exists=false`) als INSERT und
+        // legte den User samt E-Mail/Passwort-Hash wieder an.
+        $photoPath = $user->profile_photo_path;
+
+        if ($photoPath !== null) {
+            Storage::disk($user->profilePhotoDiskName())->delete($photoPath);
+        }
     }
 }
