@@ -148,15 +148,12 @@ final class PermissionChangeActivityLogTest extends TestCase
     }
 
     /**
-     * Bewusst festgeschriebenes Spatie-Verhalten: `syncPermissions()` macht
-     * intern `permissions()->detach()` **ohne Event** und ruft danach
-     * `givePermissionTo($permissions)` (das nur das Attach-Event feuert).
-     * Entzüge über `syncPermissions()` werden also nicht geloggt — heute
-     * irrelevant (keine Call-Site), aber bei Einführung eines Admin-UIs
-     * bricht dieser Test bewusst und zwingt zur Neubewertung (z. B. via
-     * `PermissionSyncService` mit explizitem Δ-Logging).
+     * `syncPermissions()` entfernt die bestehenden Permissions bei aktivierten
+     * Events über `revokePermissionTo()` und feuert dabei ein
+     * `PermissionDetachedEvent`. Ein Sync loggt damit symmetrisch beide Seiten
+     * des Δ: den Entzug der alten und die Zuweisung der neuen Permission.
      */
-    public function testSyncPermissionsOnlyLogsAttachAndDocumentsSpatieGap(): void
+    public function testSyncPermissionsLogsBothDetachAndAttach(): void
     {
         $admin = Role::findByName('admin');
         $oldPermission = Permission::findOrCreate('test.old');
@@ -178,12 +175,10 @@ final class PermissionChangeActivityLogTest extends TestCase
             ->where('subject_id', $admin->getKey())
             ->get();
 
-        $this->assertCount(
-            0,
-            $detached,
-            'Spatie sollte hier KEIN PermissionDetachedEvent feuern — wenn das jetzt eines tut, '
-            . 'wurde der Quirk in einer neuen Spatie-Version repariert und dieser Test sowie '
-            . 'der DocBlock im Listener brauchen ein Update.',
+        $this->assertCount(1, $detached);
+        $this->assertEqualsCanonicalizing(
+            ['test.old'],
+            $detached->first()?->properties?->toArray()['permissions'] ?? [],
         );
         $this->assertCount(1, $attached);
         $this->assertEqualsCanonicalizing(

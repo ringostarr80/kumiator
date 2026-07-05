@@ -19,7 +19,7 @@
         "livewire/livewire": "^4.3",
         "nyholm/psr7": "^1.8",
         "spatie/laravel-activitylog": "^5.0",
-        "spatie/laravel-permission": "^8.0",
+        "spatie/laravel-permission": "^8.3",
         "symfony/psr-http-message-bridge": "^8.1",
         "web-auth/webauthn-lib": "^5.3"
     },
@@ -31,13 +31,13 @@
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.9",
         "php-parallel-lint/php-parallel-lint": "^1.4",
-        "phpat/phpat": "^0.12.4",
+        "phpat/phpat": "^0.12",
         "phpstan/extension-installer": "^1.4",
-        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan": "^2.2",
         "phpstan/phpstan-deprecation-rules": "^2.0",
         "phpstan/phpstan-mockery": "^2.0",
-        "phpunit/phpunit": "^13.1",
-        "slevomat/coding-standard": "^8.28",
+        "phpunit/phpunit": "^13.2",
+        "slevomat/coding-standard": "^8.30",
         "squizlabs/php_codesniffer": "^4.0"
     },
     "autoload": {

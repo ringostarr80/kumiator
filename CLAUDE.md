@@ -8,10 +8,10 @@ Jeder Verein hat dabei seine eigene unabhängige Instanz (URL) zur Verfügung.
 ## Harte Regeln
 
 1. **Verifikations-Pipeline nach jeder Code-Änderung, außer bei reinen Kommentaränderungen** – folgende Kommandos nacheinander ausführen und nach jedem auf Fehler prüfen und korrigieren, bevor das nächste startet:
-    - `composer run dev:lint:phpcs`
-    - `composer run dev:analyze:phpstan`
-    - `composer run dev:analyze:phpat`
-    - `composer run test`
+    - `vendor/bin/phpcs`
+    - `vendor/bin/phpstan analyse --configuration=phpstan-8.4.neon --memory-limit=512M`
+    - `vendor/bin/phpstan analyse --configuration=phpstan-arch.neon --memory-limit=512M`
+    - `php artisan config:clear --ansi && php artisan test --coverage`
 
    Schlägt `dev:analyze:phpat` fehl, darfst du überlegen, ob eine Architekturregel angepasst werden sollte – **vorher nachfragen**, nie eigenmächtig ändern.
 

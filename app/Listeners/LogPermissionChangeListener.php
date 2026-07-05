@@ -25,20 +25,10 @@ use Spatie\Permission\Models\Permission;
  * der `handle*`-Methoden). NICHT zusätzlich via `Event::listen()`
  * registrieren — sonst feuert der Listener doppelt.
  *
- * Bekannte Spatie-Quirks:
- *  - `syncPermissions()` macht intern `permissions()->detach()` **ohne
- *    Event** und ruft danach `givePermissionTo()` (das nur das
- *    Attach-Event feuert). Entzüge über `syncPermissions()` werden also
- *    aktuell nicht geloggt — das ist heute irrelevant (kein Call-Site),
- *    muss aber bei Einführung eines Admin-UIs durch einen
- *    `PermissionSyncService` mit explizitem Δ-Logging adressiert werden.
- *    Der Test `testSyncPermissionsOnlyLogsAttachAndDocumentsSpatieGap`
- *    schreibt das heutige Verhalten fest — wenn Spatie das in einer
- *    späteren Version repariert, bricht der Test bewusst.
- *  - Single-Guard-Annahme: Die in `properties.permissions` geloggten
- *    Namen tragen keine Guard-Information. Das ist heute eindeutig (nur
- *    `web`-Guard); bei Einführung weiterer Guards muss `guard_name`
- *    ergänzt werden — gleiche Bedingung wie in `LogRoleChangeListener`.
+ * Single-Guard-Annahme: Die in `properties.permissions` geloggten Namen
+ * tragen keine Guard-Information. Das ist heute eindeutig (nur `web`-Guard);
+ * bei Einführung weiterer Guards muss `guard_name` ergänzt werden — gleiche
+ * Bedingung wie in `LogRoleChangeListener`.
  */
 final class LogPermissionChangeListener extends LogAuthorizationChangeListener
 {
