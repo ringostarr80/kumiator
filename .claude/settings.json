@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "ask": [
+      "Bash(composer:*)",
+      "Bash(npm:*)"
+    ],
+    "allow": [
+      "Bash(vendor/bin/phpcbf *)",
+      "Bash(vendor/bin/phpstan *)",
+      "Bash(vendor/bin/phpunit *)"
+    ]
+  }
+}
