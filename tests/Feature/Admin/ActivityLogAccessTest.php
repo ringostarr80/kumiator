@@ -863,6 +863,45 @@ final class ActivityLogAccessTest extends TestCase
     }
 
     /**
+     * Regression: Der String `'0'` ist in PHP falsy und rutscht — anders als
+     * `'garbage'` — als scheinbar leerer Wert durch die `nullable`-Prüfung,
+     * wird danach aber wie ein echter Datumswert behandelt. Er muss regulär am
+     * Format scheitern und den Filter überspringen, statt `Carbon::parse('0')`
+     * im Render-Pfad eine ungefangene Exception (HTTP 500) werfen zu lassen.
+     */
+    public function testFalsyZeroDateFromIsRejectedAndFilterSkipped(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $user = User::factory()->create();
+        ActivityFacade::useLog('test')->event('treffer_from_zero')->causedBy($user)->log('');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filters.dateFrom', '0');
+
+        $component->assertHasErrors('filters.dateFrom');
+        $component->assertSee('treffer_from_zero');
+    }
+
+    /**
+     * Wie der Von-Fall, aber für die Bis-Grenze — sie hat ihre eigene
+     * Falsy-Prüfung, die ein Fix nur an der Von-Grenze nicht mit abdeckt.
+     */
+    public function testFalsyZeroDateToIsRejectedAndFilterSkipped(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $user = User::factory()->create();
+        ActivityFacade::useLog('test')->event('treffer_to_zero')->causedBy($user)->log('');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filters.dateTo', '0');
+
+        $component->assertHasErrors('filters.dateTo');
+        $component->assertSee('treffer_to_zero');
+    }
+
+    /**
      * Ein Bis-Datum vor dem Von-Datum ist widersprüchlich: Der Fehler hängt an
      * `Bis`, nur diese Grenze wird übersprungen; das gültige `Von` greift weiter.
      */

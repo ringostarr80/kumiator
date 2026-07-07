@@ -280,8 +280,13 @@ final class ActivityLogTable extends Component
         $validator = Validator::make(
             [
                 'filters' => [
-                    'dateFrom' => $this->filters['dateFrom'] ?: null,
-                    'dateTo' => $this->filters['dateTo'] ?: null,
+                    // `!== ''` statt `?:`: der falsy-, aber nicht-leere String
+                    // `'0'` muss erhalten bleiben, damit `date_format` ihn als
+                    // Fehler meldet — `?: null` ließe ihn als `null` durch die
+                    // `nullable`-Regel rutschen und `applyFilters()` würfe dann
+                    // `Carbon::parse('0')` ungefangen im Render-Pfad.
+                    'dateFrom' => $this->filters['dateFrom'] !== '' ? $this->filters['dateFrom'] : null,
+                    'dateTo' => $this->filters['dateTo'] !== '' ? $this->filters['dateTo'] : null,
                 ],
             ],
             [
