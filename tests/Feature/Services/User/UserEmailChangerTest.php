@@ -79,7 +79,36 @@ final class UserEmailChangerTest extends TestCase
             VerifyEmailChangeNotification::class,
             static fn ($n, $c, AnonymousNotifiable $r): bool => ($r->routes['mail'] ?? null) === self::NEW_EMAIL,
         );
-        Notification::assertSentTo($refreshed, EmailChangeRequestedNotification::class);
+        Notification::assertSentTo(
+            new AnonymousNotifiable(),
+            EmailChangeRequestedNotification::class,
+            static fn ($n, $c, AnonymousNotifiable $r): bool => ($r->routes['mail'] ?? null) === self::OLD_EMAIL,
+        );
+    }
+
+    /**
+     * Hijack-Fenster: Die Warnmail ist `ShouldQueueAfterCommit`, wird also erst
+     * vom Worker zugestellt. Adressiert man sie über das User-Model
+     * (`$user->notify()`), löst der Mail-Channel den Empfänger erst beim Versand
+     * aus `$user->email` auf — hat ein Angreifer bis dahin den Wechsel bestätigt
+     * (`email` ← `pending_email`), ginge die Warnung samt Cancel-Link an die
+     * Angreifer-Adresse und das Opfer erführe nie vom Hijack. Die Adresse muss
+     * darum zum Antragszeitpunkt als String eingefroren werden
+     * (`Notification::route('mail', $user->email)`) — genau wie die Confirm-Mail.
+     */
+    public function testRequestChangeFreezesOldEmailForWarningMailInsteadOfRoutingViaModel(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => self::OLD_EMAIL]);
+
+        $this->service->requestChange($user, self::NEW_EMAIL);
+
+        Notification::assertSentTo(
+            new AnonymousNotifiable(),
+            EmailChangeRequestedNotification::class,
+            static fn ($n, $c, AnonymousNotifiable $r): bool => ($r->routes['mail'] ?? null) === self::OLD_EMAIL,
+        );
+        Notification::assertNotSentTo($user, EmailChangeRequestedNotification::class);
     }
 
     public function testRequestChangeWritesEmailChangeRequestedAuditWithPendingEmailHash(): void
@@ -137,12 +166,10 @@ final class UserEmailChangerTest extends TestCase
 
         $this->capturedToken = '';
         Notification::assertSentTo(
-            $refreshed,
+            new AnonymousNotifiable(),
             EmailChangeRequestedNotification::class,
-            function (EmailChangeRequestedNotification $notification) use ($refreshed): bool {
-                $this->capturedToken = $this->tokenFromActionUrl(
-                    (string)$notification->toMail($refreshed)->actionUrl,
-                );
+            function (EmailChangeRequestedNotification $notification): bool {
+                $this->capturedToken = $this->tokenFromActionUrl((string)$notification->toMail()->actionUrl);
 
                 return true;
             },

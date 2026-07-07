@@ -52,7 +52,11 @@ final class EmailChangeActivityLogTest extends TestCase
         $this->assertSame('neu@example.com', $refreshed->pending_email);
         $this->assertNotNull($refreshed->email_verified_at);
 
-        Notification::assertSentTo($refreshed, EmailChangeRequestedNotification::class);
+        Notification::assertSentTo(
+            new AnonymousNotifiable(),
+            EmailChangeRequestedNotification::class,
+            static fn ($n, $c, AnonymousNotifiable $r): bool => ($r->routes['mail'] ?? null) === 'alt@example.com',
+        );
 
         $activity = Activity::query()
             ->where('log_name', 'auth')
@@ -273,10 +277,18 @@ final class EmailChangeActivityLogTest extends TestCase
 
         $this->capturedToken = '';
         Notification::assertSentTo(
-            $user,
+            new AnonymousNotifiable(),
             EmailChangeRequestedNotification::class,
-            function (EmailChangeRequestedNotification $notification) use ($user): bool {
-                $url = (string)$notification->toMail($user)->actionUrl;
+            function (
+                EmailChangeRequestedNotification $notification,
+                array $channels,
+                AnonymousNotifiable $notifiable,
+            ) use ($user): bool {
+                if (($notifiable->routes['mail'] ?? null) !== $user->email) {
+                    return false;
+                }
+
+                $url = (string)$notification->toMail()->actionUrl;
                 $this->capturedToken = (string)basename(parse_url($url, PHP_URL_PATH) ?: '');
 
                 return true;

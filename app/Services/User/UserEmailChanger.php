@@ -77,7 +77,8 @@ final class UserEmailChanger implements UserEmailChangerContract
         Notification::route('mail', $newEmail)
             ->notify(new VerifyEmailChangeNotification($user, $plainConfirmToken, $newEmail));
 
-        $user->notify(new EmailChangeRequestedNotification($plainCancelToken, $newEmail));
+        Notification::route('mail', $user->email)
+            ->notify(new EmailChangeRequestedNotification($user, $plainCancelToken, $newEmail));
     }
 
     public function recordRequestFailed(User $user, ?string $attemptedEmail): void

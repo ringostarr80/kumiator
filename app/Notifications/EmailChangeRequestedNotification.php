@@ -17,9 +17,13 @@ use Illuminate\Notifications\Notification;
  * Wahrscheinlichkeit der echte Urheber ist — die Hinweisfunktion ist der
  * gesamte Sinn der Mail.
  *
- * Routing: `$user->notify(...)` reicht — `pending_email` wurde noch nicht in
- * die `email`-Spalte übernommen, also zielt die Default-Route von Notifiable
- * korrekt auf die alte Adresse.
+ * Routing: per `Notification::route('mail', $user->email)->notify(...)` an die
+ * zum Antragszeitpunkt gültige alte Adresse — NICHT `$user->notify(...)`. Die
+ * Mail ist `ShouldQueueAfterCommit`; der Mail-Channel löst den Empfänger sonst
+ * erst beim verzögerten Versand aus `$user->email` auf. Hätte ein Angreifer bis
+ * dahin den Wechsel bestätigt (`email` ← `pending_email`), ginge die Warnung
+ * samt Cancel-Link an die Angreifer-Adresse. Der User wird der Notification als
+ * Konstruktor-Argument mitgegeben, damit die Anrede personalisiert bleibt.
  *
  * `ShouldQueueAfterCommit`: wie die Confirm-Mail erst nach Commit der
  * Profil-Update-Transaktion versenden — ein Rollback darf keine Hinweis-Mail
@@ -29,8 +33,11 @@ final class EmailChangeRequestedNotification extends Notification implements Sho
 {
     use Queueable;
 
-    public function __construct(private readonly string $plainToken, private readonly string $pendingEmail)
-    {
+    public function __construct(
+        private readonly User $user,
+        private readonly string $plainToken,
+        private readonly string $pendingEmail,
+    ) {
     }
 
     /**
@@ -41,13 +48,13 @@ final class EmailChangeRequestedNotification extends Notification implements Sho
         return ['mail'];
     }
 
-    public function toMail(User $notifiable): MailMessage
+    public function toMail(): MailMessage
     {
         $cancelUrl = route('email.change.cancel', ['token' => $this->plainToken]);
 
         return (new MailMessage())
             ->subject(__('app.email_change_requested_subject'))
-            ->greeting(__('app.email_change_requested_greeting', ['name' => $notifiable->name]))
+            ->greeting(__('app.email_change_requested_greeting', ['name' => $this->user->name]))
             ->line(__('app.email_change_requested_intro', ['email' => $this->pendingEmail]))
             ->line(__('app.email_change_requested_warning'))
             ->action(__('app.email_change_requested_cancel_action'), $cancelUrl)
