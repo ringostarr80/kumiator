@@ -10,7 +10,6 @@ use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Services\Session\Contracts\UserSessionTerminatorContract;
 use App\Services\User\Contracts\UserHardDeleterContract;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -67,19 +66,24 @@ final class UserHardDeleter implements UserHardDeleterContract
 
             $user->forceDelete();
 
-            // Bestehende Subject-/Causer-Referenzen auf diesen User abräumen
-            // (Alt-Einträge mit ID, ggf. Namen in `properties`). Fremde
-            // Historie bleibt unangetastet.
+            // Einträge, in denen der User Subject ist, tragen seine
+            // personenbezogenen Daten (ID, ggf. Name in `properties`) → löschen
+            // (DSGVO Art. 17).
             ActivityModel::query()
-                ->where(static function (Builder $query) use ($user): void {
-                    $query->where('subject_type', $user->getMorphClass())
-                        ->where('subject_id', $user->getKey());
-                })
-                ->orWhere(static function (Builder $query) use ($user): void {
-                    $query->where('causer_type', $user->getMorphClass())
-                        ->where('causer_id', $user->getKey());
-                })
+                ->where('subject_type', $user->getMorphClass())
+                ->where('subject_id', $user->getKey())
                 ->delete();
+
+            // Einträge, die der User als Causer ausgelöst hat, belegen
+            // sicherheitsrelevante Zugriffe/Aktionen an fremden oder keinen
+            // Subjects (etwa wer den Mitglieder-Audit-Trail eingesehen hat),
+            // deren Nachvollziehbarkeit Art. 5(2)/32 verlangt. Den Beleg erhalten
+            // und nur die Personen-Verknüpfung kappen — die einzige PII des Users
+            // steckt hier in `causer_*`, nie in `properties`.
+            ActivityModel::query()
+                ->where('causer_type', $user->getMorphClass())
+                ->where('causer_id', $user->getKey())
+                ->update(['causer_type' => null, 'causer_id' => null]);
 
             // Anonymer Audit-Eintrag NACH dem Purge, damit ihn der Purge nicht
             // erfasst. `causedByAnonymous()` ist kritisch: Spatie würde sonst

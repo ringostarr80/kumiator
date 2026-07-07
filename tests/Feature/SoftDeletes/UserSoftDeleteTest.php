@@ -257,12 +257,14 @@ final class UserSoftDeleteTest extends TestCase
     }
 
     /**
-     * Auch Causer-Referenzen müssen weg: Wenn der zu löschende User vorher
-     * selbst als handelnder Akteur in Activity-Einträgen aufgetaucht ist
-     * (z. B. weil er einer anderen Person eine Rolle zugewiesen hat),
-     * verbleiben sonst seine ID und ggf. der Name in `properties`.
+     * Causer-Referenzen des gelöschten Users werden anonymisiert, nicht gelöscht:
+     * Wenn er als handelnder Akteur an einem fremden Subject auftrat (z. B. eine
+     * Rollenzuweisung an eine andere Person), ist der Eintrag ein
+     * sicherheitsrelevanter Beleg (Art. 5(2)/32). Der Beleg bleibt erhalten, nur
+     * `causer_type`/`causer_id` fallen weg — die einzige Personenspur des Causers,
+     * denn seine PII steht nie in `properties`.
      */
-    public function testSelfDeletePurgesActivityLogEntriesWithUserAsCauser(): void
+    public function testSelfDeleteAnonymizesActivityLogEntriesWithUserAsCauser(): void
     {
         $actor = User::factory()->create();
         $other = User::factory()->create();
@@ -271,24 +273,19 @@ final class UserSoftDeleteTest extends TestCase
         $this->actingAs($actor);
         $other->assignRole('member');
 
-        $this->assertGreaterThan(
-            0,
-            Activity::query()
-                ->where('causer_type', $actor->getMorphClass())
-                ->where('causer_id', $actor->getKey())
-                ->count(),
-            'Setup-Annahme verletzt: es sollten Causer-Einträge auf $actor existieren.',
-        );
+        $causedEntry = Activity::query()
+            ->where('causer_type', $actor->getMorphClass())
+            ->where('causer_id', $actor->getKey())
+            ->firstOrFail();
 
         app(DeleteUser::class)->delete($actor);
 
-        $this->assertSame(
-            0,
-            Activity::query()
-                ->where('causer_type', $actor->getMorphClass())
-                ->where('causer_id', $actor->getKey())
-                ->count(),
-        );
+        // Zeile existiert weiter (nicht gelöscht), Causer ist gekappt (anonymisiert).
+        $this->assertDatabaseHas($causedEntry->getTable(), [
+            $causedEntry->getKeyName() => $causedEntry->getKey(),
+            'causer_type' => null,
+            'causer_id' => null,
+        ]);
     }
 
     /**
