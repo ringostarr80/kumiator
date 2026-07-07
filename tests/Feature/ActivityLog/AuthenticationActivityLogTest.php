@@ -316,6 +316,52 @@ final class AuthenticationActivityLogTest extends TestCase
     }
 
     /**
+     * Ein invalider-UTF-8-User-Agent (angreiferkontrolliert auf den anonymen
+     * Pfaden) darf den synchronen Forensik-Insert nicht sprengen: Spaties
+     * `collection`-Cast serialisiert die Properties per `json_encode`, das an
+     * ungültigem UTF-8 `false` liefert und eine `JsonEncodingException` wirft.
+     * Im Login-Request wäre das HTTP 500 statt 422, und der `login_failed`-
+     * Eintrag ginge verloren — ein Angreifer könnte Brute-Force aus dem
+     * Audit-Log heraushalten. Guard für die von allen drei anonymen Pfaden
+     * geteilte `forensicProperties()`-Bereinigung.
+     */
+    public function testFailedLoginSanitizesInvalidUtf8UserAgent(): void
+    {
+        Activity::query()->delete();
+
+        // `\xC3\x28` ist eine ungültige UTF-8-Sequenz und kurz genug, um den
+        // 255-Zeichen-Cap zu umgehen; ohne Bereinigung liefert `json_encode`
+        // dafür `false`.
+        $this->app->instance('request', Request::create(
+            '/login',
+            'POST',
+            ['email' => 'opfer@example.com'],
+            server: ['REMOTE_ADDR' => '203.0.113.7', 'HTTP_USER_AGENT' => "Mozilla \xC3\x28 Bot"],
+        ));
+
+        Event::dispatch(new Failed('web', null, ['email' => 'opfer@example.com']));
+
+        $activity = Activity::query()
+            ->where('log_name', 'forensic')
+            ->where('event', 'login_failed')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull(
+            $activity,
+            'Der login_failed-Eintrag muss trotz invaliden User-Agents geschrieben werden.',
+        );
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $userAgent = $properties['user_agent'] ?? null;
+        $this->assertIsString($userAgent);
+        $this->assertTrue(
+            mb_check_encoding($userAgent, 'UTF-8'),
+            'Der gespeicherte User-Agent muss gültiges UTF-8 sein.',
+        );
+    }
+
+    /**
      * Ohne Request-IP (z. B. CLI-Auth-Versuch) darf weder `ip` noch
      * `user_agent` entstehen — statt eines wertlosen Platzhalters.
      */

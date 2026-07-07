@@ -293,6 +293,13 @@ final class LogAuthenticationActivityListener
         $userAgent = $request->userAgent();
 
         if ($userAgent !== null) {
+            // Ungültiges UTF-8 im angreiferkontrollierten Header verwerfen (die
+            // Gleich-Charset-Konvertierung ersetzt Malformed-Bytes): Spaties
+            // `collection`-Cast serialisiert die Properties per `json_encode`,
+            // das an solchen Bytes mit einer `JsonEncodingException` bräche und
+            // den synchronen Forensik-Insert sprengte (HTTP 500, verlorener
+            // Audit-Eintrag).
+            $userAgent = mb_convert_encoding($userAgent, 'UTF-8', 'UTF-8');
             $properties['user_agent'] = Str::limit($userAgent, 255, '');
         }
 
