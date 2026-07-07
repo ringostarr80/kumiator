@@ -8,7 +8,9 @@ use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Livewire\Profile\UpdateProfileInformationForm;
 use App\Models\Activity;
 use App\Models\User;
+use App\Services\Upload\Exceptions\ProfilePhotoStorageException;
 use GdImage;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
@@ -291,6 +293,60 @@ final class ProfileInformationTest extends TestCase
         // Die neu geschriebene Datei wurde nach dem Rollback wieder entfernt:
         // im Verzeichnis liegt nur noch das alte Foto, kein verwaister Rest.
         $this->assertSame([$existingPath], Storage::disk('public')->files('profile-photos'));
+    }
+
+    /**
+     * Ein fehlgeschlagener Foto-Upload (Platte voll / Storage-Defekt) darf nicht
+     * still als Teilerfolg durchgehen: `storePublicly()` liefert auf der
+     * `throw => false`-Disk `false`. Ohne explizite Behandlung würde daraus per
+     * `?: null` „kein Foto" — Name/E-Mail committen, die UI meldet Erfolg, das
+     * Foto fehlt kommentarlos und der Infra-Fehler erreicht kein Monitoring.
+     * Erwartet: harter Fehlschlag ohne jeden Teil-Commit.
+     */
+    public function testFailedPhotoStorageAbortsTheWholeUpdate(): void
+    {
+        $this->actingAs($user = User::factory()->create([
+            'name' => 'Original',
+            'email' => 'original@example.com',
+        ]));
+
+        // `storePublicly()` liefert auf der `throw => false`-Disk `false`, wenn der
+        // Datei-Schreibvorgang scheitert (Platte voll, S3 down). Diesen einen
+        // Rückgabewert an der Disk-Grenze erzwingen: ein echter Schreibfehler ließe
+        // sich nicht plattformstabil ohne Root-abhängige Rechte herstellen.
+        $disk = \Mockery::mock(Filesystem::class);
+        $disk->shouldReceive('putFileAs')->andReturnFalse();
+        Storage::set($user->profilePhotoDiskName(), $disk);
+
+        Activity::query()->delete();
+
+        $aborted = false;
+
+        try {
+            app(UpdateUserProfileInformation::class)->update($user, [
+                'name' => 'Geändert',
+                'email' => $user->email,
+                'photo' => UploadedFile::fake()->image('photo.jpg'),
+            ]);
+        } catch (ProfilePhotoStorageException) {
+            $aborted = true;
+        }
+
+        $this->assertTrue(
+            $aborted,
+            'Ein fehlgeschlagener Foto-Upload muss den gesamten Vorgang mit einer Exception abbrechen.',
+        );
+
+        $refreshed = $user->fresh();
+        $this->assertNotNull($refreshed);
+
+        // Kein stiller Teilerfolg: Name NICHT committet, kein Foto-Pfad, kein Audit.
+        $this->assertSame('Original', $refreshed->name);
+        $this->assertNull($refreshed->profile_photo_path);
+        $this->assertSame(
+            0,
+            Activity::query()->where('event', 'profile_photo_updated')->count(),
+        );
     }
 
     public function testProfilePhotoCanBeUpdated(): void

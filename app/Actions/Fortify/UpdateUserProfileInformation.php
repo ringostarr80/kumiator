@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Upload\Contracts\ProfilePhotoOptimizerContract;
 use App\Services\Upload\Contracts\UploadLimitResolverContract;
 use App\Services\Upload\Exceptions\ProfilePhotoOptimizationException;
+use App\Services\Upload\Exceptions\ProfilePhotoStorageException;
 use App\Services\User\Contracts\UserEmailChangerContract;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -117,7 +118,18 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
         $newPhotoPath = null;
 
         if ($optimizedPhoto !== null) {
-            $newPhotoPath = $optimizedPhoto->storePublicly('profile-photos', ['disk' => $photoDisk]) ?: null;
+            $storedPath = $optimizedPhoto->storePublicly('profile-photos', ['disk' => $photoDisk]);
+
+            if ($storedPath === false) {
+                // Die Disk läuft auf `throw => false`, ein Schreibfehler (Platte
+                // voll, S3 down) liefert also `false`. Nicht still als „kein Foto"
+                // behandeln: sonst committen Name/E-Mail, die UI meldet Erfolg und
+                // das Foto fehlt kommentarlos. Hart abbrechen (vor der Transaktion,
+                // nichts committet), damit der Infra-Fehler als reportete 500 sichtbar wird.
+                throw new ProfilePhotoStorageException('Failed to store the profile photo.');
+            }
+
+            $newPhotoPath = $storedPath;
         }
 
         try {
