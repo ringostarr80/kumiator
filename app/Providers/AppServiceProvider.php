@@ -127,11 +127,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::after($auditDeniedAuthorization);
 
         // Alle Vor-Insert-Anpassungen am Audit-Eintrag in einer `Activity::saving`-
-        // Closure: Spatie's `LogsActivity`-Trait schreibt den Eintrag automatisch über
-        // die Eloquent-Lifecycle-Events, ohne Callback zum Anpassen der Felder; ein
-        // `saving`-Listener auf dem Activity-Model ist daher der einzige stabile Punkt
-        // zwischen Trait-Setup und Insert. Ein Listener statt vier spart pro Insert drei
-        // Dispatcher-Durchläufe und erzwingt die unten nötige Reihenfolge strukturell.
+        // Closure: Ein Listener statt vier spart pro Insert drei Dispatcher-Durchläufe
+        // und erzwingt die unten nötige Reihenfolge strukturell. Die Closure trägt nur,
+        // solange jeder Eintrag über ein Model-Save entsteht — warum Spaties Buffer
+        // darum nicht angeboten wird, steht in `config/activitylog.php`.
         Activity::saving(static function (Activity $activity): void {
             // Generischen Eloquent-Event-Namen (created/updated/deleted/restored) auf
             // einen fachlichen Code umlabeln; die Mapping-Logik selbst bleibt im

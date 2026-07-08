@@ -100,17 +100,17 @@ return [
     'default_except_attributes' => [],
 
     /*
-     * When enabled, activities are buffered in memory and inserted in a
-     * single bulk query after the response has been sent to the client.
-     * This can significantly reduce the number of database queries when
-     * many activities are logged during a single request.
-     *
-     * Only enable this if your application logs a high volume of activities
-     * per request. Buffered activities will not have an ID until the
-     * buffer is flushed.
+     * Bewusst hart `false` statt `env(...)`: Spaties Buffer sammelt die Einträge
+     * im Speicher und schreibt sie per Query-Builder-`insert()` — also an allen
+     * Model-Events vorbei. Der `Activity::saving`-Hook im AppServiceProvider
+     * (Event-Remapping, Self-Registration-Marker, CLI-Causer-Anonymisierung)
+     * feuerte dann nie, still und ohne Fehler. Weil der publizierte Wert den
+     * Vendor-Default überlagert, bleibt `ACTIVITYLOG_BUFFER_ENABLED` wirkungslos.
+     * Der Buffer spart ohnehin nur Queries bei vielen Einträgen pro Request —
+     * diese Anwendung schreibt einen, selten zwei.
      */
     'buffer' => [
-        'enabled' => env('ACTIVITYLOG_BUFFER_ENABLED', false),
+        'enabled' => false,
     ],
 
     /*
