@@ -27,6 +27,14 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
+        // Vor der `unique`-Regel, die den rohen Eingabewert gegen die Spalte
+        // vergleicht. Fortifys `lowercase_usernames` senkt die Adresse zwar
+        // schon im Controller, ist aber konfigurierbar — die Normalform hängt
+        // nicht an einem Vendor-Schalter.
+        if (isset($input['email'])) {
+            $input['email'] = User::normalizeEmail($input['email']);
+        }
+
         Validator::make($input, [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],

@@ -44,7 +44,7 @@ class ForceDelete extends Command
         $email = $this->ask(__('commands.common.ask_email')) ?? '';
 
         /** @var ?User $user */
-        $user = User::onlyTrashed()->where('email', $email)->first();
+        $user = User::queryByEmail($email)->onlyTrashed()->first();
 
         if ($user === null) {
             $this->error(__('commands.force_delete_user.not_trashed', ['email' => $email]));

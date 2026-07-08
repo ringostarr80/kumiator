@@ -37,7 +37,7 @@ class Restore extends Command
         $email = $this->ask(__('commands.common.ask_email')) ?? '';
 
         /** @var ?User $user */
-        $user = User::onlyTrashed()->where('email', $email)->first();
+        $user = User::queryByEmail($email)->onlyTrashed()->first();
 
         if ($user === null) {
             // Aus Admin-Sicht egal, ob der User gar nicht existiert oder

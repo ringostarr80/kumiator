@@ -48,10 +48,11 @@ final class PasskeyAuthenticationController extends Controller
     {
         $user = null;
 
+        /** @var ?string $email */
         $email = $request->validated()['email'] ?? null;
 
         if ($email !== null) {
-            $user = User::where('email', $email)->first();
+            $user = User::queryByEmail($email)->first();
 
             if ($user === null) {
                 $this->authenticationService->runFakeCredentialLookup();

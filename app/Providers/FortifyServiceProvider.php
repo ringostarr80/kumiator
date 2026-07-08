@@ -78,7 +78,7 @@ class FortifyServiceProvider extends ServiceProvider
             /** @var string $password */
             $password = $request->input('password');
 
-            $user = User::where('email', $email)->first();
+            $user = User::queryByEmail($email)->first();
 
             if ($user === null) {
                 // Timing-Angleichung gegen E-Mail-Enumeration: Ohne KDF-Lauf

@@ -48,11 +48,18 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
         $photoMaxKilobytes = $this->uploadLimitResolver->resolveProfilePhotoLimit()->kilobytes();
         $acceptedExtensions = $this->uploadLimitResolver->resolveProfilePhotoAcceptedExtensions();
 
-        // E-Mail-Identität ist case-insensitiv (Spalte mit NOCASE-Collation):
+        // Auf die kanonische Form ziehen, bevor irgendetwas sie liest: die
+        // `unique`-Regel unten vergleicht den rohen Eingabewert gegen die
+        // Spalte, und der Änderungs-Vergleich muss dieselbe Normalform
+        // benutzen, die auch gespeichert wird.
+        if (isset($input['email']) && is_string($input['email'])) {
+            $input['email'] = User::normalizeEmail($input['email']);
+        }
+
         // Eine reine Schreibweisen-Abweichung der eigenen Adresse ist KEINE
         // Änderung und darf weder Re-Auth noch den Deferred-Flow auslösen.
         $newEmail = $input['email'] ?? null;
-        $emailChanged = !is_string($newEmail) || strcasecmp($newEmail, $user->email) !== 0;
+        $emailChanged = !is_string($newEmail) || $newEmail !== $user->email;
 
         try {
             Validator::make($input, [
@@ -191,7 +198,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
 
         $user->forceFill(['name' => $name])->saveOrFail();
 
-        if (strcasecmp($email, $user->email) !== 0) {
+        if ($email !== $user->email) {
             $this->emailChanger->requestChange($user, $email);
         }
     }

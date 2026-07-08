@@ -9,6 +9,8 @@ use App\Enums\ActivityEvent;
 use App\Models\Concerns\RemapsActivityEvent;
 use App\Models\Contracts\MustBeApproved;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -148,6 +150,31 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     }
 
     /**
+     * Die kanonische Form der E-Mail-Identität. SQLites `NOCASE`-Collation
+     * faltet ausschließlich ASCII A–Z, Fortify senkt Login-Eingaben dagegen
+     * mb-basiert. Ohne eine hier festgelegte Normalform driften Schreib- und
+     * Lesepfad bei jedem Nicht-ASCII-Buchstaben auseinander: der Login findet
+     * die Adresse nicht mehr, und `MÜLLER@…`/`müller@…` stehen als zwei Konten
+     * nebeneinander. `NOCASE` bleibt darunter als Netz, trägt die Garantie
+     * aber nicht mehr.
+     */
+    public static function normalizeEmail(string $email): string
+    {
+        return mb_strtolower(trim($email));
+    }
+
+    /**
+     * Einstieg für jeden Lookup über eine von außen gelieferte Adresse — die
+     * Spalte hält nur normalisierte Werte, ein roher Vergleich ginge daneben.
+     *
+     * @return Builder<static>
+     */
+    public static function queryByEmail(string $email): Builder
+    {
+        return static::query()->where('email', self::normalizeEmail($email));
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -161,6 +188,29 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
             'approved_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Hält die Normalform auch auf den Pfaden ohne Validierung (Factory,
+     * Seeder, CLI) und beim Tausch der bestätigten Adresse.
+     *
+     * @return Attribute<string, string>
+     */
+    protected function email(): Attribute
+    {
+        return Attribute::set(static fn (string $value): string => self::normalizeEmail($value));
+    }
+
+    /**
+     * @return Attribute<?string, ?string>
+     */
+    protected function pendingEmail(): Attribute
+    {
+        return Attribute::set(
+            static fn (?string $value): ?string => $value === null
+                ? null
+                : self::normalizeEmail($value),
+        );
     }
 
     protected static function activityRemapChannel(): string

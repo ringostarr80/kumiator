@@ -32,7 +32,7 @@ class Approve extends Command
         $email = $this->ask(__('commands.common.ask_email')) ?? '';
 
         /** @var ?User $user */
-        $user = User::where('email', $email)->first();
+        $user = User::queryByEmail($email)->first();
 
         if ($user === null) {
             $this->error(__('commands.common.not_found', ['email' => $email]));
