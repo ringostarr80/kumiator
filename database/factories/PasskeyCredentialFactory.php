@@ -22,7 +22,7 @@ class PasskeyCredentialFactory extends Factory
 
     public function configure(): static
     {
-        $this->afterCreating(function (PasskeyCredential $credential): void {
+        return $this->afterCreating(function (PasskeyCredential $credential): void {
             $user = $credential->user()->firstOrFail();
             $serializer = app(SerializerInterface::class);
 
@@ -52,8 +52,6 @@ class PasskeyCredentialFactory extends Factory
                 'credential_public_key' => $serializer->serialize($corrected, 'json'),
             ]);
         });
-
-        return $this;
     }
 
     /**
