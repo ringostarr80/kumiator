@@ -27,21 +27,25 @@ use Illuminate\Console\Events\CommandStarting;
 final class CaptureConsoleActorListener
 {
     /**
-     * Langlebige Worker feuern `CommandStarting` einmal beim Start und
-     * `CommandFinished` erst beim Shutdown; der Marker spannte sonst die
-     * gesamte Prozesslaufzeit auf und markierte jeden in einem Queue-/
-     * Scheduler-Job geschriebenen Eintrag fälschlich als CLI-Aktion mit
-     * genulltem Causer. Solche Commands hosten fremde Arbeit und sind selbst
-     * kein Admin-Akteur.
+     * Commands, die fremde Arbeit hosten und selbst kein Admin-Akteur sind:
+     * ihr Marker wiese jeden dort geschriebenen Eintrag fälschlich als
+     * CLI-Aktion mit genulltem Causer aus. Zwei Sorten fallen darunter —
+     * langlebige Worker, die `CommandFinished` erst beim Shutdown feuern und
+     * den Marker so über jeden verarbeiteten Job spannen, und `schedule:run`,
+     * das zwar kurzlebig ist, aber `Schedule::call`-Closures und sync
+     * dispatchte Jobs im eigenen Prozess ausführt. `schedule:work` allein
+     * genügt dafür nicht: der Daemon startet `schedule:run` als Subprozess,
+     * und dort entstehen die Einträge.
      *
      * Bewusst eine Namens-Denylist und kein generelles Signal: Laravel kennt
-     * keine Daemon-Kennzeichnung (kein gemeinsames Interface, `CommandStarting`
-     * trägt nur den Namen). Die Liste deckt die First-Party-Worker ab; ein
+     * dafür keine Kennzeichnung (kein gemeinsames Interface, `CommandStarting`
+     * trägt nur den Namen). Die Liste deckt die First-Party-Hosts ab; ein
      * eigener Daemon kommt als ein Eintrag dazu.
      */
-    private const LONG_RUNNING_COMMANDS = [
+    private const WORK_HOSTING_COMMANDS = [
         'queue:work',
         'queue:listen',
+        'schedule:run',
         'schedule:work',
         'horizon',
         'horizon:work',
@@ -56,7 +60,7 @@ final class CaptureConsoleActorListener
 
     public function handleStarting(CommandStarting $event): void
     {
-        if (in_array($event->command, self::LONG_RUNNING_COMMANDS, true)) {
+        if (in_array($event->command, self::WORK_HOSTING_COMMANDS, true)) {
             return;
         }
 

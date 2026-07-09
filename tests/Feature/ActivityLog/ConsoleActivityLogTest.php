@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Testing\PendingCommand;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PragmaRX\Google2FA\Google2FA;
 use Spatie\Activitylog\Facades\Activity as ActivityFacade;
 use Spatie\Permission\Models\Role;
@@ -805,23 +806,50 @@ final class ConsoleActivityLogTest extends TestCase
     }
 
     /**
-     * Langlebige Worker (`queue:work` & Co.) feuern `CommandStarting` einmal
-     * beim Start; bliebe der Marker aktiv, würde jeder im Worker verarbeitete
-     * Queue-Job seinen echten Causer verlieren und fälschlich `cli_actor`
-     * erben. Der Listener muss solche Commands von der Aktivierung ausnehmen.
+     * Commands, die fremde Arbeit hosten, sind selbst kein Admin-Akteur: Was
+     * ein Queue-Job im `queue:work`-Worker oder ein `Schedule::call`-Closure im
+     * `schedule:run`-Prozess schreibt, gehört dem Job — nicht dem OS-User, der
+     * den Host gestartet hat. Aktivierte der Host den Marker, erbte der Eintrag
+     * `cli_actor` und verlöre seinen echten Causer.
+     *
+     * Der Test schreibt daher stellvertretend für die gehostete Arbeit und
+     * prüft den Eintrag, nicht den Marker-Zustand — der Schaden entsteht am
+     * Activity-Eintrag.
      */
-    public function testLongRunningWorkerCommandDoesNotActivateCliMarker(): void
+    #[DataProvider('workHostingCommandProvider')]
+    public function testWorkHostingCommandDoesNotMarkHostedActivity(string $command): void
     {
-        $listener = $this->app->make(CaptureConsoleActorListener::class);
-        $context = $this->app->make(ConsoleActorContextContract::class);
+        $user = User::factory()->create();
+        Activity::query()->delete();
 
+        $listener = $this->app->make(CaptureConsoleActorListener::class);
         $listener->handleStarting(
-            new CommandStarting('queue:work', new ArrayInput([]), new NullOutput()),
+            new CommandStarting($command, new ArrayInput([]), new NullOutput()),
         );
 
-        $this->assertFalse(
-            $context->isActive(),
-            'queue:work ist ein langlebiger Worker — der CLI-Marker darf nicht über die Prozesslaufzeit aktiv bleiben.',
+        // Stellvertreter für die gehostete Arbeit: ein Job bzw. Closure, der im
+        // Host-Prozess eine Activity mit eigenem Causer schreibt.
+        ActivityFacade::useLog('synthetic-log')
+            ->event('synthetic-event')
+            ->causedBy($user)
+            ->performedOn($user)
+            ->log('synthetic');
+
+        $activity = Activity::query()
+            ->where('log_name', 'synthetic-log')
+            ->latest('id')
+            ->firstOrFail();
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertArrayNotHasKey(
+            'cli_actor',
+            $properties,
+            $command . ' hostet fremde Arbeit — deren Einträge dürfen keinen CLI-Marker erben.',
+        );
+        $this->assertSame(
+            $user->getKey(),
+            $activity->causer_id,
+            $command . ' darf den Causer der gehosteten Arbeit nicht anonymisieren.',
         );
     }
 
@@ -842,6 +870,17 @@ final class ConsoleActivityLogTest extends TestCase
         } finally {
             $context->clear();
         }
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function workHostingCommandProvider(): array
+    {
+        return [
+            'langlebiger Worker hält den Marker sonst über die Prozesslaufzeit' => ['queue:work'],
+            'schedule:run führt Schedule-Closures im eigenen Prozess aus' => ['schedule:run'],
+        ];
     }
 
     protected function setUp(): void
