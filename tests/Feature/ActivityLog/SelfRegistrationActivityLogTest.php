@@ -9,6 +9,7 @@ use App\Models\Activity;
 use App\Models\User;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Fortify\Contracts\CreatesNewUsers;
 use Spatie\Activitylog\Facades\Activity as ActivityFacade;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -65,6 +66,55 @@ final class SelfRegistrationActivityLogTest extends TestCase
         $this->assertNotNull($activity);
         $this->assertSame('user_self_registered', $activity->event);
         $this->assertSame(__('app.activity_user_self_registered'), $activity->description);
+    }
+
+    /**
+     * Long-Running-Worker (Octane, Queue-Worker) leeren an der Request- bzw.
+     * Job-Grenze die scoped Container-Instanzen, lassen echte Singletons aber
+     * stehen. Fortify bindet `CreatesNewUsers` als Singleton — eine dort im
+     * Konstruktor gecapturte Marker-Instanz wäre nach dem Reset eine andere als
+     * die, die der `Activity::saving`-Hook per `app()` liest. `markActive()`
+     * liefe ins Leere und die Self-Registration fiele ab dem zweiten Request
+     * still auf den generischen `user_created`-Eintrag zurück.
+     *
+     * `forgetScopedInstances()` ist genau der Aufruf, den Octane an der
+     * Request-Grenze macht — kein Stellvertreter. Geprüft wird der
+     * Activity-Eintrag, denn dort entsteht der Schaden.
+     */
+    public function testSelfRegistrationSurvivesScopedInstanceReset(): void
+    {
+        // Singleton entstehen lassen, solange die Marker-Instanz des
+        // „vorherigen Requests" noch im Container liegt.
+        $this->app->make(CreatesNewUsers::class);
+
+        $this->app->forgetScopedInstances();
+
+        Activity::query()->delete();
+
+        $response = $this->post('/register', [
+            'name' => 'Erika Mustermann',
+            'email' => self::REGISTRATION_EMAIL,
+            'password' => self::REGISTRATION_PASSWORD,
+            'password_confirmation' => self::REGISTRATION_PASSWORD,
+            'terms' => true,
+        ]);
+
+        $response->assertSessionHasNoErrors();
+
+        $user = User::query()->where('email', self::REGISTRATION_EMAIL)->firstOrFail();
+
+        $activity = Activity::query()
+            ->where('log_name', 'user')
+            ->where('subject_type', $user->getMorphClass())
+            ->where('subject_id', $user->getKey())
+            ->latest('id')
+            ->firstOrFail();
+
+        $this->assertSame(
+            'user_self_registered',
+            $activity->event,
+            'CreateNewUser hält eine Marker-Instanz fest, die den scoped Reset nicht überlebt.',
+        );
     }
 
     /**

@@ -16,10 +16,6 @@ class CreateNewUser implements CreatesNewUsers
 {
     use PasswordValidationRules;
 
-    public function __construct(private readonly SelfRegistrationContextContract $selfRegistrationContext)
-    {
-    }
-
     /**
      * Validate and create a newly registered user.
      *
@@ -42,6 +38,13 @@ class CreateNewUser implements CreatesNewUsers
             'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature() ? ['accepted', 'required'] : '',
         ])->validate();
 
+        // Lazy auflösen: Fortify bindet diese Action als Singleton
+        // (`createUsersUsing`), der Marker ist dagegen request-scoped. Eine im
+        // Konstruktor gecapturte Instanz überlebte unter Long-Running-Workern
+        // das Leeren der scoped Instanzen an der Request-Grenze — der Setzer
+        // schriebe dann auf eine andere Instanz als die, die der Hook liest.
+        $selfRegistrationContext = app(SelfRegistrationContextContract::class);
+
         // Marker für den `Activity::saving`-Listener im AppServiceProvider:
         // er labelt den durch `User::create()` ausgelösten generischen
         // `user.created`-Eintrag auf `user_self_registered` um, sodass die
@@ -49,7 +52,7 @@ class CreateNewUser implements CreatesNewUsers
         // (`user:create`) abgegrenzt ist. `try/finally` statt einfacher
         // Reihenfolge, damit ein Fehler im DB-Transaction-Pfad den Marker
         // nicht im Folge-Request hängen lässt.
-        $this->selfRegistrationContext->markActive();
+        $selfRegistrationContext->markActive();
 
         try {
             return DB::transaction(static function () use ($input): User {
@@ -64,7 +67,7 @@ class CreateNewUser implements CreatesNewUsers
                 return $user;
             });
         } finally {
-            $this->selfRegistrationContext->clear();
+            $selfRegistrationContext->clear();
         }
     }
 }
