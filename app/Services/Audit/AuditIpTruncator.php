@@ -23,11 +23,16 @@ final class AuditIpTruncator
     private const IPV4_SUFFIX = '/24';
     private const IPV6_SUFFIX = '/64';
 
+    // IPv4-mapped-IPv6-Präfix (`::ffff:0:0/96`) auf Byte-Ebene: 10 Nullbytes + 0xffff.
+    private const IPV4_MAPPED_PREFIX = "\0\0\0\0\0\0\0\0\0\0\xff\xff";
+
     public static function truncate(?string $ip): ?string
     {
         if ($ip === null || filter_var($ip, FILTER_VALIDATE_IP) === false) {
             return null;
         }
+
+        $ip = self::unwrapMappedIpv4($ip);
 
         // IpUtils nullt mit den Defaults das letzte IPv4-Oktett (/24) bzw. die
         // letzten 8 IPv6-Byte (/64). Der CIDR-Suffix dokumentiert, dass das Netz
@@ -38,5 +43,29 @@ final class AuditIpTruncator
             : self::IPV4_SUFFIX;
 
         return $network . $suffix;
+    }
+
+    /**
+     * Dual-Stack-Proxys melden IPv4-Clients teils als IPv4-mapped-IPv6
+     * (`::ffff:a.b.c.d`). Symfony würde die zwar mit IPv4-Semantik anonymisieren
+     * (nur das letzte Oktett), der `:`-Suffix-Test unten hinge aber `/64` an und
+     * behauptete mehr genullte Bits als real. Darum die Adresse vorab auf ihre
+     * dotted-IPv4-Form ziehen — auf Byte-Ebene, damit auch die Hex-Schreibweise
+     * (`::ffff:cb00:7107`) erfasst wird, an der Symfonys string-basierte
+     * mapped-Erkennung vorbeiläuft.
+     */
+    private static function unwrapMappedIpv4(string $ip): string
+    {
+        $packed = inet_pton($ip);
+
+        if ($packed === false || !str_starts_with($packed, self::IPV4_MAPPED_PREFIX)) {
+            return $ip;
+        }
+
+        $dotted = inet_ntop(substr($packed, -4));
+
+        return $dotted === false
+            ? $ip
+            : $dotted;
     }
 }
