@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\ActivityChannel;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
@@ -36,10 +37,11 @@ Schedule::command('activitylog:clean')
     ->withHealthcheck('activitylog_clean');
 
 /*
- * Verkürzte Retention nur für den `forensic`-Kanal (anonyme Dritt-Daten:
- * `login_failed`, `login_locked_out`, `password_reset_requested` mit gekürzter
- * IP/User-Agent/E-Mail-Hash potenziell fremder Personen). Art. 5(1)(e) DSGVO —
- * Dritt-Daten dürfen nicht so lange wie der Mitglieder-Audit aufbewahrt werden.
+ * Verkürzte Retention nur für den `forensic`-Kanal: anonyme Dritt-Daten
+ * (gekürzte IP, User-Agent, E-Mail-Hash potenziell fremder Personen) aus
+ * fehlgeschlagenen Auth-Versuchen. Art. 5(1)(e) DSGVO — Dritt-Daten dürfen
+ * nicht so lange wie der Mitglieder-Audit aufbewahrt werden. Welche Events
+ * dazugehören, entscheiden die Schreib-Sites über `ActivityChannel::FORENSIC`.
  *
  * Spaties `activitylog:clean {log?} {--days=}` filtert via `inLog()` auf genau
  * diesen Kanal; Frist aus `config/activitylog.php` (Default 90 Tage). Versetzte
@@ -47,7 +49,10 @@ Schedule::command('activitylog:clean')
  * Slug, weil Healthchecks.io-Auto-Provisioning pro Job einen distinkten Slug
  * erwartet. Der globale Clean oben bleibt Catch-all für alle übrigen Kanäle.
  */
-Schedule::command('activitylog:clean forensic --days=' . Config::integer('activitylog.clean_after_days_forensic'))
+Schedule::command(
+    'activitylog:clean ' . ActivityChannel::FORENSIC->value
+        . ' --days=' . Config::integer('activitylog.clean_after_days_forensic'),
+)
     ->dailyAt('03:45')
     ->onOneServer()
     ->withoutOverlapping()
