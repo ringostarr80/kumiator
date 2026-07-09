@@ -189,7 +189,10 @@
     <rule ref="SlevomatCodingStandard.Operators.RequireOnlyStandaloneIncrementAndDecrementOperators"/>
     <rule ref="SlevomatCodingStandard.Operators.SpreadOperatorSpacing"/>
     <rule ref="SlevomatCodingStandard.PHP.DisallowDirectMagicInvokeCall"/>
-    <rule ref="SlevomatCodingStandard.PHP.DisallowReference"/>
+    <rule ref="SlevomatCodingStandard.PHP.DisallowReference">
+        <!-- `use (&$var)` erlaubt: legitimes Idiom, um Zustand aus einer Closure herauszureichen (z. B. aus einem DB::afterCommit-Callback). Referenz-Parameter und Referenz-Zuweisungen bleiben verboten. -->
+        <exclude name="SlevomatCodingStandard.PHP.DisallowReference.DisallowedInheritingVariableByReference"/>
+    </rule>
     <rule ref="SlevomatCodingStandard.PHP.ForbiddenClasses"/>
     <rule ref="SlevomatCodingStandard.PHP.ReferenceSpacing"/>
     <!--<rule ref="SlevomatCodingStandard.PHP.RequireExplicitAssertion"/>-->

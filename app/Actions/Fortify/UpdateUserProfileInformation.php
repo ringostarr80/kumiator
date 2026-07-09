@@ -139,6 +139,8 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             $newPhotoPath = $storedPath;
         }
 
+        $committed = false;
+
         try {
             // Atomar: Foto-Pfad, Name und der Deferred-E-Mail-Antrag (samt ihrer
             // Audit-Einträge) committen gemeinsam oder gar nicht. Sonst bliebe bei
@@ -147,17 +149,38 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             // zurück. Die Confirm-/Cancel-Mails sind `ShouldQueueAfterCommit` und
             // gehen damit erst nach erfolgreichem Commit raus — ein Rollback
             // verschickt keine Mail für eine nicht persistierte Änderung.
-            DB::transaction(fn () => $this->persistProfileChanges(
+            DB::transaction(function () use (
                 $user,
                 $name,
                 $email,
                 $newPhotoPath,
                 $previousPhotoPath,
-            ));
+                &$committed,
+            ): void {
+                // Sobald der PDO-Commit durch ist, ist die neue Datei die
+                // persistierte — ab hier darf der Rollback-Arm sie nicht mehr
+                // löschen. Der Callback läuft vor den ShouldQueueAfterCommit-
+                // Pushes des E-Mail-Wechsels (früher registriert); scheitert danach
+                // ein solcher Push, ist der Commit längst erfolgt.
+                DB::afterCommit(function () use (&$committed): void {
+                    $committed = true;
+                });
+
+                $this->persistProfileChanges(
+                    $user,
+                    $name,
+                    $email,
+                    $newPhotoPath,
+                    $previousPhotoPath,
+                );
+            });
         } catch (\Throwable $e) {
-            // Rollback: die DB zeigt wieder auf das alte Foto, also die soeben
-            // geschriebene neue Datei wieder entfernen, sonst verwaist sie.
-            if ($newPhotoPath !== null) {
+            // Nur bei echtem Rollback aufräumen: zeigt die DB nach dem Fehler
+            // wieder auf das alte Foto, muss die neue Datei weg, sonst verwaist
+            // sie. Ist der Commit dagegen schon durch und erst ein
+            // After-Commit-Seiteneffekt (Mail-Push) gescheitert, bleibt die
+            // committete Datei — ihr Pfad ist persistiert.
+            if (!$committed && $newPhotoPath !== null) {
                 Storage::disk($photoDisk)->delete($newPhotoPath);
             }
 
