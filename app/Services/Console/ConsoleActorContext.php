@@ -21,13 +21,17 @@ use Spatie\Activitylog\Models\Activity;
  * anderen auf, würde der innere `Finished` den Outer-Kontext zu früh leeren —
  * bewusst akzeptiert, weil das Pattern dann sowieso überdacht werden muss.
  *
- * Statisches Design ist hier vertretbar (analog `SelfRegistrationContext`):
- * PHP-CLI ist single-process, single-threaded, und der Lebenszyklus ist
- * exakt eine Command-Ausführung. In Tests ruft `Artisan::call(...)` denselben
- * Kernel auf, weshalb beide Events feuern und der Marker auch dort sauber
- * aktiviert/abgeräumt wird; eine zusätzliche `setUp()`-Säuberung ist daher
- * im Normalfall nicht nötig (defensive Tests können trotzdem
- * `clearStatically()` aufrufen).
+ * Statisches Feld, weil der `Activity::saving`-Hook pro Insert läuft und
+ * `applyToActivity()` deshalb ohne Container-Lookup auskommen soll. Tragfähig
+ * ist das, weil PHP-CLI single-process und single-threaded ist und der
+ * Lebenszyklus exakt eine Command-Ausführung umfasst.
+ *
+ * In Tests verdrahtet der Console-Kernel die Symfony-Events unter
+ * `runningUnitTests()` nicht auf ihre Laravel-Pendants um — dort feuert also
+ * keines der beiden Events von selbst. Tests, die den Marker brauchen, ziehen
+ * `WithConsoleEvents` ein; und weil das statische Feld die Test-Grenze
+ * überlebt, muss ein Test, der den Marker von Hand setzt, ihn per
+ * `clearStatically()` auch selbst räumen.
  *
  * Effekt auf den Activity-Log: `applyToActivity()` wird vom zentralen
  * `Activity::saving`-Hook aufgerufen und macht zwei Dinge an jedem
