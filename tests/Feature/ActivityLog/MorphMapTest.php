@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionClass;
 use ReflectionMethod;
@@ -43,6 +45,8 @@ use Tests\TestCase;
  */
 final class MorphMapTest extends TestCase
 {
+    use RefreshDatabase;
+
     /**
      * @param class-string $class
      */
@@ -107,6 +111,41 @@ final class MorphMapTest extends TestCase
                     ),
                 );
             }
+        }
+    }
+
+    /**
+     * Schützt den Anzeigenamen im Activity-Log-UI: Das Blade
+     * `livewire/admin/activity-log-table.blade.php` rendert Causer und Subject
+     * über `->name`. Fehlt das Attribut, wirft Eloquent nicht, sondern liefert
+     * `null` — die Zelle bliebe still leer. Dieselbe Spalte setzt die
+     * Namenssuche in `ActivityLogTable` voraus, die `name like ?` als rohes SQL
+     * absetzt und darum eine echte Spalte braucht, keinen Accessor.
+     *
+     * Ein künftiges Morph-Model ohne `name` macht diesen Test rot und erzwingt
+     * damit eine Entscheidung (Spalte ergänzen oder einen Anzeigenamen-Vertrag
+     * einführen), statt das UI stillschweigend leere Zellen rendern zu lassen.
+     */
+    public function testEveryMorphMapModelHasNameColumn(): void
+    {
+        $morphMap = Relation::morphMap();
+
+        $this->assertNotSame([], $morphMap, 'Morph-Map ist leer — `AppServiceProvider::boot()` nicht gelaufen?');
+
+        foreach ($morphMap as $alias => $class) {
+            $table = (new $class())->getTable();
+
+            $this->assertTrue(
+                Schema::hasColumn($table, 'name'),
+                sprintf(
+                    "Dem Morph-Ziel '%s' (%s, Tabelle '%s') fehlt die `name`-Spalte. Das "
+                    . "Activity-Log-UI rendert Causer und Subject über `->name` und zeigte "
+                    . "sonst eine leere Zelle; die Namenssuche sucht per `name like ?`.",
+                    $alias,
+                    $class,
+                    $table,
+                ),
+            );
         }
     }
 
