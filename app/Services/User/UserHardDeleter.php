@@ -23,10 +23,14 @@ use Spatie\Activitylog\Models\Activity as ActivityModel;
  * (`account_self_deleted`) oder administrativer Force-Delete
  * (`account_admin_force_deleted`).
  *
- * Nach Abschluss darf kein personenbezogenes Restmaterial des Users in der
- * `activity_log`-Tabelle stehen — ein einziger anonymer Audit-Eintrag bleibt
- * zurück (Brücke zwischen DSGVO Art. 17 und Art. 32). Der admin-initiierte
- * Soft-Delete (`user:delete`) verzichtet bewusst auf diesen Purge.
+ * Nach Abschluss steht kein personenbezogenes Restmaterial des Users mehr in der
+ * `activity_log`-Tabelle (Brücke zwischen DSGVO Art. 17 und Art. 32): Einträge mit
+ * ihm als Subject werden gelöscht, seine Causer-Verweise anonymisiert; zurück bleibt
+ * der anonyme Audit-Eintrag dieses Vorgangs. Passkey-Einträge erfasst keiner der
+ * beiden Arme — ihr Subject ist die Credential, nicht der User —, sie tragen aber
+ * von vornherein keinen Klartext-Namen und nach dem Löschen der Credential auch
+ * keine auflösbare Referenz mehr. Der admin-initiierte Soft-Delete (`user:delete`)
+ * verzichtet bewusst auf diesen Purge.
  *
  * Rollen- und Direkt-Permission-Pivots brauchen keinen eigenen Purge:
  * Spaties `deleting`-Hooks detachen beide beim Force-Delete still — ohne

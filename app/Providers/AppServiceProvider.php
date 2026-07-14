@@ -141,6 +141,11 @@ class AppServiceProvider extends ServiceProvider
             PasskeyCredential::applyEventLabelToActivity($activity);
             User::applyEventLabelToActivity($activity);
 
+            // Den nutzergewählten Credential-Namen aus dem Attribut-Diff nehmen: Er
+            // trägt regelmäßig Personenbezug, und kein Lösch-Pfad bekommt ihn später
+            // wieder heraus — Begründung im Docblock der aufgerufenen Methode.
+            PasskeyCredential::stripCredentialNameFromActivity($activity);
+
             // User-Self-Registration vs. Admin/CLI-Anlage unterscheidbar machen: beide
             // erzeugen denselben `user_created`-Eintrag (oben aus dem rohen `created`
             // aufgewertet), sind fachlich aber grundverschieden — Public-Endpoint vs.

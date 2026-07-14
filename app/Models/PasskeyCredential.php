@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Arr;
 use Spatie\Activitylog\Facades\Activity;
 use Spatie\Activitylog\Models\Activity as ActivityModel;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
@@ -81,9 +82,14 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
     }
 
     /**
-     * `logOnly` ist eine Allowlist — nur `name` und `aaguid` landen im
-     * `passkey`-Log; alles andere, insbesondere sämtliches Schlüsselmaterial,
-     * bleibt konstruktionsbedingt draußen.
+     * `logOnly` ist eine Allowlist — alles andere, insbesondere sämtliches
+     * Schlüsselmaterial, bleibt konstruktionsbedingt draußen.
+     *
+     * `name` steht in der Allowlist, obwohl der Klartext den Eintrag nie erreicht
+     * (er fällt vor dem Insert aus dem Diff): Spatie wertet `dontLogEmptyChanges()`
+     * schon beim Bauen des Eintrags aus. Ohne `name` in der Allowlist bliebe der
+     * Diff einer Umbenennung leer und der `passkey_renamed`-Eintrag entfiele ganz —
+     * das Anlegen und Entfernen von Zugangsmitteln soll aber nachweisbar bleiben.
      *
      * `last_used_at` fehlt bewusst, obwohl es eine reguläre Spalte ist: ein Login
      * aktualisiert nur `last_used_at` plus interne Secret-Felder und soll keinen
@@ -204,6 +210,36 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
         } catch (\Throwable $e) {
             report($e);
         }
+    }
+
+    /**
+     * Der Credential-Name ist ein freies, vom Nutzer gefülltes Textfeld und trägt
+     * erfahrungsgemäß Personenbezug („iPhone von Erika"). Aus dem Audit-Diff muss er
+     * deshalb vor dem Insert wieder heraus: Der DSGVO-Purge des Hard-Deletes greift
+     * über `subject_type`/`causer_type` auf den User, Passkey-Einträge tragen als
+     * Subject aber die Credential. Sie überleben die Konto-Löschung — im
+     * zweistufigen Admin-Pfad ist die Credential-Zeile zum Zeitpunkt des
+     * Hard-Deletes sogar längst weg, der Eintrag also über gar nichts mehr
+     * zuzuordnen und damit auch nachträglich nicht mehr zu bereinigen.
+     *
+     * `aaguid` bleibt: Hersteller/Modell des Authenticators sind gerätebezogen,
+     * nicht personenbezogen, und tragen den Sicherheitswert des Eintrags.
+     */
+    public static function stripCredentialNameFromActivity(ActivityModel $activity): void
+    {
+        if ($activity->log_name !== ActivityChannel::PASSKEY->value) {
+            return;
+        }
+
+        $changes = $activity->attribute_changes;
+
+        if ($changes === null) {
+            return;
+        }
+
+        $activity->attribute_changes = $changes->map(
+            static fn (mixed $bag): mixed => is_array($bag) ? Arr::except($bag, ['name']) : $bag,
+        );
     }
 
     /**

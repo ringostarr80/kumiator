@@ -222,6 +222,37 @@ final class UserSoftDeleteTest extends TestCase
     }
 
     /**
+     * Der administrative Lösch-Weg ist zweistufig: `user:delete` (Soft) entfernt
+     * die Credentials bereits hart, `user:force-delete` löscht das Konto später
+     * endgültig. Zu diesem Zeitpunkt ist ein Passkey-Log-Eintrag über nichts mehr
+     * dem User zuzuordnen — die Credential-Zeile ist weg, und der CLI-Pfad hat den
+     * Causer anonymisiert. Ein Purge kommt hier also grundsätzlich zu spät; der
+     * vom Nutzer vergebene Name darf deshalb schon beim Schreiben draußen bleiben.
+     *
+     * Dieser Test hält das Schutzziel selbst fest (kein Personenbezug im Log nach
+     * der Löschung), nicht den Mechanismus — er bliebe auch dann gültig, wenn der
+     * Name künftig auf einem anderen Weg als über den Attribut-Diff ins Log geriete.
+     */
+    public function testAdminDeletePathLeavesNoPasskeyNameInActivityLog(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        PasskeyCredential::factory()->for($user)->create(['name' => 'iPhone von Erika']);
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+        app(UserHardDeleterContract::class)->forceDelete($user, ActivityEvent::ACCOUNT_ADMIN_FORCE_DELETED);
+
+        foreach (Activity::query()->get() as $entry) {
+            $this->assertStringNotContainsString(
+                'Erika',
+                json_encode($entry->toArray(), JSON_THROW_ON_ERROR),
+                'Nach dem administrativen Hard-Delete darf kein Log-Eintrag mehr den '
+                . 'Passkey-Namen des gelöschten Users tragen.',
+            );
+        }
+    }
+
+    /**
      * DSGVO-Symmetrie zum Token-/Passkey-/Session-Bypass: Nach dem Self-Delete
      * darf in `activity_log` kein Eintrag mehr existieren, der den gelöschten
      * User als Subject referenziert — weder durch Alt-Einträge (z. B. das

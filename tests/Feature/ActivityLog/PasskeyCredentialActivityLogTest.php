@@ -40,7 +40,10 @@ final class PasskeyCredentialActivityLogTest extends TestCase
         $changes = $activity->attribute_changes?->toArray() ?? [];
         $this->assertArrayHasKey('attributes', $changes);
         $this->assertIsArray($changes['attributes']);
-        $this->assertSame('iPhone', $changes['attributes']['name'] ?? null);
+        // Belegt, dass der Diff überhaupt noch getragen wird — sonst wäre die
+        // Namens-Assertion unten auch bei komplett fehlendem Logging grün.
+        $this->assertArrayHasKey('aaguid', $changes['attributes']);
+        $this->assertArrayNotHasKey('name', $changes['attributes']);
     }
 
     public function testRenamingPasskeyCredentialCreatesActivityLogEntry(): void
@@ -54,13 +57,51 @@ final class PasskeyCredentialActivityLogTest extends TestCase
             ->latest('id')
             ->first();
 
+        // Der Eintrag entsteht weiterhin: Spatie entscheidet über
+        // `dontLogEmptyChanges()` bereits beim Bauen des Eintrags, also bevor der
+        // Name aus dem Diff fällt. Die Umbenennung bleibt damit nachweisbar —
+        // nur nicht mehr, auf welchen Namen.
         $this->assertNotNull($activity);
         $this->assertSame(__('app.activity_passkey_renamed'), $activity->description);
         $changes = $activity->attribute_changes?->toArray() ?? [];
-        $this->assertIsArray($changes['attributes'] ?? null);
-        $this->assertSame('Neu', $changes['attributes']['name'] ?? null);
-        $this->assertIsArray($changes['old'] ?? null);
-        $this->assertSame('Alt', $changes['old']['name'] ?? null);
+        $attributes = $changes['attributes'] ?? [];
+        $old = $changes['old'] ?? [];
+        $this->assertIsArray($attributes);
+        $this->assertIsArray($old);
+        $this->assertArrayNotHasKey('name', $attributes);
+        $this->assertArrayNotHasKey('name', $old);
+    }
+
+    /**
+     * Der Credential-Name ist ein freies, vom Nutzer gefülltes Textfeld — in der
+     * Praxis steht dort regelmäßig ein Personenbezug („iPhone von Erika").
+     * Anders als bei den `user`-Einträgen (Subject = User) erreicht ihn der
+     * DSGVO-Purge des Hard-Deletes nicht: Passkey-Einträge tragen Subject
+     * `passkey`, und nach dem Löschen der Credential ist die Zeile über keine
+     * Relation mehr einem User zuzuordnen. Der Name darf deshalb gar nicht erst
+     * persistiert werden — geprüft über den kompletten Lifecycle und den
+     * gesamten serialisierten Eintrag, nicht nur über den Diff.
+     */
+    public function testActivityLogNeverContainsUserChosenCredentialName(): void
+    {
+        $credential = PasskeyCredential::factory()->create(['name' => 'iPhone von Erika']);
+        $credential->updateOrFail(['name' => 'MacBook von Erika']);
+        $credential->deleteOrFail();
+
+        $entries = Activity::query()->where('log_name', 'passkey')->get();
+
+        $this->assertCount(3, $entries, 'Erwartet: registered, renamed, removed.');
+
+        foreach ($entries as $entry) {
+            $serialised = json_encode($entry->toArray(), JSON_THROW_ON_ERROR);
+
+            $this->assertStringNotContainsString(
+                'Erika',
+                $serialised,
+                'Der vom Nutzer vergebene Passkey-Name darf in keinem Feld des '
+                . 'Activity-Eintrags landen — er überlebt sonst jede Konto-Löschung.',
+            );
+        }
     }
 
     public function testDeletingPasskeyCredentialCreatesActivityLogEntry(): void
