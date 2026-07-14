@@ -178,6 +178,10 @@ class AppServiceProvider extends ServiceProvider
         // per `->withHealthcheck($slug)` an Healthchecks.io-Monitoring hängen.
         // Ping-Mechanik (Auto-Provisioning, geschluckte Fehler, No-Op ohne Ping-Key)
         // steckt im ScheduleHealthcheckPinger.
+        //
+        // Bewusst nicht über Laravels `pingBefore()`-Familie: Die pingt über einen
+        // eigenen Guzzle-Client an der `Http`-Facade vorbei — mit deren Default von
+        // 30 Sekunden Timeout, die im Before-Hook direkt vor dem Cron-Job lägen.
         ScheduledEvent::macro('withHealthcheck', function (string $slug): ScheduledEvent {
             $pinger = app(ScheduleHealthcheckPinger::class);
 
