@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Config;
 
+use Illuminate\Support\Facades\Config;
+
 /**
  * Typed accessor für `config/healthchecks.php`.
  *
@@ -14,8 +16,6 @@ namespace App\Config;
 final class HealthchecksConfig
 {
     private const DEFAULT_BASE_URL = 'https://hc-ping.com';
-
-    private const DEFAULT_TIMEOUT = 5;
 
     public static function baseUrl(): string
     {
@@ -53,10 +53,6 @@ final class HealthchecksConfig
 
     public static function timeoutSeconds(): int
     {
-        $value = config('healthchecks.timeout_seconds', self::DEFAULT_TIMEOUT);
-
-        return is_int($value) && $value > 0
-            ? $value
-            : self::DEFAULT_TIMEOUT;
+        return Config::integer('healthchecks.timeout_seconds');
     }
 }
