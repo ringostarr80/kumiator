@@ -6,13 +6,11 @@ namespace App\Services\User;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
-use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Services\Session\Contracts\UserSessionTerminatorContract;
 use App\Services\User\Contracts\UserHardDeleterContract;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Sanctum\PersonalAccessToken;
 use Spatie\Activitylog\Facades\Activity;
 use Spatie\Activitylog\Models\Activity as ActivityModel;
 
@@ -51,18 +49,17 @@ final class UserHardDeleter implements UserHardDeleterContract
     public function forceDelete(User $user, ActivityEvent $event): void
     {
         DB::transaction(function () use ($user, $event): void {
-            // Mass-`delete()` statt `each->deleteOrFail()`: vermeidet, dass der
-            // `LogsActivity`-Trait pro Token/Passkey Activity-Einträge mit
-            // Causer/Subject-Verweis auf den gleich danach hart gelöschten User
-            // schreibt — würde dem „Recht auf Vergessen" widersprechen. Im
-            // admin-initiierten Soft-Delete (`user:delete`) ist das umgekehrt
-            // erwünscht und läuft dort über die Eloquent-Events.
-            PersonalAccessToken::query()
-                ->where('tokenable_type', $user->getMorphClass())
-                ->where('tokenable_id', $user->getKey())
-                ->delete();
-
-            PasskeyCredential::query()->where('user_id', $user->getKey())->delete();
+            // Mass-`delete()` statt `each->deleteOrFail()`: Sonst schriebe der
+            // `LogsActivity`-Trait der Credential pro Passkey einen Entzugs-Eintrag,
+            // dessen Subject die Credential ist — der Purge unten greift über den
+            // User und ließe ihn als Verweis auf das gerade gelöschte Konto liegen
+            // (DSGVO Art. 17). Tokens tragen den Trait nicht; für sie ist der
+            // Mass-Delete schlicht der billigere Weg zum selben Ergebnis. Im
+            // admin-initiierten Soft-Delete (`user:delete`) ist der Entzugs-Beleg
+            // umgekehrt erwünscht und entsteht dort über die Model-Events bzw. den
+            // Token-Auditor.
+            $user->tokens()->delete();
+            $user->passkeyCredentials()->delete();
 
             // Sonst schriebe `forceDelete()` unten einen `deleted`-Eintrag
             // mit `subject_id = $user->getKey()`.

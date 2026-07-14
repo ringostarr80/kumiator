@@ -167,6 +167,41 @@ final class UserSoftDeleteTest extends TestCase
     }
 
     /**
+     * Tokens und Passkeys fallen im Hard-Delete bewusst per Mass-`delete()` am
+     * Query-Builder — also an den Model-Events vorbei. Ein `each->deleteOrFail()`
+     * (im Soft-Delete genau richtig) ließe den `LogsActivity`-Trait pro Credential
+     * einen `passkey_removed`-Eintrag schreiben, dessen Subject die Credential ist
+     * und nicht der User: Der DSGVO-Purge greift daran vorbei, der Eintrag bliebe
+     * als Verweis auf das gelöschte Konto liegen. Die Eigenschaft hängt an einem
+     * einzigen Methodenaufruf und ist von außen unsichtbar — deshalb wird hier
+     * festgehalten, was am Ende in der Tabelle stehen darf: nichts außer dem
+     * anonymen Audit-Eintrag des Vorgangs selbst.
+     */
+    public function testHardDeleteWritesNoActivityEntriesForRemovedTokensAndPasskeys(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        PasskeyCredential::factory()->for($user)->create();
+        $user->createToken('test');
+        Activity::query()->delete();
+
+        app(DeleteUser::class)->delete($user);
+
+        $entries = Activity::query()->get();
+
+        $this->assertCount(
+            1,
+            $entries,
+            'Der Hard-Delete darf außer seinem eigenen Audit-Eintrag nichts hinterlassen — '
+            . 'Einträge über gelöschte Tokens/Passkeys überleben den Purge.',
+        );
+        $entry = $entries->first();
+        $this->assertNotNull($entry);
+        $this->assertSame(ActivityEvent::ACCOUNT_SELF_DELETED->value, $entry->event);
+        $this->assertNull($entry->causer_id);
+    }
+
+    /**
      * Direkt-Permission-Pivots verschwinden — wie die Rollen-Pivots — allein
      * durch Spaties `deleting`-Hook, der beim Force-Delete still (ohne Event)
      * detacht. Ändert ein Spatie-Update dieses Verhalten, blieben
