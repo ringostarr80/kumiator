@@ -7,7 +7,6 @@ namespace App\Console\Commands\User;
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
-use Illuminate\Console\Command;
 
 /**
  * Stellt einen administrativ soft-deleted Benutzer wieder her.
@@ -25,48 +24,59 @@ use Illuminate\Console\Command;
  */
 #[Signature('user:restore')]
 #[Description('Stellt einen soft-deleted Benutzer wieder her')]
-class Restore extends Command
+class Restore extends TrashedUserActionCommand
 {
-    public function handle(): int
+    protected function titleKey(): string
     {
-        $title = __('commands.restore_user.title');
-        $this->info($title);
-        $this->line(str_repeat('-', mb_strlen($title)));
+        return 'commands.restore_user.title';
+    }
 
-        /** @var string $email */
-        $email = $this->ask(__('commands.common.ask_email')) ?? '';
+    protected function notTrashedKey(): string
+    {
+        return 'commands.restore_user.not_trashed';
+    }
 
-        /** @var ?User $user */
-        $user = User::queryByEmail($email)->onlyTrashed()->first();
+    protected function userFoundKey(): string
+    {
+        return 'commands.restore_user.user_found';
+    }
 
-        if ($user === null) {
-            // Aus Admin-Sicht egal, ob der User gar nicht existiert oder
-            // einfach nicht soft-deleted ist — beides verhindert ein
-            // sinnvolles Restore. Eine spezifische „existiert nicht"-Meldung
-            // würde nur die Existenz aktiver Konten leaken.
-            $this->error(__('commands.restore_user.not_trashed', ['email' => $email]));
+    /**
+     * @return list<string>
+     */
+    protected function warningKeys(): array
+    {
+        return [
+            'commands.restore_user.hint',
+            'commands.restore_user.permissions_hint',
+        ];
+    }
 
-            return self::FAILURE;
-        }
+    protected function confirmKey(): string
+    {
+        return 'commands.restore_user.confirm_restore';
+    }
 
-        $this->line(__('commands.restore_user.user_found', [
-            'name' => $user->name,
-            'email' => $email,
-            'deleted_at' => $user->deleted_at?->format('d.m.Y H:i') ?? '—',
-        ]));
-        $this->warn(__('commands.restore_user.hint'));
-        $this->warn(__('commands.restore_user.permissions_hint'));
+    protected function abortedKey(): string
+    {
+        return 'commands.restore_user.aborted';
+    }
 
-        if (!$this->confirm(__('commands.restore_user.confirm_restore'))) {
-            $this->info(__('commands.restore_user.aborted'));
+    protected function successKey(): string
+    {
+        return 'commands.restore_user.success';
+    }
 
-            return self::SUCCESS;
-        }
+    /**
+     * @return array<string, string>
+     */
+    protected function successReplacements(User $user, string $email): array
+    {
+        return ['name' => $user->name, 'email' => $email];
+    }
 
+    protected function performAction(User $user): void
+    {
         $user->restore();
-
-        $this->info(__('commands.restore_user.success', ['name' => $user->name, 'email' => $email]));
-
-        return self::SUCCESS;
     }
 }

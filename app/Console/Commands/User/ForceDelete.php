@@ -9,7 +9,6 @@ use App\Models\User;
 use App\Services\User\Contracts\UserHardDeleterContract;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
-use Illuminate\Console\Command;
 
 /**
  * DSGVO-konformer Hard-Delete für einen bereits soft-deleted Benutzer.
@@ -27,48 +26,61 @@ use Illuminate\Console\Command;
  */
 #[Signature('user:force-delete')]
 #[Description('Löscht einen bereits soft-deleted Benutzer endgültig (DSGVO)')]
-class ForceDelete extends Command
+class ForceDelete extends TrashedUserActionCommand
 {
     public function __construct(private readonly UserHardDeleterContract $hardDeleter)
     {
         parent::__construct();
     }
 
-    public function handle(): int
+    protected function titleKey(): string
     {
-        $title = __('commands.force_delete_user.title');
-        $this->info($title);
-        $this->line(str_repeat('-', mb_strlen($title)));
+        return 'commands.force_delete_user.title';
+    }
 
-        /** @var string $email */
-        $email = $this->ask(__('commands.common.ask_email')) ?? '';
+    protected function notTrashedKey(): string
+    {
+        return 'commands.force_delete_user.not_trashed';
+    }
 
-        /** @var ?User $user */
-        $user = User::queryByEmail($email)->onlyTrashed()->first();
+    protected function userFoundKey(): string
+    {
+        return 'commands.force_delete_user.user_found';
+    }
 
-        if ($user === null) {
-            $this->error(__('commands.force_delete_user.not_trashed', ['email' => $email]));
+    /**
+     * @return list<string>
+     */
+    protected function warningKeys(): array
+    {
+        return ['commands.force_delete_user.warning'];
+    }
 
-            return self::FAILURE;
-        }
+    protected function confirmKey(): string
+    {
+        return 'commands.force_delete_user.confirm_force_delete';
+    }
 
-        $this->line(__('commands.force_delete_user.user_found', [
-            'name' => $user->name,
-            'email' => $email,
-            'deleted_at' => $user->deleted_at?->format('d.m.Y H:i') ?? '—',
-        ]));
-        $this->warn(__('commands.force_delete_user.warning'));
+    protected function abortedKey(): string
+    {
+        return 'commands.force_delete_user.aborted';
+    }
 
-        if (!$this->confirm(__('commands.force_delete_user.confirm_force_delete'))) {
-            $this->info(__('commands.force_delete_user.aborted'));
+    protected function successKey(): string
+    {
+        return 'commands.force_delete_user.success';
+    }
 
-            return self::SUCCESS;
-        }
+    /**
+     * @return array<string, string>
+     */
+    protected function successReplacements(User $user, string $email): array
+    {
+        return ['email' => $email];
+    }
 
+    protected function performAction(User $user): void
+    {
         $this->hardDeleter->forceDelete($user, ActivityEvent::ACCOUNT_ADMIN_FORCE_DELETED);
-
-        $this->info(__('commands.force_delete_user.success', ['email' => $email]));
-
-        return self::SUCCESS;
     }
 }
