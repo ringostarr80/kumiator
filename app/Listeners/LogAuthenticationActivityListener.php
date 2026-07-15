@@ -134,11 +134,7 @@ final class LogAuthenticationActivityListener
         $properties = ['guard' => $event->guard];
 
         $email = $event->credentials['email'] ?? null;
-        $emailHash = AuditEmailHasher::hash(is_string($email) ? $email : null);
-
-        if ($emailHash !== null) {
-            $properties['email_hash'] = $emailHash;
-        }
+        $properties += $this->emailHashProperty(is_string($email) ? $email : null);
 
         // `Failed` trägt keinen Request — IP/UA daher aus dem aktuellen HTTP-Request.
         $properties += $this->forensicProperties(request());
@@ -253,14 +249,8 @@ final class LogAuthenticationActivityListener
 
     public function handleLockout(Lockout $event): void
     {
-        $properties = [];
-
         $email = $event->request->input('email');
-        $emailHash = AuditEmailHasher::hash(is_string($email) ? $email : null);
-
-        if ($emailHash !== null) {
-            $properties['email_hash'] = $emailHash;
-        }
+        $properties = $this->emailHashProperty(is_string($email) ? $email : null);
 
         $properties += $this->forensicProperties($event->request);
 
@@ -268,6 +258,23 @@ final class LogAuthenticationActivityListener
             ->event(ActivityEvent::LOGIN_LOCKED_OUT->value)
             ->withProperties($properties)
             ->log(ActivityEvent::LOGIN_LOCKED_OUT->description());
+    }
+
+    /**
+     * `email_hash` als 1-Element-Array (oder leer), damit `handleFailed` und
+     * `handleLockout` ihn per `+=` mit ihren übrigen Properties mischen. Leer bei
+     * fehlender/leerer Eingabe (Datenminimierung, s. `AuditEmailHasher`) — ein
+     * konstanter Hash über „nichts" wäre forensisch wertlos.
+     *
+     * @return array<string, string>
+     */
+    private function emailHashProperty(?string $email): array
+    {
+        $emailHash = AuditEmailHasher::hash($email);
+
+        return $emailHash !== null
+            ? ['email_hash' => $emailHash]
+            : [];
     }
 
     /**
