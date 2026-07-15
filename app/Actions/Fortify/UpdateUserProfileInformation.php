@@ -139,6 +139,13 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             $newPhotoPath = $storedPath;
         }
 
+        // Denselben Entscheid, der oben die Re-Auth-Regel setzt, an den
+        // Deferred-Flow durchreichen (null = keine Änderung) — ein zweiter
+        // Vergleich gegen $user->email könnte von der Re-Auth-Pflicht abweichen.
+        $emailChangeRequest = $emailChanged
+            ? $email
+            : null;
+
         $committed = false;
 
         try {
@@ -152,7 +159,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             DB::transaction(function () use (
                 $user,
                 $name,
-                $email,
+                $emailChangeRequest,
                 $newPhotoPath,
                 $previousPhotoPath,
                 &$committed,
@@ -169,7 +176,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
                 $this->persistProfileChanges(
                     $user,
                     $name,
-                    $email,
+                    $emailChangeRequest,
                     $newPhotoPath,
                     $previousPhotoPath,
                 );
@@ -201,7 +208,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
     private function persistProfileChanges(
         User $user,
         string $name,
-        string $email,
+        ?string $emailChangeRequest,
         ?string $newPhotoPath,
         ?string $previousPhotoPath,
     ): void {
@@ -221,8 +228,8 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
 
         $user->forceFill(['name' => $name])->saveOrFail();
 
-        if ($email !== $user->email) {
-            $this->emailChanger->requestChange($user, $email);
+        if ($emailChangeRequest !== null) {
+            $this->emailChanger->requestChange($user, $emailChangeRequest);
         }
     }
 
