@@ -7,6 +7,9 @@ return [
     'common' => [
         'ask_email' => 'E-Mail',
         'not_found' => 'Kein Benutzer mit der E-Mail-Adresse ":email" gefunden.',
+        'user_found' => 'Benutzer gefunden: :name (:email)',
+        'trashed_user_found' => 'Soft-deleted Benutzer gefunden: :name (:email), gelöscht am :deleted_at',
+        'aborted' => 'Abgebrochen.',
     ],
 
     'create_user' => [
@@ -21,18 +24,14 @@ return [
 
     'delete_user' => [
         'title' => 'Benutzer löschen',
-        'user_found' => 'Benutzer gefunden: :name (:email)',
         'confirm_delete' => 'Soll dieser Benutzer wirklich gelöscht werden?',
-        'aborted' => 'Abgebrochen.',
         'success' => 'Benutzer ":name" (:email) wurde erfolgreich gelöscht.',
     ],
 
     'restore_user' => [
         'title' => 'Soft-deleted Benutzer wiederherstellen',
         'not_trashed' => 'Benutzer ":email" ist nicht soft-deleted.',
-        'user_found' => 'Soft-deleted Benutzer gefunden: :name (:email), gelöscht am :deleted_at',
         'confirm_restore' => 'Soll dieser Benutzer wirklich wiederhergestellt werden?',
-        'aborted' => 'Abgebrochen.',
         'hint' => 'Hinweis: API-Tokens, Passkeys und Sessions wurden beim Löschen entfernt'
             . ' und werden nicht wiederhergestellt. Der Benutzer muss sich neu anmelden'
             . ' und ggf. seine Passkeys neu registrieren.',
@@ -46,11 +45,9 @@ return [
         'title' => 'Soft-deleted Benutzer endgültig löschen',
         'not_trashed' => 'Benutzer ":email" muss erst per user:delete soft-deleted werden,'
             . ' bevor er endgültig gelöscht werden kann.',
-        'user_found' => 'Soft-deleted Benutzer gefunden: :name (:email), gelöscht am :deleted_at',
         'warning' => 'Achtung: Diese Aktion ist DSGVO-konform und unwiderruflich.'
             . ' Der Benutzer und alle personenbezogenen Activity-Log-Einträge werden gelöscht.',
         'confirm_force_delete' => 'Soll dieser Benutzer wirklich endgültig gelöscht werden?',
-        'aborted' => 'Abgebrochen.',
         'success' => 'Benutzer ":email" wurde endgültig gelöscht.',
     ],
 
@@ -79,7 +76,6 @@ return [
         'confirm_delete' => 'Soll diese Rolle wirklich gelöscht werden?',
         'has_sole_users' => 'Rolle ":name" kann nicht gelöscht werden.'
             . ' :count Benutzer haben nur diese Rolle.',
-        'aborted' => 'Abgebrochen.',
         'success' => 'Rolle ":name" wurde erfolgreich gelöscht.',
     ],
 
@@ -136,9 +132,7 @@ return [
     'disable_two_factor' => [
         'title' => 'Zwei-Faktor-Authentifizierung deaktivieren',
         'not_enabled' => 'Benutzer ":name" (:email) hat die Zwei-Faktor-Authentifizierung nicht aktiviert.',
-        'user_found' => 'Benutzer gefunden: :name (:email)',
         'confirm_disable' => 'Soll die Zwei-Faktor-Authentifizierung wirklich deaktiviert werden?',
-        'aborted' => 'Abgebrochen.',
         'success' => 'Zwei-Faktor-Authentifizierung für Benutzer ":name" (:email) wurde erfolgreich deaktiviert.',
     ],
 

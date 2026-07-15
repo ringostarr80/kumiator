@@ -50,7 +50,7 @@ class Delete extends Command
         $this->line(__('commands.delete_role.role_found', ['name' => $name, 'users_count' => $usersCount]));
 
         if (! $this->confirm(__('commands.delete_role.confirm_delete'))) {
-            $this->info(__('commands.delete_role.aborted'));
+            $this->info(__('commands.common.aborted'));
 
             return self::SUCCESS;
         }

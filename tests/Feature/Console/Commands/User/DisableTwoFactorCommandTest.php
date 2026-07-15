@@ -52,7 +52,7 @@ final class DisableTwoFactorCommandTest extends TestCase
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
             ->expectsConfirmation(__('commands.disable_two_factor.confirm_disable'), 'no')
-            ->expectsOutputToContain(__('commands.disable_two_factor.aborted'))
+            ->expectsOutputToContain(__('commands.common.aborted'))
             ->assertSuccessful()
             ->run();
 

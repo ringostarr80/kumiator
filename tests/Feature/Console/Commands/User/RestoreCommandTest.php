@@ -26,7 +26,7 @@ final class RestoreCommandTest extends TestCase
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
-            ->expectsOutputToContain(__('commands.restore_user.user_found', [
+            ->expectsOutputToContain(__('commands.common.trashed_user_found', [
                 'name' => 'John Doe',
                 'email' => self::TEST_EMAIL,
                 'deleted_at' => $user->deleted_at?->format('d.m.Y H:i') ?? '',
@@ -85,7 +85,7 @@ final class RestoreCommandTest extends TestCase
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
             ->expectsConfirmation(__('commands.restore_user.confirm_restore'), 'no')
-            ->expectsOutputToContain(__('commands.restore_user.aborted'))
+            ->expectsOutputToContain(__('commands.common.aborted'))
             ->assertSuccessful()
             ->run();
 

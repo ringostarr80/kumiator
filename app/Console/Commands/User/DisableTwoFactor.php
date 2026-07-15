@@ -41,10 +41,10 @@ class DisableTwoFactor extends Command
             return self::SUCCESS;
         }
 
-        $this->line(__('commands.disable_two_factor.user_found', ['name' => $user->name, 'email' => $email]));
+        $this->line(__('commands.common.user_found', ['name' => $user->name, 'email' => $email]));
 
         if (!$this->confirm(__('commands.disable_two_factor.confirm_disable'))) {
-            $this->info(__('commands.disable_two_factor.aborted'));
+            $this->info(__('commands.common.aborted'));
 
             return self::SUCCESS;
         }

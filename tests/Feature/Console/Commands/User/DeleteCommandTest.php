@@ -51,7 +51,7 @@ final class DeleteCommandTest extends TestCase
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
             ->expectsConfirmation(__('commands.delete_user.confirm_delete'), 'no')
-            ->expectsOutputToContain(__('commands.delete_user.aborted'))
+            ->expectsOutputToContain(__('commands.common.aborted'))
             ->assertSuccessful()
             ->run();
 

@@ -7,6 +7,9 @@ return [
     'common' => [
         'ask_email' => 'E-Mail',
         'not_found' => 'No user with the email address ":email" found.',
+        'user_found' => 'User found: :name (:email)',
+        'trashed_user_found' => 'Soft-deleted user found: :name (:email), deleted at :deleted_at',
+        'aborted' => 'Aborted.',
     ],
 
     'create_user' => [
@@ -21,18 +24,14 @@ return [
 
     'delete_user' => [
         'title' => 'Delete user',
-        'user_found' => 'User found: :name (:email)',
         'confirm_delete' => 'Do you really want to delete this user?',
-        'aborted' => 'Aborted.',
         'success' => 'User ":name" (:email) was successfully deleted.',
     ],
 
     'restore_user' => [
         'title' => 'Restore soft-deleted user',
         'not_trashed' => 'User ":email" is not soft-deleted.',
-        'user_found' => 'Soft-deleted user found: :name (:email), deleted at :deleted_at',
         'confirm_restore' => 'Do you really want to restore this user?',
-        'aborted' => 'Aborted.',
         'hint' => 'Note: API tokens, passkeys and sessions were removed on deletion'
             . ' and will not be restored. The user must log in again and re-register'
             . ' their passkeys if applicable.',
@@ -45,11 +44,9 @@ return [
         'title' => 'Permanently delete soft-deleted user',
         'not_trashed' => 'User ":email" must be soft-deleted via user:delete first'
             . ' before it can be permanently deleted.',
-        'user_found' => 'Soft-deleted user found: :name (:email), deleted at :deleted_at',
         'warning' => 'Warning: This action is GDPR-compliant and irreversible.'
             . ' The user and all personal activity log entries will be deleted.',
         'confirm_force_delete' => 'Do you really want to permanently delete this user?',
-        'aborted' => 'Aborted.',
         'success' => 'User ":email" was permanently deleted.',
     ],
 
@@ -77,7 +74,6 @@ return [
         'role_found' => 'Role found: :name (:users_count users assigned)',
         'confirm_delete' => 'Do you really want to delete this role?',
         'has_sole_users' => 'Role ":name" cannot be deleted because :count users have only this role assigned.',
-        'aborted' => 'Aborted.',
         'success' => 'Role ":name" was successfully deleted.',
     ],
 
@@ -134,9 +130,7 @@ return [
     'disable_two_factor' => [
         'title' => 'Disable two-factor authentication',
         'not_enabled' => 'User ":name" (:email) does not have two-factor authentication enabled.',
-        'user_found' => 'User found: :name (:email)',
         'confirm_disable' => 'Do you really want to disable two-factor authentication?',
-        'aborted' => 'Aborted.',
         'success' => 'Two-factor authentication for user ":name" (:email) was successfully disabled.',
     ],
 

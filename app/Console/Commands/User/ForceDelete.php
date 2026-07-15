@@ -45,7 +45,7 @@ class ForceDelete extends TrashedUserActionCommand
 
     protected function userFoundKey(): string
     {
-        return 'commands.force_delete_user.user_found';
+        return 'commands.common.trashed_user_found';
     }
 
     /**
@@ -63,7 +63,7 @@ class ForceDelete extends TrashedUserActionCommand
 
     protected function abortedKey(): string
     {
-        return 'commands.force_delete_user.aborted';
+        return 'commands.common.aborted';
     }
 
     protected function successKey(): string

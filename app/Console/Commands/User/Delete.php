@@ -63,10 +63,10 @@ class Delete extends Command
             return self::FAILURE;
         }
 
-        $this->line(__('commands.delete_user.user_found', ['name' => $user->name, 'email' => $email]));
+        $this->line(__('commands.common.user_found', ['name' => $user->name, 'email' => $email]));
 
         if (!$this->confirm(__('commands.delete_user.confirm_delete'))) {
-            $this->info(__('commands.delete_user.aborted'));
+            $this->info(__('commands.common.aborted'));
 
             return self::SUCCESS;
         }

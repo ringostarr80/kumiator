@@ -47,7 +47,7 @@ final class ForceDeleteCommandTest extends TestCase
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
             ->expectsConfirmation(__('commands.force_delete_user.confirm_force_delete'), 'no')
-            ->expectsOutputToContain(__('commands.force_delete_user.aborted'))
+            ->expectsOutputToContain(__('commands.common.aborted'))
             ->assertSuccessful()
             ->run();
 

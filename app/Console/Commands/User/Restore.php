@@ -38,7 +38,7 @@ class Restore extends TrashedUserActionCommand
 
     protected function userFoundKey(): string
     {
-        return 'commands.restore_user.user_found';
+        return 'commands.common.trashed_user_found';
     }
 
     /**
@@ -59,7 +59,7 @@ class Restore extends TrashedUserActionCommand
 
     protected function abortedKey(): string
     {
-        return 'commands.restore_user.aborted';
+        return 'commands.common.aborted';
     }
 
     protected function successKey(): string
