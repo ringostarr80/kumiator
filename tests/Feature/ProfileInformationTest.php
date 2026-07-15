@@ -395,6 +395,30 @@ final class ProfileInformationTest extends TestCase
         $this->assertNull($properties['previous_profile_photo_path']);
     }
 
+    /**
+     * Der Optimizer legt das Thumbnail in einer tempnam()-Datei ab, die PHP
+     * nicht selbst wegräumt (kein $_FILES-Upload). Ein erfolgreicher Upload
+     * darf danach keine `profile_photo_*`-Waise in sys_get_temp_dir() lassen.
+     */
+    public function testProfilePhotoUploadLeavesNoTempFileBehind(): void
+    {
+        Storage::fake('public');
+
+        $this->actingAs($user = User::factory()->create());
+
+        $pattern = sys_get_temp_dir() . '/profile_photo_*';
+        $before = glob($pattern);
+
+        Livewire::test(UpdateProfileInformationForm::class)
+            ->set('photo', UploadedFile::fake()->image('photo.jpg'))
+            ->set('state', ['name' => $user->name, 'email' => $user->email])
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
+
+        $this->assertNotNull($user->fresh()?->profile_photo_path);
+        $this->assertSame($before, glob($pattern));
+    }
+
     public function testReplacingProfilePhotoLogsBothPaths(): void
     {
         Storage::fake('public');

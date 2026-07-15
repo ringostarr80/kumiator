@@ -14,6 +14,7 @@ use App\Services\Upload\Exceptions\ProfilePhotoStorageException;
 use App\Services\User\Contracts\UserEmailChangerContract;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -126,6 +127,12 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
 
         if ($optimizedPhoto !== null) {
             $storedPath = $optimizedPhoto->storePublicly('profile-photos', ['disk' => $photoDisk]);
+
+            // Der Optimizer gibt das Thumbnail in einer tempnam()-Datei zurück,
+            // die PHP nicht selbst wegräumt (kein $_FILES-Upload). storePublicly()
+            // kopiert per Stream — ohne dieses Löschen bliebe pro Upload eine
+            // verwaiste AVIF-Datei in sys_get_temp_dir() liegen.
+            File::delete($optimizedPhoto->getRealPath());
 
             if ($storedPath === false) {
                 // Die Disk läuft auf `throw => false`, ein Schreibfehler (Platte
