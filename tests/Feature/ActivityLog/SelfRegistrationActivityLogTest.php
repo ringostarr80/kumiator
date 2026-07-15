@@ -44,26 +44,12 @@ final class SelfRegistrationActivityLogTest extends TestCase
     {
         Activity::query()->delete();
 
-        $response = $this->post('/register', [
-            'name' => 'Erika Mustermann',
-            'email' => self::REGISTRATION_EMAIL,
-            'password' => self::REGISTRATION_PASSWORD,
-            'password_confirmation' => self::REGISTRATION_PASSWORD,
-            'terms' => true,
-        ]);
-
-        $response->assertSessionHasNoErrors();
+        $this->postRegistration();
 
         $user = User::query()->where('email', self::REGISTRATION_EMAIL)->firstOrFail();
 
-        $activity = Activity::query()
-            ->where('log_name', 'user')
-            ->where('subject_type', $user->getMorphClass())
-            ->where('subject_id', $user->getKey())
-            ->latest('id')
-            ->first();
+        $activity = $this->latestUserActivityFor($user);
 
-        $this->assertNotNull($activity);
         $this->assertSame('user_self_registered', $activity->event);
         $this->assertSame(__('app.activity_user_self_registered'), $activity->description);
     }
@@ -91,24 +77,11 @@ final class SelfRegistrationActivityLogTest extends TestCase
 
         Activity::query()->delete();
 
-        $response = $this->post('/register', [
-            'name' => 'Erika Mustermann',
-            'email' => self::REGISTRATION_EMAIL,
-            'password' => self::REGISTRATION_PASSWORD,
-            'password_confirmation' => self::REGISTRATION_PASSWORD,
-            'terms' => true,
-        ]);
-
-        $response->assertSessionHasNoErrors();
+        $this->postRegistration();
 
         $user = User::query()->where('email', self::REGISTRATION_EMAIL)->firstOrFail();
 
-        $activity = Activity::query()
-            ->where('log_name', 'user')
-            ->where('subject_type', $user->getMorphClass())
-            ->where('subject_id', $user->getKey())
-            ->latest('id')
-            ->firstOrFail();
+        $activity = $this->latestUserActivityFor($user);
 
         $this->assertSame(
             'user_self_registered',
@@ -133,14 +106,8 @@ final class SelfRegistrationActivityLogTest extends TestCase
             'password' => 'irrelevant',
         ]);
 
-        $activity = Activity::query()
-            ->where('log_name', 'user')
-            ->where('subject_type', $user->getMorphClass())
-            ->where('subject_id', $user->getKey())
-            ->latest('id')
-            ->first();
+        $activity = $this->latestUserActivityFor($user);
 
-        $this->assertNotNull($activity);
         // Direkte User-Anlage außerhalb der Self-Reg-Strecke wird vom
         // channel-agnostischen User-Lifecycle-Hook auf den fachlichen
         // Code `user_created` aufgewertet — sie darf aber NICHT als
@@ -157,27 +124,15 @@ final class SelfRegistrationActivityLogTest extends TestCase
      */
     public function testUpdatingSelfRegisteredUserBecomesUserRenamed(): void
     {
-        $this->post('/register', [
-            'name' => 'Erika Mustermann',
-            'email' => self::REGISTRATION_EMAIL,
-            'password' => self::REGISTRATION_PASSWORD,
-            'password_confirmation' => self::REGISTRATION_PASSWORD,
-            'terms' => true,
-        ]);
+        $this->postRegistration();
 
         $user = User::query()->where('email', self::REGISTRATION_EMAIL)->firstOrFail();
         Activity::query()->delete();
 
         $user->updateOrFail(['name' => 'Erika Neu']);
 
-        $activity = Activity::query()
-            ->where('log_name', 'user')
-            ->where('subject_type', $user->getMorphClass())
-            ->where('subject_id', $user->getKey())
-            ->latest('id')
-            ->first();
+        $activity = $this->latestUserActivityFor($user);
 
-        $this->assertNotNull($activity);
         $this->assertSame('user_renamed', $activity->event);
         $this->assertNotSame('user_self_registered', $activity->event);
     }
@@ -253,5 +208,28 @@ final class SelfRegistrationActivityLogTest extends TestCase
         // CreateNewUser weist die `member`-Rolle zu — die muss existieren,
         // sonst scheitert die Registration mit `RoleDoesNotExist`.
         Role::query()->firstOrCreate(['name' => 'member', 'guard_name' => 'web']);
+    }
+
+    private function postRegistration(): void
+    {
+        $response = $this->post('/register', [
+            'name' => 'Erika Mustermann',
+            'email' => self::REGISTRATION_EMAIL,
+            'password' => self::REGISTRATION_PASSWORD,
+            'password_confirmation' => self::REGISTRATION_PASSWORD,
+            'terms' => true,
+        ]);
+
+        $response->assertSessionHasNoErrors();
+    }
+
+    private function latestUserActivityFor(User $user): Activity
+    {
+        return Activity::query()
+            ->where('log_name', 'user')
+            ->where('subject_type', $user->getMorphClass())
+            ->where('subject_id', $user->getKey())
+            ->latest('id')
+            ->firstOrFail();
     }
 }
