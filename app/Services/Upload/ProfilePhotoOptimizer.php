@@ -91,7 +91,7 @@ final class ProfilePhotoOptimizer implements ProfilePhotoOptimizerContract
             throw new ProfilePhotoOptimizationException(__('app.profile_photo_optimizer_not_an_image'));
         }
 
-        $source = $this->correctOrientation($source, $this->readExifOrientation($photo, $contents));
+        $source = $this->correctOrientation($source, $this->readExifOrientation($photo));
         $thumbnail = $this->cropToSquareThumbnail($source);
 
         // Kein `imagedestroy()`: seit PHP 8.0 sind GD-Bilder Objekte, die der
@@ -105,30 +105,22 @@ final class ProfilePhotoOptimizer implements ProfilePhotoOptimizerContract
      * Liest die EXIF-Orientierung (1–8) des Originals. Nur JPEGs tragen EXIF;
      * fehlt das Tag oder schlägt das Lesen fehl, gilt 1 (keine Drehung).
      */
-    private function readExifOrientation(UploadedFile $photo, string $contents): int
+    private function readExifOrientation(UploadedFile $photo): int
     {
         if ($photo->getMimeType() !== 'image/jpeg') {
             return 1;
         }
 
-        $stream = fopen('php://memory', 'r+b');
-
-        if ($stream === false) {
-            return 1;
-        }
-
         try {
-            fwrite($stream, $contents);
-            rewind($stream);
-
-            // `exif_read_data()` meldet fehlende/defekte EXIF-Blöcke per Warning,
-            // die Laravels Error-Handler in eine Exception übersetzt — daher der
-            // Catch. In beiden Fällen behandeln wir das Bild als ungedreht.
-            $exif = exif_read_data($stream);
+            // Direkt aus der Upload-Datei lesen: `exif_read_data()` greift nur
+            // den EXIF-Header am Dateianfang ab, statt das (schon in `$contents`
+            // gehaltene) Bild ein zweites Mal komplett in den RAM zu kopieren.
+            // Fehlende/defekte EXIF-Blöcke meldet es per Warning, die Laravels
+            // Error-Handler in eine Exception übersetzt — daher der Catch. In
+            // beiden Fällen behandeln wir das Bild als ungedreht.
+            $exif = exif_read_data($photo->getPathname());
         } catch (\Throwable) {
             return 1;
-        } finally {
-            fclose($stream);
         }
 
         $orientation = is_array($exif)
