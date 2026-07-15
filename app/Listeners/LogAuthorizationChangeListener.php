@@ -42,7 +42,7 @@ abstract class LogAuthorizationChangeListener
 
     protected function log(Model $subject, mixed $modelsOrIds, ActivityEvent $event): void
     {
-        $names = $this->resolveModelNames($modelsOrIds, $this->modelClass(), $this->unknownIdsWarning());
+        $names = $this->resolveModelNames($modelsOrIds);
 
         if ($names === []) {
             return;
@@ -58,12 +58,9 @@ abstract class LogAuthorizationChangeListener
     }
 
     /**
-     * @template TModel of \Spatie\Permission\Models\Role|\Spatie\Permission\Models\Permission
-     * @param class-string<TModel> $modelClass Model zum Nachschlagen roher IDs
-     * @param string $unknownIdsWarning Log-Nachricht, falls eine ID kein (mehr existierendes) Model trifft
      * @return list<string>
      */
-    protected function resolveModelNames(mixed $modelsOrIds, string $modelClass, string $unknownIdsWarning): array
+    private function resolveModelNames(mixed $modelsOrIds): array
     {
         if ($modelsOrIds instanceof Collection) {
             $modelsOrIds = $modelsOrIds->all();
@@ -89,6 +86,7 @@ abstract class LogAuthorizationChangeListener
         }
 
         if ($ids !== []) {
+            $modelClass = $this->modelClass();
             $found = $modelClass::query()->whereIn('id', $ids)->get();
 
             // Drift sichtbar machen: eine ID, zu der kein Model (mehr)
@@ -98,7 +96,7 @@ abstract class LogAuthorizationChangeListener
             $missing = array_values(array_diff($ids, $found->modelKeys()));
 
             if ($missing !== []) {
-                Log::warning($unknownIdsWarning, ['missing_ids' => $missing]);
+                Log::warning($this->unknownIdsWarning(), ['missing_ids' => $missing]);
             }
 
             foreach ($found as $model) {
