@@ -20,6 +20,10 @@ Artisan::command('inspire', function (): void {
  * überschreibbar). Ohne diesen Schedule würde die `activity_log`-Tabelle
  * unbegrenzt wachsen und die konfigurierte Retention wäre wirkungslos.
  *
+ * `--force` überspringt Spaties production-Bestätigung (ConfirmableTrait):
+ * `schedule:run` läuft non-interaktiv, ohne das Flag bräche der Command in
+ * production mit „Command cancelled." (Exit 1) ab und löschte nie etwas.
+ *
  * Voraussetzung: Auf dem Zielsystem muss der Laravel-Scheduler via Cron laufen
  * (`* * * * * php artisan schedule:run`), siehe docs/operations.md.
  *
@@ -30,7 +34,7 @@ Artisan::command('inspire', function (): void {
  *  - `withoutOverlapping()` — defensive Absicherung für den Fall, dass die
  *    Tabelle stark gewachsen ist und ein Lauf länger als 24 h braucht.
  */
-Schedule::command('activitylog:clean')
+Schedule::command('activitylog:clean --force')
     ->dailyAt('03:30')
     ->onOneServer()
     ->withoutOverlapping()
@@ -51,7 +55,8 @@ Schedule::command('activitylog:clean')
  */
 Schedule::command(
     'activitylog:clean ' . ActivityChannel::FORENSIC->value
-        . ' --days=' . Config::integer('activitylog.clean_after_days_forensic'),
+        . ' --days=' . Config::integer('activitylog.clean_after_days_forensic')
+        . ' --force',
 )
     ->dailyAt('03:45')
     ->onOneServer()
