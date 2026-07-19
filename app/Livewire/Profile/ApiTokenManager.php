@@ -21,6 +21,9 @@ use Laravel\Jetstream\Http\Livewire\ApiTokenManager as JetstreamApiTokenManager;
  *    `Validator::make(...)->validateWithBag()`, das bei Validation-Fehlern
  *    eine Exception wirft. Erreichen wir den Log-Code, ist der Token
  *    persistiert.
+ *  - `api_token_permissions_changed` nach einer Ability-Änderung, wobei wir
+ *    die bisherigen Abilities VOR dem Parent-Aufruf snapshotten (danach hat
+ *    `forceFill(...)->save()` sie auf demselben Model überschrieben).
  *  - `api_token_revoked` nach erfolgreichem Delete, wobei wir Token-Name
  *    und Abilities VOR dem Parent-Aufruf snapshotten (danach wäre der
  *    Datensatz weg).
@@ -68,6 +71,31 @@ final class ApiTokenManager extends JetstreamApiTokenManager
         }
 
         $this->tokenAuditor->recordCreated($user, $accessToken);
+    }
+
+    public function updateApiToken(): void
+    {
+        $token = $this->managingPermissionsFor;
+
+        // Alt-Abilities vor dem Parent-Aufruf snapshotten: `updateApiToken()`
+        // überschreibt sie per `forceFill(...)->save()` auf genau diesem Model,
+        // danach wäre der Vorher-Zustand für den Delta-Beleg verloren.
+        $currentAbilities = $token instanceof Model
+            ? $token->getAttribute('abilities')
+            : null;
+        $previousAbilities = is_array($currentAbilities)
+            ? array_values(array_filter($currentAbilities, 'is_string'))
+            : [];
+
+        parent::updateApiToken();
+
+        $user = Auth::user();
+
+        if (!$user instanceof User || !$token instanceof Model) {
+            return;
+        }
+
+        $this->tokenAuditor->recordPermissionsChanged($user, $token, $previousAbilities);
     }
 
     public function deleteApiToken(): void

@@ -313,6 +313,7 @@ return [
     'activity_account_admin_force_deleted' => 'Account permanently deleted by administrator (anonymised)',
     'activity_api_token_created' => 'API token created',
     'activity_api_token_revoked' => 'API token revoked',
+    'activity_api_token_permissions_changed' => 'API token permissions changed',
     'activity_profile_photo_updated' => 'Profile photo updated',
     'activity_profile_photo_removed' => 'Profile photo removed',
     'activity_2fa_enabled' => 'Two-factor authentication enabled',

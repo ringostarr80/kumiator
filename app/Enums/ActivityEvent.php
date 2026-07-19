@@ -63,6 +63,7 @@ enum ActivityEvent: string
     case PROFILE_PHOTO_REMOVED = 'profile_photo_removed';
     case API_TOKEN_CREATED = 'api_token_created';
     case API_TOKEN_REVOKED = 'api_token_revoked';
+    case API_TOKEN_PERMISSIONS_CHANGED = 'api_token_permissions_changed';
 
     // passkey
     case PASSKEY_LOGIN_SUCCEEDED = 'passkey_login_succeeded';

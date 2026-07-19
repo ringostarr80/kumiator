@@ -317,6 +317,7 @@ return [
     'activity_account_admin_force_deleted' => 'Konto durch Administrator endgültig gelöscht (anonymisiert)',
     'activity_api_token_created' => 'API-Token erstellt',
     'activity_api_token_revoked' => 'API-Token widerrufen',
+    'activity_api_token_permissions_changed' => 'API-Token-Berechtigungen geändert',
     'activity_profile_photo_updated' => 'Profilfoto aktualisiert',
     'activity_profile_photo_removed' => 'Profilfoto entfernt',
     'activity_2fa_enabled' => 'Zwei-Faktor-Authentifizierung aktiviert',

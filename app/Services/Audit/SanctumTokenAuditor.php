@@ -18,6 +18,19 @@ final class SanctumTokenAuditor implements SanctumTokenAuditorContract
         $this->writeResilient(ActivityEvent::API_TOKEN_CREATED, $subject, $token);
     }
 
+    /**
+     * @param list<string> $previousAbilities
+     */
+    public function recordPermissionsChanged(User $subject, Model $token, array $previousAbilities): void
+    {
+        $this->writeResilient(
+            ActivityEvent::API_TOKEN_PERMISSIONS_CHANGED,
+            $subject,
+            $token,
+            ['previous_abilities' => $previousAbilities],
+        );
+    }
+
     public function recordRevoked(User $subject, Model $token): void
     {
         $this->writeResilient(ActivityEvent::API_TOKEN_REVOKED, $subject, $token);
@@ -36,18 +49,32 @@ final class SanctumTokenAuditor implements SanctumTokenAuditorContract
      * schon committet hat. Ein hier geworfener Insert-Fehler dürfte diese
      * abgeschlossene Operation nicht als 500 verkleiden — deshalb melden statt
      * durchreichen, symmetrisch zum `AuthorizationAuditor`.
+     *
+     * @param array<string, mixed> $extraProperties
      */
-    private function writeResilient(ActivityEvent $event, User $subject, Model $token): void
-    {
+    private function writeResilient(
+        ActivityEvent $event,
+        User $subject,
+        Model $token,
+        array $extraProperties = [],
+    ): void {
         try {
-            $this->write($event, $subject, $token, false);
+            $this->write($event, $subject, $token, false, $extraProperties);
         } catch (\Throwable $e) {
             report($e);
         }
     }
 
-    private function write(ActivityEvent $event, User $subject, Model $token, bool $anonymous): void
-    {
+    /**
+     * @param array<string, mixed> $extraProperties
+     */
+    private function write(
+        ActivityEvent $event,
+        User $subject,
+        Model $token,
+        bool $anonymous,
+        array $extraProperties = [],
+    ): void {
         $activity = Activity::useLog(ActivityChannel::AUTH->value)
             ->event($event->value);
 
@@ -63,6 +90,7 @@ final class SanctumTokenAuditor implements SanctumTokenAuditorContract
                 'token_id' => $token->getKey(),
                 'token_name' => $token->getAttribute('name'),
                 'abilities' => $token->getAttribute('abilities'),
+                ...$extraProperties,
             ])
             ->log($event->description());
     }

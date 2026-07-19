@@ -26,6 +26,16 @@ interface SanctumTokenAuditorContract
     public function recordCreated(User $subject, Model $token): void;
 
     /**
+     * Ability-Änderung an einem bestehenden Token (Rechte-Eskalation). Die
+     * bisherigen Abilities landen als `previous_abilities` neben den neuen, damit
+     * der Delta im Audit sichtbar bleibt — der `token`-Snapshot trägt sonst nur
+     * den Nachher-Zustand.
+     *
+     * @param list<string> $previousAbilities
+     */
+    public function recordPermissionsChanged(User $subject, Model $token, array $previousAbilities): void;
+
+    /**
      * Widerruf durch den Eigentümer selbst (UI): Causer ist `$subject`.
      */
     public function recordRevoked(User $subject, Model $token): void;

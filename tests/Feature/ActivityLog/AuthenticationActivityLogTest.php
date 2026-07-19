@@ -1129,6 +1129,55 @@ final class AuthenticationActivityLogTest extends TestCase
     }
 
     /**
+     * Eine Ability-Änderung an einem bestehenden Token ist eine Rechte-
+     * Eskalation an einer vollwertigen Anmeldeinformation und muss auditiert
+     * werden (DSGVO Art. 32). Der Eintrag hält die neuen UND die bisherigen
+     * Abilities fest, damit der Delta sichtbar ist — sonst zeigte das Log nur
+     * den alten `api_token_created`-Zustand und die Eskalation bliebe unsichtbar.
+     */
+    public function testApiTokenPermissionChangeIsLogged(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $this->actingAs($user);
+
+        $token = $user->tokens()->create([
+            'name' => 'Audit-Perms-Token',
+            'token' => Str::random(40),
+            'abilities' => ['read'],
+        ]);
+
+        Activity::query()->delete();
+
+        Livewire::test(ApiTokenManager::class)
+            ->set(['managingPermissionsFor' => $token])
+            ->set(['updateApiTokenForm' => [
+                'permissions' => ['read', 'create', 'update', 'delete'],
+            ]])
+            ->call('updateApiToken');
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'api_token_permissions_changed')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull(
+            $activity,
+            'Eine Ability-Änderung an einem bestehenden Token muss einen '
+            . '`api_token_permissions_changed`-Eintrag erzeugen — sonst bleibt '
+            . 'die Rechte-Eskalation im Audit-Log unsichtbar.',
+        );
+        $this->assertSame($user->getKey(), $activity->causer_id);
+        $this->assertSame($user->getKey(), $activity->subject_id);
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('Audit-Perms-Token', $properties['token_name'] ?? null);
+        $this->assertSame($token->id, $properties['token_id'] ?? null);
+        $this->assertSame(['read', 'create', 'update', 'delete'], $properties['abilities'] ?? null);
+        $this->assertSame(['read'], $properties['previous_abilities'] ?? null);
+    }
+
+    /**
      * Der UI-Erstellungspfad auditiert erst, nachdem Sanctum den Token bereits
      * persistiert hat. Bricht der Audit-Insert, darf das die abgeschlossene
      * Token-Erstellung nicht als 500 verkleiden — der Fehler wird gemeldet und
