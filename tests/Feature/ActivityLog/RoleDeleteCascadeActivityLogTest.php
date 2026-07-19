@@ -61,6 +61,40 @@ final class RoleDeleteCascadeActivityLogTest extends TestCase
         $this->assertFalse($user->fresh()?->hasRole('editor'));
     }
 
+    public function testDeletingRoleWithSoftDeletedAssignedUserWritesRoleDetachedActivity(): void
+    {
+        $user = User::factory()->create();
+        $role = Role::create(['name' => 'editor']);
+        $user->assignRole($role);
+
+        // Soft-Delete lässt die Rollen-Pivots bewusst bestehen (siehe
+        // `UserSoftDeleter`): der getrashte Inhaber hält die Rolle weiter, der
+        // `SoftDeletingScope` blendet ihn aber aus `$role->users()` aus.
+        $user->deleteOrFail();
+
+        Activity::query()->delete();
+
+        $role->deleteOrFail();
+
+        $detachActivity = Activity::query()
+            ->where('log_name', 'role')
+            ->where('event', 'role_detached')
+            ->where('subject_type', $user->getMorphClass())
+            ->where('subject_id', $user->getKey())
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull(
+            $detachActivity,
+            'Auch ein soft-gelöschter Rollen-Inhaber muss beim Cascade-Detach '
+            . 'einen `role_detached`-Eintrag erhalten — sonst fehlt nach einem '
+            . 'späteren `user:restore` jeder Beleg für den Rollenverlust.',
+        );
+
+        $properties = $detachActivity->properties?->toArray() ?? [];
+        $this->assertSame(['editor'], $properties['roles'] ?? null);
+    }
+
     public function testDeletingRoleWithMultipleAssignedUsersLogsOneDetachPerUser(): void
     {
         Role::create(['name' => 'member']);

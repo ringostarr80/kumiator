@@ -7,6 +7,8 @@ namespace App\Observers;
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Spatie\Activitylog\Facades\Activity;
 use Spatie\Permission\Models\Role;
 
@@ -90,12 +92,19 @@ final class RoleLifecycleObserver
      */
     public static function detachUsersBeforeCascadeDelete(Role $role): void
     {
-        foreach ($role->users()->get() as $user) {
-            if (!$user instanceof User) {
-                continue;
-            }
-
-            $user->removeRole($role);
-        }
+        // Ein soft-gelöschter Inhaber behält seine Rolle (Spaties `deleting`-
+        // Hook detacht nur beim Force-Delete), daher `withTrashed()` — sonst
+        // verlöre er sie beim Rollen-Delete still per DB-Cascade, ohne
+        // `role_detached`-Beleg. `select('users.id')` + `chunkById` halten den
+        // Speicher bei vielen Inhabern konstant; `removeRole()` braucht nur die ID.
+        User::query()
+            ->withTrashed()
+            ->whereHas('roles', static fn (Builder $query): Builder => $query->whereKey($role->getKey()))
+            ->select('users.id')
+            ->chunkById(200, static function (Collection $users) use ($role): void {
+                foreach ($users as $user) {
+                    $user->removeRole($role);
+                }
+            });
     }
 }
