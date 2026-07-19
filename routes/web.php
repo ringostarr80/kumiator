@@ -17,6 +17,7 @@ use Laravel\Fortify\Http\Controllers\RecoveryCodeController;
 use Laravel\Fortify\Http\Controllers\TwoFactorAuthenticationController;
 use Laravel\Fortify\Http\Controllers\TwoFactorQrCodeController;
 use Laravel\Fortify\Http\Controllers\TwoFactorSecretKeyController;
+use Laravel\Jetstream\Http\Controllers\Livewire\ApiTokenController;
 use Laravel\Jetstream\Http\Controllers\Livewire\UserProfileController;
 
 Route::get('/locale/{locale}', [LocaleController::class, 'switch'])->name('locale.switch');
@@ -117,6 +118,11 @@ Route::middleware([
     // Da Routen-Provider von App nach Vendor zuletzt-gewinnt geladen werden,
     // schlägt unsere Variante Jetstreams Eintrag.
     Route::get('/user/profile', [UserProfileController::class, 'show'])->name('profile.show');
+
+    // Jetstream registriert `api-tokens.index` (Feature `api`) nur hinter
+    // `verified`, nicht `approved`. Ohne diese Re-Registrierung könnte ein
+    // verifizierter, aber noch nicht freigeschalteter User Sanctum-Tokens anlegen.
+    Route::get('/user/api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
 
     // ──────────────────────────────────────────────────────────────────────────
     // Fortify state-change overrides
