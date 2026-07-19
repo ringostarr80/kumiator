@@ -46,6 +46,14 @@ final class AuthenticationActivityLogTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const string GENERIC_EMAIL = 'x@example.com';
+    private const string VICTIM_EMAIL = 'opfer@example.com';
+    private const string UNAPPROVED_EMAIL = 'unapproved@example.com';
+    private const string BOT_EMAIL = 'bot@example.com';
+    private const string LOGIN_URL_PATH = '/login';
+    private const string CLIENT_IP = '203.0.113.7';
+    private const string USER_AGENT = 'Mozilla/5.0 (TestAgent)';
+
     public function testSuccessfulPasswordLoginIsLogged(): void
     {
         $user = User::factory()->create();
@@ -107,7 +115,7 @@ final class AuthenticationActivityLogTest extends TestCase
     {
         Activity::query()->delete();
 
-        $genericUser = new GenericUser(['id' => 1, 'email' => 'x@example.com']);
+        $genericUser = new GenericUser(['id' => 1, 'email' => self::GENERIC_EMAIL]);
         Event::dispatch(new Login('web', $genericUser, false));
 
         $this->assertSame(
@@ -120,7 +128,7 @@ final class AuthenticationActivityLogTest extends TestCase
     {
         Activity::query()->delete();
 
-        $genericUser = new GenericUser(['id' => 1, 'email' => 'x@example.com']);
+        $genericUser = new GenericUser(['id' => 1, 'email' => self::GENERIC_EMAIL]);
         Event::dispatch(new Logout('web', $genericUser));
 
         $this->assertSame(
@@ -205,7 +213,7 @@ final class AuthenticationActivityLogTest extends TestCase
     {
         Activity::query()->delete();
 
-        $email = 'opfer@example.com';
+        $email = self::VICTIM_EMAIL;
         Event::dispatch(new Failed('web', null, ['email' => $email, 'password' => 'wrong']));
 
         $activity = Activity::query()
@@ -261,13 +269,13 @@ final class AuthenticationActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $this->app->instance('request', Request::create(
-            '/login',
+            self::LOGIN_URL_PATH,
             'POST',
-            ['email' => 'opfer@example.com'],
-            server: ['REMOTE_ADDR' => '203.0.113.7', 'HTTP_USER_AGENT' => 'Mozilla/5.0 (TestAgent)'],
+            ['email' => self::VICTIM_EMAIL],
+            server: ['REMOTE_ADDR' => self::CLIENT_IP, 'HTTP_USER_AGENT' => self::USER_AGENT],
         ));
 
-        Event::dispatch(new Failed('web', null, ['email' => 'opfer@example.com']));
+        Event::dispatch(new Failed('web', null, ['email' => self::VICTIM_EMAIL]));
 
         $activity = Activity::query()
             ->where('log_name', 'forensic')
@@ -278,10 +286,10 @@ final class AuthenticationActivityLogTest extends TestCase
         $this->assertNotNull($activity);
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertSame('203.0.113.0/24', $properties['ip'] ?? null);
-        $this->assertSame('Mozilla/5.0 (TestAgent)', $properties['user_agent'] ?? null);
+        $this->assertSame(self::USER_AGENT, $properties['user_agent'] ?? null);
 
         $this->assertStringNotContainsString(
-            '203.0.113.7',
+            self::CLIENT_IP,
             json_encode($activity->toArray(), JSON_THROW_ON_ERROR),
         );
     }
@@ -296,13 +304,13 @@ final class AuthenticationActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $this->app->instance('request', Request::create(
-            '/login',
+            self::LOGIN_URL_PATH,
             'POST',
-            ['email' => 'opfer@example.com'],
-            server: ['REMOTE_ADDR' => '203.0.113.7', 'HTTP_USER_AGENT' => str_repeat('A', 500)],
+            ['email' => self::VICTIM_EMAIL],
+            server: ['REMOTE_ADDR' => self::CLIENT_IP, 'HTTP_USER_AGENT' => str_repeat('A', 500)],
         ));
 
-        Event::dispatch(new Failed('web', null, ['email' => 'opfer@example.com']));
+        Event::dispatch(new Failed('web', null, ['email' => self::VICTIM_EMAIL]));
 
         $activity = Activity::query()
             ->where('log_name', 'forensic')
@@ -333,13 +341,13 @@ final class AuthenticationActivityLogTest extends TestCase
         // 255-Zeichen-Cap zu umgehen; ohne Bereinigung liefert `json_encode`
         // dafür `false`.
         $this->app->instance('request', Request::create(
-            '/login',
+            self::LOGIN_URL_PATH,
             'POST',
-            ['email' => 'opfer@example.com'],
-            server: ['REMOTE_ADDR' => '203.0.113.7', 'HTTP_USER_AGENT' => "Mozilla \xC3\x28 Bot"],
+            ['email' => self::VICTIM_EMAIL],
+            server: ['REMOTE_ADDR' => self::CLIENT_IP, 'HTTP_USER_AGENT' => "Mozilla \xC3\x28 Bot"],
         ));
 
-        Event::dispatch(new Failed('web', null, ['email' => 'opfer@example.com']));
+        Event::dispatch(new Failed('web', null, ['email' => self::VICTIM_EMAIL]));
 
         $activity = Activity::query()
             ->where('log_name', 'forensic')
@@ -372,12 +380,12 @@ final class AuthenticationActivityLogTest extends TestCase
         // CLI-Auth-Pfad nachstellen: keine Client-IP und kein User-Agent.
         // `Request::create` setzt sonst defaultweise REMOTE_ADDR=127.0.0.1 und
         // einen Platzhalter-User-Agent ('Symfony').
-        $request = Request::create('/login', 'POST', ['email' => 'x@example.com']);
+        $request = Request::create(self::LOGIN_URL_PATH, 'POST', ['email' => self::GENERIC_EMAIL]);
         $request->server->remove('REMOTE_ADDR');
         $request->headers->remove('User-Agent');
         $this->app->instance('request', $request);
 
-        Event::dispatch(new Failed('web', null, ['email' => 'x@example.com']));
+        Event::dispatch(new Failed('web', null, ['email' => self::GENERIC_EMAIL]));
 
         $activity = Activity::query()
             ->where('log_name', 'forensic')
@@ -402,13 +410,13 @@ final class AuthenticationActivityLogTest extends TestCase
     public function testUnapprovedPasswordLoginIsLoggedAsUnapprovedAndSuppressesLoginFailed(): void
     {
         $user = User::factory()->unapproved()->create([
-            'email' => 'unapproved@example.com',
+            'email' => self::UNAPPROVED_EMAIL,
         ]);
 
         Activity::query()->delete();
 
-        $response = $this->post('/login', [
-            'email' => 'unapproved@example.com',
+        $response = $this->post(self::LOGIN_URL_PATH, [
+            'email' => self::UNAPPROVED_EMAIL,
             'password' => 'password',
         ]);
 
@@ -431,7 +439,7 @@ final class AuthenticationActivityLogTest extends TestCase
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertSame('web', $properties['guard'] ?? null);
         $this->assertSame(
-            hash_hmac('sha256', 'unapproved@example.com', Config::string('app.key')),
+            hash_hmac('sha256', self::UNAPPROVED_EMAIL, Config::string('app.key')),
             $properties['email_hash'] ?? null,
         );
         $this->assertArrayNotHasKey('email', $properties);
@@ -457,13 +465,13 @@ final class AuthenticationActivityLogTest extends TestCase
     public function testWrongPasswordOnUnapprovedAccountFallsBackToGenericLoginFailed(): void
     {
         User::factory()->unapproved()->create([
-            'email' => 'unapproved@example.com',
+            'email' => self::UNAPPROVED_EMAIL,
         ]);
 
         Activity::query()->delete();
 
-        $this->post('/login', [
-            'email' => 'unapproved@example.com',
+        $this->post(self::LOGIN_URL_PATH, [
+            'email' => self::UNAPPROVED_EMAIL,
             'password' => 'wrong-password',
         ]);
 
@@ -533,7 +541,7 @@ final class AuthenticationActivityLogTest extends TestCase
 
         app(UnapprovedLoginContextContract::class)->markActive();
 
-        Event::dispatch(new Failed('web', null, ['email' => 'opfer@example.com']));
+        Event::dispatch(new Failed('web', null, ['email' => self::VICTIM_EMAIL]));
 
         $this->assertSame(
             0,
@@ -568,7 +576,7 @@ final class AuthenticationActivityLogTest extends TestCase
     public function testRecordDoesNotSetTheMarker(): void
     {
         $user = User::factory()->unapproved()->create([
-            'email' => 'unapproved@example.com',
+            'email' => self::UNAPPROVED_EMAIL,
         ]);
 
         app(UnapprovedLoginContextContract::class)->record($user, 'web', $user->email);
@@ -603,7 +611,7 @@ final class AuthenticationActivityLogTest extends TestCase
     {
         Activity::query()->delete();
 
-        $request = Request::create('/login', 'POST', ['email' => 'bot@example.com']);
+        $request = Request::create(self::LOGIN_URL_PATH, 'POST', ['email' => self::BOT_EMAIL]);
         Event::dispatch(new Lockout($request));
 
         $activity = Activity::query()
@@ -619,7 +627,7 @@ final class AuthenticationActivityLogTest extends TestCase
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertArrayHasKey('email_hash', $properties);
         $this->assertSame(
-            hash_hmac('sha256', 'bot@example.com', Config::string('app.key')),
+            hash_hmac('sha256', self::BOT_EMAIL, Config::string('app.key')),
             $properties['email_hash'],
         );
         $this->assertArrayNotHasKey('email', $properties);
@@ -629,7 +637,7 @@ final class AuthenticationActivityLogTest extends TestCase
     {
         Activity::query()->delete();
 
-        $request = Request::create('/login', 'POST', []);
+        $request = Request::create(self::LOGIN_URL_PATH, 'POST', []);
         Event::dispatch(new Lockout($request));
 
         $activity = Activity::query()
@@ -652,9 +660,9 @@ final class AuthenticationActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $request = Request::create(
-            '/login',
+            self::LOGIN_URL_PATH,
             'POST',
-            ['email' => 'bot@example.com'],
+            ['email' => self::BOT_EMAIL],
             server: ['REMOTE_ADDR' => '2001:db8:1:2:3:4:5:6', 'HTTP_USER_AGENT' => 'curl/8.0'],
         );
         Event::dispatch(new Lockout($request));
@@ -723,7 +731,7 @@ final class AuthenticationActivityLogTest extends TestCase
             '/forgot-password',
             'POST',
             ['email' => $user->email],
-            server: ['REMOTE_ADDR' => '203.0.113.7', 'HTTP_USER_AGENT' => 'Mozilla/5.0 (TestAgent)'],
+            server: ['REMOTE_ADDR' => self::CLIENT_IP, 'HTTP_USER_AGENT' => self::USER_AGENT],
         ));
 
         Event::dispatch(new PasswordResetLinkSent($user));
@@ -745,11 +753,11 @@ final class AuthenticationActivityLogTest extends TestCase
 
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertSame('203.0.113.0/24', $properties['ip'] ?? null);
-        $this->assertSame('Mozilla/5.0 (TestAgent)', $properties['user_agent'] ?? null);
+        $this->assertSame(self::USER_AGENT, $properties['user_agent'] ?? null);
 
         // Volle Host-IP darf nirgends im Eintrag landen (DSGVO-Datenminimierung).
         $this->assertStringNotContainsString(
-            '203.0.113.7',
+            self::CLIENT_IP,
             json_encode($activity->toArray(), JSON_THROW_ON_ERROR),
         );
     }
@@ -768,6 +776,8 @@ final class AuthenticationActivityLogTest extends TestCase
         $nonEloquent = new class implements CanResetPassword {
             public function getEmailForPasswordReset(): string
             {
+                // Anonyme Klasse: kein Zugriff auf die `private const` der
+                // Testklasse; der Wert ist ohnehin ein Wegwerf-Stub.
                 return 'x@example.com';
             }
 
@@ -1242,7 +1252,7 @@ final class AuthenticationActivityLogTest extends TestCase
     {
         Activity::query()->delete();
 
-        $genericUser = new GenericUser(['id' => 1, 'email' => 'x@example.com']);
+        $genericUser = new GenericUser(['id' => 1, 'email' => self::GENERIC_EMAIL]);
         Event::dispatch(new PasswordReset($genericUser));
 
         $this->assertSame(
