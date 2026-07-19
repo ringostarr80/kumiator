@@ -70,7 +70,8 @@
             "@php artisan db:seed --class=RoleSeeder --force",
             "@php artisan config:cache",
             "@php artisan route:cache",
-            "@php artisan view:cache"
+            "@php artisan view:cache",
+            "@php artisan queue:restart"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",

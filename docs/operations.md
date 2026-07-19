@@ -4,8 +4,8 @@
 
 Dieses Dokument beschreibt den **laufenden Betrieb** der Anwendung nach dem
 Deployment ([docs/deployment.md](deployment.md)): die zeitgesteuerten
-Hintergrund-Aufgaben (Scheduler/Cron) und deren Ausfall-Überwachung
-(Schedule-Healthcheck).
+Hintergrund-Aufgaben (Scheduler/Cron), den Queue-Worker für asynchrone Jobs und
+deren Ausfall-Überwachung (Schedule-Healthcheck).
 
 ## Inhaltsverzeichnis
 
@@ -13,6 +13,9 @@ Hintergrund-Aufgaben (Scheduler/Cron) und deren Ausfall-Überwachung
   - [Einrichtung](#einrichtung)
   - [Verifikation](#verifikation)
   - [Aktuell registrierte Schedule-Einträge](#aktuell-registrierte-schedule-einträge)
+- [Queue-Worker](#queue-worker)
+  - [Worker als systemd-Service](#worker-als-systemd-service)
+  - [Neustart nach jedem Deploy](#neustart-nach-jedem-deploy)
 - [Schedule-Healthcheck (Healthchecks.io)](#schedule-healthcheck-healthchecksio)
   - [Modell: Push / Dead-Man-Switch](#modell-push--dead-man-switch)
   - [Einrichtung](#einrichtung-1)
@@ -67,6 +70,77 @@ manuelles `php artisan config:clear` löst das.
 | `activitylog:clean`                  | täglich, **03:30** | `activitylog_clean`     | Activity-Log-Retention (alle Kanäle, 365 Tage) — Begründung & Frist siehe `config/activitylog.php` (Art. 5(1)(e) DSGVO). |
 | `activitylog:clean forensic`         | täglich, **03:45** | `activitylog_clean_forensic` | Verkürzte Retention (90 Tage) nur für den `forensic`-Kanal (anonyme Dritt-Daten) — Art. 5(1)(e) DSGVO, siehe `config/activitylog.php`. |
 | `user:cleanup-pending-email-changes` | stündlich, **:07** | `pending_email_cleanup` | Löscht abgelaufene E-Mail-Änderungs-Anfragen (TTL 60 Min) — Datenminimierung (Art. 5(1)(c) DSGVO). |
+
+## Queue-Worker
+
+Die Anwendung stellt E-Mail-Versand asynchron über Laravels Queue zu (Default
+`QUEUE_CONNECTION=database`): So aufgeschobene Jobs — etwa die Bestätigungs- und
+Abbruch-Mails beim E-Mail-Adress-Wechsel — werden **nicht** sofort abgearbeitet,
+sondern als Zeile in die `jobs`-Tabelle geschrieben und warten dort auf einen
+**dauerhaft laufenden Worker-Prozess**, der sie abholt.
+
+Ohne diesen Prozess bleiben die Jobs unbemerkt in der Tabelle liegen: Die Mails
+kommen **nie** an, und beim E-Mail-Wechsel räumt der stündliche
+`user:cleanup-pending-email-changes`-Lauf den Antrag nach Ablauf der TTL wieder
+weg — der Wechsel schlägt in Produktion still fehl, ganz **ohne** Fehlermeldung.
+
+Anders als der Scheduler, den der Minuten-Cron nur kurz **anstößt**, ist der
+Worker ein **langlebiger Daemon**. Er muss von einem Prozess-Manager überwacht,
+bei Absturz neu gestartet und beim Boot automatisch hochgefahren werden. Cron
+allein genügt dafür nicht.
+
+### Worker als systemd-Service
+
+Eine Unit-Datei unter `/etc/systemd/system/association-worker.service` anlegen
+(Platzhalter an das Server-Layout anpassen):
+
+```ini
+[Unit]
+Description=AssociationManager Queue-Worker
+After=network.target
+
+[Service]
+User=<app-user>
+Group=<app-group>
+Restart=always
+RestartSec=5
+WorkingDirectory=/pfad/zur/app
+ExecStart=/usr/bin/php /pfad/zur/app/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Bestandteile:
+
+- `Restart=always` / `RestartSec=5` — systemd hält den Worker am Leben und startet
+  ihn nach Absturz oder geplantem Stopp (`queue:restart`, siehe unten) neu.
+- `--tries=3` — ein fehlschlagender Job wird bis zu dreimal versucht, danach in
+  die `failed_jobs`-Tabelle verschoben (`php artisan queue:failed` listet sie).
+- `--max-time=3600` — der Worker beendet sich nach einer Stunde von selbst und
+  wird von systemd frisch gestartet; das begrenzt den Speicherverbrauch
+  langlebiger PHP-Prozesse.
+
+Aktivieren und starten:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now association-worker.service
+```
+
+`systemctl status association-worker.service` zeigt anschließend den laufenden
+Prozess. (Wer statt systemd Supervisor betreibt, bildet dasselbe mit einem
+`[program:association-worker]`-Block und `autostart=true`/`autorestart=true` ab.)
+
+### Neustart nach jedem Deploy
+
+Ein laufender Worker hält den zum Startzeitpunkt geladenen Code dauerhaft im
+Speicher — nach einem Deploy arbeitet er also weiter mit dem **alten** Stand.
+Deshalb enthält das `deploy`-Script (`composer.json`) als letzten Schritt
+`@php artisan queue:restart`: Das Kommando signalisiert allen Workern, sich nach
+dem aktuellen Job sauber zu beenden; `Restart=always` fährt sie danach mit dem
+neuen Code wieder hoch. Ohne diesen Schritt liefe der Worker unbegrenzt mit
+veraltetem Code weiter.
 
 ## Schedule-Healthcheck (Healthchecks.io)
 
