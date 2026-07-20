@@ -8,10 +8,14 @@ use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
+use App\Services\WebAuthn\PasskeyAuthenticationService;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use Mockery\MockInterface;
 use Tests\TestCase;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
@@ -230,6 +234,47 @@ final class PasskeyAuthenticationTest extends TestCase
                 ->where('subject_id', $credential->getKey())
                 ->count(),
         );
+    }
+
+    /**
+     * `recordSuccessfulLoginActivity()` läuft, nachdem `Auth::login()` die
+     * Session bereits umgestellt hat. Bricht der Audit-Insert, darf das den
+     * abgeschlossenen Login nicht als 500 verkleiden: Der Browser bekäme kein
+     * `redirect`-Feld und bliebe auf der Login-Seite stehen, obwohl der Nutzer
+     * serverseitig angemeldet ist.
+     */
+    public function testSuccessfulAuthenticationSurvivesFailingAuditWrite(): void
+    {
+        Exceptions::fake();
+
+        $user = User::factory()->create();
+        $credential = PasskeyCredential::factory()->for($user)->create();
+
+        $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
+
+        // `loginAuthenticatedUser` an die echte Implementierung delegieren statt
+        // `Auth::login()` nachzubauen: Nur sie setzt den Passkey-Marker, der den
+        // `LogAuthenticationActivityListener` stillhält. Ohne ihn schlüge schon
+        // dessen Insert fehl und der Test träfe den falschen Pfad.
+        $realService = $this->app->make(PasskeyAuthenticationService::class);
+
+        $this->partialMock(
+            PasskeyAuthenticationContract::class,
+            function (MockInterface $mock) use ($credential, $realService): void {
+                $mock->shouldReceive('verify')->andReturn($credential);
+                $mock->shouldReceive('loginAuthenticatedUser')
+                    ->andReturnUsing($realService->loginAuthenticatedUser(...));
+            },
+        );
+
+        Schema::drop('activity_log');
+
+        $response = $this->postJson(self::AUTHENTICATE_URL, []);
+
+        $response->assertOk();
+        $response->assertJsonStructure(['redirect']);
+        $this->assertAuthenticatedAs($user);
+        Exceptions::assertReported(QueryException::class);
     }
 
     public function testUnapprovedUserCannotAuthenticateViaPasskey(): void

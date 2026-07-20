@@ -29,6 +29,8 @@ final class ListenersAreIndependentTest
                 Selector::inNamespace('Laravel'),
                 Selector::inNamespace('Spatie\\Activitylog'),
                 Selector::inNamespace('Spatie\\Permission'),
+                Selector::classname(\Throwable::class),
+                Selector::isThrowable(),
             )
             ->because(
                 'Listener reagieren auf Events und schreiben in der Regel nur in infrastrukturelle '
@@ -36,6 +38,9 @@ final class ListenersAreIndependentTest
                 . 'Enums, den Service-Layer (den sie orchestrieren), eine geteilte Listener-Basis, '
                 . 'Illuminate, Laravel sowie explizit freigegebene Vendor-Pakete '
                 . '(Spatie\\Activitylog, Spatie\\Permission) zugreifen.',
+                'Die \\Throwable-Hierarchie ist freigegeben, damit Listener einen Ausfall der '
+                . 'Audit-Senke melden können, statt ihn in den Auth-Pfad des auslösenden Requests '
+                . 'durchzureichen — dort ist die Operation bereits abgeschlossen.',
                 'Abhängigkeiten zu höheren Schichten (Http, Livewire, Console, Controllers, '
                 . 'Middleware, Repositories, Actions, ...) sind nicht erlaubt — Listener sind schmale '
                 . 'Adapter, die Events in Infrastruktur-Aktionen übersetzen und fachliche Logik über '

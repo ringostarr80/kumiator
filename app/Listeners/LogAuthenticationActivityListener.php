@@ -70,15 +70,23 @@ final class LogAuthenticationActivityListener
             return;
         }
 
-        Activity::useLog(ActivityChannel::AUTH->value)
-            ->event(ActivityEvent::PASSWORD_LOGIN_SUCCEEDED->value)
-            ->causedBy($user)
-            ->performedOn($user)
-            ->withProperties([
-                'guard' => $event->guard,
-                'remember' => (bool) $event->remember,
-            ])
-            ->log(ActivityEvent::PASSWORD_LOGIN_SUCCEEDED->description());
+        // `Auth::login()` hat die Session bereits auf den User umgestellt, bevor
+        // es dieses Event feuert. Ein durchgereichter Insert-Fehler verkleidete
+        // den abgeschlossenen Login als 500 — der Nutzer sähe einen Fehler,
+        // obwohl er angemeldet ist. Melden statt werfen.
+        try {
+            Activity::useLog(ActivityChannel::AUTH->value)
+                ->event(ActivityEvent::PASSWORD_LOGIN_SUCCEEDED->value)
+                ->causedBy($user)
+                ->performedOn($user)
+                ->withProperties([
+                    'guard' => $event->guard,
+                    'remember' => (bool) $event->remember,
+                ])
+                ->log(ActivityEvent::PASSWORD_LOGIN_SUCCEEDED->description());
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     public function handleLogout(Logout $event): void

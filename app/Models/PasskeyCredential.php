@@ -129,11 +129,19 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
             return;
         }
 
-        Activity::useLog(ActivityChannel::PASSKEY->value)
-            ->event(ActivityEvent::PASSKEY_LOGIN_SUCCEEDED->value)
-            ->causedBy($owner)
-            ->performedOn($this)
-            ->log(ActivityEvent::PASSKEY_LOGIN_SUCCEEDED->description());
+        // Der Aufrufer hat den Login zu diesem Zeitpunkt schon committet. Ein
+        // durchgereichter Insert-Fehler verkleidete ihn als 500: Der Browser
+        // bekäme kein `redirect` und bliebe auf der Login-Seite stehen, obwohl
+        // die Session steht. Melden statt werfen, wie auf den Failure-Pfaden.
+        try {
+            Activity::useLog(ActivityChannel::PASSKEY->value)
+                ->event(ActivityEvent::PASSKEY_LOGIN_SUCCEEDED->value)
+                ->causedBy($owner)
+                ->performedOn($this)
+                ->log(ActivityEvent::PASSKEY_LOGIN_SUCCEEDED->description());
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**

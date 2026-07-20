@@ -1248,6 +1248,55 @@ final class AuthenticationActivityLogTest extends TestCase
         Exceptions::assertReported(QueryException::class);
     }
 
+    /**
+     * Der Erfolgs-Eintrag entsteht im `Login`-Listener, den `Auth::login()`
+     * feuert, NACHDEM die Session bereits auf den User umgestellt ist. Bricht
+     * der Audit-Insert, darf das den abgeschlossenen Login nicht als 500
+     * verkleiden — der Nutzer sähe einen Fehler, obwohl er angemeldet ist.
+     */
+    public function testPasswordLoginSurvivesFailingAuditWrite(): void
+    {
+        Exceptions::fake();
+
+        $user = User::factory()->create();
+
+        Schema::drop('activity_log');
+
+        $response = $this->post(self::LOGIN_URL_PATH, [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertAuthenticatedAs($user);
+        Exceptions::assertReported(QueryException::class);
+    }
+
+    /**
+     * Der `login_unapproved`-Eintrag entsteht in der Fortify-Auth-Closure, bevor
+     * die Anmeldung mit `null` abgewiesen wird. Fällt das Log aus, muss der
+     * Nutzer dieselbe reguläre Fehlermeldung sehen wie sonst — ein 500er würde
+     * die Verfügbarkeit des Audit-Logs nach außen sichtbar machen.
+     */
+    public function testUnapprovedLoginRejectionSurvivesFailingAuditWrite(): void
+    {
+        Exceptions::fake();
+
+        User::factory()->unapproved()->create(['email' => self::UNAPPROVED_EMAIL]);
+
+        Schema::drop('activity_log');
+
+        $response = $this->post(self::LOGIN_URL_PATH, [
+            'email' => self::UNAPPROVED_EMAIL,
+            'password' => 'password',
+        ]);
+
+        $this->assertGuest();
+        $response->assertRedirect();
+        $response->assertSessionHasErrors();
+        Exceptions::assertReported(QueryException::class);
+    }
+
     public function testPasswordUpdateWithNonEloquentAuthenticatableIsSilentlySkipped(): void
     {
         Activity::query()->delete();

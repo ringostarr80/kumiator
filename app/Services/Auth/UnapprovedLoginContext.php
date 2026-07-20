@@ -56,11 +56,19 @@ final class UnapprovedLoginContext implements UnapprovedLoginContextContract
             $properties['email_hash'] = $emailHash;
         }
 
-        Activity::useLog(ActivityChannel::AUTH->value)
-            ->event(ActivityEvent::LOGIN_UNAPPROVED->value)
-            ->causedBy($user)
-            ->performedOn($user)
-            ->withProperties($properties)
-            ->log(ActivityEvent::LOGIN_UNAPPROVED->description());
+        // Ein durchgereichter Insert-Fehler machte aus der regulären Abweisung
+        // einen 500er — und verriete damit, dass das Konto existiert und nur
+        // die Freischaltung fehlt. Die Antwort muss unabhängig davon dieselbe
+        // sein, ob der Audit-Sink erreichbar ist.
+        try {
+            Activity::useLog(ActivityChannel::AUTH->value)
+                ->event(ActivityEvent::LOGIN_UNAPPROVED->value)
+                ->causedBy($user)
+                ->performedOn($user)
+                ->withProperties($properties)
+                ->log(ActivityEvent::LOGIN_UNAPPROVED->description());
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 }
