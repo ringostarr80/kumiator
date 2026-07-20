@@ -438,9 +438,9 @@ final class ActivityLogAccessTest extends TestCase
         $component->assertSet('showPropertiesModal', true);
 
         $selectedProperties = $component->get('selectedProperties');
-        self::assertIsString($selectedProperties);
-        self::assertStringContainsString('Neuer Name', $selectedProperties);
-        self::assertStringContainsString(
+        $this->assertIsString($selectedProperties);
+        $this->assertStringContainsString('Neuer Name', $selectedProperties);
+        $this->assertStringContainsString(
             "\n",
             $selectedProperties,
             'JSON sollte Pretty-printed sein (Zeilenumbrüche enthalten).',
