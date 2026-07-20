@@ -288,6 +288,7 @@ return [
     'activity_authorization_denied' => 'Autorisierung verweigert',
     'activity_activity_log_viewed' => 'Aktivitätsprotokoll eingesehen',
     'activity_password_login_succeeded' => 'Passwort-Anmeldung erfolgreich',
+    'activity_remember_login_succeeded' => 'Anmeldung über „Angemeldet bleiben"',
     'activity_logout' => 'Abmeldung',
     'activity_login_failed' => 'Anmeldung fehlgeschlagen',
     'activity_login_unapproved' => 'Anmeldung abgelehnt (Konto nicht freigeschaltet)',

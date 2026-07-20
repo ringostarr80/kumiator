@@ -284,6 +284,7 @@ return [
     'activity_authorization_denied' => 'Authorization denied',
     'activity_activity_log_viewed' => 'Activity log viewed',
     'activity_password_login_succeeded' => 'Password login succeeded',
+    'activity_remember_login_succeeded' => 'Login via "remember me"',
     'activity_logout' => 'Logout',
     'activity_login_failed' => 'Login failed',
     'activity_login_unapproved' => 'Login denied (account not approved)',

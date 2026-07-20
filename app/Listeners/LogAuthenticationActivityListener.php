@@ -19,8 +19,10 @@ use Illuminate\Auth\Events\OtherDeviceLogout;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\PasswordResetLinkSent;
 use Illuminate\Auth\Events\Verified;
+use Illuminate\Auth\SessionGuard;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Events\PasswordUpdatedViaController;
 use Spatie\Activitylog\Facades\Activity;
@@ -54,6 +56,17 @@ final class LogAuthenticationActivityListener
     {
     }
 
+    /**
+     * Fortifys Auto-Login nach `/register` erzeugt hier bewusst einen zweiten
+     * Eintrag neben `user_self_registered`: Der Controller loggt den frisch
+     * angelegten User per `guard->login()` ein, nachdem `CreateNewUser` seinen
+     * Marker im `finally` bereits geräumt hat. Der Eintrag ist redundant, aber
+     * inhaltlich nicht falsch — das Passwort wurde soeben gesetzt und
+     * eingegeben — und über den identischen Zeitstempel neben dem
+     * Registrierungs-Eintrag als solcher erkennbar. Ein weiterer
+     * request-scoped Suppress-Marker allein dafür wäre teurer als der
+     * Doppeleintrag.
+     */
     public function handleLogin(Login $event): void
     {
         // Die Passkey-Anmeldung löst über `Auth::login()` ebenfalls ein `Login`-
@@ -70,20 +83,34 @@ final class LogAuthenticationActivityListener
             return;
         }
 
+        // Stellt `SessionGuard` eine Session aus dem Recaller-Cookie wieder her,
+        // feuert es dasselbe `Login`-Event — ohne dass je ein Passwort-Hash
+        // verglichen wurde. Ein `password_login_succeeded` behauptete dann einen
+        // Authentifizierungsfaktor, den es nicht gab, und ein gestohlener
+        // Recaller-Cookie wäre im Log nicht mehr von einer echten Anmeldung zu
+        // unterscheiden. Das `remember`-Property taugt zur Abgrenzung nicht: Es
+        // ist auch beim Passwort-Login mit gesetzter Checkbox `true`. Nicht zu
+        // loggen wäre die schlechtere Wahl — dann bliebe der Cookie-Diebstahl
+        // ganz ohne Spur.
+        $guard = Auth::guard($event->guard);
+        $loginEvent = $guard instanceof SessionGuard && $guard->viaRemember()
+            ? ActivityEvent::REMEMBER_LOGIN_SUCCEEDED
+            : ActivityEvent::PASSWORD_LOGIN_SUCCEEDED;
+
         // `Auth::login()` hat die Session bereits auf den User umgestellt, bevor
         // es dieses Event feuert. Ein durchgereichter Insert-Fehler verkleidete
         // den abgeschlossenen Login als 500 — der Nutzer sähe einen Fehler,
         // obwohl er angemeldet ist. Melden statt werfen.
         try {
             Activity::useLog(ActivityChannel::AUTH->value)
-                ->event(ActivityEvent::PASSWORD_LOGIN_SUCCEEDED->value)
+                ->event($loginEvent->value)
                 ->causedBy($user)
                 ->performedOn($user)
                 ->withProperties([
                     'guard' => $event->guard,
                     'remember' => (bool) $event->remember,
                 ])
-                ->log(ActivityEvent::PASSWORD_LOGIN_SUCCEEDED->description());
+                ->log($loginEvent->description());
         } catch (\Throwable $e) {
             report($e);
         }

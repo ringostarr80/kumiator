@@ -22,6 +22,7 @@ enum ActivityEvent: string
 {
     // auth
     case PASSWORD_LOGIN_SUCCEEDED = 'password_login_succeeded';
+    case REMEMBER_LOGIN_SUCCEEDED = 'remember_login_succeeded';
     case LOGOUT = 'logout';
     case LOGIN_FAILED = 'login_failed';
     case LOGIN_LOCKED_OUT = 'login_locked_out';

@@ -21,10 +21,12 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\PasswordResetLinkSent;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\GenericUser;
+use Illuminate\Auth\SessionGuard;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Exceptions;
@@ -77,6 +79,57 @@ final class AuthenticationActivityLogTest extends TestCase
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertSame('web', $properties['guard'] ?? null);
         $this->assertFalse($properties['remember'] ?? null);
+    }
+
+    /**
+     * Die Wiederherstellung aus dem Recaller-Cookie feuert dasselbe `Login`-
+     * Event wie eine echte Passwort-Eingabe, obwohl kein Hash-Vergleich
+     * stattfand. Ein `password_login_succeeded` wäre hier eine Falschaussage
+     * über den Authentifizierungsfaktor — und damit genau die Angabe, auf die
+     * sich eine Hijack-Analyse stützt. Das `remember`-Property trennt die Fälle
+     * nicht: es ist auch beim echten Login mit gesetzter Checkbox `true`.
+     *
+     * Fährt bewusst den echten Guard statt das Event zu dispatchen —
+     * `viaRemember()` ist Guard-interner Zustand, den ausschließlich der
+     * Recaller-Pfad setzt.
+     */
+    public function testRememberMeRestoreIsLoggedAsRememberLogin(): void
+    {
+        $user = User::factory()->create(['remember_token' => Str::random(60)]);
+        Activity::query()->delete();
+
+        $guard = Auth::guard('web');
+        $this->assertInstanceOf(SessionGuard::class, $guard);
+
+        $request = Request::create('/');
+        $request->cookies->set(
+            $guard->getRecallerName(),
+            $user->id . '|' . $user->getRememberToken() . '|' . $user->getAuthPassword(),
+        );
+        $guard->setRequest($request);
+
+        $this->assertTrue($guard->check());
+        $this->assertTrue($guard->viaRemember());
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'remember_login_succeeded')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(__('app.activity_remember_login_succeeded'), $activity->description);
+        $this->assertSame($user->getKey(), $activity->causer_id);
+        $this->assertSame($user->getKey(), $activity->subject_id);
+
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('web', $properties['guard'] ?? null);
+
+        $this->assertSame(
+            0,
+            Activity::query()->where('event', 'password_login_succeeded')->count(),
+            'Eine Cookie-Wiederherstellung darf keinen Passwort-Login vortäuschen.',
+        );
     }
 
     public function testPasskeyLoginIsNotDoubleLogged(): void
