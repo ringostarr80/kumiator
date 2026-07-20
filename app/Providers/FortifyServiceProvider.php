@@ -59,7 +59,17 @@ class FortifyServiceProvider extends ServiceProvider
         // fangen beide Pfade an einer Stelle ab. Hash-Vergleich parität zur
         // `authenticateUsing`-Override oben.
         Fortify::confirmPasswordsUsing(static function (User $user, ?string $password): bool {
-            if (is_string($password) && Hash::check($password, $user->password)) {
+            // Ohne Passwort kein Vergleich und damit kein Mismatch: Der
+            // Fortify-Controller reicht das Feld ungeprüft durch, ein direkter
+            // POST ohne Passwort landet also als `null` hier. Das zu auditieren
+            // hieße, den Hijack-Indikator ohne einen einzigen Rateversuch
+            // auslösbar zu machen. Dieselbe Trennung wie in
+            // `DetectsFailedCurrentPassword`.
+            if (!is_string($password)) {
+                return false;
+            }
+
+            if (Hash::check($password, $user->password)) {
                 return true;
             }
 

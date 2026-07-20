@@ -72,6 +72,27 @@ final class PasswordConfirmationFailedActivityLogTest extends TestCase
         );
     }
 
+    public function testWebFormPathDoesNotLogWhenNoPasswordWasSubmitted(): void
+    {
+        $user = User::factory()->create();
+        Activity::query()->delete();
+
+        // Der Fortify-Controller reicht `$request->input('password')` ungeprüft
+        // durch: Fehlt das Feld, kommt `null` an, ohne dass je ein Hash
+        // verglichen wurde. Ein Mismatch-Audit wäre hier ein Falschsignal.
+        $response = $this->actingAs($user)->post(self::CONFIRM_PASSWORD_URL_PATH, []);
+
+        $response->assertSessionHasErrors();
+
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('log_name', 'auth')
+                ->where('event', 'password_confirmation_failed')
+                ->count(),
+        );
+    }
+
     public function testLivewirePathLogsOnWrongPassword(): void
     {
         $user = User::factory()->create();
