@@ -94,14 +94,23 @@ final class UserEmailChanger implements UserEmailChangerContract
                 ->log(ActivityEvent::EMAIL_CHANGE_REQUESTED->description());
         });
 
+        // Sprach-Snapshot zum Antragszeitpunkt: Beide Mails rendern erst im
+        // Worker, der keine Session kennt und darum auf `APP_LOCALE` zurückfiele.
+        // Ausgerechnet die Warnmail an die alte Adresse käme so womöglich in
+        // einer Sprache an, die ihr Empfänger nicht liest. Der Empfänger ist ein
+        // `AnonymousNotifiable`, weshalb `HasLocalePreference` hier nicht greift.
+        $locale = app()->getLocale();
+
         // Mail-Versand erst nach dem Commit: ein nicht-rollbackbarer
         // Seiteneffekt. Rollt die Transaktion zurück, darf kein Confirm-/Cancel-
         // Link für einen nicht persistierten Pending-Wechsel rausgehen.
-        Notification::route('mail', $newEmail)
-            ->notify(new VerifyEmailChangeNotification($user, $plainConfirmToken, $newEmail));
+        Notification::route('mail', $newEmail)->notify(
+            (new VerifyEmailChangeNotification($user, $plainConfirmToken, $newEmail))->locale($locale),
+        );
 
-        Notification::route('mail', $user->email)
-            ->notify(new EmailChangeRequestedNotification($user, $plainCancelToken, $newEmail));
+        Notification::route('mail', $user->email)->notify(
+            (new EmailChangeRequestedNotification($user, $plainCancelToken, $newEmail))->locale($locale),
+        );
     }
 
     public function recordRequestFailed(User $user, ?string $attemptedEmail): void
