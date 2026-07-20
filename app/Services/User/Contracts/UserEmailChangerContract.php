@@ -13,8 +13,10 @@ use App\Models\User;
  *   1. `requestChange()` — schreibt `pending_email*`, lässt `email` und
  *      `email_verified_at` UNBERÜHRT, versendet Verifizierungs-Mail an die
  *      neue Adresse und Hinweis-Mail an die alte. Audit: `auth/email_change_requested`.
- *      Eine bestehende offene Anfrage wird durch die neuen Tokens implizit
- *      invalidiert (Spalten-Overwrite).
+ *      Eine bestehende offene Anfrage wird durch die neuen Tokens invalidiert
+ *      (Spalten-Overwrite) und erhält dabei ihr Abschluss-Event
+ *      `auth/email_change_cancelled` mit
+ *      `cancelled_via = EmailChangeCancellationReason::SUPERSEDED_BY_NEW_REQUEST`.
  *   2. `confirmChange()` — auf Klick auf den Confirm-Link aus der Verifizierungs-
  *      Mail. Tauscht `email` ← `pending_email`, setzt `email_verified_at = now()`,
  *      leert `pending_email*`. Audit: `auth/email_changed` (ohne Properties:

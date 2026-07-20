@@ -6,6 +6,7 @@ namespace App\Services\User;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
+use App\Enums\EmailChangeCancellationReason;
 use App\Models\User;
 use App\Notifications\EmailChangeRequestedNotification;
 use App\Notifications\VerifyEmailChangeNotification;
@@ -49,6 +50,28 @@ final class UserEmailChanger implements UserEmailChangerContract
         // Pending-State und sein Audit-Eintrag gemeinsam klammern: wirft der
         // Insert, darf kein Pending-Wechsel ohne Spur zurückbleiben.
         DB::transaction(function () use ($user, $newEmail, $plainConfirmToken, $plainCancelToken): void {
+            $supersededEmail = $user->pending_email;
+
+            if ($supersededEmail !== null) {
+                // Der Overwrite unten beendet einen laufenden Antrag, ohne dass
+                // er je bestätigt oder abgebrochen wurde. Ohne dieses Event
+                // bliebe er im Log offen: `email_changed` trägt bewusst keine
+                // Properties, sodass sich aus zwei `email_change_requested` mit
+                // verschiedenem Ziel-Hash nicht mehr ablesen ließe, welcher der
+                // beiden durchging. Causer ist hier — anders als bei den
+                // übrigen Abbruch-Gründen — bekannt: derselbe re-authentifizierte
+                // User, der den neuen Antrag stellt.
+                Activity::useLog(ActivityChannel::AUTH->value)
+                    ->event(ActivityEvent::EMAIL_CHANGE_CANCELLED->value)
+                    ->causedBy($user)
+                    ->performedOn($user)
+                    ->withProperties([
+                        'pending_email_hash' => AuditEmailHasher::hash($supersededEmail),
+                        'cancelled_via' => EmailChangeCancellationReason::SUPERSEDED_BY_NEW_REQUEST->value,
+                    ])
+                    ->log(ActivityEvent::EMAIL_CHANGE_CANCELLED->description());
+            }
+
             $user->forceFill([
                 'pending_email' => $newEmail,
                 'pending_email_confirm_token_hash' => hash('sha256', $plainConfirmToken),
@@ -110,7 +133,7 @@ final class UserEmailChanger implements UserEmailChangerContract
             // (parallel zu `ttl_expired` aus dem cron-Pfad `cancelExpired()`).
             // Damit ist die State-Mutation `clearPendingFields()` durchgängig
             // auditiert — vorher gab es eine stille Mutation ohne Log.
-            $this->cancelChangeForUser($user, 'expired_on_confirm');
+            $this->cancelChangeForUser($user, EmailChangeCancellationReason::EXPIRED_ON_CONFIRM);
             throw new EmailChangeTokenExpiredException();
         }
 
@@ -149,7 +172,7 @@ final class UserEmailChanger implements UserEmailChangerContract
             // mit `cancelled_via='target_taken_on_confirm'`. Dokumentiert sowohl
             // den Confirm-Fehlversuch als auch die durchgeführte Bereinigung
             // der `pending_email*`-Felder in einem einzigen Eintrag.
-            $this->cancelChangeForUser($user, 'target_taken_on_confirm');
+            $this->cancelChangeForUser($user, EmailChangeCancellationReason::TARGET_TAKEN_ON_CONFIRM);
             throw new EmailChangeConflictException();
         }
 
@@ -188,7 +211,7 @@ final class UserEmailChanger implements UserEmailChangerContract
             // `cancelChangeForUser()` einen leeren `pending_email`-Hash und
             // liefe beim eigenen Save erneut in den Unique-Index.
             $user->refresh();
-            $this->cancelChangeForUser($user, 'target_taken_on_confirm');
+            $this->cancelChangeForUser($user, EmailChangeCancellationReason::TARGET_TAKEN_ON_CONFIRM);
 
             throw new EmailChangeConflictException();
         }
@@ -204,7 +227,7 @@ final class UserEmailChanger implements UserEmailChangerContract
             return;
         }
 
-        $this->cancelChangeForUser($user, 'recipient_revoked');
+        $this->cancelChangeForUser($user, EmailChangeCancellationReason::RECIPIENT_REVOKED);
     }
 
     public function cancelExpired(): int
@@ -218,13 +241,13 @@ final class UserEmailChanger implements UserEmailChangerContract
             ->get();
 
         foreach ($expired as $user) {
-            $this->cancelChangeForUser($user, 'ttl_expired');
+            $this->cancelChangeForUser($user, EmailChangeCancellationReason::TTL_EXPIRED);
         }
 
         return $expired->count();
     }
 
-    private function cancelChangeForUser(User $user, string $cancelledVia): void
+    private function cancelChangeForUser(User $user, EmailChangeCancellationReason $cancelledVia): void
     {
         $pendingEmail = (string)$user->pending_email;
 
@@ -241,7 +264,7 @@ final class UserEmailChanger implements UserEmailChangerContract
                 ->performedOn($user)
                 ->withProperties([
                     'pending_email_hash' => AuditEmailHasher::hash($pendingEmail),
-                    'cancelled_via' => $cancelledVia,
+                    'cancelled_via' => $cancelledVia->value,
                 ])
                 ->log(ActivityEvent::EMAIL_CHANGE_CANCELLED->description());
         });

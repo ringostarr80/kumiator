@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Services\User;
 
+use App\Enums\EmailChangeCancellationReason;
 use App\Models\Activity;
 use App\Models\User;
 use App\Notifications\EmailChangeRequestedNotification;
@@ -33,6 +34,7 @@ final class UserEmailChangerTest extends TestCase
 
     private const string OLD_EMAIL = 'alt@example.com';
     private const string NEW_EMAIL = 'neu@example.com';
+    private const string SECOND_EMAIL = 'zweite@example.com';
     private const string TAKEN_EMAIL = 'belegt@example.com';
     private const string EXPECTED_CONFLICT = 'Expected EmailChangeConflictException';
     private const string EXPECTED_AUDIT_THROW = 'Erwartete Ausnahme aus dem Audit-Insert blieb aus.';
@@ -188,7 +190,7 @@ final class UserEmailChangerTest extends TestCase
         $this->assertNotNull($firstConfirmHash);
         $this->assertNotNull($firstCancelHash);
 
-        $this->service->requestChange($user, 'zweite@example.com');
+        $this->service->requestChange($user, self::SECOND_EMAIL);
         $refreshed = $user->fresh();
         $this->assertNotNull($refreshed);
 
@@ -196,7 +198,61 @@ final class UserEmailChangerTest extends TestCase
         $this->assertNotSame($firstConfirmHash, $refreshed->pending_email_confirm_token_hash);
         $this->assertNotNull($refreshed->pending_email_cancel_token_hash);
         $this->assertNotSame($firstCancelHash, $refreshed->pending_email_cancel_token_hash);
-        $this->assertSame('zweite@example.com', $refreshed->pending_email);
+        $this->assertSame(self::SECOND_EMAIL, $refreshed->pending_email);
+    }
+
+    /**
+     * `email_changed` trägt bewusst keine Properties (Datenminimierung). Ohne
+     * ein Abschluss-Event für den verdrängten Antrag stünden im Log zwei
+     * `email_change_requested` mit unterschiedlichem Ziel-Hash und ein
+     * eigenschaftsloser Erfolgs-Eintrag — welcher der beiden Anträge
+     * durchging, wäre forensisch nicht mehr entscheidbar.
+     */
+    public function testRequestChangeAuditsSupersededPendingRequest(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => self::OLD_EMAIL]);
+        $this->service->requestChange($user, self::NEW_EMAIL);
+        Activity::query()->delete();
+
+        $this->service->requestChange($user, self::SECOND_EMAIL);
+
+        $superseded = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'email_change_cancelled')
+            ->get();
+        $this->assertCount(1, $superseded);
+
+        $entry = $superseded->first();
+        $this->assertNotNull($entry);
+        $this->assertSame($user->getKey(), $entry->subject_id);
+        // Anders als bei den übrigen Abbruch-Gründen ist der Verursacher hier
+        // bekannt: Es ist derselbe re-authentifizierte User, der den zweiten
+        // Antrag stellt.
+        $this->assertSame($user->getKey(), $entry->causer_id);
+
+        $properties = $entry->properties?->toArray() ?? [];
+        $this->assertSame(
+            EmailChangeCancellationReason::SUPERSEDED_BY_NEW_REQUEST->value,
+            $properties['cancelled_via'] ?? null,
+        );
+        // Der Hash zeigt auf das verdrängte Ziel, nicht auf das neue.
+        $this->assertSame(AuditEmailHasher::hash(self::NEW_EMAIL), $properties['pending_email_hash'] ?? null);
+        $this->assertArrayNotHasKey('pending_email', $properties);
+    }
+
+    public function testRequestChangeWithoutPendingRequestWritesNoSupersededAudit(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => self::OLD_EMAIL]);
+        Activity::query()->delete();
+
+        $this->service->requestChange($user, self::NEW_EMAIL);
+
+        $this->assertSame(
+            0,
+            Activity::query()->where('event', 'email_change_cancelled')->count(),
+        );
     }
 
     public function testRequestChangeRollsBackPendingFieldsWhenAuditInsertFails(): void
