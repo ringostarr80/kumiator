@@ -52,6 +52,20 @@ final class ActivityLogTable extends Component
         | JSON_UNESCAPED_UNICODE
         | JSON_THROW_ON_ERROR;
 
+    /**
+     * Kanonisches Key-Set der Filter mit ihren inaktiven Werten (''). Einzige
+     * Quelle der Wahrheit für den `$filters`-Default und `normalizeFilters()`,
+     * damit das erwartete Key-Set nicht an zwei Stellen gepflegt wird.
+     */
+    private const array DEFAULT_FILTERS = [
+        'dateFrom' => '',
+        'dateTo' => '',
+        'channel' => '',
+        'event' => '',
+        'causer' => '',
+        'subject' => '',
+    ];
+
     public string $sortDirection = 'desc';
 
     /**
@@ -64,14 +78,7 @@ final class ActivityLogTable extends Component
      * @var array<string, string>
      */
     #[Url]
-    public array $filters = [
-        'dateFrom' => '',
-        'dateTo' => '',
-        'channel' => '',
-        'event' => '',
-        'causer' => '',
-        'subject' => '',
-    ];
+    public array $filters = self::DEFAULT_FILTERS;
 
     public bool $showPropertiesModal = false;
 
@@ -175,20 +182,28 @@ final class ActivityLogTable extends Component
     }
 
     /**
-     * `#[Url]`/Client können pro Filter-Key statt eines Strings ein
-     * verschachteltes Array einschleusen (`?filters[causer][]=x`); ungeprüft
-     * liefe das in `where()`/`applyNameSearch(string)` und bräche die Seite mit
-     * 500. Nicht-Strings daher auf '' klemmen — der Filter gilt dann als inaktiv.
+     * Der Client kann das ganze `filters`-Property per Wire-Update ersetzen —
+     * mit fehlenden Keys (`{"filters": {}}`) oder mit einem verschachtelten
+     * Array pro Key (`?filters[causer][]=x`). Beides bräche die Seite mit 500:
+     * `applyFilters()`/`validateDateFilters()` indexieren feste Keys (Undefined
+     * array key), ein Array-Wert liefe in `applyNameSearch(string)`/`where()`.
+     * Darum die Filter über das feste Default-Key-Set neu aufbauen: fehlende
+     * Keys ergänzen, Nicht-Strings verwerfen, Fremd-Keys ignorieren — der
+     * Default '' gilt durchweg als inaktiver Filter.
      */
     private function normalizeFilters(): void
     {
-        /** @var array<string, mixed> $raw */
-        $raw = $this->filters;
+        $normalized = self::DEFAULT_FILTERS;
 
-        $this->filters = array_map(
-            static fn (mixed $value): string => is_string($value) ? $value : '',
-            $raw,
-        );
+        foreach (array_keys($normalized) as $key) {
+            $value = $this->filters[$key] ?? null;
+
+            if (is_string($value)) {
+                $normalized[$key] = $value;
+            }
+        }
+
+        $this->filters = $normalized;
     }
 
     /**

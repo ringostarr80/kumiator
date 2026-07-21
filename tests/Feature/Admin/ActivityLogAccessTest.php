@@ -1022,6 +1022,29 @@ final class ActivityLogAccessTest extends TestCase
     }
 
     /**
+     * Regression: Ein Wire-Update kann das ganze `filters`-Property durch ein
+     * Array mit fehlenden Keys ersetzen (`{"filters": {"channel": "auth"}}`).
+     * Ohne Wiederherstellung des Key-Sets brach `validateDateFilters()` beim
+     * Zugriff auf `filters['dateFrom']` mit „Undefined array key" (HTTP 500).
+     * `normalizeFilters()` ergänzt die fehlenden Keys jetzt als inaktiv; der
+     * mitgelieferte Kanal-Filter greift dabei regulär.
+     */
+    public function testFiltersReplacedWholesaleWithMissingKeysStillRenders(): void
+    {
+        $admin = $this->makeAuditor();
+
+        ActivityFacade::useLog('auth')->event('marker_auth')->log('');
+        ActivityFacade::useLog('user')->event('marker_user')->log('');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->set('filters', ['channel' => 'auth']);
+
+        $component->assertOk();
+        $component->assertSee('marker_auth');
+        $component->assertDontSee('marker_user');
+    }
+
+    /**
      * Die Filterleiste ist standardmäßig eingeklappt und startet nur dann
      * aufgeklappt, wenn bereits gefiltert wird — sonst zeigte ein geteilter oder
      * gebookmarkter #[Url]-Filter eine gefilterte Liste ohne sichtbaren Grund.
