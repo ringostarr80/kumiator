@@ -27,7 +27,7 @@ final class RevokeCommandTest extends TestCase
         $user->givePermissionTo('activity-log.view');
 
         $command = $this->artisan('activity-log:revoke');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -49,7 +49,7 @@ final class RevokeCommandTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('activity-log:revoke');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -80,7 +80,7 @@ final class RevokeCommandTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('activity-log:revoke');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -101,7 +101,7 @@ final class RevokeCommandTest extends TestCase
     public function testRevokeForNonExistentUserFails(): void
     {
         $command = $this->artisan('activity-log:revoke');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')

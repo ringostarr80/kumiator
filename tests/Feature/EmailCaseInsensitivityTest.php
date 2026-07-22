@@ -73,7 +73,7 @@ final class EmailCaseInsensitivityTest extends TestCase
         $user = User::factory()->unapproved()->create(['email' => self::EMAIL]);
 
         $command = $this->artisan('user:approve');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::EMAIL_MIXED_CASE)

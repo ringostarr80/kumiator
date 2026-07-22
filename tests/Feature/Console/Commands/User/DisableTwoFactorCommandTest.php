@@ -22,7 +22,7 @@ final class DisableTwoFactorCommandTest extends TestCase
         $user = $this->createUserWithTwoFactor();
 
         $command = $this->artisan('user:disable-2fa');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -47,7 +47,7 @@ final class DisableTwoFactorCommandTest extends TestCase
         $user = $this->createUserWithTwoFactor();
 
         $command = $this->artisan('user:disable-2fa');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -69,7 +69,7 @@ final class DisableTwoFactorCommandTest extends TestCase
         ]);
 
         $command = $this->artisan('user:disable-2fa');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -86,7 +86,7 @@ final class DisableTwoFactorCommandTest extends TestCase
     public function testDisableTwoFactorForNonExistentUserFails(): void
     {
         $command = $this->artisan('user:disable-2fa');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')

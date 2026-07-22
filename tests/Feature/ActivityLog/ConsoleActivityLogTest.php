@@ -75,7 +75,7 @@ final class ConsoleActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('user:create');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.create_user.ask_name'), self::TARGET_NAME)
@@ -116,7 +116,7 @@ final class ConsoleActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('user:approve');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TARGET_EMAIL)
@@ -151,7 +151,7 @@ final class ConsoleActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('user:delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TARGET_EMAIL)
@@ -188,7 +188,7 @@ final class ConsoleActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('user:restore');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TARGET_EMAIL)
@@ -224,7 +224,7 @@ final class ConsoleActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('user:verify');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TARGET_EMAIL)
@@ -256,7 +256,7 @@ final class ConsoleActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('user:reset-password');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TARGET_EMAIL)
@@ -294,7 +294,7 @@ final class ConsoleActivityLogTest extends TestCase
         $this->actingAs($actor);
 
         $command = $this->artisan('user:reset-password');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TARGET_EMAIL)
@@ -335,7 +335,7 @@ final class ConsoleActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('user:enable-2fa');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TARGET_EMAIL)
@@ -404,7 +404,7 @@ final class ConsoleActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('user:enable-2fa');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TARGET_EMAIL)
@@ -476,7 +476,7 @@ final class ConsoleActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('user:disable-2fa');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TARGET_EMAIL)
@@ -515,7 +515,7 @@ final class ConsoleActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('role:assign');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TARGET_EMAIL)
@@ -557,7 +557,7 @@ final class ConsoleActivityLogTest extends TestCase
         $this->actingAs($actor);
 
         $command = $this->artisan('role:create');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.create_role.ask_name'), 'editor')
@@ -598,7 +598,7 @@ final class ConsoleActivityLogTest extends TestCase
         $this->actingAs($actor);
 
         $command = $this->artisan('role:assign');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TARGET_EMAIL)
@@ -632,7 +632,7 @@ final class ConsoleActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('user:approve');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TARGET_EMAIL)
@@ -780,7 +780,7 @@ final class ConsoleActivityLogTest extends TestCase
         User::factory()->unapproved()->create(['email' => self::TARGET_EMAIL]);
 
         $command = $this->artisan('user:approve');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TARGET_EMAIL)

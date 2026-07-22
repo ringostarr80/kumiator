@@ -33,7 +33,7 @@ final class EnableTwoFactorCommandTest extends TestCase
         ]);
 
         $command = $this->artisan('user:enable-2fa');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -71,7 +71,7 @@ final class EnableTwoFactorCommandTest extends TestCase
         ]);
 
         $command = $this->artisan('user:enable-2fa');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -94,7 +94,7 @@ final class EnableTwoFactorCommandTest extends TestCase
         ]);
 
         $command = $this->artisan('user:enable-2fa');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -116,7 +116,7 @@ final class EnableTwoFactorCommandTest extends TestCase
         ]);
 
         $command = $this->artisan('user:enable-2fa');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -153,7 +153,7 @@ final class EnableTwoFactorCommandTest extends TestCase
         $user->forceFill(['two_factor_confirmed_at' => now()])->saveOrFail();
 
         $command = $this->artisan('user:enable-2fa');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -170,7 +170,7 @@ final class EnableTwoFactorCommandTest extends TestCase
     public function testEnableTwoFactorForNonExistentUserFails(): void
     {
         $command = $this->artisan('user:enable-2fa');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')

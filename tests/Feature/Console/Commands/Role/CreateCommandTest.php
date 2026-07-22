@@ -16,7 +16,7 @@ final class CreateCommandTest extends TestCase
     public function testRoleCanBeCreated(): void
     {
         $command = $this->artisan('role:create');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.create_role.ask_name'), 'admin')
@@ -30,7 +30,7 @@ final class CreateCommandTest extends TestCase
     public function testRoleCreationFailsWithEmptyName(): void
     {
         $command = $this->artisan('role:create');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.create_role.ask_name'), '')
@@ -43,7 +43,7 @@ final class CreateCommandTest extends TestCase
         Role::findOrCreate('admin');
 
         $command = $this->artisan('role:create');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.create_role.ask_name'), 'admin')

@@ -20,7 +20,7 @@ final class CreateCommandTest extends TestCase
         Role::findOrCreate('admin');
 
         $command = $this->artisan('user:create');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.create_user.ask_name'), 'John Doe')
@@ -39,7 +39,7 @@ final class CreateCommandTest extends TestCase
     public function testUserCannotBeCreatedWithoutRoles(): void
     {
         $command = $this->artisan('user:create');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsOutputToContain(__('commands.create_user.no_roles'))
@@ -52,7 +52,7 @@ final class CreateCommandTest extends TestCase
         Role::findOrCreate('member');
 
         $command = $this->artisan('user:create');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.create_user.ask_name'), '')
@@ -74,7 +74,8 @@ final class CreateCommandTest extends TestCase
         Role::findOrCreate('member');
 
         $command = $this->artisan('user:create');
-        /** @var PendingCommand $command */
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
         $command
             ->expectsQuestion(__('commands.create_user.ask_name'), 'Jane Roe')
             // Leere Terminal-Eingabe liefert null (Symfony-Default); der Mock reicht

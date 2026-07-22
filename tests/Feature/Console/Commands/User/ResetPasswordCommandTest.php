@@ -26,7 +26,7 @@ final class ResetPasswordCommandTest extends TestCase
         ]);
 
         $command = $this->artisan('user:reset-password');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -46,7 +46,7 @@ final class ResetPasswordCommandTest extends TestCase
     public function testResetPasswordFailsForNonExistentUser(): void
     {
         $command = $this->artisan('user:reset-password');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')
@@ -62,7 +62,7 @@ final class ResetPasswordCommandTest extends TestCase
         ]);
 
         $command = $this->artisan('user:reset-password');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -79,7 +79,7 @@ final class ResetPasswordCommandTest extends TestCase
         ]);
 
         $command = $this->artisan('user:reset-password');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)

@@ -19,7 +19,7 @@ final class ListingCommandTest extends TestCase
         Role::findOrCreate('member');
 
         $command = $this->artisan('role:list');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsOutputToContain('admin')
@@ -32,7 +32,7 @@ final class ListingCommandTest extends TestCase
     public function testNoRolesShowsInfoMessage(): void
     {
         $command = $this->artisan('role:list');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsOutputToContain(__('commands.list_roles.no_roles'))

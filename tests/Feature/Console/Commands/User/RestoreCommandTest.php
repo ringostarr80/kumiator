@@ -22,7 +22,7 @@ final class RestoreCommandTest extends TestCase
         $user->deleteOrFail();
 
         $command = $this->artisan('user:restore');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -60,7 +60,7 @@ final class RestoreCommandTest extends TestCase
         $user->deleteOrFail();
 
         $command = $this->artisan('user:restore');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -80,7 +80,7 @@ final class RestoreCommandTest extends TestCase
         $user->deleteOrFail();
 
         $command = $this->artisan('user:restore');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -99,7 +99,7 @@ final class RestoreCommandTest extends TestCase
         User::factory()->create(['email' => self::TEST_EMAIL]);
 
         $command = $this->artisan('user:restore');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -111,7 +111,7 @@ final class RestoreCommandTest extends TestCase
     public function testRestoreFailsForUnknownUser(): void
     {
         $command = $this->artisan('user:restore');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')

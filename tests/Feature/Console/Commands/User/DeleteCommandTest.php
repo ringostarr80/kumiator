@@ -29,7 +29,7 @@ final class DeleteCommandTest extends TestCase
         User::factory()->create(['name' => 'John Doe', 'email' => self::TEST_EMAIL]);
 
         $command = $this->artisan('user:delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -46,7 +46,7 @@ final class DeleteCommandTest extends TestCase
         User::factory()->create(['email' => self::TEST_EMAIL]);
 
         $command = $this->artisan('user:delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -61,7 +61,7 @@ final class DeleteCommandTest extends TestCase
     public function testDeleteUserFailsForNonExistentUser(): void
     {
         $command = $this->artisan('user:delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')
@@ -95,7 +95,7 @@ final class DeleteCommandTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('user:delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -149,7 +149,7 @@ final class DeleteCommandTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('user:delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)

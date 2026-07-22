@@ -26,7 +26,7 @@ final class GrantCommandTest extends TestCase
         ]);
 
         $command = $this->artisan('activity-log:grant');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -47,7 +47,7 @@ final class GrantCommandTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('activity-log:grant');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -80,7 +80,7 @@ final class GrantCommandTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('activity-log:grant');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -101,7 +101,7 @@ final class GrantCommandTest extends TestCase
     public function testGrantForNonExistentUserFails(): void
     {
         $command = $this->artisan('activity-log:grant');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')

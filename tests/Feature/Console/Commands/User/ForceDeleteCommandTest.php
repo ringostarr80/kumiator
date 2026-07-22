@@ -22,7 +22,7 @@ final class ForceDeleteCommandTest extends TestCase
         $user->deleteOrFail();
 
         $command = $this->artisan('user:force-delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -42,7 +42,7 @@ final class ForceDeleteCommandTest extends TestCase
         $user->deleteOrFail();
 
         $command = $this->artisan('user:force-delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -60,7 +60,7 @@ final class ForceDeleteCommandTest extends TestCase
         User::factory()->create(['email' => self::TEST_EMAIL]);
 
         $command = $this->artisan('user:force-delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -74,7 +74,7 @@ final class ForceDeleteCommandTest extends TestCase
     public function testForceDeleteFailsForUnknownUser(): void
     {
         $command = $this->artisan('user:force-delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')
@@ -90,7 +90,7 @@ final class ForceDeleteCommandTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('user:force-delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)

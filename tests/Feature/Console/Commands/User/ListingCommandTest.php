@@ -28,7 +28,7 @@ final class ListingCommandTest extends TestCase
         $user->assignRole($role);
 
         $command = $this->artisan('user:list');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsTable(
@@ -61,7 +61,7 @@ final class ListingCommandTest extends TestCase
         $user = User::factory()->create(['name' => 'Jane Doe']);
 
         $command = $this->artisan('user:list');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsTable(
@@ -93,7 +93,7 @@ final class ListingCommandTest extends TestCase
         $user = User::factory()->unverified()->create(['name' => 'Unverified User']);
 
         $command = $this->artisan('user:list');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsTable(
@@ -125,7 +125,7 @@ final class ListingCommandTest extends TestCase
         $user = User::factory()->unapproved()->create(['name' => 'Unapproved User']);
 
         $command = $this->artisan('user:list');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsTable(
@@ -155,7 +155,7 @@ final class ListingCommandTest extends TestCase
     public function testNoUsersShowsInfoMessage(): void
     {
         $command = $this->artisan('user:list');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsOutputToContain(__('commands.list_users.no_users'))
@@ -170,7 +170,7 @@ final class ListingCommandTest extends TestCase
         $deleted->deleteOrFail();
 
         $command = $this->artisan('user:list');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsOutputToContain(__('commands.list_users.total', ['count' => 1]))
@@ -187,7 +187,7 @@ final class ListingCommandTest extends TestCase
         $deleted->refresh();
 
         $command = $this->artisan('user:list', ['--with-trashed' => true]);
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsTable(
@@ -234,7 +234,7 @@ final class ListingCommandTest extends TestCase
         $deleted->refresh();
 
         $command = $this->artisan('user:list', ['--only-trashed' => true]);
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsTable(

@@ -30,7 +30,7 @@ final class ProfileInformationTest extends TestCase
         $component = Livewire::test(UpdateProfileInformationForm::class);
 
         $componentState = $component->get('state');
-        assert(is_array($componentState));
+        $this->assertIsArray($componentState);
         $this->assertEquals($user->name, $componentState['name']);
         $this->assertEquals($user->email, $componentState['email']);
     }

@@ -101,7 +101,7 @@ final class RoleLifecycleActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('role:create');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.create_role.ask_name'), 'editor')
@@ -133,7 +133,7 @@ final class RoleLifecycleActivityLogTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('role:delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.delete_role.ask_name'), 'editor')

@@ -25,7 +25,7 @@ final class VerifyCommandTest extends TestCase
         ]);
 
         $command = $this->artisan('user:verify');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -56,7 +56,7 @@ final class VerifyCommandTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('user:verify');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -102,7 +102,7 @@ final class VerifyCommandTest extends TestCase
         Activity::query()->delete();
 
         $command = $this->artisan('user:verify');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -131,7 +131,7 @@ final class VerifyCommandTest extends TestCase
         ]);
 
         $command = $this->artisan('user:verify');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -148,7 +148,7 @@ final class VerifyCommandTest extends TestCase
     public function testVerifyNonExistentUserFails(): void
     {
         $command = $this->artisan('user:verify');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')

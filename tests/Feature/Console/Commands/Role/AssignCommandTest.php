@@ -23,7 +23,7 @@ final class AssignCommandTest extends TestCase
         Role::findOrCreate('member');
 
         $command = $this->artisan('role:assign');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -42,7 +42,7 @@ final class AssignCommandTest extends TestCase
         Role::findOrCreate('admin');
 
         $command = $this->artisan('role:assign');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')
@@ -56,7 +56,7 @@ final class AssignCommandTest extends TestCase
         User::factory()->create(['email' => self::TEST_EMAIL]);
 
         $command = $this->artisan('role:assign');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -74,7 +74,7 @@ final class AssignCommandTest extends TestCase
         $user->assignRole('member');
 
         $command = $this->artisan('role:assign');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)

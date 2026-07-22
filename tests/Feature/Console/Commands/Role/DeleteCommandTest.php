@@ -19,7 +19,7 @@ final class DeleteCommandTest extends TestCase
         Role::findOrCreate('admin');
 
         $command = $this->artisan('role:delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.delete_role.ask_name'), 'admin')
@@ -39,7 +39,7 @@ final class DeleteCommandTest extends TestCase
         $user->assignRole($role);
 
         $command = $this->artisan('role:delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.delete_role.ask_name'), 'member')
@@ -58,7 +58,7 @@ final class DeleteCommandTest extends TestCase
         $user->assignRole([$memberRole, $adminRole]);
 
         $command = $this->artisan('role:delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.delete_role.ask_name'), 'member')
@@ -70,7 +70,7 @@ final class DeleteCommandTest extends TestCase
         $this->assertNull(Role::where('name', 'member')->first());
 
         $freshUser = $user->fresh();
-        assert($freshUser instanceof User);
+        $this->assertInstanceOf(User::class, $freshUser);
         $this->assertTrue($freshUser->hasRole('admin'));
     }
 
@@ -79,7 +79,7 @@ final class DeleteCommandTest extends TestCase
         Role::findOrCreate('admin');
 
         $command = $this->artisan('role:delete');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.delete_role.ask_name'), 'admin')

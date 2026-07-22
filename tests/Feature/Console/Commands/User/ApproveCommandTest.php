@@ -22,7 +22,7 @@ final class ApproveCommandTest extends TestCase
         ]);
 
         $command = $this->artisan('user:approve');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -43,7 +43,7 @@ final class ApproveCommandTest extends TestCase
         ]);
 
         $command = $this->artisan('user:approve');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
@@ -58,7 +58,7 @@ final class ApproveCommandTest extends TestCase
     public function testApproveNonExistentUserFails(): void
     {
         $command = $this->artisan('user:approve');
-        assert($command instanceof PendingCommand);
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')
