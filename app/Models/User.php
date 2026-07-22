@@ -230,29 +230,39 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     }
 
     /**
-     * Der `updated`-Pfad kennt nur zwei fachliche Ausgänge: ein gesetztes
-     * `approved_at` im Diff ist ein Approval, andernfalls eine Namensänderung
-     * (`name` ist heute das einzige weitere geloggte, via `updated` änderbare
-     * Feld). `deleted_at` taucht hier nicht auf — Soft-Deletes laufen via
-     * Eloquent als eigenes `event = 'deleted'`/`'restored'`, nicht als `updated`.
+     * `approved_at` im Diff ist ein Approval, `name` eine Umbenennung. Ein Diff
+     * ohne beide (etwa eine direkte `deleted_at`-Zuweisung außerhalb des
+     * SoftDeletes-`delete()`-Pfades) liefert `null`; dann bleibt der rohe
+     * `updated`-Code stehen, statt den Vorgang als Umbenennung zu etikettieren.
+     * So kann ein künftiges viertes `logOnly`-Feld nicht mehr still als
+     * „umbenannt" durchrutschen — wer es fachlich labeln will, ergänzt hier
+     * eine Zeile.
      *
-     * `approved_at` schlägt jeden anderen Diff-Inhalt, weil ein kombinierter
-     * Save (Approval + Namensänderung) fachlich als Approval-Vorgang dominiert.
-     * Aktuell tritt diese Kombination im Code nirgends auf.
+     * `approved_at` schlägt `name`, weil ein kombinierter Save (Approval +
+     * Namensänderung) fachlich als Approval-Vorgang dominiert. Aktuell tritt
+     * diese Kombination im Code nirgends auf.
      *
      * Spatie legt den Attribut-Diff in `attribute_changes` ab (Collection mit
      * Sub-Keys `attributes` und `old`), NICHT in `properties` — letzteres ist
      * der Free-Form-Property-Bag (z. B. für unser `cli_actor`).
      */
-    private static function mapUpdatedEvent(ActivityModel $activity): ActivityEvent
+    private static function mapUpdatedEvent(ActivityModel $activity): ?ActivityEvent
     {
         $changes = $activity->attribute_changes;
         $attributes = $changes?->get('attributes');
 
-        if (is_array($attributes) && array_key_exists('approved_at', $attributes)) {
+        if (!is_array($attributes)) {
+            return null;
+        }
+
+        if (array_key_exists('approved_at', $attributes)) {
             return ActivityEvent::USER_APPROVED;
         }
 
-        return ActivityEvent::USER_RENAMED;
+        if (array_key_exists('name', $attributes)) {
+            return ActivityEvent::USER_RENAMED;
+        }
+
+        return null;
     }
 }

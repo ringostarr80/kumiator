@@ -58,6 +58,30 @@ final class UserActivityLogTest extends TestCase
         $this->assertSame($actor->getKey(), $activity->causer_id);
     }
 
+    public function testNonNameChangeIsNotMislabeledAsRename(): void
+    {
+        $user = User::factory()->create(['name' => 'Unverändert']);
+        Activity::query()->delete();
+
+        // `deleted_at` direkt setzen (nicht über den SoftDeletes-`delete()`-Pfad)
+        // erzeugt ein rohes `updated`-Event mit `deleted_at` im Diff — ohne dass
+        // der Name angefasst wurde. `deleted_at` steht bereits in der `logOnly`-
+        // Allowlist, ist also ein real geloggtes Feld.
+        $user->deleted_at = now();
+        $user->saveOrFail();
+
+        $renamed = Activity::query()
+            ->where('log_name', 'user')
+            ->where('subject_id', $user->getKey())
+            ->where('event', 'user_renamed')
+            ->exists();
+
+        $this->assertFalse(
+            $renamed,
+            'Eine Änderung, die den Namen nicht berührt, darf nicht als „Benutzer umbenannt" protokolliert werden.',
+        );
+    }
+
     public function testPasswordChangeIsNotLogged(): void
     {
         $user = User::factory()->create();
