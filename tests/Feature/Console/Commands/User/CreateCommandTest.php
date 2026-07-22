@@ -63,4 +63,29 @@ final class CreateCommandTest extends TestCase
             ->assertFailed()
             ->run();
     }
+
+    /**
+     * Regression: Leere Eingabe am E-Mail-Prompt lässt `ask()` `null` liefern.
+     * Ungeguardet lief das in `User::normalizeEmail(string)` und brach mit einem
+     * `TypeError` ab, statt die E-Mail als `required` abzuweisen.
+     */
+    public function testUserCreationFailsWhenEmailPromptIsEmpty(): void
+    {
+        Role::findOrCreate('member');
+
+        $command = $this->artisan('user:create');
+        /** @var PendingCommand $command */
+        $command
+            ->expectsQuestion(__('commands.create_user.ask_name'), 'Jane Roe')
+            // Leere Terminal-Eingabe liefert null (Symfony-Default); der Mock reicht
+            // den Wert verbatim an ask() durch, der Vendor-Docblock ist mit string|bool
+            // zu eng.
+            // @phpstan-ignore argument.type
+            ->expectsQuestion(__('commands.common.ask_email'), null)
+            ->expectsQuestion(__('commands.create_user.ask_password'), 'password123')
+            ->expectsQuestion(__('commands.create_user.ask_password_confirm'), 'password123')
+            ->expectsChoice(__('commands.create_user.ask_role'), 'member', ['member'])
+            ->assertFailed()
+            ->run();
+    }
 }

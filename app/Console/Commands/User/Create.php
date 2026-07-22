@@ -38,7 +38,7 @@ class Create extends Command
         /** @var string $name */
         $name = $this->ask(__('commands.create_user.ask_name'));
         /** @var string $email */
-        $email = $this->ask(__('commands.common.ask_email'));
+        $email = $this->ask(__('commands.common.ask_email')) ?? '';
         // Vor der `unique`-Regel: sie vergleicht den rohen Eingabewert gegen die
         // Spalte, sähe den Mutator also nie und ließe ein Nicht-ASCII-Duplikat
         // erst am Unique-Index auflaufen.
