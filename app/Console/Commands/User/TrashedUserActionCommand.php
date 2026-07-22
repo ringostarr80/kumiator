@@ -50,7 +50,6 @@ abstract class TrashedUserActionCommand extends Command
         /** @var string $email */
         $email = $this->ask(__('commands.common.ask_email')) ?? '';
 
-        /** @var ?User $user */
         $user = User::queryByEmail($email)->onlyTrashed()->first();
 
         if ($user === null) {

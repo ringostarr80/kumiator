@@ -39,7 +39,6 @@ class Verify extends Command
         /** @var string $email */
         $email = $this->ask(__('commands.common.ask_email')) ?? '';
 
-        /** @var ?User $user */
         $user = User::queryByEmail($email)->first();
 
         if ($user === null) {

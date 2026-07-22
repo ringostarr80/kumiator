@@ -143,8 +143,8 @@ final class EmailCaseInsensitivityTest extends TestCase
     {
         $user = User::factory()->unapproved()->create(['email' => self::EMAIL_UMLAUT]);
 
-        /** @var PendingCommand $command */
         $command = $this->artisan('user:approve');
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         $command
             ->expectsQuestion(__('commands.common.ask_email'), self::EMAIL_UMLAUT_MIXED_CASE)
@@ -229,8 +229,8 @@ final class EmailCaseInsensitivityTest extends TestCase
 
     private function runCreateCommand(string $email): PendingCommand
     {
-        /** @var PendingCommand $command */
         $command = $this->artisan('user:create');
+        $this->assertInstanceOf(PendingCommand::class, $command);
 
         return $command
             ->expectsQuestion(__('commands.create_user.ask_name'), 'Erika Mustermann')
