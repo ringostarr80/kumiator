@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Audit;
 
+use App\Models\User;
 use Illuminate\Support\Facades\Config;
 
 /**
@@ -31,7 +32,7 @@ final class AuditEmailHasher
             return null;
         }
 
-        $normalised = mb_strtolower(trim($email));
+        $normalised = User::normalizeEmail($email);
 
         if ($normalised === '') {
             return null;
