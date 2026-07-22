@@ -230,7 +230,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
                     'profile_photo_path' => $newPhotoPath,
                     'previous_profile_photo_path' => $previousPhotoPath,
                 ])
-                ->log(ActivityEvent::PROFILE_PHOTO_UPDATED->description());
+                ->log('');
         }
 
         $user->forceFill(['name' => $name])->saveOrFail();

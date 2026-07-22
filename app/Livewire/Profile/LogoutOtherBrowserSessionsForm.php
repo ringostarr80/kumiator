@@ -86,7 +86,7 @@ final class LogoutOtherBrowserSessionsForm extends JetstreamLogoutOtherBrowserSe
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties(['terminated_session_count' => $terminatedSessionCount])
-            ->log(ActivityEvent::OTHER_SESSIONS_LOGGED_OUT->description());
+            ->log('');
     }
 
     private function countOtherSessions(): int

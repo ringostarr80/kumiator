@@ -92,6 +92,6 @@ final class SanctumTokenAuditor implements SanctumTokenAuditorContract
                 'abilities' => $token->getAttribute('abilities'),
                 ...$extraProperties,
             ])
-            ->log($event->description());
+            ->log('');
     }
 }

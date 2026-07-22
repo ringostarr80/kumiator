@@ -30,6 +30,6 @@ final class EmailVerificationResender implements EmailVerificationResenderContra
             ->event(ActivityEvent::EMAIL_VERIFICATION_REQUESTED->value)
             ->causedBy($user)
             ->performedOn($user)
-            ->log(ActivityEvent::EMAIL_VERIFICATION_REQUESTED->description());
+            ->log('');
     }
 }

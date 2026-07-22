@@ -69,7 +69,7 @@ final class UserEmailChanger implements UserEmailChangerContract
                         'pending_email_hash' => AuditEmailHasher::hash($supersededEmail),
                         'cancelled_via' => EmailChangeCancellationReason::SUPERSEDED_BY_NEW_REQUEST->value,
                     ])
-                    ->log(ActivityEvent::EMAIL_CHANGE_CANCELLED->description());
+                    ->log('');
             }
 
             $user->forceFill([
@@ -91,7 +91,7 @@ final class UserEmailChanger implements UserEmailChangerContract
                 ->causedBy($user)
                 ->performedOn($user)
                 ->withProperties(['pending_email_hash' => AuditEmailHasher::hash($newEmail)])
-                ->log(ActivityEvent::EMAIL_CHANGE_REQUESTED->description());
+                ->log('');
         });
 
         // Sprach-Snapshot zum Antragszeitpunkt: Beide Mails rendern erst im
@@ -123,7 +123,7 @@ final class UserEmailChanger implements UserEmailChangerContract
                 'failure_reason' => 'current_password_mismatch',
                 'pending_email_hash' => AuditEmailHasher::hash($attemptedEmail),
             ])
-            ->log(ActivityEvent::EMAIL_CHANGE_REQUEST_FAILED->description());
+            ->log('');
     }
 
     public function confirmChange(string $plainToken): User
@@ -157,7 +157,7 @@ final class UserEmailChanger implements UserEmailChangerContract
                 ->causedByAnonymous()
                 ->performedOn($user)
                 ->withProperties(['reason' => 'target_not_eligible'])
-                ->log(ActivityEvent::EMAIL_CHANGE_CONFIRMATION_REJECTED->description());
+                ->log('');
 
             throw new EmailChangeTargetNotEligibleException();
         }
@@ -208,7 +208,7 @@ final class UserEmailChanger implements UserEmailChangerContract
                     ->event(ActivityEvent::EMAIL_CHANGED->value)
                     ->causedBy($user)
                     ->performedOn($user)
-                    ->log(ActivityEvent::EMAIL_CHANGED->description());
+                    ->log('');
             });
         } catch (UniqueConstraintViolationException) {
             // Race zwischen der `exists()`-Prüfung oben und diesem Save: ein
@@ -275,7 +275,7 @@ final class UserEmailChanger implements UserEmailChangerContract
                     'pending_email_hash' => AuditEmailHasher::hash($pendingEmail),
                     'cancelled_via' => $cancelledVia->value,
                 ])
-                ->log(ActivityEvent::EMAIL_CHANGE_CANCELLED->description());
+                ->log('');
         });
     }
 
@@ -308,7 +308,7 @@ final class UserEmailChanger implements UserEmailChangerContract
             ->causedByAnonymous()
             ->performedOn($user)
             ->withProperties(['reason' => 'cancel_token_on_confirm'])
-            ->log(ActivityEvent::EMAIL_CHANGE_CONFIRMATION_REJECTED->description());
+            ->log('');
     }
 
     private function resolveUserByToken(string $plainToken, string $tokenHashColumn): ?User

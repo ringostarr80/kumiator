@@ -66,7 +66,7 @@ final class UnapprovedLoginContext implements UnapprovedLoginContextContract
                 ->causedBy($user)
                 ->performedOn($user)
                 ->withProperties($properties)
-                ->log(ActivityEvent::LOGIN_UNAPPROVED->description());
+                ->log('');
         } catch (\Throwable $e) {
             report($e);
         }

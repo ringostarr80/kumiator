@@ -103,6 +103,6 @@ final class LogTwoFactorActivityListener
             ->event($event->value)
             ->causedBy($user)
             ->performedOn($user)
-            ->log($event->description());
+            ->log('');
     }
 }

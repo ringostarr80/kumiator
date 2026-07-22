@@ -138,7 +138,7 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
                 ->event(ActivityEvent::PASSKEY_LOGIN_SUCCEEDED->value)
                 ->causedBy($owner)
                 ->performedOn($this)
-                ->log(ActivityEvent::PASSKEY_LOGIN_SUCCEEDED->description());
+                ->log('');
         } catch (\Throwable $e) {
             report($e);
         }
@@ -181,7 +181,7 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
             Activity::useLog(ActivityChannel::FORENSIC->value)
                 ->event(ActivityEvent::PASSKEY_LOGIN_FAILED->value)
                 ->withProperties($properties)
-                ->log(ActivityEvent::PASSKEY_LOGIN_FAILED->description());
+                ->log('');
         } catch (\Throwable $e) {
             report($e);
         }
@@ -214,7 +214,7 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
                 ->event(ActivityEvent::PASSKEY_REGISTRATION_FAILED->value)
                 ->causedBy($user)
                 ->withProperties(['failure_reason' => $reason])
-                ->log(ActivityEvent::PASSKEY_REGISTRATION_FAILED->description());
+                ->log('');
         } catch (\Throwable $e) {
             report($e);
         }

@@ -44,7 +44,7 @@ final class SelfEmailVerifier implements SelfEmailVerifierContract
                     'reason' => 'user_not_found',
                     'attempted_user_id' => $userId,
                 ])
-                ->log(ActivityEvent::EMAIL_VERIFICATION_FAILED->description());
+                ->log('');
 
             throw new SelfEmailVerificationFailedException();
         }
@@ -58,7 +58,7 @@ final class SelfEmailVerifier implements SelfEmailVerifierContract
                 ->causedByAnonymous()
                 ->performedOn($user)
                 ->withProperties(['reason' => 'hash_mismatch'])
-                ->log(ActivityEvent::EMAIL_VERIFICATION_FAILED->description());
+                ->log('');
 
             throw new SelfEmailVerificationFailedException();
         }

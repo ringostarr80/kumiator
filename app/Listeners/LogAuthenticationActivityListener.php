@@ -110,7 +110,7 @@ final class LogAuthenticationActivityListener
                     'guard' => $event->guard,
                     'remember' => (bool) $event->remember,
                 ])
-                ->log($loginEvent->description());
+                ->log('');
         } catch (\Throwable $e) {
             report($e);
         }
@@ -144,7 +144,7 @@ final class LogAuthenticationActivityListener
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties(['guard' => $event->guard])
-            ->log(ActivityEvent::LOGOUT->description());
+            ->log('');
     }
 
     public function handleFailed(Failed $event): void
@@ -177,7 +177,7 @@ final class LogAuthenticationActivityListener
         Activity::useLog(ActivityChannel::FORENSIC->value)
             ->event(ActivityEvent::LOGIN_FAILED->value)
             ->withProperties($properties)
-            ->log(ActivityEvent::LOGIN_FAILED->description());
+            ->log('');
     }
 
     public function handlePasswordUpdated(PasswordUpdatedViaController $event): void
@@ -188,7 +188,7 @@ final class LogAuthenticationActivityListener
             ->event(ActivityEvent::PASSWORD_UPDATED->value)
             ->causedBy($user)
             ->performedOn($user)
-            ->log(ActivityEvent::PASSWORD_UPDATED->description());
+            ->log('');
     }
 
     public function handlePasswordReset(PasswordReset $event): void
@@ -203,7 +203,7 @@ final class LogAuthenticationActivityListener
             ->event(ActivityEvent::PASSWORD_RESET->value)
             ->causedBy($user)
             ->performedOn($user)
-            ->log(ActivityEvent::PASSWORD_RESET->description());
+            ->log('');
     }
 
     /**
@@ -229,7 +229,7 @@ final class LogAuthenticationActivityListener
             ->event(ActivityEvent::PASSWORD_RESET_REQUESTED->value)
             ->performedOn($user)
             ->withProperties($this->forensicProperties(request()))
-            ->log(ActivityEvent::PASSWORD_RESET_REQUESTED->description());
+            ->log('');
     }
 
     /**
@@ -250,7 +250,7 @@ final class LogAuthenticationActivityListener
             ->event(ActivityEvent::EMAIL_VERIFIED->value)
             ->causedBy($user)
             ->performedOn($user)
-            ->log(ActivityEvent::EMAIL_VERIFIED->description());
+            ->log('');
     }
 
     /**
@@ -279,7 +279,7 @@ final class LogAuthenticationActivityListener
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties(['guard' => $event->guard])
-            ->log(ActivityEvent::OTHER_DEVICES_LOGGED_OUT->description());
+            ->log('');
     }
 
     public function handleLockout(Lockout $event): void
@@ -292,7 +292,7 @@ final class LogAuthenticationActivityListener
         Activity::useLog(ActivityChannel::FORENSIC->value)
             ->event(ActivityEvent::LOGIN_LOCKED_OUT->value)
             ->withProperties($properties)
-            ->log(ActivityEvent::LOGIN_LOCKED_OUT->description());
+            ->log('');
     }
 
     /**

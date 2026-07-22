@@ -98,7 +98,7 @@ final class AuthorizationAuditor implements AuthorizationAuditorContract
                     'target_type' => $subject?->getMorphClass(),
                     'target_id_hash' => AuditIdHasher::hash($key),
                 ])
-                ->log(ActivityEvent::AUTHORIZATION_DENIED->description());
+                ->log('');
         } catch (\Throwable $e) {
             report($e);
         }

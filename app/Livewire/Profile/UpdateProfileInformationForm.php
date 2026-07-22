@@ -155,6 +155,6 @@ final class UpdateProfileInformationForm extends JetstreamUpdateProfileInformati
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties(['previous_profile_photo_path' => $previousPath])
-            ->log(ActivityEvent::PROFILE_PHOTO_REMOVED->description());
+            ->log('');
     }
 }

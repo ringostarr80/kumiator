@@ -93,7 +93,7 @@ final class UserHardDeleter implements UserHardDeleterContract
             Activity::useLog(ActivityChannel::AUTH->value)
                 ->event($event->value)
                 ->causedByAnonymous()
-                ->log($event->description());
+                ->log('');
         });
 
         // Nicht-rollbackbarer Seiteneffekt bewusst NACH dem Commit:

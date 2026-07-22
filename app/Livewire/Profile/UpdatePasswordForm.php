@@ -36,6 +36,6 @@ final class UpdatePasswordForm extends JetstreamUpdatePasswordForm
             ->event(ActivityEvent::PASSWORD_UPDATED->value)
             ->causedBy($user)
             ->performedOn($user)
-            ->log(ActivityEvent::PASSWORD_UPDATED->description());
+            ->log('');
     }
 }

@@ -53,6 +53,6 @@ final class UserPasswordResetter implements UserPasswordResetterContract
             ->event(ActivityEvent::PASSWORD_RESET->value)
             ->causedByAnonymous()
             ->performedOn($user)
-            ->log(ActivityEvent::PASSWORD_RESET->description());
+            ->log('');
     }
 }

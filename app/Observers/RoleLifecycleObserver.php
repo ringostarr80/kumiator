@@ -48,7 +48,7 @@ final class RoleLifecycleObserver
                 'guard_name' => $role->guard_name,
             ])
             ->event(ActivityEvent::ROLE_CREATED->value)
-            ->log(ActivityEvent::ROLE_CREATED->description());
+            ->log('');
     }
 
     public function deleted(Role $role): void
@@ -63,7 +63,7 @@ final class RoleLifecycleObserver
                 'guard_name' => $role->guard_name,
             ])
             ->event(ActivityEvent::ROLE_DELETED->value)
-            ->log(ActivityEvent::ROLE_DELETED->description());
+            ->log('');
     }
 
     /**

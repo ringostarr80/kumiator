@@ -54,7 +54,7 @@ abstract class LogAuthorizationChangeListener
             ->performedOn($subject)
             ->withProperties([$this->propertyKey() => $names])
             ->event($event->value)
-            ->log($event->description());
+            ->log('');
     }
 
     /**

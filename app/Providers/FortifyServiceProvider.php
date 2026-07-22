@@ -76,7 +76,7 @@ class FortifyServiceProvider extends ServiceProvider
             Activity::useLog(ActivityChannel::AUTH->value)
                 ->event(ActivityEvent::PASSWORD_CONFIRMATION_FAILED->value)
                 ->causedBy($user)
-                ->log(ActivityEvent::PASSWORD_CONFIRMATION_FAILED->description());
+                ->log('');
 
             return false;
         });

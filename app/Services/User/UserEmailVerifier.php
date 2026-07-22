@@ -45,6 +45,6 @@ final class UserEmailVerifier implements UserEmailVerifierContract
             ->event(ActivityEvent::EMAIL_VERIFIED->value)
             ->causedByAnonymous()
             ->performedOn($user)
-            ->log(ActivityEvent::EMAIL_VERIFIED->description());
+            ->log('');
     }
 }

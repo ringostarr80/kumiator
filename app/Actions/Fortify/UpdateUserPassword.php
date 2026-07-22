@@ -66,6 +66,6 @@ class UpdateUserPassword implements UpdatesUserPasswords
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties(['failure_reason' => 'current_password_mismatch'])
-            ->log(ActivityEvent::PASSWORD_UPDATE_FAILED->description());
+            ->log('');
     }
 }

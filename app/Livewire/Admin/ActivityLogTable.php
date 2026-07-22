@@ -421,7 +421,7 @@ final class ActivityLogTable extends Component
             ActivityLogger::useLog(ActivityChannel::SECURITY->value)
                 ->event(ActivityEvent::ACTIVITY_LOG_VIEWED->value)
                 ->causedBy($causer)
-                ->log(ActivityEvent::ACTIVITY_LOG_VIEWED->description());
+                ->log('');
         } catch (\Throwable $e) {
             report($e);
         }
