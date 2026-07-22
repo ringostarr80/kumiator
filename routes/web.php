@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\PasskeyRegistrationController;
 use App\Http\Controllers\Auth\ResendEmailVerificationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Middleware\EnsureFortifyCredentialsAreScalar;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Http\Controllers\ConfirmedTwoFactorAuthenticationController;
 use Laravel\Fortify\Http\Controllers\PasswordController;
@@ -134,6 +135,7 @@ Route::middleware([
     // den vollen Toren schließt diese Lücke.
     // ──────────────────────────────────────────────────────────────────────────
     Route::put('/user/profile-information', [ProfileInformationController::class, 'update'])
+        ->middleware(EnsureFortifyCredentialsAreScalar::class . ':email,password')
         ->name('user-profile-information.update');
     Route::put('/user/password', [PasswordController::class, 'update'])
         ->name('user-password.update');
