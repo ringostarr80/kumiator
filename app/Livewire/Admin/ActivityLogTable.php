@@ -15,6 +15,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -353,14 +354,15 @@ final class ActivityLogTable extends Component
         // daher die explizite ESCAPE-Klausel (nur über whereRaw setzbar).
         $escaped = addcslashes($term, '\\%_');
 
-        // Bewusst eine explizite Liste, nicht array_keys(morphMap()) oder '*':
-        // die Closure sucht `name like` in jeder gelisteten Typ-Tabelle,
-        // das sind nur Morph-Aliase mit `name`-Spalte. Ein künftiges
-        // Morph-Model ohne `name` gehört hier nicht rein (sonst SQL-Fehler);
-        // die Liste wird deshalb getrennt von der Morph-Map gepflegt.
+        // Aus der Morph-Map ableiten statt eine zweite Liste zu pflegen: ein neu
+        // eingeführtes polymorph adressiertes Model muss ohnehin in die Map
+        // (erzwungen von `enforceMorphMap`) und wird damit automatisch
+        // durchsuchbar, statt hier still zu fehlen. Die `name like`-Suche ist
+        // dabei SQL-sicher, weil jeder Map-Eintrag garantiert eine `name`-Spalte
+        // trägt — ein Architektur-Test (`MorphMapTest`) erzwingt genau das.
         $query->whereHasMorph(
             $relation,
-            ['user', 'passkey', 'role'],
+            array_keys(Relation::morphMap()),
             static function (Builder $related) use ($escaped): void {
                 $related->whereRaw('name like ? escape ?', ['%' . $escaped . '%', '\\']);
             },
