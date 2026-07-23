@@ -21,7 +21,7 @@ use Spatie\Activitylog\Support\LogOptions;
 /**
  * Repräsentiert ein registriertes WebAuthn-/Passkey-Credential eines Nutzers.
  *
- * Die vollständige PublicKeyCredentialSource aus der webauthn-lib wird als JSON
+ * Das vollständige CredentialRecord aus der webauthn-lib wird als JSON
  * serialisiert in der Spalte `credential_public_key` abgelegt, damit das
  * Eloquent-Model von der internen Struktur der Library entkoppelt bleibt.
  *
@@ -29,8 +29,8 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property int $user_id Fremdschlüssel auf die users-Tabelle.
  * @property string $credential_id Base64URL-kodierte (ohne Padding) rohe Credential-ID, wie vom
  *           Authenticator zurückgegeben.
- * @property string $credential_public_key Die vollständige, vom Symfony-Serializer der webauthn-lib
- *           als JSON serialisierte PublicKeyCredentialSource.
+ * @property string $credential_public_key Das vollständige, vom Symfony-Serializer der webauthn-lib
+ *           als JSON serialisierte CredentialRecord.
  * @property int $counter Signatur-Zähler, den der Authenticator bei jeder Nutzung hochzählt.
  *           Der Server weist jede Assertion ab, deren Zähler nicht größer als der gespeicherte Wert ist
  *           (oder gleich 0 bei Plattform-Authenticatoren, die darauf verzichten) — erkennt geklonte Credentials.
