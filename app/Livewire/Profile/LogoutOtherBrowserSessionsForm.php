@@ -11,7 +11,6 @@ use App\Services\Session\Contracts\UserSessionTerminatorContract;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Config;
 use Laravel\Jetstream\Http\Livewire\LogoutOtherBrowserSessionsForm as JetstreamLogoutOtherBrowserSessionsForm;
 use Spatie\Activitylog\Facades\Activity;
 
@@ -50,7 +49,7 @@ final class LogoutOtherBrowserSessionsForm extends JetstreamLogoutOtherBrowserSe
         // der Parent gar keine Sessions (frühzeitiger Return). Dann wäre ein
         // Activity-Log-Eintrag irreführend — wir loggen nur tatsächlich
         // ausgeführte Vorgänge.
-        if (Config::string('session.driver') !== 'database') {
+        if (!$this->sessionTerminator->usesDatabaseDriver()) {
             parent::logoutOtherBrowserSessions($guard);
 
             return;

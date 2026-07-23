@@ -47,7 +47,7 @@ final class UserSessionTerminator implements UserSessionTerminatorContract
             ->count();
     }
 
-    private function usesDatabaseDriver(): bool
+    public function usesDatabaseDriver(): bool
     {
         return Config::string('session.driver') === 'database';
     }
