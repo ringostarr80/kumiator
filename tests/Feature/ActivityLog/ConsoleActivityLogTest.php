@@ -675,7 +675,6 @@ final class ConsoleActivityLogTest extends TestCase
      */
     public function testActivityWithoutActiveContextHasNoCliActorButGetsFactualEventCode(): void
     {
-        ConsoleActorContext::clearStatically();
         Activity::query()->delete();
 
         $user = User::create([
@@ -748,7 +747,6 @@ final class ConsoleActivityLogTest extends TestCase
      */
     public function testCausalUserSurvivesOutsideCliContext(): void
     {
-        ConsoleActorContext::clearStatically();
         $user = User::factory()->create();
         Activity::query()->delete();
 
@@ -886,10 +884,6 @@ final class ConsoleActivityLogTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        // Statisches Marker-Feld zwischen Tests sauber halten (ConsoleActorContext
-        // hält den Zustand prozessweit über die Test-Grenze hinweg).
-        ConsoleActorContext::clearStatically();
 
         Role::findOrCreate('admin');
         Role::findOrCreate('member');
