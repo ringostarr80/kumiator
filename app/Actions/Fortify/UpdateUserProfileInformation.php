@@ -72,7 +72,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
                 // ginge an die Angreifer-Adresse, und der erfolgreiche Confirm
                 // entwertet den Cancel-Link der alten Adresse sofort.
                 'current_password' => $emailChanged
-                    ? ['required', 'string', 'current_password:web']
+                    ? ['bail', 'required', 'string', 'current_password:web']
                     : ['nullable', 'string'],
             ], [
                 'current_password.required' => __('app.email_change_current_password_required'),

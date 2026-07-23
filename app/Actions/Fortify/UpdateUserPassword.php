@@ -28,7 +28,7 @@ class UpdateUserPassword implements UpdatesUserPasswords
     {
         try {
             Validator::make($input, [
-                'current_password' => ['required', 'string', 'current_password:web'],
+                'current_password' => ['bail', 'required', 'string', 'current_password:web'],
                 'password' => $this->passwordRules(),
             ])->validateWithBag('updatePassword');
         } catch (ValidationException $e) {
