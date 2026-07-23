@@ -12,7 +12,7 @@
     "require": {
         "php": "^8.4",
         "blade-ui-kit/blade-heroicons": "^2.7",
-        "laravel/framework": "^13.18",
+        "laravel/framework": "^13.21",
         "laravel/jetstream": "^5.5",
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
@@ -37,7 +37,7 @@
         "phpstan/phpstan-deprecation-rules": "^2.0",
         "phpstan/phpstan-mockery": "^2.0",
         "phpunit/phpunit": "^13.2",
-        "slevomat/coding-standard": "^8.30",
+        "slevomat/coding-standard": "^8.31",
         "squizlabs/php_codesniffer": "^4.0"
     },
     "autoload": {
