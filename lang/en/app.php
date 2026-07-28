@@ -5,7 +5,7 @@ declare(strict_types=1);
 return [
 
     // Navigation
-    'app_name' => 'AssociationManager',
+    'app_name' => 'Kumiator',
     'dashboard' => 'Dashboard',
     'login' => 'Log in',
     'log_in' => 'Log in',
@@ -20,7 +20,7 @@ return [
     'profile' => 'Profile',
 
     // Welcome page
-    'welcome_title' => 'Welcome to AssociationManager',
+    'welcome_title' => 'Welcome to Kumiator',
     'welcome_subtitle' => 'This web application is designed for the central management of your association.'
         . ' Members, contributions, and other internal data can be recorded and maintained here in a clear'
         . ' and organized manner.',

@@ -18,11 +18,11 @@ final class WebauthnConfig
 {
     public static function rpName(): string
     {
-        $value = config('webauthn.relying_party.name', 'AssociationManager');
+        $value = config('webauthn.relying_party.name', 'Kumiator');
 
         return is_string($value)
             ? $value
-            : 'AssociationManager';
+            : 'Kumiator';
     }
 
     /**

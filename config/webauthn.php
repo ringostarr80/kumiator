@@ -16,7 +16,7 @@ return [
     */
 
     'relying_party' => [
-        'name' => env('WEBAUTHN_RP_NAME', env('APP_NAME', 'AssociationManager')),
+        'name' => env('WEBAUTHN_RP_NAME', env('APP_NAME', 'Kumiator')),
         'id' => env('WEBAUTHN_RP_ID', null), // null = derived from request host
     ],
 

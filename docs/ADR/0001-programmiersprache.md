@@ -6,7 +6,7 @@
 
 ## Kontext
 
-Für das Projekt AssociationManager musste eine Backend-Programmiersprache gewählt werden. Es handelt sich um eine Webanwendung zur Vereinsverwaltung, bei der jeder Verein eine eigene unabhängige Instanz (URL) erhält.
+Für dieses Projekt musste eine Backend-Programmiersprache gewählt werden. Es handelt sich um eine Webanwendung zur Vereinsverwaltung, bei der jeder Verein eine eigene unabhängige Instanz (URL) erhält.
 
 ## Betrachtete Alternativen
 

@@ -1,5 +1,5 @@
 /**
- * WebAuthn / Passkey helpers for the AssociationManager front-end.
+ * WebAuthn / Passkey helpers for the front-end.
  *
  * Both the registration and authentication flows follow the same pattern:
  *  1. Fetch options from the server (GET → JSON).

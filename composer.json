@@ -1,6 +1,6 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "ringostarr80/association-manager",
+    "name": "ringostarr80/kumiator",
     "type": "project",
     "description": "Web-based management platform for associations.",
     "keywords": [

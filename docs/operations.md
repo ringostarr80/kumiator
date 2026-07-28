@@ -91,12 +91,12 @@ allein genügt dafür nicht.
 
 ### Worker als systemd-Service
 
-Eine Unit-Datei unter `/etc/systemd/system/association-worker.service` anlegen
+Eine Unit-Datei unter `/etc/systemd/system/kumiator-worker.service` anlegen
 (Platzhalter an das Server-Layout anpassen):
 
 ```ini
 [Unit]
-Description=AssociationManager Queue-Worker
+Description=Kumiator Queue-Worker
 After=network.target
 
 [Service]
@@ -125,12 +125,12 @@ Aktivieren und starten:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now association-worker.service
+sudo systemctl enable --now kumiator-worker.service
 ```
 
-`systemctl status association-worker.service` zeigt anschließend den laufenden
+`systemctl status kumiator-worker.service` zeigt anschließend den laufenden
 Prozess. (Wer statt systemd Supervisor betreibt, bildet dasselbe mit einem
-`[program:association-worker]`-Block und `autostart=true`/`autorestart=true` ab.)
+`[program:kumiator-worker]`-Block und `autostart=true`/`autorestart=true` ab.)
 
 ### Neustart nach jedem Deploy
 

@@ -6,7 +6,7 @@
 
 ## Kontext
 
-Nach der Entscheidung für PHP als Backend-Sprache (siehe [ADR-0001](0001-programmiersprache.md)) musste ein geeignetes Framework für die Entwicklung des AssociationManagers gewählt werden.
+Nach der Entscheidung für PHP als Backend-Sprache (siehe [ADR-0001](0001-programmiersprache.md)) musste ein geeignetes Framework für die Entwicklung gewählt werden.
 
 ## Betrachtete Alternativen
 

@@ -1,4 +1,4 @@
-# AssociationManager
+# Kumiator
 
 In diesem Projekt geht es um eine WebApp, die eine Verwaltung für Vereine zur Verfügung stellt.
 Jeder Verein hat dabei seine eigene unabhängige Instanz (URL) zur Verfügung.

@@ -1,14 +1,14 @@
-@startuml AssociationManager - C4 Container Diagram
+@startuml Kumiator - C4 Container Diagram
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
 LAYOUT_WITH_LEGEND()
 
-title AssociationManager – C4 Container Diagram (Level 2)
+title Kumiator – C4 Container Diagram (Level 2)
 
 Person(vereinsverwalter, "Vereinsverwalter", "Eingeloggter Nutzer, verwaltet den Verein")
 Person(admin, "Administrator", "Legt Nutzer & Rollen per CLI an")
 
-System_Boundary(app, "AssociationManager Web Application") {
+System_Boundary(app, "Kumiator Web Application") {
 
     Container(browser, "Browser", "Login (Username/Password, 2FA, Passkey)", "Rendert die UI")
 
