@@ -39,6 +39,49 @@ Abgesichert wird das durch eine Verifikations-Pipeline, die nach jeder Änderung
 Analyse (PHPStan auf maximaler Stufe), Coding-Standards (PHP_CodeSniffer), Architekturregeln
 (PHPat) und die vollständige Testsuite inklusive Coverage.
 
+## Schnellstart (lokale Entwicklung)
+
+Vorausgesetzt werden PHP 8.4 und Node.js — oder alternativ Docker, dann genügt Docker allein.
+Als Datenbank dient standardmäßig SQLite, ein eigener Datenbankserver ist also nicht nötig.
+
+### Mit Docker
+
+Die Vorgaben in `.env.example` sind auf dieses Setup zugeschnitten: HTTPS auf Port 8443 mit einem
+selbstsignierten Zertifikat, das beim ersten Start erzeugt wird.
+
+```bash
+cp .env.example .env
+docker compose up -d
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan db:seed --class=RoleSeeder
+```
+
+Der erste Start dauert einige Minuten, weil im Container die Abhängigkeiten installiert, die
+Assets gebaut und die Migrationen ausgeführt werden. Danach ist die Anwendung unter
+<https://localhost:8443> erreichbar; das selbstsignierte Zertifikat quittiert der Browser
+mit einer Warnung.
+
+### Ohne Docker
+
+```bash
+composer setup   # Abhängigkeiten, .env, App-Key, Migrationen, Rollen und Assets
+composer dev     # Webserver, Queue-Worker, Logs und Vite in einem Rutsch
+```
+
+Die Anwendung läuft dann unter <http://localhost:8000>. Dafür sind in der `.env` zusätzlich
+`APP_URL=http://localhost:8000` und `SESSION_SECURE_COOKIE=false` zu setzen — die Vorgaben
+verlangen HTTPS, andernfalls nimmt der Browser das Sitzungs-Cookie nicht an.
+
+### Ersten Benutzer anlegen
+
+Über die Oberfläche registrierte Konten müssen erst von einem Administrator freigeschaltet werden.
+Der allererste Zugang entsteht deshalb auf der Kommandozeile:
+
+```bash
+php artisan user:create
+# mit Docker: docker compose exec app php artisan user:create
+```
+
 ## CLI-Kommandos zur Benutzerverwaltung
 
 Siehe [docs/cli-commands.md](docs/cli-commands.md).
