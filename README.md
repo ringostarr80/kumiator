@@ -5,6 +5,19 @@ Sie ermöglicht die Erfassung und Pflege von Mitgliedern, Beiträgen und weitere
 Daten an einem Ort. Der Zugang ist passwortgeschützt und unterstützt
 Zwei-Faktor-Authentifizierung (2FA).
 
+## Projektstatus
+
+**Frühe Entwicklungsphase (Pre-Alpha) — es gibt noch kein Release, und der Einsatz im
+Produktivbetrieb wird ausdrücklich nicht empfohlen.**
+
+Fertiggestellt ist das technische Fundament: Registrierung mit Freischaltung durch
+Administratoren, Anmeldung per Passwort, Zwei-Faktor-Authentifizierung und Passkeys, Rollen- und
+Rechteverwaltung, geprüfter E-Mail-Wechsel, Sitzungsverwaltung, API-Token, ein Aktivitätsprotokoll
+sowie CLI-Kommandos zur Benutzerverwaltung. Die Oberfläche liegt auf Deutsch und Englisch vor.
+
+Die fachliche Vereinsverwaltung — Mitglieder, Beiträge und weitere vereinsinterne Daten — ist
+dagegen noch nicht umgesetzt.
+
 ## Wortherkunft
 
 Der Name verbindet einen japanischen mit einem lateinischen Bestandteil:
