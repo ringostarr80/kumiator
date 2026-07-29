@@ -15,6 +15,17 @@ Der Name verbindet einen japanischen mit einem lateinischen Bestandteil:
 
 Zusammengenommen: derjenige, der den Verein verwaltet.
 
+## Entwicklung mit KI
+
+Kumiator wird KI-gestützt entwickelt, aber nicht „gevibecoded": Der Code entsteht überwiegend
+mit KI-Werkzeugen unter durchgehender menschlicher Aufsicht (*Human-in-the-Loop*). Jede Änderung
+wird gelesen, geprüft und einzeln freigegeben, bevor sie in das Repository gelangt — es gibt hier
+keine Zeile, die nicht ein Mensch verantwortet.
+
+Abgesichert wird das durch eine Verifikations-Pipeline, die nach jeder Änderung läuft: statische
+Analyse (PHPStan auf maximaler Stufe), Coding-Standards (PHP_CodeSniffer), Architekturregeln
+(PHPat) und die vollständige Testsuite inklusive Coverage.
+
 ## CLI-Kommandos zur Benutzerverwaltung
 
 Siehe [docs/cli-commands.md](docs/cli-commands.md).
