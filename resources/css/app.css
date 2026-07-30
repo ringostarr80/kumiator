@@ -12,8 +12,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-    /* Fallback-Kette bewusst ausgeschrieben: v4 liefert per Default einen anderen
-       Stack als v3, was die Darstellung ohne geladenes Figtree verschieben würde. */
+    /* Die Zuweisung ersetzt den Theme-Default, statt ihn zu ergänzen: Stünde hier nur Figtree,
+       fiele die Seite ohne die extern geladene Schrift auf den Browser-Default zurück. */
     --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
