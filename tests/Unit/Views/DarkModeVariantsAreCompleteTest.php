@@ -31,10 +31,8 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
         'api/api-token-manager.blade.php' => ['bg-gray-100', 'text-gray-400', 'text-gray-500'],
         'components/banner.blade.php' => ['bg-gray-500'],
         'components/modal.blade.php' => ['bg-gray-500'],
-        'livewire/profile/passkey-manager-form.blade.php' => ['bg-gray-50', 'text-gray-500', 'text-gray-900'],
         'navigation-menu.blade.php' => ['text-gray-400'],
         'policy.blade.php' => ['bg-gray-100'],
-        'profile/two-factor-authentication-form.blade.php' => ['bg-gray-100'],
         'terms.blade.php' => ['bg-gray-100'],
     ];
 
