@@ -19,9 +19,9 @@
                     <div class="flex items-center">
                         <div>
                             @if ($session->agent->isDesktop())
-                                <x-heroicon-o-computer-desktop class="size-8 text-gray-500" />
+                                <x-heroicon-o-computer-desktop class="size-8 text-gray-500 dark:text-gray-400" />
                             @else
-                                <x-heroicon-o-device-phone-mobile class="size-8 text-gray-500" />
+                                <x-heroicon-o-device-phone-mobile class="size-8 text-gray-500 dark:text-gray-400" />
                             @endif
                         </div>
 
@@ -31,7 +31,7 @@
                             </div>
 
                             <div>
-                                <div class="text-xs text-gray-500">
+                                <div class="text-xs text-gray-500 dark:text-gray-400">
                                     {{ $session->ip_address }},
 
                                     @if ($session->is_current_device)
