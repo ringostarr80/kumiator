@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findCursorRule, isInBaseLayer, isInCss, staticClasses } from './support/built-css';
+import { findCursorRule, isInBaseLayer, isInCss, ruleSet, staticClasses } from './support/built-css';
 
 /**
  * Eine Prüfung, die nichts findet, meldet dasselbe wie eine erfüllte Erwartung. Deshalb steht hier
@@ -35,6 +35,18 @@ describe('isInCss', () => {
 
     it('findet Klassen, deren Name in CSS maskiert wird', () => {
         expect(isInCss('.sm\\:w-1\\/2{width:50%}', 'sm:w-1/2')).toBe(true);
+    });
+});
+
+describe('ruleSet', () => {
+    const css = '.focus-ring:focus-visible{outline-width:2px}.focus-ring-inset:focus-visible{outline-width:1px}';
+
+    it('sammelt jede Regel einer Klasse', () => {
+        expect(ruleSet(`${css}.focus-ring:hover{outline-width:3px}`, 'focus-ring')).toHaveLength(2);
+    });
+
+    it('nimmt keine Regel einer Klasse mit längerem Namen mit', () => {
+        expect(ruleSet(css, 'focus-ring')).toEqual(['.focus-ring:focus-visible{outline-width:2px}']);
     });
 });
 

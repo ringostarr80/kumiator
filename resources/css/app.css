@@ -18,6 +18,18 @@
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
+@utility focus-ring {
+    @apply focus-visible:outline-2 focus-visible:outline-offset-2
+        focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300;
+}
+
+/* Nach innen gezeichnet: Bei randlosen Einträgen in Menüpanels läge der Ring sonst außerhalb der
+   Panelkante und würde abgeschnitten. */
+@utility focus-ring-inset {
+    @apply focus-visible:outline-2 focus-visible:-outline-offset-2
+        focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300;
+}
+
 @layer base {
     /* Das Preflight überlässt Buttons den Browser-Default-Cursor; ohne Zeigehand wirken sie
        nicht anklickbar. Deaktivierte bleiben ausgenommen, da wire:loading sie laufend umschaltet. */

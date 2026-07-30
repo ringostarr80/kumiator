@@ -39,17 +39,17 @@
                         @if (Route::has('login'))
                             @auth
                                 <a href="{{ url('/dashboard') }}"
-                                   class="text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300">
+                                   class="text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white underline focus-ring">
                                     {{ __('app.dashboard') }}
                                 </a>
                             @else
                                 <a href="{{ route('login') }}"
-                                   class="text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300">
+                                   class="text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white underline focus-ring">
                                     {{ __('app.login') }}
                                 </a>
                                 @if (Route::has('register'))
                                     <a href="{{ route('register') }}"
-                                       class="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300 transition ease-in-out duration-150">
+                                       class="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus-ring transition ease-in-out duration-150">
                                         {{ __('app.register') }}
                                     </a>
                                 @endif
@@ -75,17 +75,17 @@
                         <div class="mt-8 flex justify-center gap-4">
                             @auth
                                 <a href="{{ url('/dashboard') }}"
-                                   class="inline-flex items-center px-6 py-3 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-sm text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300 transition ease-in-out duration-150">
+                                   class="inline-flex items-center px-6 py-3 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-sm text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus-ring transition ease-in-out duration-150">
                                     {{ __('app.to_dashboard') }}
                                 </a>
                             @else
                                 <a href="{{ route('login') }}"
-                                   class="inline-flex items-center px-6 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded-md font-semibold text-sm text-gray-700 dark:text-gray-300 uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300 transition ease-in-out duration-150">
+                                   class="inline-flex items-center px-6 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded-md font-semibold text-sm text-gray-700 dark:text-gray-300 uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-700 focus-ring transition ease-in-out duration-150">
                                     {{ __('app.login') }}
                                 </a>
                                 @if (Route::has('register'))
                                     <a href="{{ route('register') }}"
-                                       class="inline-flex items-center px-6 py-3 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-sm text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300 transition ease-in-out duration-150">
+                                       class="inline-flex items-center px-6 py-3 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-sm text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus-ring transition ease-in-out duration-150">
                                         {{ __('app.register') }}
                                     </a>
                                 @endif

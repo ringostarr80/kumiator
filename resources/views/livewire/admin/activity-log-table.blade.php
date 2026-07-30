@@ -10,7 +10,7 @@
             type="button"
             x-on:click="open = ! open"
             x-bind:aria-expanded="open"
-            class="inline-flex items-center gap-1 rounded-sm text-sm font-medium text-gray-600 hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300 dark:text-gray-300 dark:hover:text-white"
+            class="inline-flex items-center gap-1 rounded-sm text-sm font-medium text-gray-600 hover:text-gray-900 focus-ring dark:text-gray-300 dark:hover:text-white"
         >
             <x-heroicon-m-funnel class="h-4 w-4" aria-hidden="true" />
             {{ __('app.activity_log_filter_toggle') }}
@@ -99,7 +99,7 @@
                             <button
                                 type="button"
                                 wire:click="sortByCreatedAt"
-                                class="inline-flex items-center gap-1 rounded-sm hover:text-gray-900 dark:hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300"
+                                class="inline-flex items-center gap-1 rounded-sm hover:text-gray-900 dark:hover:text-white focus-ring"
                             >
                                 {{ __('app.activity_log_when') }}
                                 @if ($sortDirection === 'asc')
@@ -167,7 +167,7 @@
                                     <button
                                         type="button"
                                         wire:click="showProperties({{ $activity->id }})"
-                                        class="inline-flex items-center justify-center rounded-sm p-1 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300 dark:text-indigo-400 dark:hover:bg-gray-700 dark:hover:text-indigo-200"
+                                        class="inline-flex items-center justify-center rounded-sm p-1 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 focus-ring dark:text-indigo-400 dark:hover:bg-gray-700 dark:hover:text-indigo-200"
                                         title="{{ __('app.activity_log_properties_show') }}"
                                         aria-label="{{ __('app.activity_log_properties_show') }}"
                                     >
@@ -203,7 +203,7 @@
             <button
                 type="button"
                 wire:click="closeProperties"
-                class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 focus-ring dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
             >
                 {{ __('app.activity_log_properties_modal_close') }}
             </button>

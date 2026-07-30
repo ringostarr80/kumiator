@@ -45,6 +45,16 @@ export function isInCss(css: string, className: string): boolean {
     return new RegExp(`\\.${pattern}(?![\\w-])`).test(css);
 }
 
+/**
+ * Die Suche endet an der Klassengrenze, sonst lieferte `focus-ring` auch die Regeln von
+ * `focus-ring-inset` mit und eine fehlende Definition bliebe unbemerkt.
+ */
+export function ruleSet(css: string, className: string): string[] {
+    const pattern = new RegExp(`\\.${className}(?![\\w-])[^{}]*\\{[^}]*\\}`, 'g');
+
+    return [...css.matchAll(pattern)].map(([rule]) => rule);
+}
+
 export function findCursorRule(css: string): number | null {
     const match = /button:not\(:disabled\)[^{]*\{[^}]*cursor:\s*pointer/.exec(css);
 
