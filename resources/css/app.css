@@ -18,6 +18,15 @@
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
+@layer base {
+    /* Das Preflight überlässt Buttons den Browser-Default-Cursor; ohne Zeigehand wirken sie
+       nicht anklickbar. Deaktivierte bleiben ausgenommen, da wire:loading sie laufend umschaltet. */
+    button:not(:disabled),
+    [role='button']:not(:disabled) {
+        cursor: pointer;
+    }
+}
+
 [x-cloak] {
     display: none;
 }
