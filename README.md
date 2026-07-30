@@ -18,6 +18,13 @@ sowie CLI-Kommandos zur Benutzerverwaltung. Die Oberfläche liegt auf Deutsch un
 Die fachliche Vereinsverwaltung — Mitglieder, Beiträge und weitere vereinsinterne Daten — ist
 dagegen noch nicht umgesetzt.
 
+## Browser-Unterstützung
+
+Die Oberfläche setzt Chrome/Edge 111, Firefox 128 und Safari 16.4 (auch auf iOS) voraus; die
+Untergrenze steht als `browserslist` in der `package.json`. Das Stylesheet nutzt `oklch()`,
+`color-mix()` und `@property` ohne Rückfallebene — ältere Browser verwerfen diese Deklarationen
+und stellen die Anwendung entstellt dar.
+
 ## Wortherkunft
 
 Der Name verbindet einen japanischen mit einem lateinischen Bestandteil:
