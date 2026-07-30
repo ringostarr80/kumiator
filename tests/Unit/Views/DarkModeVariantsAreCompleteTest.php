@@ -29,13 +29,6 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
      */
     private const ALLOWED_WITHOUT_DARK_VARIANT = [
         'api/api-token-manager.blade.php' => ['bg-gray-100', 'text-gray-400', 'text-gray-500'],
-        'auth/email-change-cancel.blade.php' => ['text-gray-700'],
-        'auth/email-change-cancelled.blade.php' => ['text-gray-700'],
-        'auth/email-change-confirm.blade.php' => ['text-gray-700'],
-        'auth/email-change-confirmed.blade.php' => ['text-gray-700'],
-        'auth/email-change-conflict.blade.php' => ['text-gray-700'],
-        'auth/email-change-expired.blade.php' => ['text-gray-700'],
-        'auth/email-change-invalid.blade.php' => ['text-gray-700'],
         'components/banner.blade.php' => ['bg-gray-500'],
         'components/modal.blade.php' => ['bg-gray-500'],
         'livewire/profile/passkey-manager-form.blade.php' => ['bg-gray-50', 'text-gray-500', 'text-gray-900'],
