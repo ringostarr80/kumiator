@@ -8,7 +8,7 @@
     </x-slot>
 
     <x-slot name="content">
-        <div class="max-w-xl text-sm text-gray-600">
+        <div class="max-w-xl text-sm text-gray-600 dark:text-gray-400">
             {{ __('app.browser_sessions_info') }}
         </div>
 
@@ -26,7 +26,7 @@
                         </div>
 
                         <div class="ms-3">
-                            <div class="text-sm text-gray-600">
+                            <div class="text-sm text-gray-600 dark:text-gray-400">
                                 {{ $session->agent->platform() ? $session->agent->platform() : __('app.unknown') }} - {{ $session->agent->browser() ? $session->agent->browser() : __('app.unknown') }}
                             </div>
 

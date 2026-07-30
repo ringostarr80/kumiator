@@ -10,12 +10,12 @@
     </p>
 </div>
 
-<div class="bg-gray-200 dark:bg-gray-800 bg-opacity-25 dark:bg-opacity-25 grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 p-6 lg:p-8">
+<div class="bg-gray-200/25 dark:bg-gray-800/25 grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 p-6 lg:p-8">
     <div>
         <div class="flex items-center">
             <x-heroicon-o-book-open class="size-6 stroke-gray-400" />
             <h2 class="ms-3 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                <a href="https://laravel.com/docs">{{ __('app.documentation') }}</a>
+                <a href="https://laravel.com/docs" class="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300">{{ __('app.documentation') }}</a>
             </h2>
         </div>
 
@@ -24,7 +24,7 @@
         </p>
 
         <p class="mt-4 text-sm">
-            <a href="https://laravel.com/docs" class="inline-flex items-center font-semibold text-indigo-700 dark:text-indigo-400">
+            <a href="https://laravel.com/docs" class="inline-flex items-center font-semibold text-indigo-700 dark:text-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300">
                 {{ __('app.explore_documentation') }}
 
                 <x-heroicon-m-arrow-long-right class="ms-1 size-5 fill-indigo-500 dark:fill-indigo-400" />
@@ -36,7 +36,7 @@
         <div class="flex items-center">
             <x-heroicon-o-video-camera class="size-6 stroke-gray-400" />
             <h2 class="ms-3 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                <a href="https://laracasts.com">{{ __('app.laracasts') }}</a>
+                <a href="https://laracasts.com" class="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300">{{ __('app.laracasts') }}</a>
             </h2>
         </div>
 
@@ -45,7 +45,7 @@
         </p>
 
         <p class="mt-4 text-sm">
-            <a href="https://laracasts.com" class="inline-flex items-center font-semibold text-indigo-700 dark:text-indigo-400">
+            <a href="https://laracasts.com" class="inline-flex items-center font-semibold text-indigo-700 dark:text-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300">
                 {{ __('app.start_watching_laracasts') }}
 
                 <x-heroicon-m-arrow-long-right class="ms-1 size-5 fill-indigo-500 dark:fill-indigo-400" />
@@ -57,7 +57,7 @@
         <div class="flex items-center">
             <x-heroicon-o-photo class="size-6 stroke-gray-400" />
             <h2 class="ms-3 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                <a href="https://tailwindcss.com/">{{ __('app.tailwind') }}</a>
+                <a href="https://tailwindcss.com/" class="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300">{{ __('app.tailwind') }}</a>
             </h2>
         </div>
 

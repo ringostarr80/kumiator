@@ -22,7 +22,7 @@
 
         {{-- List of registered passkeys --}}
         @if ($passkeys->isEmpty())
-            <p class="text-sm text-gray-600">{{ __('app.passkeys_empty') }}</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('app.passkeys_empty') }}</p>
         @else
             <div class="space-y-3">
                 @foreach ($passkeys as $passkey)

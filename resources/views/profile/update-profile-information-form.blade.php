@@ -49,7 +49,7 @@
                     </x-secondary-button>
                 @endif
 
-                <p class="text-sm mt-2 text-gray-600">
+                <p class="text-sm mt-2 text-gray-600 dark:text-gray-400">
                     {{ __('app.profile_photo_max_size', ['size' => \Illuminate\Support\Number::fileSize($this->photoUploadLimit->bytes)]) }}
                     @if ($this->photoUploadLimit->constrainedByServer)
                         <span class="text-gray-500">{{ __('app.profile_photo_limited_by_server') }}</span>
@@ -74,7 +74,7 @@
             <x-input-error for="email" class="mt-2" />
 
             @if ($this->user->roles->isNotEmpty())
-                <p class="text-sm mt-2 text-gray-600">
+                <p class="text-sm mt-2 text-gray-600 dark:text-gray-400">
                     {{ __('app.role') }}: {{ $this->user->roles->pluck('name')->first() }}
                 </p>
             @endif
@@ -83,7 +83,7 @@
                 <p class="text-sm mt-2">
                     {{ __('app.email_unverified') }}
 
-                    <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" wire:click.prevent="sendEmailVerification">
+                    <button type="button" class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300" wire:click.prevent="sendEmailVerification">
                         {{ __('app.resend_verification') }}
                     </button>
                 </p>
@@ -114,7 +114,7 @@
             <x-label for="email-change-current-password" value="{{ __('app.current_password') }}" />
             <x-input id="email-change-current-password" type="password" class="mt-1 block w-full"
                      wire:model="state.current_password" autocomplete="current-password" />
-            <p class="text-sm mt-2 text-gray-600">
+            <p class="text-sm mt-2 text-gray-600 dark:text-gray-400">
                 {{ __('app.email_change_current_password_hint') }}
             </p>
             <x-input-error for="current_password" class="mt-2" />

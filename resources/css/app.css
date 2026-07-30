@@ -1,6 +1,18 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+/* Der Theme-Switcher schaltet .dark auf <html>; der v4-Default würde stattdessen
+   prefers-color-scheme auswerten und den Umschalter wirkungslos machen. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    /* Fallback-Kette bewusst ausgeschrieben: v4 liefert per Default einen anderen
+       Stack als v3, was die Darstellung ohne geladenes Figtree verschieben würde. */
+    --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+}
 
 [x-cloak] {
     display: none;

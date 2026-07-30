@@ -25,8 +25,9 @@
             <div class="shrink-0 sm:ms-3">
                 <button
                     type="button"
-                    class="-me-1 flex p-2 rounded-md focus:outline-none sm:-me-2 transition"
-                    :class="{ 'hover:bg-indigo-600 focus:bg-indigo-600': style == 'success', 'hover:bg-red-600 focus:bg-red-600': style == 'danger', 'hover:bg-yellow-600 focus:bg-yellow-600': style == 'warning'}"
+                    class="-me-1 flex p-2 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 sm:-me-2 transition"
+                    {{-- Weiß trägt auf allen Bannerfarben außer Gelb; dort reicht der Kontrast nicht. --}}
+                    :class="{ 'hover:bg-indigo-600 focus:bg-indigo-600': style == 'success', 'hover:bg-red-600 focus:bg-red-600': style == 'danger', 'hover:bg-yellow-600 focus:bg-yellow-600': style == 'warning', 'focus-visible:outline-gray-900': style == 'warning', 'focus-visible:outline-white': style != 'warning'}"
                     aria-label="Dismiss"
                     x-on:click="show = false">
                     <x-heroicon-o-x-mark class="size-5 text-white" />
