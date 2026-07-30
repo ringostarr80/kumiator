@@ -42,7 +42,7 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
         'navigation-menu.blade.php' => ['text-gray-400', 'text-gray-500'],
         'policy.blade.php' => ['bg-gray-100'],
         'profile/logout-other-browser-sessions-form.blade.php' => ['text-gray-500'],
-        'profile/two-factor-authentication-form.blade.php' => ['bg-gray-100', 'text-gray-900'],
+        'profile/two-factor-authentication-form.blade.php' => ['bg-gray-100'],
         'profile/update-profile-information-form.blade.php' => ['text-gray-500'],
         'terms.blade.php' => ['bg-gray-100'],
     ];
