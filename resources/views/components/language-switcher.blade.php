@@ -9,11 +9,11 @@
     <div x-show="open" @click.outside="open = false" x-transition
          class="absolute right-0 mt-2 w-32 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-100 dark:border-gray-700 z-50">
         <a href="{{ route('locale.switch', 'de') }}"
-           class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300 active:bg-gray-50 dark:active:bg-gray-700 {{ app()->getLocale() === 'de' ? 'font-semibold' : '' }}">
+           class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300 active:bg-gray-50 dark:active:bg-gray-700 {{ app()->getLocale() === 'de' ? 'font-semibold' : '' }}">
             Deutsch
         </a>
         <a href="{{ route('locale.switch', 'en') }}"
-           class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300 active:bg-gray-50 dark:active:bg-gray-700 {{ app()->getLocale() === 'en' ? 'font-semibold' : '' }}">
+           class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300 active:bg-gray-50 dark:active:bg-gray-700 {{ app()->getLocale() === 'en' ? 'font-semibold' : '' }}">
             English
         </a>
     </div>
