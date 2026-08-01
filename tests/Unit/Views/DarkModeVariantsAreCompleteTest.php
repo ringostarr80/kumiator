@@ -12,9 +12,10 @@ use Tests\TestCase;
  * Gegenstück für den dunklen Modus braucht. Fehlt es, bleibt dunkler Text auf dunkler Fläche stehen —
  * beim Entwickeln im hellen Modus fällt das niemandem auf, weil die Seite dort korrekt aussieht.
  *
- * Geprüft wird ausschließlich die gray-Skala: Sie trägt die Modus-Umschaltung, während Akzentfarben
- * in beiden Modi absichtlich identisch bleiben. Die Prüfung ist zeilenlokal, das Gegenstück muss also
- * im selben Klassen-String stehen wie die Ausgangsklasse.
+ * Geprüft werden die gray-Skala und weiße wie schwarze Flächen: Sie tragen die Modus-Umschaltung,
+ * während Akzentfarben in beiden Modi absichtlich identisch bleiben. `text-white` bleibt außen vor,
+ * weil es auf eingefärbten Flächen sitzt, die sich mit dem Modus nicht ändern. Die Prüfung ist
+ * zeilenlokal, das Gegenstück muss also im selben Klassen-String stehen wie die Ausgangsklasse.
  */
 final class DarkModeVariantsAreCompleteTest extends TestCase
 {
@@ -24,16 +25,17 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
      * `components/banner.blade.php` und `components/modal.blade.php` legen ihre Graufläche über eine
      * eingefärbte bzw. abgedunkelte Ebene und sehen in beiden Modi gleich aus. Der Klartext-Token in
      * `api/api-token-manager.blade.php` sitzt auf einem `<x-input>`, dessen Komponente die
-     * dark:-Varianten selbst mitbringt und per CSS-Reihenfolge gewinnt. Alle übrigen Einträge sind
-     * offene Kontrast-Schwächen und verschwinden hier, sobald die betroffene Datei nachgezogen ist.
+     * dark:-Varianten selbst mitbringt und per CSS-Reihenfolge gewinnt. Die weiße Fläche in
+     * `profile/two-factor-authentication-form.blade.php` unterlegt den QR-Code: Ohne hellen Grund
+     * scheitert das Einscannen. Alle übrigen Einträge sind offene Kontrast-Schwächen und verschwinden
+     * hier, sobald die betroffene Datei nachgezogen ist.
      */
     private const ALLOWED_WITHOUT_DARK_VARIANT = [
         'api/api-token-manager.blade.php' => ['bg-gray-100', 'text-gray-400', 'text-gray-500'],
         'components/banner.blade.php' => ['bg-gray-500'],
         'components/modal.blade.php' => ['bg-gray-500'],
         'navigation-menu.blade.php' => ['text-gray-400'],
-        'policy.blade.php' => ['bg-gray-100'],
-        'terms.blade.php' => ['bg-gray-100'],
+        'profile/two-factor-authentication-form.blade.php' => ['bg-white'],
     ];
 
     /** Ein Farb-Utility samt vorangestellter Varianten, z. B. `dark:hover:bg-gray-700`. */
@@ -148,7 +150,10 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
         $missing = [];
 
         foreach ($utilities as $utility) {
-            if (!str_starts_with($utility['color'], 'gray-') || in_array('dark', $utility['variants'], true)) {
+            $switchesWithMode = str_starts_with($utility['color'], 'gray-')
+                || ($utility['family'] === 'bg' && in_array($utility['color'], ['white', 'black'], true));
+
+            if (!$switchesWithMode || in_array('dark', $utility['variants'], true)) {
                 continue;
             }
 
