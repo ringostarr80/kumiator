@@ -22,8 +22,8 @@ dagegen noch nicht umgesetzt.
 
 Die Oberfläche setzt Chrome/Edge 111, Firefox 128 und Safari 16.4 (auch auf iOS) voraus. Diese
 Grenze gibt Tailwind CSS über seine Kompilierziele vor; sie lässt sich im Projekt nicht
-einstellen. Das Stylesheet nutzt `oklch()`, `color-mix()` und `@property` ohne Rückfallebene —
-ältere Browser verwerfen diese Deklarationen und stellen die Anwendung entstellt dar.
+einstellen. Das Stylesheet nutzt `oklch()` für seine Farbwerte ohne Rückfallebene — ältere
+Browser verwerfen diese Deklarationen und stellen die Anwendung entstellt dar.
 
 ## Wortherkunft
 
