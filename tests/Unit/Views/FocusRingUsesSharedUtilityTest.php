@@ -25,6 +25,14 @@ final class FocusRingUsesSharedUtilityTest extends TestCase
         'components/banner.blade.php',
     ];
 
+    /**
+     * Als ausgeschriebener Ring gelten `focus-visible:outline-*` sowie `focus:outline-none` und eine
+     * numerische Ringbreite. Farbe und Offset allein zählen nicht: `focus:ring-indigo-600` und
+     * `dark:focus:ring-offset-gray-800` stehen an Eingabefeldern und Checkboxen, deren Ring von
+     * `@tailwindcss/forms` stammt und nicht aus einer kopierten Klassenliste.
+     */
+    private const RAW_FOCUS_RING_PATTERN = '/focus-visible:-?outline-|focus:outline-none|focus:ring-\d/';
+
     public function testViewsUseTheSharedFocusRingUtility(): void
     {
         $violations = [];
@@ -41,7 +49,7 @@ final class FocusRingUsesSharedUtilityTest extends TestCase
             $lines = file($file->getPathname(), FILE_IGNORE_NEW_LINES) ?: [];
 
             foreach ($lines as $index => $line) {
-                if (preg_match('/focus-visible:-?outline-/', $line) !== 1) {
+                if (preg_match(self::RAW_FOCUS_RING_PATTERN, $line) !== 1) {
                     continue;
                 }
 
