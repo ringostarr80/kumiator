@@ -22,13 +22,6 @@
         "vite": "^8.1.5",
         "vitest": "^4.1.10"
     },
-    "browserslist": [
-        "chrome >= 111",
-        "edge >= 111",
-        "firefox >= 128",
-        "safari >= 16.4",
-        "ios_saf >= 16.4"
-    ],
     "allowScripts": {
         "fsevents@2.3.3": true
     }
