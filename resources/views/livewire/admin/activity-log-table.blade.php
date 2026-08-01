@@ -167,7 +167,7 @@
                                     <button
                                         type="button"
                                         wire:click="showProperties({{ $activity->id }})"
-                                        class="inline-flex items-center justify-center rounded-sm p-1 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 focus-ring dark:text-indigo-400 dark:hover:bg-gray-700 dark:hover:text-indigo-200"
+                                        class="inline-flex items-center justify-center rounded-sm p-1 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 active:bg-indigo-50 focus-ring dark:text-indigo-400 dark:hover:bg-gray-700 dark:hover:text-indigo-200 dark:active:bg-gray-700"
                                         title="{{ __('app.activity_log_properties_show') }}"
                                         aria-label="{{ __('app.activity_log_properties_show') }}"
                                     >
@@ -203,7 +203,7 @@
             <button
                 type="button"
                 wire:click="closeProperties"
-                class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 focus-ring dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 active:bg-gray-50 focus-ring dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:active:bg-gray-700"
             >
                 {{ __('app.activity_log_properties_modal_close') }}
             </button>
