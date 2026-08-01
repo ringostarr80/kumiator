@@ -9,5 +9,5 @@
         "skipLibCheck": true,
         "noEmit": true
     },
-    "include": ["tests/css", "vitest.config.ts"]
+    "include": ["tests/css", "vite", "vitest.config.ts"]
 }
