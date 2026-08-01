@@ -23,16 +23,26 @@ describe('Pagination', () => {
     });
 });
 
+/**
+ * Geprüft wird allein das Vorzeichen: Ob der Ring innen oder außen liegt, ist die Designentscheidung —
+ * ob Tailwind sie als calc(2px * -1) oder als -2px ausdrückt, ist seine Sache.
+ */
+const drawsInward = (rule: string): boolean => /outline-offset:\s*(-\d|calc\([^)]*-1\s*\))/.test(rule);
+
 describe('Fokusring', () => {
     /**
      * Alle Bedienelemente teilen sich dieselben zwei Utilities: Bleiben sie im Build aus, verliert die
      * gesamte App ihre Tastaturanzeige, ohne dass eine Ansicht sich geändert hätte.
      */
-    it.each(['focus-ring', 'focus-ring-inset'])('zeichnet %s in beiden Modi', (utility) => {
+    it.each<[string, boolean]>([
+        ['focus-ring', false],
+        ['focus-ring-inset', true],
+    ])('zeichnet %s in beiden Modi', (utility, inward) => {
         const rules = ruleSet(css, utility);
+        const light = rules.filter((rule) => /outline-width:\s*2px/.test(rule) && rule.includes('--color-indigo-600'));
 
-        expect(rules.filter((rule) => /outline-width:\s*2px/.test(rule) && rule.includes('--color-indigo-600')))
-            .toHaveLength(1);
+        expect(light).toHaveLength(1);
+        expect(drawsInward(light[0])).toBe(inward);
         expect(rules.filter((rule) => rule.includes('--color-indigo-300') && rule.includes('.dark')))
             .toHaveLength(1);
     });
