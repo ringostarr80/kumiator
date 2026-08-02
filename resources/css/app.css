@@ -1,8 +1,10 @@
 @import 'tailwindcss';
 
-/* Die Quellsuche überspringt gitignorierte Pfade; die Pagination des Activity-Logs rendert
-   aber aus dem Livewire-Paket unterhalb von /vendor. */
+/* Die Quellsuche überspringt gitignorierte Pfade; beide Pagination-Ansichten liegen aber unterhalb
+   von /vendor: Livewire rendert die des Activity-Logs, Laravel jeden Paginator außerhalb einer
+   Komponente. */
 @source '../../vendor/livewire/livewire/src/Features/SupportPagination/views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views';
 
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';

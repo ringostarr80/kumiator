@@ -6,17 +6,24 @@ import { findCursorRule, isInBaseLayer, isInCss, readBuiltCss, ruleSet, staticCl
  * Beide Eigenschaften entstehen erst beim Tailwind-Build und sind im Blade-Quelltext nicht zu sehen.
  */
 
-const PAGINATION_VIEW = 'vendor/livewire/livewire/src/Features/SupportPagination/views/tailwind.blade.php';
+const LIVEWIRE_VIEWS = 'vendor/livewire/livewire/src/Features/SupportPagination/views/';
+const LARAVEL_VIEWS = 'vendor/laravel/framework/src/Illuminate/Pagination/resources/views/';
 
 const css = readBuiltCss();
 
 describe('Pagination', () => {
     /**
-     * Die Ansicht liegt unterhalb von /vendor, das die Quellsuche wegen .gitignore überspringt. Fehlt
-     * die passende @source-Direktive, entfällt jede ihrer Klassen ersatzlos aus dem Build.
+     * Die Ansichten liegen unterhalb von /vendor, das die Quellsuche wegen .gitignore überspringt.
+     * Fehlt die passende @source-Direktive, entfällt jede ihrer Klassen ersatzlos aus dem Build.
+     * Livewire rendert die Ansicht des Activity-Logs, Laravel jeden Paginator außerhalb einer
+     * Komponente.
      */
-    it('bringt jede statische Klasse der Livewire-Ansicht in den Build', () => {
-        const classes = staticClasses(readFileSync(PAGINATION_VIEW, 'utf8'));
+    it.each<[string, string]>([
+        ['Livewire', `${LIVEWIRE_VIEWS}tailwind.blade.php`],
+        ['Laravel', `${LARAVEL_VIEWS}tailwind.blade.php`],
+        ['einfachen Laravel', `${LARAVEL_VIEWS}simple-tailwind.blade.php`],
+    ])('bringt jede statische Klasse der %s-Ansicht in den Build', (_theme, view) => {
+        const classes = staticClasses(readFileSync(view, 'utf8'));
 
         expect(classes.length).toBeGreaterThan(0);
         expect(classes.filter((className) => !isInCss(css, className))).toEqual([]);
