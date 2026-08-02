@@ -18,6 +18,16 @@ describe('staticClasses', () => {
 
         expect(staticClasses(source)).toEqual(['px-3']);
     });
+
+    it('sammelt Klassen auch aus einfach gequoteten Attributen', () => {
+        expect(staticClasses(`<a class='px-3 py-2'>…</a>`)).toEqual(['px-3', 'py-2']);
+    });
+
+    it('übergeht gebundene Attribute, die statt einer Klassenliste einen Ausdruck tragen', () => {
+        const source = `<a :class="{ 'font-bold': open, 'text-sm': !open }" class="px-3">…</a>`;
+
+        expect(staticClasses(source)).toEqual(['px-3']);
+    });
 });
 
 describe('isInCss', () => {
@@ -35,6 +45,10 @@ describe('isInCss', () => {
 
     it('findet Klassen, deren Name in CSS maskiert wird', () => {
         expect(isInCss('.sm\\:w-1\\/2{width:50%}', 'sm:w-1/2')).toBe(true);
+    });
+
+    it('findet Klassen, deren führende Ziffer numerisch codiert wird', () => {
+        expect(isInCss('.\\32 xl\\:flex{display:flex}', '2xl:flex')).toBe(true);
     });
 });
 

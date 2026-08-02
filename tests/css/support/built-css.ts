@@ -18,12 +18,14 @@ export function readBuiltCss(): string {
 
 /**
  * Klassen aus Blade-Ausdrücken stehen erst zur Laufzeit fest und sind deshalb nicht prüfbar; sie
- * fallen hier über die Sonderzeichen ihrer Syntax heraus.
+ * fallen hier über die Sonderzeichen ihrer Syntax heraus. Ein gebundenes Attribut (`:class`) trägt
+ * statt einer Klassenliste einen Alpine-Ausdruck, dessen Bruchstücke sonst als fehlende Klassen
+ * gemeldet würden.
  */
 export function staticClasses(source: string): string[] {
     const classes = new Set<string>();
 
-    for (const [, attribute] of source.matchAll(/class="([^"]*)"/g)) {
+    for (const [, , attribute] of source.matchAll(/(?<![:\w])class=(["'])([\s\S]*?)\1/g)) {
         for (const token of attribute.split(/\s+/)) {
             if (token !== '' && !/[{}$]/.test(token)) {
                 classes.add(token);
@@ -36,12 +38,14 @@ export function staticClasses(source: string): string[] {
 
 /**
  * Tailwind maskiert im Selektor jedes Zeichen, das kein Wortzeichen ist; die zweite Ersetzung
- * entschärft dieselben Zeichen für die RegExp.
+ * entschärft dieselben Zeichen für die RegExp. Ein CSS-Bezeichner darf nicht mit einer Ziffer
+ * beginnen, deshalb steht dort stattdessen ihr Zeichencode, abgeschlossen durch ein Leerzeichen.
  */
 function selectorPattern(className: string): string {
     return className
         .replace(/[^\w-]/g, (character) => `\\${character}`)
-        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        .replace(/^\d/, (digit) => `\\\\3${digit} `);
 }
 
 /**
