@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Views;
 
-use Illuminate\Support\Facades\File;
+use Tests\Support\BladeViews;
 use Tests\TestCase;
 
 /**
@@ -19,20 +19,12 @@ final class ButtonsUseBaseCursorRuleTest extends TestCase
     {
         $violations = [];
 
-        foreach (File::allFiles(resource_path('views')) as $file) {
-            if (!str_ends_with($file->getFilename(), '.blade.php')) {
+        foreach (BladeViews::lines() as $line) {
+            if (!str_contains($line['content'], 'cursor-pointer')) {
                 continue;
             }
 
-            $lines = file($file->getPathname(), FILE_IGNORE_NEW_LINES) ?: [];
-
-            foreach ($lines as $index => $line) {
-                if (!str_contains($line, 'cursor-pointer')) {
-                    continue;
-                }
-
-                $violations[] = sprintf('%s:%d', $file->getRelativePathname(), $index + 1);
-            }
+            $violations[] = sprintf('%s:%d', $line['path'], $line['number']);
         }
 
         $this->assertSame(

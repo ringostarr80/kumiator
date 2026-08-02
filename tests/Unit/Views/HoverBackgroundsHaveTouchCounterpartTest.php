@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Views;
 
-use Illuminate\Support\Facades\File;
+use Tests\Support\BladeViews;
 use Tests\TestCase;
 
 /**
@@ -29,18 +29,10 @@ final class HoverBackgroundsHaveTouchCounterpartTest extends TestCase
     {
         $violations = [];
 
-        foreach (File::allFiles(resource_path('views')) as $file) {
-            if (!str_ends_with($file->getFilename(), '.blade.php')) {
-                continue;
-            }
-
-            $lines = file($file->getPathname(), FILE_IGNORE_NEW_LINES) ?: [];
-
-            foreach ($lines as $index => $line) {
-                foreach ($this->classStrings($line) as $classString) {
-                    foreach ($this->hoverWithoutTouchCounterpart($classString) as $token) {
-                        $violations[] = sprintf('%s:%d %s', $file->getRelativePathname(), $index + 1, $token);
-                    }
+        foreach (BladeViews::lines() as $line) {
+            foreach (BladeViews::classStrings($line['content']) as $classString) {
+                foreach ($this->hoverWithoutTouchCounterpart($classString) as $token) {
+                    $violations[] = sprintf('%s:%d %s', $line['path'], $line['number'], $token);
                 }
             }
         }
@@ -51,21 +43,6 @@ final class HoverBackgroundsHaveTouchCounterpartTest extends TestCase
             'Diese hover-Flächen haben kein Gegenstück für Touch-Geräte. Eine `active:`-Klasse mit '
             . 'denselben übrigen Varianten in denselben Klassen-String aufnehmen.',
         );
-    }
-
-    /**
-     * Klassenlisten stehen mal im `class`-Attribut, mal in einem Blade-Ausdruck (`@php`, `@props`,
-     * Ternary-Zweig). Statt jede Schreibweise einzeln zu erfassen, gilt jedes Stringliteral als
-     * Kandidat — solche ohne bg-Utility fallen bei der Auswertung ohnehin durch.
-     *
-     * @return list<string>
-     */
-    private function classStrings(string $line): array
-    {
-        preg_match_all('/"([^"]*)"/', $line, $doubleQuoted);
-        preg_match_all("/'([^']*)'/", $line, $singleQuoted);
-
-        return [...$doubleQuoted[1], ...$singleQuoted[1]];
     }
 
     /**

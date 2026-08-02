@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Views;
 
-use Illuminate\Support\Facades\File;
+use Tests\Support\BladeViews;
 use Tests\TestCase;
 
 /**
@@ -102,42 +102,19 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
     {
         $findings = [];
 
-        foreach (File::allFiles(resource_path('views')) as $file) {
-            if (!str_ends_with($file->getFilename(), '.blade.php')) {
-                continue;
-            }
-
-            $lines = file($file->getPathname(), FILE_IGNORE_NEW_LINES) ?: [];
-
-            foreach ($lines as $index => $line) {
-                foreach ($this->classStrings($line) as $classString) {
-                    foreach ($this->missingDarkVariants($classString) as $token) {
-                        $findings[] = [
-                            'path' => $file->getRelativePathname(),
-                            'line' => $index + 1,
-                            'token' => $token,
-                        ];
-                    }
+        foreach (BladeViews::lines() as $line) {
+            foreach (BladeViews::classStrings($line['content']) as $classString) {
+                foreach ($this->missingDarkVariants($classString) as $token) {
+                    $findings[] = [
+                        'path' => $line['path'],
+                        'line' => $line['number'],
+                        'token' => $token,
+                    ];
                 }
             }
         }
 
         return $findings;
-    }
-
-    /**
-     * Klassenlisten stehen mal im `class`-Attribut, mal in einem Blade-Ausdruck (`@php`, `@props`,
-     * Ternary-Zweig). Statt jede Schreibweise einzeln zu erfassen, gilt jedes Stringliteral als
-     * Kandidat — solche ohne Farb-Utility fallen bei der Auswertung ohnehin durch.
-     *
-     * @return list<string>
-     */
-    private function classStrings(string $line): array
-    {
-        preg_match_all('/"([^"]*)"/', $line, $doubleQuoted);
-        preg_match_all("/'([^']*)'/", $line, $singleQuoted);
-
-        return [...$doubleQuoted[1], ...$singleQuoted[1]];
     }
 
     /**

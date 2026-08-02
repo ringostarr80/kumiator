@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Views;
 
-use Illuminate\Support\Facades\File;
+use Tests\Support\BladeViews;
 use Tests\TestCase;
 
 /**
@@ -38,24 +38,16 @@ final class FocusRingUsesSharedUtilityTest extends TestCase
     {
         $violations = [];
 
-        foreach (File::allFiles(resource_path('views')) as $file) {
-            if (!str_ends_with($file->getFilename(), '.blade.php')) {
+        foreach (BladeViews::lines() as $line) {
+            if (in_array($line['path'], self::ALLOWED_WITH_RAW_OUTLINE, true)) {
                 continue;
             }
 
-            if (in_array($file->getRelativePathname(), self::ALLOWED_WITH_RAW_OUTLINE, true)) {
+            if (preg_match(self::RAW_FOCUS_RING_PATTERN, $line['content']) !== 1) {
                 continue;
             }
 
-            $lines = file($file->getPathname(), FILE_IGNORE_NEW_LINES) ?: [];
-
-            foreach ($lines as $index => $line) {
-                if (preg_match(self::RAW_FOCUS_RING_PATTERN, $line) !== 1) {
-                    continue;
-                }
-
-                $violations[] = sprintf('%s:%d', $file->getRelativePathname(), $index + 1);
-            }
+            $violations[] = sprintf('%s:%d', $line['path'], $line['number']);
         }
 
         $this->assertSame(
