@@ -37,14 +37,21 @@ describe('Fokusring', () => {
     it.each<[string, boolean]>([
         ['focus-ring', false],
         ['focus-ring-inset', true],
-    ])('zeichnet %s in beiden Modi', (utility, inward) => {
-        const rules = ruleSet(css, utility);
-        const light = rules.filter((rule) => /outline-width:\s*2px/.test(rule) && rule.includes('--color-indigo-600'));
+    ])('zeichnet %s in der Fokusfarbe', (utility, inward) => {
+        const drawn = ruleSet(css, utility)
+            .filter((rule) => /outline-width:\s*2px/.test(rule) && rule.includes('var(--color-focus)'));
 
-        expect(light).toHaveLength(1);
-        expect(drawsInward(light[0])).toBe(inward);
-        expect(rules.filter((rule) => rule.includes('--color-indigo-300') && rule.includes('.dark')))
-            .toHaveLength(1);
+        expect(drawn).toHaveLength(1);
+        expect(drawsInward(drawn[0])).toBe(inward);
+    });
+
+    /**
+     * Die Utilities tragen keine dark:-Variante mehr; bliebe der Umschaltpunkt aus, zeichnete der
+     * Dunkelmodus seinen Ring unbemerkt in der hellen Farbe.
+     */
+    it('schaltet die Fokusfarbe im Dunkelmodus um', () => {
+        expect(css).toContain('--color-focus:var(--color-indigo-600)');
+        expect(css).toMatch(/\.dark\{[^}]*--color-focus:\s*var\(--color-indigo-300\)/);
     });
 });
 

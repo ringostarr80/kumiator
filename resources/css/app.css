@@ -16,21 +16,27 @@
        fiele die Seite ohne die extern geladene Schrift auf den Browser-Default zurück. */
     --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Die Fokusfarbe für Ringe und Feldränder. Der Dunkelmodus schaltet sie über die Kaskade um,
+       damit sie in keiner Klassenliste ein dark:-Gegenstück braucht. */
+    --color-focus: var(--color-indigo-600);
 }
 
 @utility focus-ring {
-    @apply focus-visible:outline-2 focus-visible:outline-offset-2
-        focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300;
+    @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus;
 }
 
 /* Menüeinträge füllen die Panelbreite: Ein außen gezeichneter Ring ragte über die Panelkante
    hinaus und überlappte die Nachbareinträge. */
 @utility focus-ring-inset {
-    @apply focus-visible:outline-2 focus-visible:-outline-offset-2
-        focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-300;
+    @apply focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus;
 }
 
 @layer base {
+    .dark {
+        --color-focus: var(--color-indigo-300);
+    }
+
     /* Das Preflight überlässt Buttons den Browser-Default-Cursor; ohne Zeigehand wirken sie
        nicht anklickbar. Deaktivierte bleiben ausgenommen, da wire:loading sie laufend umschaltet. */
     button:not(:disabled),

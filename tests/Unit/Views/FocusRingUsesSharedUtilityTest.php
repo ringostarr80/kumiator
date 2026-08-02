@@ -26,12 +26,13 @@ final class FocusRingUsesSharedUtilityTest extends TestCase
     ];
 
     /**
-     * Als ausgeschriebener Ring gelten `focus-visible:outline-*` sowie `focus:outline-none` und eine
-     * numerische Ringbreite. Farbe und Offset allein zählen nicht: `focus:ring-indigo-600` und
-     * `dark:focus:ring-offset-gray-800` stehen an Eingabefeldern und Checkboxen, deren Ring von
-     * `@tailwindcss/forms` stammt und nicht aus einer kopierten Klassenliste.
+     * Als ausgeschriebener Ring gelten `focus-visible:outline-*`, `focus:outline-none` sowie eine
+     * numerische Ringbreite oder -farbe. Zwei Nachbarn bleiben bewusst außen vor:
+     * `dark:focus:ring-offset-gray-800` an der Checkbox richtet sich nach dem Hintergrund statt nach
+     * der Fokusfarbe, und `focus:border-*` färbt an den Navigationslinks deren Zustandsrand um.
      */
-    private const RAW_FOCUS_RING_PATTERN = '/focus-visible:-?outline-|focus:outline-none|focus:ring-\d/';
+    private const RAW_FOCUS_RING_PATTERN =
+        '/focus-visible:-?outline-|focus:outline-none|focus:ring-(?:[a-z]+-)?\d/';
 
     public function testViewsUseTheSharedFocusRingUtility(): void
     {
