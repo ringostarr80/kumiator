@@ -48,6 +48,10 @@ describe('ruleSet', () => {
     it('nimmt keine Regel einer Klasse mit längerem Namen mit', () => {
         expect(ruleSet(css, 'focus-ring')).toEqual(['.focus-ring:focus-visible{outline-width:2px}']);
     });
+
+    it('findet Regeln von Klassen, deren Name in CSS maskiert wird', () => {
+        expect(ruleSet('.sm\\:w-1\\/2{width:50%}', 'sm:w-1/2')).toEqual(['.sm\\:w-1\\/2{width:50%}']);
+    });
 });
 
 describe('findCursorRule', () => {

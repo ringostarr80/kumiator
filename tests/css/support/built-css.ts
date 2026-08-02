@@ -35,14 +35,21 @@ export function staticClasses(source: string): string[] {
 }
 
 /**
+ * Tailwind maskiert im Selektor jedes Zeichen, das kein Wortzeichen ist; die zweite Ersetzung
+ * entschärft dieselben Zeichen für die RegExp.
+ */
+function selectorPattern(className: string): string {
+    return className
+        .replace(/[^\w-]/g, (character) => `\\${character}`)
+        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Die Suche endet an der Klassengrenze, sonst würde `.bg-white` auch in `.bg-white-alt` anschlagen
  * und eine fehlende Klasse als vorhanden melden.
  */
 export function isInCss(css: string, className: string): boolean {
-    const selector = className.replace(/[^\w-]/g, (character) => `\\${character}`);
-    const pattern = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-    return new RegExp(`\\.${pattern}(?![\\w-])`).test(css);
+    return new RegExp(`\\.${selectorPattern(className)}(?![\\w-])`).test(css);
 }
 
 /**
@@ -50,7 +57,7 @@ export function isInCss(css: string, className: string): boolean {
  * `focus-ring-inset` mit und eine fehlende Definition bliebe unbemerkt.
  */
 export function ruleSet(css: string, className: string): string[] {
-    const pattern = new RegExp(`\\.${className}(?![\\w-])[^{}]*\\{[^}]*\\}`, 'g');
+    const pattern = new RegExp(`\\.${selectorPattern(className)}(?![\\w-])[^{}]*\\{[^}]*\\}`, 'g');
 
     return [...css.matchAll(pattern)].map(([rule]) => rule);
 }
