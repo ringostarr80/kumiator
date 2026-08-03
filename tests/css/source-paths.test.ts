@@ -31,4 +31,24 @@ describe('missingSourcePaths', () => {
     it('meldet nichts, wenn gar keine Direktive vorkommt', () => {
         expect(missingSourcePaths("@import 'tailwindcss';", APP_CSS)).toEqual([]);
     });
+
+    it('prüft bei einem Glob-Muster das Verzeichnis davor', () => {
+        expect(missingSourcePaths("@source '../views/**/*.blade.php';", APP_CSS)).toEqual([]);
+    });
+
+    it('meldet ein Glob-Muster, dessen Verzeichnis fehlt', () => {
+        const missing = missingSourcePaths("@source '../viewsXX/**/*.blade.php';", APP_CSS);
+
+        expect(missing).toHaveLength(1);
+        expect(missing[0]).toMatch(/resources\/viewsXX$/);
+    });
+
+    it('prüft auch den Ausschluss von @source not', () => {
+        expect(missingSourcePaths("@source not '../viewsXX';", APP_CSS)).toHaveLength(1);
+    });
+
+    /** `inline(…)` zählt Utilities auf, statt auf Dateien zu zeigen — als Pfad gelesen wäre es immer tot. */
+    it('liest @source inline nicht als Pfad', () => {
+        expect(missingSourcePaths("@source inline('underline');", APP_CSS)).toEqual([]);
+    });
 });
