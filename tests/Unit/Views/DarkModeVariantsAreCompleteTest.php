@@ -8,14 +8,16 @@ use Tests\Support\BladeViews;
 use Tests\TestCase;
 
 /**
- * Der Theme-Switcher schaltet `.dark` auf `<html>`, weshalb jede Graustufe für Text und Flächen ein
- * Gegenstück für den dunklen Modus braucht. Fehlt es, bleibt dunkler Text auf dunkler Fläche stehen —
- * beim Entwickeln im hellen Modus fällt das niemandem auf, weil die Seite dort korrekt aussieht.
+ * Der Theme-Switcher schaltet `.dark` auf `<html>`, weshalb jede Graustufe ein Gegenstück für den
+ * dunklen Modus braucht. Fehlt es, bleibt dunkler Text auf dunkler Fläche stehen — beim Entwickeln im
+ * hellen Modus fällt das niemandem auf, weil die Seite dort korrekt aussieht.
  *
- * Geprüft werden die gray-Skala und weiße wie schwarze Flächen: Sie tragen die Modus-Umschaltung,
- * während Akzentfarben in beiden Modi absichtlich identisch bleiben. `text-white` bleibt außen vor,
- * weil es auf eingefärbten Flächen sitzt, die sich mit dem Modus nicht ändern. Die Prüfung ist
- * zeilenlokal, das Gegenstück muss also im selben Klassen-String stehen wie die Ausgangsklasse.
+ * Geprüft wird die gray-Skala über alle Farbfamilien, die eine Fläche vom Untergrund absetzen: Text,
+ * Flächen, Ränder, Trennlinien, Ringe, Platzhalter und Icon-Striche. Akzentfarben bleiben in beiden
+ * Modi absichtlich identisch. Weiß und Schwarz zählen nur als Fläche, weil sie sonst dort anschlagen,
+ * wo der Modus nichts ändert: `text-white` sitzt auf eingefärbtem Grund, `ring-black/5` ist ein
+ * Schattensaum. Die Prüfung ist zeilenlokal, das Gegenstück muss also im selben Klassen-String stehen
+ * wie die Ausgangsklasse.
  */
 final class DarkModeVariantsAreCompleteTest extends TestCase
 {
@@ -27,19 +29,24 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
      * `api/api-token-manager.blade.php` sitzt auf einem `<x-input>`, dessen Komponente die
      * dark:-Varianten selbst mitbringt und per CSS-Reihenfolge gewinnt. Die weiße Fläche in
      * `profile/two-factor-authentication-form.blade.php` unterlegt den QR-Code: Ohne hellen Grund
-     * scheitert das Einscannen. Alle übrigen Einträge sind offene Kontrast-Schwächen und verschwinden
-     * hier, sobald die betroffene Datei nachgezogen ist.
+     * scheitert das Einscannen. Die Icon-Striche in `components/welcome.blade.php` stehen dunkel
+     * besser da als hell (5,6:1 gegen `gray-800`, 2,6:1 gegen Weiß) — eine dark:-Variante würde den
+     * schwächeren der beiden Fälle nicht anfassen. Alle übrigen Einträge sind offene
+     * Kontrast-Schwächen und verschwinden hier, sobald die betroffene Datei nachgezogen ist.
      */
     private const ALLOWED_WITHOUT_DARK_VARIANT = [
         'api/api-token-manager.blade.php' => ['bg-gray-100', 'text-gray-400', 'text-gray-500'],
         'components/banner.blade.php' => ['bg-gray-500'],
         'components/modal.blade.php' => ['bg-gray-500'],
+        'components/welcome.blade.php' => ['stroke-gray-400'],
         'navigation-menu.blade.php' => ['text-gray-400'],
         'profile/two-factor-authentication-form.blade.php' => ['bg-white'],
     ];
 
     /** Ein Farb-Utility samt vorangestellter Varianten, z. B. `dark:hover:bg-gray-700`. */
-    private const COLOR_UTILITY_PATTERN = '#^((?:[a-z0-9-]+:)*)(text|bg)-([a-z]+-\d{2,3}|white|black)(?:/\d+)?$#';
+    private const COLOR_UTILITY_PATTERN = '#^((?:[a-z0-9-]+:)*)'
+        . '(text|bg|border|divide|ring|placeholder|stroke)-'
+        . '([a-z]+-\d{2,3}|white|black)(?:/\d+)?$#';
 
     public function testGrayUtilitiesHaveDarkCounterpart(): void
     {
