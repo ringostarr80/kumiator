@@ -8,8 +8,8 @@ use Tests\Support\BladeViews;
 use Tests\TestCase;
 
 /**
- * Die Zeigehand für Bedienelemente kommt aus der Basisregel in `resources/css/app.css`, die
- * deaktivierte davon ausnimmt. Eine `cursor-pointer`-Klasse liegt dagegen im utilities-Layer und
+ * Die Zeigehand für Buttons kommt aus der Basisregel in `resources/css/app.css`, die deaktivierte
+ * davon ausnimmt. Eine `cursor-pointer`-Klasse liegt dagegen im utilities-Layer und
  * schlägt die Basisregel unabhängig von der Spezifität — ein per `wire:loading` deaktivierter Button
  * behielte damit die Zeigehand und sähe weiter anklickbar aus.
  */
@@ -30,8 +30,10 @@ final class ButtonsUseBaseCursorRuleTest extends TestCase
         $this->assertSame(
             [],
             $violations,
-            'Diese Stellen setzen die Zeigehand als Utility. Bei `button` und `[role="button"]` ist '
-            . 'sie überflüssig und hebelt im deaktivierten Zustand die Basisregel aus.',
+            'Diese Stellen setzen die Zeigehand als Utility. An einem `button` ist sie überflüssig '
+            . 'und hebelt im deaktivierten Zustand die Basisregel aus. Jedes andere Element erreicht '
+            . 'die Basisregel nicht — braucht dort wirklich eines die Zeigehand, gehört dieser Guard '
+            . 'um die Ausnahme erweitert.',
         );
     }
 }
