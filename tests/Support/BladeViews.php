@@ -24,6 +24,8 @@ final class BladeViews
                 continue;
             }
 
+            // Der Fallback hält allein das `foreach` typsicher — ein Lesefehler kommt hier nie an,
+            // den macht Laravels Error-Handler vorher zur ErrorException. Übrig bleibt die leere Datei.
             $lines = file($file->getPathname(), FILE_IGNORE_NEW_LINES) ?: [];
 
             foreach ($lines as $index => $content) {
