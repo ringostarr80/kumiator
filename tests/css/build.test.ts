@@ -16,10 +16,11 @@ describe('Pagination', () => {
      * Die Ansichten liegen unterhalb von /vendor, das die Quellsuche wegen .gitignore überspringt.
      * Fehlt die passende @source-Direktive, entfällt jede ihrer Klassen ersatzlos aus dem Build.
      * Livewire rendert die Ansicht des Activity-Logs, Laravel jeden Paginator außerhalb einer
-     * Komponente.
+     * Komponente; die einfachen Fassungen greifen bei `simplePaginate()` und `cursorPaginate()`.
      */
     it.each<[string, string]>([
         ['Livewire', `${LIVEWIRE_VIEWS}tailwind.blade.php`],
+        ['einfachen Livewire', `${LIVEWIRE_VIEWS}simple-tailwind.blade.php`],
         ['Laravel', `${LARAVEL_VIEWS}tailwind.blade.php`],
         ['einfachen Laravel', `${LARAVEL_VIEWS}simple-tailwind.blade.php`],
     ])('bringt jede statische Klasse der %s-Ansicht in den Build', (_theme, view) => {
