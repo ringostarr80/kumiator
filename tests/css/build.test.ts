@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { findCursorRule, isInBaseLayer, isInCss, readBuiltCss, ruleSet, staticClasses } from './support/built-css';
+import { baseLayerCss, findCursorRule, isInCss, readBuiltCss, ruleSet, staticClasses } from './support/built-css';
 
 /**
  * Beide Eigenschaften entstehen erst beim Tailwind-Build und sind im Blade-Quelltext nicht zu sehen.
@@ -68,9 +68,6 @@ describe('Buttons', () => {
     });
 
     it('hält die Zeigehand im base-Layer, damit Utilities sie überschreiben können', () => {
-        const index = findCursorRule(css);
-
-        expect(index).not.toBeNull();
-        expect(isInBaseLayer(css, index ?? 0)).toBe(true);
+        expect(findCursorRule(baseLayerCss(css))).not.toBeNull();
     });
 });

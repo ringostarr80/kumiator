@@ -72,13 +72,47 @@ export function findCursorRule(css: string): number | null {
     return match === null ? null : match.index;
 }
 
+const BASE_LAYER = '@layer base{';
+
+/**
+ * Ab `start` hinter der öffnenden Klammer, weil verschachtelte Blöcke wie `@media` sonst die erste
+ * schließende Klammer zur Grenze machten.
+ */
+function blockEnd(css: string, start: number): number {
+    let depth = 1;
+
+    for (let index = start; index < css.length; index++) {
+        if (css[index] === '{') {
+            depth++;
+        } else if (css[index] === '}') {
+            depth--;
+
+            if (depth === 0) {
+                return index;
+            }
+        }
+    }
+
+    return css.length;
+}
+
 /**
  * Eine Basisregel schlägt jedes Utility, sobald sie außerhalb der Layer-Kaskade steht: `cursor-default`
- * an der deaktivierten Pagination bliebe dann wirkungslos.
+ * an der deaktivierten Pagination bliebe dann wirkungslos. Gesammelt wird der Inhalt aller Blöcke, denn
+ * dass die Build-Kette den eigenen `@layer base` mit dem von Tailwind zusammenfasst, ist nicht
+ * zugesichert.
  */
-export function isInBaseLayer(css: string, index: number): boolean {
-    const baseLayer = css.indexOf('@layer base{');
-    const utilitiesLayer = css.indexOf('@layer utilities{');
+export function baseLayerCss(css: string): string {
+    let content = '';
+    let index = css.indexOf(BASE_LAYER);
 
-    return baseLayer !== -1 && utilitiesLayer !== -1 && index > baseLayer && index < utilitiesLayer;
+    while (index !== -1) {
+        const start = index + BASE_LAYER.length;
+        const end = blockEnd(css, start);
+
+        content += css.slice(start, end);
+        index = css.indexOf(BASE_LAYER, end);
+    }
+
+    return content;
 }

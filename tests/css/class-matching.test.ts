@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findCursorRule, isInBaseLayer, isInCss, ruleSet, staticClasses } from './support/built-css';
+import { baseLayerCss, findCursorRule, isInCss, ruleSet, staticClasses } from './support/built-css';
 
 /**
  * Eine Prüfung, die nichts findet, meldet dasselbe wie eine erfüllte Erwartung. Deshalb steht hier
@@ -80,14 +80,32 @@ describe('findCursorRule', () => {
     });
 });
 
-describe('isInBaseLayer', () => {
+describe('baseLayerCss', () => {
     const css = '@layer base{a{color:red}}@layer utilities{.p-0{padding:0}}';
 
-    it('erkennt eine Regel innerhalb des base-Layers', () => {
-        expect(isInBaseLayer(css, css.indexOf('a{color:red}'))).toBe(true);
+    it('liefert den Inhalt des base-Layers', () => {
+        expect(baseLayerCss(css)).toBe('a{color:red}');
     });
 
-    it('erkennt eine Regel außerhalb der Layer-Kaskade', () => {
-        expect(isInBaseLayer(`a{color:red}${css}`, 0)).toBe(false);
+    it('lässt eine Regel außerhalb der Layer-Kaskade weg', () => {
+        expect(baseLayerCss(`b{color:blue}${css}`)).toBe('a{color:red}');
+    });
+
+    it('lässt einen Components-Block zwischen den Layern weg', () => {
+        const withComponents = '@layer base{a{color:red}}@layer components{b{color:blue}}@layer utilities{.p-0{padding:0}}';
+
+        expect(baseLayerCss(withComponents)).toBe('a{color:red}');
+    });
+
+    it('nimmt einen zweiten base-Block hinter den Utilities mit', () => {
+        const split = `${css}@layer base{b{color:blue}}`;
+
+        expect(baseLayerCss(split)).toBe('a{color:red}b{color:blue}');
+    });
+
+    it('endet an der Klammer des Blocks, nicht an der eines verschachtelten', () => {
+        const nested = '@layer base{@media (width>=40rem){a{color:red}}}@layer utilities{.p-0{padding:0}}';
+
+        expect(baseLayerCss(nested)).toBe('@media (width>=40rem){a{color:red}}');
     });
 });
