@@ -22,7 +22,9 @@ use Tests\TestCase;
 final class DarkModeVariantsAreCompleteTest extends TestCase
 {
     /**
-     * Ausnahmen je Blade-Datei relativ zu `resources/views`.
+     * Ausnahmen je Blade-Datei relativ zu `resources/views`, mit der Zahl der gedeckten Stellen: Eine
+     * weitere ist ein neuer Fall und soll auffallen, statt vom berechtigten Nachbarn mitgedeckt zu
+     * werden.
      *
      * `components/banner.blade.php` und `components/modal.blade.php` legen ihre Graufläche über eine
      * eingefärbte bzw. abgedunkelte Ebene und sehen in beiden Modi gleich aus. Der Klartext-Token in
@@ -35,12 +37,12 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
      * Kontrast-Schwächen und verschwinden hier, sobald die betroffene Datei nachgezogen ist.
      */
     private const ALLOWED_WITHOUT_DARK_VARIANT = [
-        'api/api-token-manager.blade.php' => ['bg-gray-100', 'text-gray-400', 'text-gray-500'],
-        'components/banner.blade.php' => ['bg-gray-500'],
-        'components/modal.blade.php' => ['bg-gray-500'],
-        'components/welcome.blade.php' => ['stroke-gray-400'],
-        'navigation-menu.blade.php' => ['text-gray-400'],
-        'profile/two-factor-authentication-form.blade.php' => ['bg-white'],
+        'api/api-token-manager.blade.php' => ['bg-gray-100' => 1, 'text-gray-400' => 2, 'text-gray-500' => 1],
+        'components/banner.blade.php' => ['bg-gray-500' => 1],
+        'components/modal.blade.php' => ['bg-gray-500' => 1],
+        'components/welcome.blade.php' => ['stroke-gray-400' => 4],
+        'navigation-menu.blade.php' => ['text-gray-400' => 5],
+        'profile/two-factor-authentication-form.blade.php' => ['bg-white' => 1],
     ];
 
     /** Ein Farb-Utility samt vorangestellter Varianten, z. B. `dark:hover:bg-gray-700`. */
@@ -52,54 +54,77 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
     {
         $violations = [];
 
-        foreach ($this->scanViews() as $finding) {
-            $allowed = self::ALLOWED_WITHOUT_DARK_VARIANT[$finding['path']] ?? [];
+        foreach ($this->findingsByToken() as $path => $tokens) {
+            foreach ($tokens as $token => $lines) {
+                $allowed = self::ALLOWED_WITHOUT_DARK_VARIANT[$path][$token] ?? 0;
 
-            if (in_array($finding['token'], $allowed, true)) {
-                continue;
+                if (count($lines) <= $allowed) {
+                    continue;
+                }
+
+                $violations[] = sprintf(
+                    '%s %s: %d Stellen (%s), gedeckt sind %d',
+                    $path,
+                    $token,
+                    count($lines),
+                    implode(',', $lines),
+                    $allowed,
+                );
             }
-
-            $violations[] = sprintf('%s:%d %s', $finding['path'], $finding['line'], $finding['token']);
         }
 
         $this->assertSame(
             [],
             $violations,
             'Diese gray-Utilities haben kein dark:-Gegenstück im selben Klassen-String. Entweder eine '
-            . 'passende dark:-Variante ergänzen oder den Eintrag begründet in '
-            . 'ALLOWED_WITHOUT_DARK_VARIANT aufnehmen.',
+            . 'passende dark:-Variante ergänzen oder den Zähler in ALLOWED_WITHOUT_DARK_VARIANT '
+            . 'begründet erhöhen.',
         );
     }
 
     /**
-     * Eine Ausnahme, deren Klasse längst eine dark:-Variante hat, deckt eine spätere Regression
-     * stillschweigend wieder zu.
+     * Eine Ausnahme, die mehr Stellen deckt als es gibt, deckt eine spätere Regression stillschweigend
+     * wieder zu.
      */
     public function testAllowListHasNoStaleEntries(): void
     {
-        $found = array_map(
-            static fn (array $finding): string => $finding['path'] . ' ' . $finding['token'],
-            $this->scanViews(),
-        );
+        $found = $this->findingsByToken();
 
         $stale = [];
 
         foreach (self::ALLOWED_WITHOUT_DARK_VARIANT as $path => $tokens) {
-            foreach ($tokens as $token) {
-                if (in_array($path . ' ' . $token, $found, true)) {
+            foreach ($tokens as $token => $allowed) {
+                $count = count($found[$path][$token] ?? []);
+
+                if ($count >= $allowed) {
                     continue;
                 }
 
-                $stale[] = $path . ' ' . $token;
+                $stale[] = sprintf('%s %s: %d gedeckt, %d gefunden', $path, $token, $allowed, $count);
             }
         }
 
         $this->assertSame(
             [],
             $stale,
-            'Diese Einträge in ALLOWED_WITHOUT_DARK_VARIANT sind gegenstandslos — die Klasse hat '
-            . 'inzwischen ein dark:-Gegenstück oder kommt in der Datei nicht mehr vor. Bitte entfernen.',
+            'Diese Einträge in ALLOWED_WITHOUT_DARK_VARIANT decken mehr Stellen als es gibt — die '
+            . 'Klasse hat inzwischen ein dark:-Gegenstück oder kommt seltener vor. Zähler senken oder '
+            . 'Eintrag entfernen.',
         );
+    }
+
+    /**
+     * @return array<string, array<string, list<int>>>
+     */
+    private function findingsByToken(): array
+    {
+        $grouped = [];
+
+        foreach ($this->scanViews() as $finding) {
+            $grouped[$finding['path']][$finding['token']][] = $finding['line'];
+        }
+
+        return $grouped;
     }
 
     /**

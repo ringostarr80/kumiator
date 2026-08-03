@@ -16,13 +16,15 @@ use Tests\TestCase;
 final class FocusRingUsesSharedUtilityTest extends TestCase
 {
     /**
-     * Ausnahmen je Blade-Datei relativ zu `resources/views`.
+     * Ausnahmen je Blade-Datei relativ zu `resources/views`, mit der Zahl der gedeckten Stellen: Eine
+     * weitere ist ein neuer Fall und soll auffallen, statt von der berechtigten mitgedeckt zu werden.
      *
      * `components/banner.blade.php` färbt seinen Ring je nach Bannerfarbe per Alpine weiß oder
-     * dunkelgrau; die feste Indigo-Farbe des Utilities träfe dort auf zu wenig Kontrast.
+     * dunkelgrau; die feste Indigo-Farbe des Utilities träfe dort auf zu wenig Kontrast. Gedeckt sind
+     * die Zeile mit der Ringgeometrie und die mit der gebundenen Farbe.
      */
     private const ALLOWED_WITH_RAW_OUTLINE = [
-        'components/banner.blade.php',
+        'components/banner.blade.php' => 2,
     ];
 
     /**
@@ -39,26 +41,40 @@ final class FocusRingUsesSharedUtilityTest extends TestCase
 
     public function testViewsUseTheSharedFocusRingUtility(): void
     {
-        $violations = [];
+        $found = array_fill_keys(array_keys(self::ALLOWED_WITH_RAW_OUTLINE), []);
 
         foreach (BladeViews::lines() as $line) {
-            if (in_array($line['path'], self::ALLOWED_WITH_RAW_OUTLINE, true)) {
-                continue;
-            }
-
             if (preg_match(self::RAW_FOCUS_RING_PATTERN, $line['content']) !== 1) {
                 continue;
             }
 
-            $violations[] = sprintf('%s:%d', $line['path'], $line['number']);
+            $found[$line['path']][] = $line['number'];
+        }
+
+        $violations = [];
+
+        foreach ($found as $path => $lines) {
+            $allowed = self::ALLOWED_WITH_RAW_OUTLINE[$path] ?? 0;
+
+            if (count($lines) === $allowed) {
+                continue;
+            }
+
+            $violations[] = sprintf(
+                '%s: %d Stellen (%s), gedeckt sind %d',
+                $path,
+                count($lines),
+                implode(',', $lines) ?: 'keine',
+                $allowed,
+            );
         }
 
         $this->assertSame(
             [],
             $violations,
-            'Diese Stellen schreiben den Fokusring als Klassenliste aus. Stattdessen `focus-ring` '
-            . 'bzw. `focus-ring-inset` verwenden oder den Eintrag begründet in '
-            . 'ALLOWED_WITH_RAW_OUTLINE aufnehmen.',
+            'Diese Dateien schreiben den Fokusring öfter oder seltener als Klassenliste aus, als der '
+            . 'Eintrag deckt. Stattdessen `focus-ring` bzw. `focus-ring-inset` verwenden — oder den '
+            . 'Zähler in ALLOWED_WITH_RAW_OUTLINE begründet anpassen.',
         );
     }
 }
