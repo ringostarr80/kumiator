@@ -14,18 +14,34 @@ use Tests\TestCase;
  */
 final class BladeViewsTest extends TestCase
 {
+    /**
+     * Die Nummerierung zählt je Datei, nicht über alle zusammen: In der Gesamtmenge steckt die 1 auch
+     * dann, wenn allein die erste Datei bei 1 beginnt — die Verstoßmeldungen der Guards zeigten dann auf
+     * Zeilen, die es in der genannten Datei nicht gibt.
+     */
     public function testLinesCoverEveryBladeFileWithOneBasedNumbers(): void
     {
-        $lines = iterator_to_array(BladeViews::lines(), false);
+        $numbersByPath = [];
 
-        $paths = array_values(array_unique(array_column($lines, 'path')));
+        foreach (BladeViews::lines() as $line) {
+            $numbersByPath[$line['path']][] = $line['number'];
+        }
+
+        $paths = array_keys($numbersByPath);
         sort($paths);
 
-        $numbers = array_column($lines, 'number');
+        $misnumbered = [];
+
+        foreach ($numbersByPath as $path => $numbers) {
+            if ($numbers === range(1, count($numbers))) {
+                continue;
+            }
+
+            $misnumbered[] = $path;
+        }
 
         $this->assertSame($this->bladeFiles(), $paths);
-        $this->assertContains(1, $numbers);
-        $this->assertNotContains(0, $numbers);
+        $this->assertSame([], $misnumbered);
     }
 
     public function testClassStringsCollectsEveryQuotedLiteral(): void
