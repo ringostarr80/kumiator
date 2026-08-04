@@ -45,9 +45,8 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
         'profile/two-factor-authentication-form.blade.php' => ['bg-white' => 1],
     ];
 
-    /** Ein Farb-Utility samt vorangestellter Varianten, z. B. `dark:hover:bg-gray-700`. */
-    private const COLOR_UTILITY_PATTERN = '#^((?:[a-z0-9-]+:)*)'
-        . '(text|bg|border|divide|ring|placeholder|stroke)-'
+    /** Ein Farb-Utility, z. B. `bg-gray-700` aus `dark:hover:bg-gray-700`. */
+    private const COLOR_UTILITY_PATTERN = '#^(text|bg|border|divide|ring|placeholder|stroke)-'
         . '([a-z]+-\d{2,3}|white|black)(?:/\d+)?$#';
 
     public function testGrayUtilitiesHaveDarkCounterpart(): void
@@ -183,16 +182,16 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
     {
         $utilities = [];
 
-        foreach (preg_split('/\s+/', trim($classString)) ?: [] as $token) {
-            if (preg_match(self::COLOR_UTILITY_PATTERN, $token, $matches) !== 1) {
+        foreach (BladeViews::utilities($classString) as $utility) {
+            if (preg_match(self::COLOR_UTILITY_PATTERN, $utility['utility'], $matches) !== 1) {
                 continue;
             }
 
             $utilities[] = [
-                'token' => $token,
-                'variants' => $this->variants($matches[1]),
-                'family' => $matches[2],
-                'color' => $matches[3],
+                'token' => $utility['token'],
+                'variants' => $utility['variants'],
+                'family' => $matches[1],
+                'color' => $matches[2],
             ];
         }
 
@@ -221,13 +220,5 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
         }
 
         return false;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function variants(string $prefix): array
-    {
-        return array_values(array_filter(explode(':', $prefix)));
     }
 }

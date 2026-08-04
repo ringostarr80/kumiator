@@ -19,8 +19,8 @@ use Tests\TestCase;
  */
 final class HoverBackgroundsHaveTouchCounterpartTest extends TestCase
 {
-    /** Eine bg-Utility mit mindestens einer vorangestellten Variante, z. B. `dark:hover:bg-gray-700`. */
-    private const VARIANT_BACKGROUND_PATTERN = '#^((?:[a-z0-9-]+:)+)bg-[a-z]#';
+    /** Eine bg-Utility, z. B. `bg-gray-700` aus `dark:hover:bg-gray-700`. */
+    private const BACKGROUND_PATTERN = '#^bg-[a-z]#';
 
     /** Zustände, die ein Tap auslöst und die den fehlenden Hover damit ersetzen. */
     private const TOUCH_STATES = ['active', 'focus'];
@@ -108,14 +108,14 @@ final class HoverBackgroundsHaveTouchCounterpartTest extends TestCase
     {
         $backgrounds = [];
 
-        foreach (preg_split('/\s+/', trim($classString)) ?: [] as $token) {
-            if (preg_match(self::VARIANT_BACKGROUND_PATTERN, $token, $matches) !== 1) {
+        foreach (BladeViews::utilities($classString) as $utility) {
+            if ($utility['variants'] === [] || preg_match(self::BACKGROUND_PATTERN, $utility['utility']) !== 1) {
                 continue;
             }
 
             $backgrounds[] = [
-                'token' => $token,
-                'variants' => array_values(array_filter(explode(':', $matches[1]))),
+                'token' => $utility['token'],
+                'variants' => $utility['variants'],
             ];
         }
 

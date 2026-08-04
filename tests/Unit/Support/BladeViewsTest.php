@@ -36,6 +36,18 @@ final class BladeViewsTest extends TestCase
         $this->assertSame([], BladeViews::classStrings('<a>ohne Literal</a>'));
     }
 
+    public function testUtilitiesSplitVariantsFromTheUtility(): void
+    {
+        $this->assertSame(
+            [
+                ['token' => 'bg-white', 'variants' => [], 'utility' => 'bg-white'],
+                ['token' => 'dark:hover:bg-gray-700', 'variants' => ['dark', 'hover'], 'utility' => 'bg-gray-700'],
+            ],
+            BladeViews::utilities('  bg-white dark:hover:bg-gray-700 '),
+        );
+        $this->assertSame([], BladeViews::utilities('   '));
+    }
+
     /**
      * @return list<string>
      */

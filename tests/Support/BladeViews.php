@@ -52,4 +52,30 @@ final class BladeViews
 
         return [...$doubleQuoted[1], ...$singleQuoted[1]];
     }
+
+    /**
+     * Varianten stehen bei jeder Utility gleich davor und gleich geschrieben (`dark:hover:bg-gray-700`);
+     * erst danach unterscheiden sich die Guards, weil jeder eine andere Familie prüft. Wer nur den
+     * eigenen Teil selbst mitbringt, kopiert die Zerlegung nicht erneut.
+     *
+     * @return list<array{token: string, variants: list<string>, utility: string}>
+     */
+    public static function utilities(string $classString): array
+    {
+        $utilities = [];
+
+        foreach (preg_split('/\s+/', trim($classString)) ?: [] as $token) {
+            if (preg_match('#^((?:[a-z0-9-]+:)*)(.+)$#', $token, $matches) !== 1) {
+                continue;
+            }
+
+            $utilities[] = [
+                'token' => $token,
+                'variants' => array_values(array_filter(explode(':', $matches[1]))),
+                'utility' => $matches[2],
+            ];
+        }
+
+        return $utilities;
+    }
 }
