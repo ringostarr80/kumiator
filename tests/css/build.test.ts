@@ -1,10 +1,11 @@
+/**
+ * Geprüft wird das gebaute Stylesheet: Ob eine Klasse den Build erreicht und was Tailwind aus
+ * `@utility` und `@layer base` macht, steht in keiner Quelldatei.
+ */
+
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { baseLayerCss, findCursorRule, isInCss, readBuiltCss, ruleSet, staticClasses } from './support/built-css';
-
-/**
- * Beide Eigenschaften entstehen erst beim Tailwind-Build und sind im Blade-Quelltext nicht zu sehen.
- */
 
 const LIVEWIRE_VIEWS = 'vendor/livewire/livewire/src/Features/SupportPagination/views/';
 const LARAVEL_VIEWS = 'vendor/laravel/framework/src/Illuminate/Pagination/resources/views/';
