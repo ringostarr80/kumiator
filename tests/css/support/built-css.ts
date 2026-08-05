@@ -66,10 +66,8 @@ export function ruleSet(css: string, className: string): string[] {
     return [...css.matchAll(pattern)].map(([rule]) => rule);
 }
 
-export function findCursorRule(css: string): number | null {
-    const match = /button:not\(:disabled\)[^{]*\{[^}]*cursor:\s*pointer/.exec(css);
-
-    return match === null ? null : match.index;
+export function hasCursorRule(css: string): boolean {
+    return /button:not\(:disabled\)[^{]*\{[^}]*cursor:\s*pointer/.test(css);
 }
 
 const BASE_LAYER = '@layer base{';

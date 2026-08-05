@@ -5,7 +5,7 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { baseLayerCss, findCursorRule, isInCss, readBuiltCss, ruleSet, staticClasses } from './support/built-css';
+import { baseLayerCss, hasCursorRule, isInCss, readBuiltCss, ruleSet, staticClasses } from './support/built-css';
 
 const LIVEWIRE_VIEWS = 'vendor/livewire/livewire/src/Features/SupportPagination/views/';
 const LARAVEL_VIEWS = 'vendor/laravel/framework/src/Illuminate/Pagination/resources/views/';
@@ -66,10 +66,10 @@ describe('Fokusring', () => {
 
 describe('Buttons', () => {
     it('zeigt auf anklickbaren Elementen die Zeigehand', () => {
-        expect(findCursorRule(css)).not.toBeNull();
+        expect(hasCursorRule(css)).toBe(true);
     });
 
     it('hält die Zeigehand im base-Layer, damit Utilities sie überschreiben können', () => {
-        expect(findCursorRule(baseLayerCss(css))).not.toBeNull();
+        expect(hasCursorRule(baseLayerCss(css))).toBe(true);
     });
 });

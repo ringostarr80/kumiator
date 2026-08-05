@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { baseLayerCss, findCursorRule, isInCss, ruleSet, staticClasses } from './support/built-css';
+import { baseLayerCss, hasCursorRule, isInCss, ruleSet, staticClasses } from './support/built-css';
 
 /**
  * Eine Prüfung, die nichts findet, meldet dasselbe wie eine erfüllte Erwartung. Deshalb steht hier
@@ -76,15 +76,13 @@ describe('ruleSet', () => {
     });
 });
 
-describe('findCursorRule', () => {
+describe('hasCursorRule', () => {
     it('findet die Regel für nicht deaktivierte Buttons', () => {
-        const css = 'a{color:red}button:not(:disabled){cursor:pointer}';
-
-        expect(findCursorRule(css)).toBe(css.indexOf('button'));
+        expect(hasCursorRule('a{color:red}button:not(:disabled){cursor:pointer}')).toBe(true);
     });
 
     it('meldet eine fehlende Regel', () => {
-        expect(findCursorRule('button{cursor:pointer}')).toBeNull();
+        expect(hasCursorRule('button{cursor:pointer}')).toBe(false);
     });
 });
 
