@@ -97,10 +97,9 @@ function blockEnd(css: string, start: number): number {
 }
 
 /**
- * Eine Basisregel schlägt jedes Utility, sobald sie außerhalb der Layer-Kaskade steht: `cursor-default`
- * an der deaktivierten Pagination bliebe dann wirkungslos. Gesammelt wird der Inhalt aller Blöcke, denn
- * dass die Build-Kette den eigenen `@layer base` mit dem von Tailwind zusammenfasst, ist nicht
- * zugesichert.
+ * Eine Basisregel schlägt jedes Utility, sobald sie außerhalb der Layer-Kaskade steht. Gesammelt wird
+ * der Inhalt aller Blöcke, denn dass die Build-Kette den eigenen `@layer base` mit dem von Tailwind
+ * zusammenfasst, ist nicht zugesichert.
  */
 export function baseLayerCss(css: string): string {
     let content = '';
