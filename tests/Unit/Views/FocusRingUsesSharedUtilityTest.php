@@ -36,7 +36,7 @@ final class FocusRingUsesSharedUtilityTest extends TestCase
      * richtet sich nach dem Hintergrund statt nach der Fokusfarbe.
      */
     private const RAW_FOCUS_RING_PATTERN =
-        '/focus(?:-visible|-within)?:(?!ring-focus|ring-offset-[a-z])-?(?:outline|ring)-/';
+        '/focus(?:-visible|-within)?:(?!ring-focus|ring-offset-[a-z])-?(?:outline|ring)(?![a-z])/';
 
     public function testViewsUseTheSharedFocusRingUtility(): void
     {
