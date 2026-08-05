@@ -15,11 +15,14 @@ use Illuminate\Support\Facades\File;
 final class BladeViews
 {
     /**
+     * Das Verzeichnis ist wählbar, damit ein Test seine Dateien nicht im echten `views` anlegen muss:
+     * Die läsen bei parallelem Lauf die Guards der anderen Prozesse mit.
+     *
      * @return Generator<int, array{path: string, number: int, content: string}, mixed, void>
      */
-    public static function lines(): Generator
+    public static function lines(?string $directory = null): Generator
     {
-        foreach (File::allFiles(resource_path('views')) as $file) {
+        foreach (File::allFiles($directory ?? resource_path('views')) as $file) {
             if (!str_ends_with($file->getFilename(), '.blade.php')) {
                 continue;
             }

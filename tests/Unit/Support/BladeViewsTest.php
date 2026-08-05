@@ -14,8 +14,6 @@ use Tests\TestCase;
  */
 final class BladeViewsTest extends TestCase
 {
-    private const string EMPTY_VIEW = 'empty-view-under-test.blade.php';
-
     /**
      * Die Nummerierung zählt je Datei, nicht über alle zusammen: In der Gesamtmenge steckt die 1 auch
      * dann, wenn allein die erste Datei bei 1 beginnt — die Verstoßmeldungen der Guards zeigten dann auf
@@ -52,20 +50,22 @@ final class BladeViewsTest extends TestCase
      */
     public function testEmptyBladeFilesStayOutOfTheComparison(): void
     {
-        $path = resource_path('views/' . self::EMPTY_VIEW);
-        File::put($path, '');
+        $directory = sys_get_temp_dir() . '/' . uniqid('blade-views-', true);
+        File::makeDirectory($directory);
+        File::put($directory . '/leer.blade.php', '');
+        File::put($directory . '/gefuellt.blade.php', "<div></div>\n");
 
         try {
             $covered = [];
 
-            foreach (BladeViews::lines() as $line) {
+            foreach (BladeViews::lines($directory) as $line) {
                 $covered[$line['path']] = true;
             }
 
-            $this->assertArrayNotHasKey(self::EMPTY_VIEW, $covered);
-            $this->assertNotContains(self::EMPTY_VIEW, $this->bladeFiles());
+            $this->assertSame(['gefuellt.blade.php'], array_keys($covered));
+            $this->assertSame(['gefuellt.blade.php'], $this->bladeFiles($directory));
         } finally {
-            File::delete($path);
+            File::deleteDirectory($directory);
         }
     }
 
@@ -95,11 +95,11 @@ final class BladeViewsTest extends TestCase
      *
      * @return list<string>
      */
-    private function bladeFiles(): array
+    private function bladeFiles(?string $directory = null): array
     {
         $paths = [];
 
-        foreach (File::allFiles(resource_path('views')) as $file) {
+        foreach (File::allFiles($directory ?? resource_path('views')) as $file) {
             if (!str_ends_with($file->getFilename(), '.blade.php') || $file->getSize() === 0) {
                 continue;
             }
