@@ -21,10 +21,10 @@ final class FocusRingUsesSharedUtilityTest extends TestCase
      *
      * `components/banner.blade.php` färbt seinen Ring je nach Bannerfarbe per Alpine weiß oder
      * dunkelgrau; die feste Indigo-Farbe des Utilities träfe dort auf zu wenig Kontrast. Gedeckt sind
-     * die Zeile mit der Ringgeometrie und die mit der gebundenen Farbe.
+     * die beiden Klassen der Ringgeometrie und die beiden gebundenen Farben.
      */
     private const ALLOWED_WITH_RAW_OUTLINE = [
-        'components/banner.blade.php' => 2,
+        'components/banner.blade.php' => 4,
     ];
 
     /**
@@ -43,11 +43,11 @@ final class FocusRingUsesSharedUtilityTest extends TestCase
         $found = array_fill_keys(array_keys(self::ALLOWED_WITH_RAW_OUTLINE), []);
 
         foreach (BladeViews::lines() as $line) {
-            if (preg_match(self::RAW_FOCUS_RING_PATTERN, $line['content']) !== 1) {
-                continue;
-            }
+            $occurrences = preg_match_all(self::RAW_FOCUS_RING_PATTERN, $line['content']);
 
-            $found[$line['path']][] = $line['number'];
+            for ($index = 0; $index < $occurrences; $index++) {
+                $found[$line['path']][] = $line['number'];
+            }
         }
 
         $violations = [];
