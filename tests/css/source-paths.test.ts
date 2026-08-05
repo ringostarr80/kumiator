@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import type { ResolvedConfig } from 'vite';
 import { describe, expect, it } from 'vitest';
-import { missingSourcePaths } from '../../vite/verify-source-paths';
+import { missingSourcePaths, verifySourcePaths } from '../../vite/verify-source-paths';
 
 const APP_CSS = 'resources/css/app.css';
 
@@ -50,5 +52,37 @@ describe('missingSourcePaths', () => {
     /** `inline(…)` zählt Utilities auf, statt auf Dateien zu zeigen — als Pfad gelesen wäre es immer tot. */
     it('liest @source inline nicht als Pfad', () => {
         expect(missingSourcePaths("@source inline('underline');", APP_CSS)).toEqual([]);
+    });
+
+    /**
+     * Eine Direktive stillzulegen heißt, sie auszukommentieren. Tailwind überliest sie dann, der
+     * Guard bräche den Build ab — und zwar mit der Begründung, es gebe den Pfad nicht.
+     */
+    it('liest eine auskommentierte Direktive nicht als Pfad', () => {
+        expect(missingSourcePaths("/* @source '../viewsXX'; */", APP_CSS)).toEqual([]);
+    });
+
+    it('prüft eine Direktive hinter einem Kommentar weiter', () => {
+        expect(missingSourcePaths("/* Hinweis */\n@source '../viewsXX';", APP_CSS)).toHaveLength(1);
+    });
+});
+
+describe('verifySourcePaths', () => {
+    /**
+     * Vite lässt für jeden Hook auch die Objektform mit `handler` zu; dieses Plugin schreibt sie als
+     * Funktionen, und nur so ruft der Test sie auf.
+     */
+    const plugin = verifySourcePaths('css/app.css');
+    const configResolved = plugin.configResolved as (config: ResolvedConfig) => void;
+    const buildStart = plugin.buildStart as () => void;
+
+    /**
+     * Setzt ein Build ein eigenes `root`, zeigt ein relativer Pfad woandershin als beim Start aus
+     * dem Projektwurzelverzeichnis. Der Guard bräche dann mit ENOENT ab, statt zu prüfen.
+     */
+    it('liest die CSS-Datei relativ zu Vites root, nicht zum Arbeitsverzeichnis', () => {
+        configResolved({ root: resolve('resources') } as ResolvedConfig);
+
+        expect(() => buildStart()).not.toThrow();
     });
 });

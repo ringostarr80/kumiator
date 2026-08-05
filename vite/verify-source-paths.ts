@@ -13,6 +13,13 @@ const SOURCE_DIRECTIVE = /@source\s+(?:not\s+)?(['"])([^'"]+)\1/g;
 const WILDCARD = /[*?[{]/;
 
 /**
+ * Eine auskommentierte Direktive ist stillgelegt: Tailwind überliest sie, der Guard soll es auch.
+ * Die Zeichenketten laufen mit, weil in einem Glob-Muster wie `views/**` sonst ein Kommentar
+ * begänne — die Alternative greift dort zuerst und lässt den Wert unangetastet.
+ */
+const COMMENT_OR_QUOTED = /(['"])[^'"]*\1|\/\*[\s\S]*?\*\//g;
+
+/**
  * Bei einem Glob-Muster bleibt nur das Verzeichnis davor prüfbar. Das genügt für den Fehler, um den es
  * geht — ein Paket ist umbenannt oder verschwunden —, und meldet nichts, solange ein gültiges Muster
  * bloß noch keine Datei trifft.
@@ -35,7 +42,10 @@ function checkablePath(path: string): string {
 export function missingSourcePaths(css: string, cssPath: string): string[] {
     const directory = dirname(cssPath);
 
-    return [...css.matchAll(SOURCE_DIRECTIVE)]
+    const active = css.replace(COMMENT_OR_QUOTED, (match: string, quote?: string) =>
+        quote === undefined ? '' : match);
+
+    return [...active.matchAll(SOURCE_DIRECTIVE)]
         .map(([, , path]) => resolve(directory, checkablePath(path)))
         .filter((path) => !existsSync(path));
 }
@@ -46,13 +56,19 @@ export function missingSourcePaths(css: string, cssPath: string): string[] {
  * Erst dieser Abbruch macht daraus einen Fehler, und zwar überall dort, wo gebaut wird.
  */
 export function verifySourcePaths(cssPath: string): Plugin {
+    let entry = cssPath;
+
     return {
         name: 'verify-source-paths',
+        /** Der Pfad gehört zum Projekt, nicht zu dem Verzeichnis, aus dem jemand den Build startet. */
+        configResolved(config) {
+            entry = resolve(config.root, cssPath);
+        },
         buildStart() {
-            const missing = missingSourcePaths(readFileSync(cssPath, 'utf8'), cssPath);
+            const missing = missingSourcePaths(readFileSync(entry, 'utf8'), entry);
 
             if (missing.length > 0) {
-                this.error(`Diese @source-Pfade aus ${cssPath} gibt es nicht:\n${missing.join('\n')}`);
+                this.error(`Diese @source-Pfade aus ${entry} gibt es nicht:\n${missing.join('\n')}`);
             }
         },
     };
