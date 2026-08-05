@@ -14,6 +14,8 @@ use Tests\TestCase;
  */
 final class BladeViewsTest extends TestCase
 {
+    private const string EMPTY_VIEW = 'empty-view-under-test.blade.php';
+
     /**
      * Die Nummerierung zählt je Datei, nicht über alle zusammen: In der Gesamtmenge steckt die 1 auch
      * dann, wenn allein die erste Datei bei 1 beginnt — die Verstoßmeldungen der Guards zeigten dann auf
@@ -44,6 +46,29 @@ final class BladeViewsTest extends TestCase
         $this->assertSame([], $misnumbered);
     }
 
+    /**
+     * Eine Datei ohne Inhalt liefert keine Zeile. Zählte die Gegenprobe sie trotzdem als abzudecken,
+     * meldete der Vergleich darüber einen Guard-Ausfall, wo es gar nichts zu prüfen gibt.
+     */
+    public function testEmptyBladeFilesStayOutOfTheComparison(): void
+    {
+        $path = resource_path('views/' . self::EMPTY_VIEW);
+        File::put($path, '');
+
+        try {
+            $covered = [];
+
+            foreach (BladeViews::lines() as $line) {
+                $covered[$line['path']] = true;
+            }
+
+            $this->assertArrayNotHasKey(self::EMPTY_VIEW, $covered);
+            $this->assertNotContains(self::EMPTY_VIEW, $this->bladeFiles());
+        } finally {
+            File::delete($path);
+        }
+    }
+
     public function testClassStringsCollectsEveryQuotedLiteral(): void
     {
         $line = '<a class="px-3 py-2">@php $classes = \'text-sm\'; @endphp';
@@ -65,6 +90,9 @@ final class BladeViewsTest extends TestCase
     }
 
     /**
+     * Eine leere Datei bleibt draußen, weil sie keine Zeile liefert und der Durchlauf sie deshalb
+     * zu Recht auslässt — mitgezählt verschöbe sie den Vergleich und meldete die halbe Liste als fehlend.
+     *
      * @return list<string>
      */
     private function bladeFiles(): array
@@ -72,7 +100,7 @@ final class BladeViewsTest extends TestCase
         $paths = [];
 
         foreach (File::allFiles(resource_path('views')) as $file) {
-            if (!str_ends_with($file->getFilename(), '.blade.php')) {
+            if (!str_ends_with($file->getFilename(), '.blade.php') || $file->getSize() === 0) {
                 continue;
             }
 
