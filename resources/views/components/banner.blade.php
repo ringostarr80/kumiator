@@ -9,7 +9,7 @@
                 message = event.detail.message;
                 show = true;
             ">
-    <div class="max-w-screen-xl mx-auto py-2 px-3 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto py-2 px-3 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between flex-wrap">
             <div class="w-0 flex-1 flex items-center min-w-0">
                 <span class="flex p-2 rounded-lg" :class="{ 'bg-indigo-600': style == 'success', 'bg-red-600': style == 'danger', 'bg-yellow-600': style == 'warning' }">
@@ -27,7 +27,7 @@
                     type="button"
                     class="-me-1 flex p-2 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 sm:-me-2 transition"
                     {{-- Weiß trägt auf allen Bannerfarben außer Gelb; dort reicht der Kontrast nicht. --}}
-                    :class="{ 'hover:bg-indigo-600 focus:bg-indigo-600': style == 'success', 'hover:bg-red-600 focus:bg-red-600': style == 'danger', 'hover:bg-yellow-600 focus:bg-yellow-600': style == 'warning', 'focus-visible:outline-gray-900': style == 'warning', 'focus-visible:outline-white': style != 'warning'}"
+                    :class="{ 'hover:bg-indigo-600 active:bg-indigo-600': style == 'success', 'hover:bg-red-600 active:bg-red-600': style == 'danger', 'hover:bg-yellow-600 active:bg-yellow-600': style == 'warning', 'focus-visible:outline-gray-900': style == 'warning', 'focus-visible:outline-white': style != 'warning'}"
                     aria-label="Dismiss"
                     x-on:click="show = false">
                     <x-heroicon-o-x-mark class="size-5 text-white" />

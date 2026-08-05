@@ -12,8 +12,9 @@ use Tests\TestCase;
  * greift. Ein Bedienelement, dessen Flächenwechsel allein am Hover hängt, reagiert dort auf einen Tap
  * mit gar nichts — bei `wire:click` wirkt die App dadurch hängend, bis die Antwort eintrifft.
  *
- * Als Ersatz zählt `active:` oder `focus:`; `focus-visible` (und damit `focus-ring`) nicht, denn ein
- * Tap löst es nicht aus. Geprüft wird nur die bg-Familie: Reine Textfarbwechsel sitzen hier auf
+ * Als Ersatz zählt allein `active:`. Weder `focus:` noch `focus-visible:` (und damit `focus-ring`)
+ * taugen dafür: Safari fokussiert Links und Buttons beim Tap nicht, ein `<a>` nur mit `tabindex`.
+ * Geprüft wird nur die bg-Familie: Reine Textfarbwechsel sitzen hier auf
  * unterstrichenen Links, die ihren Zustand ohnehin zeigen. Die Prüfung ist zeilenlokal, das
  * Gegenstück muss also im selben Klassen-String stehen wie die hover-Klasse.
  */
@@ -23,7 +24,7 @@ final class HoverBackgroundsHaveTouchCounterpartTest extends TestCase
     private const BACKGROUND_PATTERN = '#^bg-[a-z]#';
 
     /** Zustände, die ein Tap auslöst und die den fehlenden Hover damit ersetzen. */
-    private const TOUCH_STATES = ['active', 'focus'];
+    private const TOUCH_STATES = ['active'];
 
     public function testHoverBackgroundsHaveTouchCounterpart(): void
     {

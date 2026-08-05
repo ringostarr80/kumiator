@@ -33,8 +33,7 @@ final class FocusRingUsesSharedUtilityTest extends TestCase
      * Ring einmal anders formuliert als der Guard ihn kennt. Zwei Nachbarn bleiben bewusst außen vor:
      * `focus:ring-focus` an den Formularfeldern nennt allein die geteilte Farbe, die Ringgeometrie
      * zeichnet dort `@tailwindcss/forms`, und `dark:focus:ring-offset-gray-800` an der Checkbox
-     * richtet sich nach dem Hintergrund statt nach der Fokusfarbe. `focus:border-*` an den
-     * Navigationslinks färbt deren Zustandsrand um und gehört keiner der beiden Familien an.
+     * richtet sich nach dem Hintergrund statt nach der Fokusfarbe.
      */
     private const RAW_FOCUS_RING_PATTERN =
         '/focus(?:-visible|-within)?:(?!ring-focus|ring-offset-[a-z])-?(?:outline|ring)-/';
