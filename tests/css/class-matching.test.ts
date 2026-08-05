@@ -43,6 +43,10 @@ describe('isInCss', () => {
         expect(isInCss('.px-30{padding-inline:7.5rem}', 'px-3')).toBe(false);
     });
 
+    it('hält eine Klasse nicht für vorhanden, weil ein maskiertes Zeichen auf sie folgt', () => {
+        expect(isInCss('.mt-0\\.5{margin-top:0.125rem}', 'mt-0')).toBe(false);
+    });
+
     it('findet Klassen, deren Name in CSS maskiert wird', () => {
         expect(isInCss('.sm\\:w-1\\/2{width:50%}', 'sm:w-1/2')).toBe(true);
     });
@@ -61,6 +65,10 @@ describe('ruleSet', () => {
 
     it('nimmt keine Regel einer Klasse mit längerem Namen mit', () => {
         expect(ruleSet(css, 'focus-ring')).toEqual(['.focus-ring:focus-visible{outline-width:2px}']);
+    });
+
+    it('nimmt keine Regel einer Klasse mit maskiertem Zeichen mit', () => {
+        expect(ruleSet('.mt-0\\.5{margin-top:0.125rem}', 'mt-0')).toEqual([]);
     });
 
     it('findet Regeln von Klassen, deren Name in CSS maskiert wird', () => {

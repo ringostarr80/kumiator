@@ -44,24 +44,24 @@ export function staticClasses(source: string): string[] {
 function selectorPattern(className: string): string {
     return className
         .replace(/[^\w-]/g, (character) => `\\${character}`)
-        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        .replace(/^\d/, (digit) => `\\\\3${digit} `);
+        .replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
+        .replace(/^\d/, (digit) => String.raw`\\3${digit} `);
 }
 
 /**
- * Die Suche endet an der Klassengrenze, sonst würde `.bg-white` auch in `.bg-white-alt` anschlagen
- * und eine fehlende Klasse als vorhanden melden.
+ * Ohne diese Grenze meldet die Suche eine fehlende Klasse als vorhanden, sobald ein längerer Name
+ * mit ihr beginnt: `.bg-white` schlüge in `.bg-white-alt` an, `.mt-0` in `.mt-0\.5`. Der Backslash
+ * gehört deshalb dazu — er trennt in jedem maskierten Selektor. Ein unmaskiertes `:` bleibt außen
+ * vor, sonst verlöre `ruleSet` die Pseudoklassen der eigenen Regeln.
  */
+const CLASS_BOUNDARY = String.raw`(?![-\\\w])`;
+
 export function isInCss(css: string, className: string): boolean {
-    return new RegExp(`\\.${selectorPattern(className)}(?![\\w-])`).test(css);
+    return new RegExp(String.raw`\.${selectorPattern(className)}${CLASS_BOUNDARY}`).test(css);
 }
 
-/**
- * Die Suche endet an der Klassengrenze, sonst lieferte `focus-ring` auch die Regeln von
- * `focus-ring-inset` mit und eine fehlende Definition bliebe unbemerkt.
- */
 export function ruleSet(css: string, className: string): string[] {
-    const pattern = new RegExp(`\\.${selectorPattern(className)}(?![\\w-])[^{}]*\\{[^}]*\\}`, 'g');
+    const pattern = new RegExp(String.raw`\.${selectorPattern(className)}${CLASS_BOUNDARY}[^{}]*\{[^}]*\}`, 'g');
 
     return [...css.matchAll(pattern)].map(([rule]) => rule);
 }
