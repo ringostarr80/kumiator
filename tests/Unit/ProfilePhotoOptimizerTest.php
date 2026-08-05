@@ -8,16 +8,19 @@ use App\Services\Upload\Exceptions\ProfilePhotoOptimizationException;
 use App\Services\Upload\ProfilePhotoOptimizer;
 use GdImage;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class ProfilePhotoOptimizerTest extends TestCase
 {
+    private string $temporaryDirectory;
+
     public function testOptimizeProducesA256x256AvifFile(): void
     {
         $photo = UploadedFile::fake()->image('photo.jpg', 800, 600);
 
-        $result = (new ProfilePhotoOptimizer())->optimize($photo);
+        $result = (new ProfilePhotoOptimizer($this->temporaryDirectory))->optimize($photo);
 
         $this->assertStringEndsWith('.avif', $result->getClientOriginalName());
 
@@ -32,7 +35,7 @@ final class ProfilePhotoOptimizerTest extends TestCase
     {
         $photo = UploadedFile::fake()->image('photo.png', 400, 400);
 
-        $result = (new ProfilePhotoOptimizer())->optimize($photo);
+        $result = (new ProfilePhotoOptimizer($this->temporaryDirectory))->optimize($photo);
 
         $info = getimagesize($result->getRealPath());
         $this->assertNotFalse($info);
@@ -47,7 +50,7 @@ final class ProfilePhotoOptimizerTest extends TestCase
 
         $this->expectException(ProfilePhotoOptimizationException::class);
 
-        (new ProfilePhotoOptimizer())->optimize($photo);
+        (new ProfilePhotoOptimizer($this->temporaryDirectory))->optimize($photo);
     }
 
     /**
@@ -66,7 +69,7 @@ final class ProfilePhotoOptimizerTest extends TestCase
             __('app.profile_photo_optimizer_too_many_pixels', ['max_megapixels' => 25]),
         );
 
-        (new ProfilePhotoOptimizer())->optimize($photo);
+        (new ProfilePhotoOptimizer($this->temporaryDirectory))->optimize($photo);
     }
 
     /**
@@ -82,7 +85,7 @@ final class ProfilePhotoOptimizerTest extends TestCase
         $this->expectException(ProfilePhotoOptimizationException::class);
         $this->expectExceptionMessageIs(__('app.profile_photo_optimizer_not_an_image'));
 
-        (new ProfilePhotoOptimizer())->optimize($photo);
+        (new ProfilePhotoOptimizer($this->temporaryDirectory))->optimize($photo);
     }
 
     /**
@@ -93,7 +96,7 @@ final class ProfilePhotoOptimizerTest extends TestCase
     {
         $photo = $this->fourQuadrantJpeg(orientation: null);
 
-        $result = (new ProfilePhotoOptimizer())->optimize($photo);
+        $result = (new ProfilePhotoOptimizer($this->temporaryDirectory))->optimize($photo);
         $thumbnail = $this->readAvif($result->getRealPath());
 
         $this->assertSame('red', $this->dominantColorAt($thumbnail, 64, 64));
@@ -111,7 +114,7 @@ final class ProfilePhotoOptimizerTest extends TestCase
     {
         $photo = $this->corruptExifJpeg();
 
-        $result = (new ProfilePhotoOptimizer())->optimize($photo);
+        $result = (new ProfilePhotoOptimizer($this->temporaryDirectory))->optimize($photo);
 
         $info = getimagesize($result->getRealPath());
         $this->assertNotFalse($info);
@@ -137,7 +140,7 @@ final class ProfilePhotoOptimizerTest extends TestCase
     {
         $photo = $this->fourQuadrantJpeg($orientation);
 
-        $result = (new ProfilePhotoOptimizer())->optimize($photo);
+        $result = (new ProfilePhotoOptimizer($this->temporaryDirectory))->optimize($photo);
         $thumbnail = $this->readAvif($result->getRealPath());
 
         $this->assertSame($expectedQuadrants[0], $this->dominantColorAt($thumbnail, 64, 64), 'oben-links');
@@ -162,6 +165,26 @@ final class ProfilePhotoOptimizerTest extends TestCase
             'antitransponiert' => [7, ['yellow', 'green', 'blue', 'red']],
             'um 90° gegen den Uhrzeigersinn' => [8, ['green', 'yellow', 'red', 'blue']],
         ];
+    }
+
+    /**
+     * Der Optimizer reicht seine Zwischendatei an den Aufrufer weiter, der sie nach dem Speichern
+     * löscht. Hier gibt es keinen solchen Aufrufer — ein eigenes Verzeichnis lässt sie am Ende
+     * geschlossen wegräumen, statt sie im geteilten Systemverzeichnis liegen zu lassen.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->temporaryDirectory = sys_get_temp_dir() . '/' . uniqid('optimizer-', true);
+        File::makeDirectory($this->temporaryDirectory);
+    }
+
+    protected function tearDown(): void
+    {
+        File::deleteDirectory($this->temporaryDirectory);
+
+        parent::tearDown();
     }
 
     /**
