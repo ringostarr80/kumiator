@@ -64,6 +64,20 @@ describe('Fokusring', () => {
     });
 });
 
+describe('Quellsuche', () => {
+    /**
+     * Die automatische Suche liest jede nicht ignorierte Datei als Klassenquelle, auch solche, die nie
+     * ausgeliefert wird: Ein Negativbeispiel aus einem Test und eine Supervisor-Zeile aus der
+     * Betriebsdokumentation standen als Utility im Stylesheet.
+     */
+    it.each<[string, string]>([
+        ['Testdateien', 'px-30'],
+        ['der Betriebsdokumentation', '[program:kumiator-worker]'],
+    ])('lässt Klassen aus %s draußen', (_herkunft, className) => {
+        expect(isInCss(css, className)).toBe(false);
+    });
+});
+
 describe('Buttons', () => {
     it('zeigt auf anklickbaren Elementen die Zeigehand', () => {
         expect(hasCursorRule(css)).toBe(true);

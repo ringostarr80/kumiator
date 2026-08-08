@@ -6,6 +6,12 @@
 @source '../../vendor/livewire/livewire/src/Features/SupportPagination/views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views';
 
+/* Die Quellsuche liest jede nicht ignorierte Datei als Klassenquelle. In diesen beiden Verzeichnissen
+   stehen Klassennamen als Beispiel und Konfigurationszeilen, die Tailwind als Utility liest — beides
+   erreicht nie eine Ansicht. */
+@source not '../../tests';
+@source not '../../docs';
+
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
