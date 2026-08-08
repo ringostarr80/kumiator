@@ -60,10 +60,29 @@ export function isInCss(css: string, className: string): boolean {
     return new RegExp(String.raw`\.${selectorPattern(className)}${CLASS_BOUNDARY}`).test(css);
 }
 
-export function ruleSet(css: string, className: string): string[] {
-    const pattern = new RegExp(String.raw`\.${selectorPattern(className)}${CLASS_BOUNDARY}[^{}]*\{[^}]*\}`, 'g');
+/**
+ * Der Selektor beginnt hinter der letzten Grenze links vom Klassennamen. Ohne den Teil davor fiele
+ * etwa das `:where(` weg, das Tailwind den `space-*`-Regeln voranstellt, und die zurückgegebene Regel
+ * stünde mit unbalancierten Klammern da.
+ */
+function selectorStart(css: string, index: number): number {
+    for (let position = index; position > 0; position--) {
+        if (['{', '}', ';'].includes(css[position - 1])) {
+            return position;
+        }
+    }
 
-    return [...css.matchAll(pattern)].map(([rule]) => rule);
+    return 0;
+}
+
+export function ruleSet(css: string, className: string): string[] {
+    const pattern = new RegExp(String.raw`\.${selectorPattern(className)}${CLASS_BOUNDARY}[^{}]*\{`, 'g');
+
+    return [...css.matchAll(pattern)].map((match) => {
+        const end = blockEnd(css, match.index + match[0].length);
+
+        return css.slice(selectorStart(css, match.index), end + 1);
+    });
 }
 
 export function hasCursorRule(css: string): boolean {

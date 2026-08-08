@@ -74,6 +74,18 @@ describe('ruleSet', () => {
     it('findet Regeln von Klassen, deren Name in CSS maskiert wird', () => {
         expect(ruleSet('.sm\\:w-1\\/2{width:50%}', 'sm:w-1/2')).toEqual(['.sm\\:w-1\\/2{width:50%}']);
     });
+
+    it('nimmt den Selektor mit, der links vom Klassennamen steht', () => {
+        const wrapped = ':where(.space-y-1>:not(:last-child)){margin-block-start:0}';
+
+        expect(ruleSet(wrapped, 'space-y-1')).toEqual([wrapped]);
+    });
+
+    it('endet an der Klammer der Regel, nicht an der eines verschachtelten Blocks', () => {
+        const nested = '.focus-ring{outline-style:solid;@supports (outline-width:2px){outline-width:1px}outline-width:2px}';
+
+        expect(ruleSet(nested, 'focus-ring')).toEqual([nested]);
+    });
 });
 
 describe('hasCursorRule', () => {
