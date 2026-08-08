@@ -31,13 +31,44 @@ final class BladeViews
             // den macht Laravels Error-Handler vorher zur ErrorException. Übrig bleibt die leere Datei.
             $lines = file($file->getPathname(), FILE_IGNORE_NEW_LINES) ?: [];
 
+            $buffer = null;
+            $number = 0;
+
             foreach ($lines as $index => $content) {
+                if ($buffer === null) {
+                    $buffer = $content;
+                    $number = $index + 1;
+                } else {
+                    // Das Leerzeichen trennt die Tokens, wo die Fortsetzung ohne Einrückung beginnt.
+                    $buffer .= ' ' . $content;
+                }
+
+                // Ein Attribut über mehrere Zeilen ließe beide Hälften ohne Gegenstück zurück: Auf
+                // keiner davon stünde ein vollständiges Literal, die Klassen dazwischen entfielen.
+                if (substr_count($buffer, '"') % 2 === 1) {
+                    continue;
+                }
+
                 yield [
                     'path' => $file->getRelativePathname(),
-                    'number' => $index + 1,
-                    'content' => $content,
+                    'number' => $number,
+                    'content' => $buffer,
                 ];
+
+                $buffer = null;
             }
+
+            // Schließt eine Datei ihr letztes Attribut nicht mehr, fielen sonst alle Zeilen ab dessen
+            // Beginn ersatzlos aus jeder Prüfung.
+            if ($buffer === null) {
+                continue;
+            }
+
+            yield [
+                'path' => $file->getRelativePathname(),
+                'number' => $number,
+                'content' => $buffer,
+            ];
         }
     }
 
@@ -46,14 +77,22 @@ final class BladeViews
      * Ternary-Zweig). Statt jede Schreibweise einzeln zu erfassen, gilt jedes Stringliteral als
      * Kandidat — solche ohne passende Utility fallen bei der Auswertung ohnehin durch.
      *
+     * Alpine schreibt seine Klassenliste im Attribut noch einmal in Anführungszeichen
+     * (`:class="{ 'bg-gray-100': open }"`), daher die zweite Ebene.
+     *
      * @return list<string>
      */
     public static function classStrings(string $line): array
     {
-        preg_match_all('/"([^"]*)"/', $line, $doubleQuoted);
-        preg_match_all("/'([^']*)'/", $line, $singleQuoted);
+        $literals = self::stringLiterals($line);
 
-        return [...$doubleQuoted[1], ...$singleQuoted[1]];
+        $nested = [];
+
+        foreach ($literals as $literal) {
+            $nested = [...$nested, ...self::stringLiterals($literal)];
+        }
+
+        return [...$literals, ...$nested];
     }
 
     /**
@@ -80,5 +119,24 @@ final class BladeViews
         }
 
         return $utilities;
+    }
+
+    /**
+     * Beide Anführungszeichen in einem Durchlauf und von links gelesen: Getrennt gesucht zählte ein
+     * Apostroph im Text (`title="wenn's passt"`) als Begrenzer und verschöbe jedes weitere Paar.
+     *
+     * @return list<string>
+     */
+    private static function stringLiterals(string $text): array
+    {
+        preg_match_all('/(["\'])(.*?)\1/', $text, $matches, PREG_SET_ORDER);
+
+        $literals = [];
+
+        foreach ($matches as $match) {
+            $literals[] = $match[2];
+        }
+
+        return $literals;
     }
 }
