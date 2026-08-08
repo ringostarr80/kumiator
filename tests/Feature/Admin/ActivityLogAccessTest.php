@@ -541,20 +541,12 @@ final class ActivityLogAccessTest extends TestCase
     /**
      * Das Pagination-Control steht jetzt sowohl oberhalb als auch unterhalb der
      * Tabelle. Jede Instanz bringt Livewires eingebaute Treffer-Info
-     * ("Showing X to Y of Z results") mit. Setup mit > PER_PAGE (25) Einträgen,
-     * damit das Control überhaupt rendert — Livewire blendet es bei nur einer
-     * Seite komplett aus.
+     * ("Showing X to Y of Z results") mit.
      */
     public function testPaginationControlAppearsAboveAndBelowTheTable(): void
     {
         $admin = $this->makeAuditor();
-        $actor = User::factory()->create();
-        $this->actingAs($actor);
-
-        for ($i = 0; $i < 30; $i++) {
-            $subject = User::factory()->create();
-            $subject->updateOrFail(['name' => self::RENAMED_PREFIX . $i]);
-        }
+        $this->seedMoreThanOnePage();
 
         $component = Livewire::actingAs($admin)
             ->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
@@ -571,6 +563,28 @@ final class ActivityLogAccessTest extends TestCase
             2,
             substr_count($html, 'Showing'),
             'Die eingebaute Treffer-Info muss bei beiden Pagination-Instanzen erscheinen.',
+        );
+    }
+
+    /**
+     * Die Paginationsansicht liegt publiziert unter `resources/views/vendor/livewire` und zeichnet
+     * den Fokus über die geteilte Utility. Löst Livewire wieder auf seine mitgelieferte Fassung auf,
+     * steht hier die ausgeschriebene Klassenliste — die Guards unter `tests/Unit/Views` lesen nur
+     * Dateien und würden den Wechsel nicht bemerken.
+     */
+    public function testPaginationRendersThePublishedView(): void
+    {
+        $admin = $this->makeAuditor();
+        $this->seedMoreThanOnePage();
+
+        $component = Livewire::actingAs($admin)
+            ->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component->assertOk();
+
+        $this->assertMatchesRegularExpression(
+            '/dusk="nextPage\.after"[^>]*focus-ring/',
+            $component->html(),
+            'Der Blätter-Button muss den Fokus über die geteilte Utility zeichnen.',
         );
     }
 
@@ -1098,6 +1112,21 @@ final class ActivityLogAccessTest extends TestCase
         $user->givePermissionTo('activity-log.view');
 
         return $user;
+    }
+
+    /**
+     * Livewire blendet das Pagination-Control bei nur einer Seite komplett aus; erst jenseits von
+     * PER_PAGE (25) rendert es überhaupt.
+     */
+    private function seedMoreThanOnePage(): void
+    {
+        $actor = User::factory()->create();
+        $this->actingAs($actor);
+
+        for ($i = 0; $i < 30; $i++) {
+            $subject = User::factory()->create();
+            $subject->updateOrFail(['name' => self::RENAMED_PREFIX . $i]);
+        }
     }
 
     private function latestActivityLogViewed(): ?Activity
