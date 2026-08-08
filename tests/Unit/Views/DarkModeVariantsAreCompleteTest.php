@@ -13,11 +13,12 @@ use Tests\TestCase;
  * hellen Modus fällt das niemandem auf, weil die Seite dort korrekt aussieht.
  *
  * Geprüft wird die gray-Skala über alle Farbfamilien, die eine Fläche vom Untergrund absetzen: Text,
- * Flächen, Ränder, Trennlinien, Ringe, Platzhalter und Icon-Striche. Akzentfarben bleiben in beiden
- * Modi absichtlich identisch. Weiß und Schwarz zählen nur als Fläche, weil sie sonst dort anschlagen,
- * wo der Modus nichts ändert: `text-white` sitzt auf eingefärbtem Grund, `ring-black/5` ist ein
- * Schattensaum. Die Prüfung ist zeilenlokal, das Gegenstück muss also im selben Klassen-String stehen
- * wie die Ausgangsklasse.
+ * Flächen, Ränder, Trennlinien, Ringe, Platzhalter sowie Icon-Striche und -Füllungen. Akzentfarben
+ * bleiben in beiden Modi absichtlich identisch. Weiß und Schwarz zählen nur als Fläche und als
+ * Icon-Füllung — beide liegen auf dem Seitengrund, der mitschaltet. In den übrigen Familien schlügen
+ * sie dort an, wo der Modus nichts ändert: `text-white` sitzt auf eingefärbtem Grund, `ring-black/5`
+ * ist ein Schattensaum. Die Prüfung ist zeilenlokal, das Gegenstück muss also im selben
+ * Klassen-String stehen wie die Ausgangsklasse.
  */
 final class DarkModeVariantsAreCompleteTest extends TestCase
 {
@@ -46,7 +47,7 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
     ];
 
     /** Ein Farb-Utility, z. B. `bg-gray-700` aus `dark:hover:bg-gray-700`. */
-    private const COLOR_UTILITY_PATTERN = '#^(text|bg|border|divide|ring|placeholder|stroke)-'
+    private const COLOR_UTILITY_PATTERN = '#^(text|bg|border|divide|ring|placeholder|stroke|fill)-'
         . '([a-z]+-\d{2,3}|white|black)(?:/\d+)?$#';
 
     public function testGrayUtilitiesHaveDarkCounterpart(): void
@@ -159,7 +160,8 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
 
         foreach ($utilities as $utility) {
             $switchesWithMode = str_starts_with($utility['color'], 'gray-')
-                || ($utility['family'] === 'bg' && in_array($utility['color'], ['white', 'black'], true));
+                || (in_array($utility['family'], ['bg', 'fill'], true)
+                    && in_array($utility['color'], ['white', 'black'], true));
 
             if (!$switchesWithMode || in_array('dark', $utility['variants'], true)) {
                 continue;
