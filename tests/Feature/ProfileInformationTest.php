@@ -402,8 +402,9 @@ final class ProfileInformationTest extends TestCase
      * Der Optimizer legt das Thumbnail in einer tempnam()-Datei ab, die PHP nicht selbst wegräumt
      * (kein $_FILES-Upload). Ein erfolgreicher Upload darf danach keine `profile_photo_*`-Waise lassen.
      *
-     * Der Optimizer bekommt dafür ein eigenes Verzeichnis: Im geteilten `sys_get_temp_dir()` zählte
-     * die Prüfung bei parallelem Lauf die Zwischendateien fremder Prozesse mit.
+     * Geprüft wird der Pfad, den der Optimizer tatsächlich geliefert hat: Ein leeres Verzeichnis
+     * bewiese nichts, denn der Upload-Pfad könnte auch ganz ohne Zwischendatei ausgekommen sein.
+     * Das eigene Verzeichnis hält zusätzlich fest, dass die injizierte Instanz zum Zug kam.
      */
     public function testProfilePhotoUploadLeavesNoTempFileBehind(): void
     {
@@ -413,7 +414,29 @@ final class ProfileInformationTest extends TestCase
 
         $directory = sys_get_temp_dir() . '/' . uniqid('profile-photo-', true);
         File::makeDirectory($directory);
-        $this->app->instance(ProfilePhotoOptimizerContract::class, new ProfilePhotoOptimizer($directory));
+
+        $optimizer = new class (new ProfilePhotoOptimizer($directory)) implements ProfilePhotoOptimizerContract {
+            private string $producedPath = '';
+
+            public function __construct(private readonly ProfilePhotoOptimizerContract $inner)
+            {
+            }
+
+            public function optimize(UploadedFile $photo): UploadedFile
+            {
+                $optimized = $this->inner->optimize($photo);
+                $this->producedPath = $optimized->getPathname();
+
+                return $optimized;
+            }
+
+            public function producedPath(): string
+            {
+                return $this->producedPath;
+            }
+        };
+
+        $this->app->instance(ProfilePhotoOptimizerContract::class, $optimizer);
 
         try {
             Livewire::test(UpdateProfileInformationForm::class)
@@ -423,7 +446,8 @@ final class ProfileInformationTest extends TestCase
                 ->assertHasNoErrors();
 
             $this->assertNotNull($user->fresh()?->profile_photo_path);
-            $this->assertSame([], glob($directory . '/profile_photo_*'));
+            $this->assertSame(realpath($directory), realpath(dirname($optimizer->producedPath())));
+            $this->assertFileDoesNotExist($optimizer->producedPath());
         } finally {
             File::deleteDirectory($directory);
         }

@@ -229,7 +229,7 @@ final class ProfilePhotoOptimizer implements ProfilePhotoOptimizerContract
 
         if (!imageavif($image, $targetPath, self::AVIF_QUALITY)) {
             // tempnam() hat die Datei bereits angelegt; scheitert das Encoding,
-            // muss sie weg, sonst bleibt eine leere Waise in sys_get_temp_dir().
+            // muss sie weg, sonst bleibt eine leere Waise zurück.
             unlink($targetPath);
 
             throw new ProfilePhotoOptimizationException(__('app.profile_photo_optimizer_encode_failed'));
