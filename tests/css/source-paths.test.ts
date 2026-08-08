@@ -1,5 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import type { ResolvedConfig } from 'vite';
 import { describe, expect, it } from 'vitest';
 import { missingSourcePaths, verifySourcePaths } from '../../vite/verify-source-paths';
@@ -74,7 +75,17 @@ describe('verifySourcePaths', () => {
      */
     const plugin = verifySourcePaths('css/app.css');
     const configResolved = plugin.configResolved as (config: ResolvedConfig) => void;
-    const buildStart = plugin.buildStart as () => void;
+    const buildStart = plugin.buildStart as (this: { error(message: string): never }) => void;
+
+    /**
+     * Den Kontext stellt im Build Rollup: Der Abbruch führt über `this.error()`, das von dort nie
+     * zurückkehrt. Ohne ein `this` scheiterte der Hook stattdessen an einem TypeError.
+     */
+    const context = {
+        error(message: string): never {
+            throw new Error(message);
+        },
+    };
 
     /**
      * Setzt ein Build ein eigenes `root`, zeigt ein relativer Pfad woandershin als beim Start aus
@@ -83,6 +94,24 @@ describe('verifySourcePaths', () => {
     it('liest die CSS-Datei relativ zu Vites root, nicht zum Arbeitsverzeichnis', () => {
         configResolved({ root: resolve('resources') } as ResolvedConfig);
 
-        expect(() => buildStart()).not.toThrow();
+        expect(() => buildStart.call(context)).not.toThrow();
+    });
+
+    /**
+     * Der Abbruch ist der Zweck des Plugins: Ohne ihn liefe der Build durch und lieferte ein
+     * Stylesheet, dem die Klassen des fehlenden Verzeichnisses wortlos fehlen.
+     */
+    it('bricht den Build ab, wenn ein @source-Pfad ins Leere zeigt', () => {
+        const root = mkdtempSync(join(tmpdir(), 'verify-source-paths-'));
+        mkdirSync(join(root, 'css'));
+        writeFileSync(join(root, 'css/app.css'), "@source '../viewsXX';");
+
+        configResolved({ root } as ResolvedConfig);
+
+        try {
+            expect(() => buildStart.call(context)).toThrow(/viewsXX$/);
+        } finally {
+            rmSync(root, { recursive: true });
+        }
     });
 });
