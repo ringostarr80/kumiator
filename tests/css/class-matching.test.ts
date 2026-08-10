@@ -1,34 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { baseLayerCss, hasCursorRule, isInCss, ruleSet, staticClasses } from './support/built-css';
+import { baseLayerCss, hasCursorRule, isInCss, ruleSet } from './support/built-css';
 
 /**
  * Eine Prüfung, die nichts findet, meldet dasselbe wie eine erfüllte Erwartung. Deshalb steht hier
  * jeweils auch der Fall, in dem sie anschlagen muss.
  */
-
-describe('staticClasses', () => {
-    it('sammelt Klassen aus allen class-Attributen ohne Dubletten', () => {
-        const source = '<a class="px-3 py-2"><span class="px-3">…</span></a>';
-
-        expect(staticClasses(source)).toEqual(['px-3', 'py-2']);
-    });
-
-    it('überspringt Klassen, die erst zur Laufzeit entstehen', () => {
-        const source = '<a class="px-3 {{ $active }} bg-{{ $color }}-500 {$legacy}">…</a>';
-
-        expect(staticClasses(source)).toEqual(['px-3']);
-    });
-
-    it('sammelt Klassen auch aus einfach gequoteten Attributen', () => {
-        expect(staticClasses(`<a class='px-3 py-2'>…</a>`)).toEqual(['px-3', 'py-2']);
-    });
-
-    it('übergeht gebundene Attribute, die statt einer Klassenliste einen Ausdruck tragen', () => {
-        const source = `<a :class="{ 'font-bold': open, 'text-sm': !open }" class="px-3">…</a>`;
-
-        expect(staticClasses(source)).toEqual(['px-3']);
-    });
-});
 
 describe('isInCss', () => {
     it('erkennt eine Klasse an ihrem Selektor', () => {

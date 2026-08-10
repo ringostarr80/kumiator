@@ -1,11 +1,5 @@
 @import 'tailwindcss';
 
-/* Die Quellsuche überspringt gitignorierte Pfade; beide Pagination-Verzeichnisse liegen aber
-   unterhalb von /vendor: Livewire rendert von dort seine einfache Fassung, Laravel jeden Paginator
-   außerhalb einer Komponente. */
-@source '../../vendor/livewire/livewire/src/Features/SupportPagination/views';
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views';
-
 /* Die Quellsuche liest jede nicht ignorierte Datei als Klassenquelle. In diesen beiden Verzeichnissen
    stehen Klassennamen als Beispiel und Konfigurationszeilen, die Tailwind als Utility liest — beides
    erreicht nie eine Ansicht. */

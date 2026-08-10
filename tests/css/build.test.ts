@@ -3,33 +3,10 @@
  * `@utility` und `@layer base` macht, steht in keiner Quelldatei.
  */
 
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { baseLayerCss, hasCursorRule, isInCss, readBuiltCss, ruleSet, staticClasses } from './support/built-css';
-
-const LIVEWIRE_VIEWS = 'vendor/livewire/livewire/src/Features/SupportPagination/views/';
-const LARAVEL_VIEWS = 'vendor/laravel/framework/src/Illuminate/Pagination/resources/views/';
+import { baseLayerCss, hasCursorRule, isInCss, readBuiltCss, ruleSet } from './support/built-css';
 
 const css = readBuiltCss();
-
-describe('Pagination', () => {
-    /**
-     * Die Ansichten liegen unterhalb von /vendor, das die Quellsuche wegen .gitignore überspringt.
-     * Fehlt die passende @source-Direktive, entfällt jede ihrer Klassen ersatzlos aus dem Build.
-     * Laravel rendert jeden Paginator außerhalb einer Livewire-Komponente; die einfachen Fassungen
-     * greifen bei `simplePaginate()` und `cursorPaginate()`.
-     */
-    it.each<[string, string]>([
-        ['einfachen Livewire', `${LIVEWIRE_VIEWS}simple-tailwind.blade.php`],
-        ['Laravel', `${LARAVEL_VIEWS}tailwind.blade.php`],
-        ['einfachen Laravel', `${LARAVEL_VIEWS}simple-tailwind.blade.php`],
-    ])('bringt jede statische Klasse der %s-Ansicht in den Build', (_theme, view) => {
-        const classes = staticClasses(readFileSync(view, 'utf8'));
-
-        expect(classes.length).toBeGreaterThan(0);
-        expect(classes.filter((className) => !isInCss(css, className))).toEqual([]);
-    });
-});
 
 /**
  * Geprüft wird allein das Vorzeichen: Ob der Ring innen oder außen liegt, ist die Designentscheidung —

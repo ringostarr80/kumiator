@@ -52,8 +52,9 @@ export function missingSourcePaths(css: string, cssPath: string): string[] {
 
 /**
  * Einen @source-Pfad, den es nicht gibt, übergeht Tailwind wortlos: Der Build endet erfolgreich und
- * lässt jede Klasse des Verzeichnisses weg — die Pagination des Activity-Logs rendert dann ungestylt.
- * Erst dieser Abbruch macht daraus einen Fehler, und zwar überall dort, wo gebaut wird.
+ * die Direktive bleibt wirkungslos — ein Ausschluss lässt seine Klassen wieder ins Stylesheet, eine
+ * zusätzliche Quelle bringt ihre nicht hinein. Erst dieser Abbruch macht daraus einen Fehler, und
+ * zwar überall dort, wo gebaut wird.
  */
 export function verifySourcePaths(cssPath: string): Plugin {
     let entry = cssPath;
