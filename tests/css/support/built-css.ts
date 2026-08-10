@@ -89,7 +89,8 @@ export function hasCursorRule(css: string): boolean {
     return /button:not\(:disabled\)[^{]*\{[^}]*cursor:\s*pointer/.test(css);
 }
 
-const BASE_LAYER = '@layer base{';
+/** Ob zwischen `base` und der Klammer ein Leerzeichen steht, entscheidet der Minifier. */
+const BASE_LAYER = String.raw`@layer\s+base\s*\{`;
 
 /**
  * Ab `start` hinter der öffnenden Klammer, weil verschachtelte Blöcke wie `@media` sonst die erste
@@ -119,15 +120,18 @@ function blockEnd(css: string, start: number): number {
  * zusammenfasst, ist nicht zugesichert.
  */
 export function baseLayerCss(css: string): string {
-    let content = '';
-    let index = css.indexOf(BASE_LAYER);
+    const pattern = new RegExp(BASE_LAYER, 'g');
 
-    while (index !== -1) {
-        const start = index + BASE_LAYER.length;
+    let content = '';
+    let match = pattern.exec(css);
+
+    while (match !== null) {
+        const start = match.index + match[0].length;
         const end = blockEnd(css, start);
 
         content += css.slice(start, end);
-        index = css.indexOf(BASE_LAYER, end);
+        pattern.lastIndex = end;
+        match = pattern.exec(css);
     }
 
     return content;

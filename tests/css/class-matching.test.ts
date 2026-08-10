@@ -121,6 +121,13 @@ describe('baseLayerCss', () => {
         expect(baseLayerCss(split)).toBe('a{color:red}b{color:blue}');
     });
 
+    /** Die Schreibweise hängt am Minifier; ein Build ohne ihn lieferte sonst einen leeren Layer. */
+    it('findet den Block auch mit Leerzeichen vor der Klammer', () => {
+        const spaced = '@layer base {\n  a {\n    color: red;\n  }\n}';
+
+        expect(baseLayerCss(spaced)).toBe('\n  a {\n    color: red;\n  }\n');
+    });
+
     it('endet an der Klammer des Blocks, nicht an der eines verschachtelten', () => {
         const nested = '@layer base{@media (width>=40rem){a{color:red}}}@layer utilities{.p-0{padding:0}}';
 

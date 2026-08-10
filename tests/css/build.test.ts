@@ -59,7 +59,7 @@ describe('Fokusring', () => {
      */
     it('schaltet die Fokusfarbe im Dunkelmodus um', () => {
         expect(css).toMatch(/--color-focus:\s*var\(--color-indigo-600\)/);
-        expect(css).toMatch(/\.dark\{[^}]*--color-focus:\s*var\(--color-indigo-300\)/);
+        expect(css).toMatch(/\.dark\s*\{[^}]*--color-focus:\s*var\(--color-indigo-300\)/);
     });
 });
 
