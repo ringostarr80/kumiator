@@ -33,8 +33,9 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.cache/composer
-        key: composer-${{ inputs.php-version }}-${{ hashFiles('composer.lock') }}
-        restore-keys: composer-${{ inputs.php-version }}-
+        # The cache only holds the downloads pinned in composer.lock, which are the same for every PHP version
+        key: composer-${{ hashFiles('composer.lock') }}
+        restore-keys: composer-
 
     - name: Install dependencies
       shell: bash
