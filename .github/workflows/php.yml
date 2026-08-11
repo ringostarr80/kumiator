@@ -10,7 +10,8 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A pull request only needs a verdict for its latest push, every main commit keeps its own
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   # ext-pdo_sqlite/ext-sqlite3 back the in-memory test database configured in phpunit.xml
