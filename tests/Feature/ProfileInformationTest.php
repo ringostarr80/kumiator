@@ -8,11 +8,14 @@ use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Livewire\Profile\UpdateProfileInformationForm;
 use App\Models\Activity;
 use App\Models\User;
+use App\Services\Upload\Contracts\ProfilePhotoOptimizerContract;
 use App\Services\Upload\Exceptions\ProfilePhotoStorageException;
+use App\Services\Upload\ProfilePhotoOptimizer;
 use GdImage;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -396,9 +399,12 @@ final class ProfileInformationTest extends TestCase
     }
 
     /**
-     * Der Optimizer legt das Thumbnail in einer tempnam()-Datei ab, die PHP
-     * nicht selbst wegräumt (kein $_FILES-Upload). Ein erfolgreicher Upload
-     * darf danach keine `profile_photo_*`-Waise in sys_get_temp_dir() lassen.
+     * Der Optimizer legt das Thumbnail in einer tempnam()-Datei ab, die PHP nicht selbst wegräumt
+     * (kein $_FILES-Upload). Ein erfolgreicher Upload darf danach keine `profile_photo_*`-Waise lassen.
+     *
+     * Geprüft wird der Pfad, den der Optimizer tatsächlich geliefert hat: Ein leeres Verzeichnis
+     * bewiese nichts, denn der Upload-Pfad könnte auch ganz ohne Zwischendatei ausgekommen sein.
+     * Das eigene Verzeichnis hält zusätzlich fest, dass die injizierte Instanz zum Zug kam.
      */
     public function testProfilePhotoUploadLeavesNoTempFileBehind(): void
     {
@@ -406,17 +412,45 @@ final class ProfileInformationTest extends TestCase
 
         $this->actingAs($user = User::factory()->create());
 
-        $pattern = sys_get_temp_dir() . '/profile_photo_*';
-        $before = glob($pattern);
+        $directory = sys_get_temp_dir() . '/' . uniqid('profile-photo-', true);
+        File::makeDirectory($directory);
 
-        Livewire::test(UpdateProfileInformationForm::class)
-            ->set('photo', UploadedFile::fake()->image('photo.jpg'))
-            ->set('state', ['name' => $user->name, 'email' => $user->email])
-            ->call('updateProfileInformation')
-            ->assertHasNoErrors();
+        $optimizer = new class (new ProfilePhotoOptimizer($directory)) implements ProfilePhotoOptimizerContract {
+            private string $producedPath = '';
 
-        $this->assertNotNull($user->fresh()?->profile_photo_path);
-        $this->assertSame($before, glob($pattern));
+            public function __construct(private readonly ProfilePhotoOptimizerContract $inner)
+            {
+            }
+
+            public function optimize(UploadedFile $photo): UploadedFile
+            {
+                $optimized = $this->inner->optimize($photo);
+                $this->producedPath = $optimized->getPathname();
+
+                return $optimized;
+            }
+
+            public function producedPath(): string
+            {
+                return $this->producedPath;
+            }
+        };
+
+        $this->app->instance(ProfilePhotoOptimizerContract::class, $optimizer);
+
+        try {
+            Livewire::test(UpdateProfileInformationForm::class)
+                ->set('photo', UploadedFile::fake()->image('photo.jpg'))
+                ->set('state', ['name' => $user->name, 'email' => $user->email])
+                ->call('updateProfileInformation')
+                ->assertHasNoErrors();
+
+            $this->assertNotNull($user->fresh()?->profile_photo_path);
+            $this->assertSame(realpath($directory), realpath(dirname($optimizer->producedPath())));
+            $this->assertFileDoesNotExist($optimizer->producedPath());
+        } finally {
+            File::deleteDirectory($directory);
+        }
     }
 
     public function testReplacingProfilePhotoLogsBothPaths(): void

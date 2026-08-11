@@ -1,0 +1,13 @@
+{
+    "$schema": "https://www.schemastore.org/tsconfig.json",
+    "compilerOptions": {
+        "target": "es2023",
+        "module": "preserve",
+        "moduleDetection": "force",
+        "types": ["node"],
+        "strict": true,
+        "skipLibCheck": true,
+        "noEmit": true
+    },
+    "include": ["tests/css", "vite", "vite.config.ts", "vitest.config.ts"]
+}

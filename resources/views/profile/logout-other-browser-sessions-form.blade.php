@@ -8,7 +8,7 @@
     </x-slot>
 
     <x-slot name="content">
-        <div class="max-w-xl text-sm text-gray-600">
+        <div class="max-w-xl text-sm text-gray-600 dark:text-gray-400">
             {{ __('app.browser_sessions_info') }}
         </div>
 
@@ -19,19 +19,19 @@
                     <div class="flex items-center">
                         <div>
                             @if ($session->agent->isDesktop())
-                                <x-heroicon-o-computer-desktop class="size-8 text-gray-500" />
+                                <x-heroicon-o-computer-desktop class="size-8 text-gray-500 dark:text-gray-400" />
                             @else
-                                <x-heroicon-o-device-phone-mobile class="size-8 text-gray-500" />
+                                <x-heroicon-o-device-phone-mobile class="size-8 text-gray-500 dark:text-gray-400" />
                             @endif
                         </div>
 
                         <div class="ms-3">
-                            <div class="text-sm text-gray-600">
+                            <div class="text-sm text-gray-600 dark:text-gray-400">
                                 {{ $session->agent->platform() ? $session->agent->platform() : __('app.unknown') }} - {{ $session->agent->browser() ? $session->agent->browser() : __('app.unknown') }}
                             </div>
 
                             <div>
-                                <div class="text-xs text-gray-500">
+                                <div class="text-xs text-gray-500 dark:text-gray-400">
                                     {{ $session->ip_address }},
 
                                     @if ($session->is_current_device)

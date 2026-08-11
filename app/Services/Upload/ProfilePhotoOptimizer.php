@@ -47,6 +47,15 @@ final class ProfilePhotoOptimizer implements ProfilePhotoOptimizerContract
      */
     private const int MAX_PIXELS = 25_000_000;
 
+    /**
+     * Das Zielverzeichnis für die Zwischendatei ist einstellbar, weil `sys_get_temp_dir()` prozessweit
+     * gilt und PHP es nach dem ersten Zugriff festhält — über die Umgebung lässt es sich nachträglich
+     * nicht mehr umlenken.
+     */
+    public function __construct(private readonly ?string $temporaryDirectory = null)
+    {
+    }
+
     public function optimize(UploadedFile $photo): UploadedFile
     {
         $contents = $photo->get();
@@ -212,7 +221,7 @@ final class ProfilePhotoOptimizer implements ProfilePhotoOptimizerContract
      */
     private function encodeAvif(GdImage $image): string
     {
-        $targetPath = tempnam(sys_get_temp_dir(), 'profile_photo_');
+        $targetPath = tempnam($this->temporaryDirectory ?? sys_get_temp_dir(), 'profile_photo_');
 
         if ($targetPath === false) {
             throw new ProfilePhotoOptimizationException(__('app.profile_photo_optimizer_temp_file_failed'));
@@ -220,7 +229,7 @@ final class ProfilePhotoOptimizer implements ProfilePhotoOptimizerContract
 
         if (!imageavif($image, $targetPath, self::AVIF_QUALITY)) {
             // tempnam() hat die Datei bereits angelegt; scheitert das Encoding,
-            // muss sie weg, sonst bleibt eine leere Waise in sys_get_temp_dir().
+            // muss sie weg, sonst bleibt eine leere Waise zurück.
             unlink($targetPath);
 
             throw new ProfilePhotoOptimizationException(__('app.profile_photo_optimizer_encode_failed'));

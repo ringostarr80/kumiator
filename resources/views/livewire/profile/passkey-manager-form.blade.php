@@ -22,11 +22,11 @@
 
         {{-- List of registered passkeys --}}
         @if ($passkeys->isEmpty())
-            <p class="text-sm text-gray-600">{{ __('app.passkeys_empty') }}</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('app.passkeys_empty') }}</p>
         @else
             <div class="space-y-3">
                 @foreach ($passkeys as $passkey)
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg"
                          wire:key="passkey-{{ $passkey->id }}">
                         @if ($editingPasskeyId === $passkey->id)
                             <div class="flex-1 mr-3" wire:key="passkey-{{ $passkey->id }}-edit-input">
@@ -53,8 +53,8 @@
                             </div>
                         @else
                             <div wire:key="passkey-{{ $passkey->id }}-info">
-                                <p class="font-medium text-sm text-gray-900">{{ $passkey->name }}</p>
-                                <p class="text-xs text-gray-500 mt-0.5">
+                                <p class="font-medium text-sm text-gray-900 dark:text-gray-100">{{ $passkey->name }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                     {{ __('app.passkey_registered_at') }}: {{ $passkey->created_at->format('d.m.Y') }}
                                     &nbsp;·&nbsp;
                                     @if ($passkey->last_used_at)
