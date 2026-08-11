@@ -38,8 +38,9 @@ jobs:
         run: composer validate --strict
 
       # --locked audits the pinned versions, so no vendor install is needed
+      # An upstream abandon marker is no vulnerability, so it must not block unrelated pull requests
       - name: Audit dependencies for known advisories
-        run: composer audit --locked
+        run: composer audit --locked --abandoned=report
 
   lint:
     name: Lint (PHP ${{ matrix.php }})
