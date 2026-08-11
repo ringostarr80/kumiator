@@ -14,7 +14,8 @@ concurrency:
 
 env:
   # ext-pdo_sqlite/ext-sqlite3 back the in-memory test database configured in phpunit.xml
-  PHP_EXTENSIONS: dom, fileinfo, iconv, mbstring, openssl, pdo_sqlite, simplexml, sqlite3, xml, zip
+  # ext-pdo_mysql lets config/database.php evaluate its SSL-CA branch instead of skipping it
+  PHP_EXTENSIONS: dom, fileinfo, iconv, mbstring, openssl, pdo_mysql, pdo_sqlite, simplexml, sqlite3, xml, zip
 
 jobs:
   composer-integrity:
