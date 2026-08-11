@@ -3,10 +3,3 @@ includes:
 
 parameters:
     phpVersion: 80500
-
-    ignoreErrors:
-        # Der Fallback wird unter 8.5 nie ausgeführt, aber trotzdem mitanalysiert
-        -
-            message: '#^Fetching deprecated class constant MYSQL_ATTR_SSL_CA of class PDO\.$#'
-            identifier: classConstant.deprecated
-            path: config/database.php

@@ -10,12 +10,7 @@ $loopbackHost = '127.0.0.1';
 $mysqlOptions = [];
 
 if (extension_loaded('pdo_mysql')) {
-    // Pdo\Mysql gibt es erst ab 8.5, dort ist im Gegenzug PDO::MYSQL_ATTR_SSL_CA deprecated
-    $sslCaAttribute = PHP_VERSION_ID >= 80_500
-        ? Mysql::ATTR_SSL_CA
-        : PDO::MYSQL_ATTR_SSL_CA;
-
-    $mysqlOptions = array_filter([$sslCaAttribute => env('MYSQL_ATTR_SSL_CA')]);
+    $mysqlOptions = array_filter([Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA')]);
 }
 
 return [
