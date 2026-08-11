@@ -22,6 +22,7 @@ jobs:
   composer-integrity:
     name: Composer manifest & advisories
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read  # Required by actions/checkout to read the repository
     steps:
@@ -46,6 +47,7 @@ jobs:
   lint:
     name: Lint (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read  # Required by actions/checkout to read the repository
     strategy:
@@ -87,6 +89,7 @@ jobs:
   phpstan:
     name: PHPStan (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read  # Required by actions/checkout to read the repository
     strategy:
@@ -126,6 +129,7 @@ jobs:
   architecture:
     name: Architecture rules
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read  # Required by actions/checkout to read the repository
     steps:
@@ -159,6 +163,7 @@ jobs:
   test:
     name: Tests (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read  # Required by actions/checkout to read the repository
     strategy:
