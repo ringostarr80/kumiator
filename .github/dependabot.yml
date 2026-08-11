@@ -15,6 +15,18 @@ updates:
       semver-minor-days: 7
       semver-major-days: 14
 
+  # A separate entry is required because the ecosystem only scans .github/workflows
+  # plus a root-level action manifest, never .github/actions subdirectories
+  - package-ecosystem: github-actions
+    directory: /.github/actions/setup-php-env
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+      semver-patch-days: 3
+      semver-minor-days: 7
+      semver-major-days: 14
+
   - package-ecosystem: "composer" # See documentation for possible values
     directory: "/" # Location of package manifests
     schedule:

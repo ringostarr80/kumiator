@@ -1,0 +1,41 @@
+name: Set up PHP with dependencies
+description: Installs PHP with the project extensions and a Composer install backed by the shared cache
+
+inputs:
+  php-version:
+    description: Version handed to shivammathur/setup-php
+    required: true
+  coverage:
+    description: Coverage driver, only the test job needs one
+    default: none
+  ini-values:
+    description: Additional php.ini settings
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+      with:
+        php-version: ${{ inputs.php-version }}
+        # ext-pdo_sqlite/ext-sqlite3 back the in-memory test database configured in phpunit.xml
+        # ext-pdo_mysql lets config/database.php evaluate its SSL-CA branch instead of skipping it
+        extensions: dom, fileinfo, iconv, mbstring, openssl, pdo_mysql, pdo_sqlite, simplexml, sqlite3, xml, zip
+        ini-values: ${{ inputs.ini-values }}
+        coverage: ${{ inputs.coverage }}
+
+    # composer install runs artisan package:discover, which boots the application
+    - name: Prepare environment file
+      shell: bash
+      run: cp .env.example .env
+
+    - name: Restore Composer cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/composer
+        key: composer-${{ inputs.php-version }}-${{ hashFiles('composer.lock') }}
+        restore-keys: composer-${{ inputs.php-version }}-
+
+    - name: Install dependencies
+      shell: bash
+      run: composer install --no-interaction --no-progress

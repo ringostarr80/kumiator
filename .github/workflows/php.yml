@@ -13,11 +13,6 @@ concurrency:
   # A pull request only needs a verdict for its latest push, every main commit keeps its own
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-env:
-  # ext-pdo_sqlite/ext-sqlite3 back the in-memory test database configured in phpunit.xml
-  # ext-pdo_mysql lets config/database.php evaluate its SSL-CA branch instead of skipping it
-  PHP_EXTENSIONS: dom, fileinfo, iconv, mbstring, openssl, pdo_mysql, pdo_sqlite, simplexml, sqlite3, xml, zip
-
 jobs:
   composer-integrity:
     name: Composer manifest & advisories
@@ -59,25 +54,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+      - uses: ./.github/actions/setup-php-env
         with:
           php-version: ${{ matrix.php }}
-          extensions: ${{ env.PHP_EXTENSIONS }}
-          coverage: none
-
-      # composer install runs artisan package:discover, which boots the application
-      - name: Prepare environment file
-        run: cp .env.example .env
-
-      - name: Restore Composer cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/composer
-          key: composer-${{ matrix.php }}-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ matrix.php }}-
-
-      - name: Install dependencies
-        run: composer install --no-interaction --no-progress
 
       # Syntax check runs against the matrix engine, so it covers both target versions
       - name: Check syntax
@@ -101,24 +80,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+      - uses: ./.github/actions/setup-php-env
         with:
           php-version: ${{ matrix.php }}
-          extensions: ${{ env.PHP_EXTENSIONS }}
-          coverage: none
-
-      - name: Prepare environment file
-        run: cp .env.example .env
-
-      - name: Restore Composer cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/composer
-          key: composer-${{ matrix.php }}-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ matrix.php }}-
-
-      - name: Install dependencies
-        run: composer install --no-interaction --no-progress
 
       # Each matrix entry picks the config carrying the matching phpVersion setting
       - name: Analyse
@@ -137,24 +101,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+      - uses: ./.github/actions/setup-php-env
         with:
           php-version: '8.4'
-          extensions: ${{ env.PHP_EXTENSIONS }}
-          coverage: none
-
-      - name: Prepare environment file
-        run: cp .env.example .env
-
-      - name: Restore Composer cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/composer
-          key: composer-8.4-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-8.4-
-
-      - name: Install dependencies
-        run: composer install --no-interaction --no-progress
 
       # phpat.neon pins no phpVersion, so the rules only need a single run
       - name: Check architecture boundaries
@@ -175,25 +124,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+      - uses: ./.github/actions/setup-php-env
         with:
           php-version: ${{ matrix.php }}
-          extensions: ${{ env.PHP_EXTENSIONS }}
-          ini-values: memory_limit=512M
           coverage: pcov
-
-      - name: Prepare environment file
-        run: cp .env.example .env
-
-      - name: Restore Composer cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/composer
-          key: composer-${{ matrix.php }}-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ matrix.php }}-
-
-      - name: Install dependencies
-        run: composer install --no-interaction --no-progress
+          ini-values: memory_limit=512M
 
       - name: Generate application key
         run: php artisan key:generate
