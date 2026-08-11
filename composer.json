@@ -94,7 +94,7 @@
         ],
         "test": [
             "@php artisan config:clear --ansi",
-            "@php artisan test --coverage --parallel"
+            "@php artisan test --coverage --parallel --min=90"
         ],
         "test:debug": [
             "@putenv XDEBUG_MODE=debug",
