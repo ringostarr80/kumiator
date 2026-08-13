@@ -5,8 +5,8 @@
 [![PHP 8.4+](https://img.shields.io/badge/PHP-8.4%2B-blue)](https://www.php.net/)
 [![Laravel](https://img.shields.io/badge/Laravel-13.x-red)](https://laravel.com/)
 [![CI Status](https://github.com/ringostarr80/kumiator/actions/workflows/php.yml/badge.svg)](https://github.com/ringostarr80/kumiator/actions/workflows/php.yml)
-[![codecov](https://codecov.io/gh/ringostarr80/kumiator/branch/main/graph/badge.svg)](https://codecov.io/gh/ringostarr80/kumiator)
-[![Quality gate](https://sonarcloud.io/api/project_badges/quality_gate?project=ringostarr80_kumiator)](https://sonarcloud.io/summary/new_code?id=ringostarr80_kumiator)
+[![codecov](https://codecov.io/gh/ringostarr80/kumiator/graph/badge.svg?token=nWqL6zWbgz)](https://codecov.io/gh/ringostarr80/kumiator)
+[![Quality gate status](https://sonarcloud.io/api/project_badges/measure?project=ringostarr80_kumiator&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ringostarr80_kumiator)
 
 Kumiator ist eine webbasierte Applikation zur zentralen Verwaltung eines Vereins.
 Sie ermöglicht die Erfassung und Pflege von Mitgliedern, Beiträgen und weiteren vereinsinternen
