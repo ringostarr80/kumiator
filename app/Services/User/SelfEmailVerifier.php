@@ -49,6 +49,11 @@ final class SelfEmailVerifier implements SelfEmailVerifierContract
             throw new SelfEmailVerificationFailedException();
         }
 
+        // SHA-1 ist hier keine Schutzfunktion, sondern eine Konsistenzprüfung:
+        // Der Hash ist aus der bekannten E-Mail-Adresse berechenbar und soll es
+        // sein — er bindet den Link nur an die Adresse, damit er nach einem
+        // E-Mail-Wechsel verfällt. Vor Fälschung schützt die signierte Route
+        // (HMAC + APP_KEY); das Format gibt Laravels VerifyEmail-Notification vor.
         if (! hash_equals(sha1($user->getEmailForVerification()), $hash)) {
             // Forensisch wertvoll: `performedOn=user` macht sichtbar, gegen
             // welches Konto die ungültigen Hashes laufen — Indikator für
