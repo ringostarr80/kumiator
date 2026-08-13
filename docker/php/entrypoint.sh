@@ -1,10 +1,10 @@
 #!/bin/sh
-# Local development only — world-writable storage and composer/npm builds
-# at container runtime have no place in production (see docs/deployment.md).
+# Local development only — composer/npm builds at container runtime have no
+# place in production (see docs/deployment.md).
 set -e
 
 # Ensure writable directories have correct permissions
-chmod -R 777 storage bootstrap/cache
+chmod -R u+rwX storage bootstrap/cache
 
 # Create SQLite database if it does not exist
 if [ ! -f database/database.sqlite ]; then
@@ -18,7 +18,7 @@ fi
 
 # Build frontend assets if not already built
 if [ ! -d public/build ]; then
-    npm ci && npm run build
+    npm ci --ignore-scripts && npm run build
 fi
 
 # Ensure the public/storage symlink exists and is relative. A committed
