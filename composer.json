@@ -94,7 +94,11 @@
         ],
         "test": [
             "@php artisan config:clear --ansi",
-            "@php artisan test --coverage --parallel --min=90"
+            "@php artisan test --coverage --parallel --min=90 --coverage-clover=coverage.xml --log-junit=junit.xml"
+        ],
+        "test:coverage-html": [
+            "@php artisan config:clear --ansi",
+            "@php artisan test --coverage --parallel --coverage-html=coverage"
         ],
         "test:debug": [
             "@putenv XDEBUG_MODE=debug",
