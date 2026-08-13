@@ -22,7 +22,7 @@ Jeder Verein hat dabei seine eigene unabhängige Instanz (URL) zur Verfügung.
 
 4. **PHPCS-Regeln (`phpcs.xml`) vor dem Schreiben prüfen**, um unnötige Lint-Roundtrips zu vermeiden.
 
-5. **`composer.json` geändert?** Dann `composer update --lock` ausführen, damit der Hash in `composer.lock` aktualisiert wird.
+5. **Hash-relevantes Feld in `composer.json` geändert?** Dann `composer update --lock` ausführen, damit der Hash in `composer.lock` aktualisiert wird. Welche Felder das sind, legt Composers `Locker::getContentHash()` fest – im Alltag `require`, `require-dev`, `extra`, `repositories`, `minimum-stability` und `config.platform`. Reine `scripts`-Änderungen lassen den Hash unberührt.
 
 ---
 

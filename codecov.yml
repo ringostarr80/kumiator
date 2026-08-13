@@ -1,0 +1,12 @@
+# Codecov's built-in defaults differ by account creation date, so the checks this repository relies on are pinned here
+# Both targets mirror the --min=90 gate the test suite already enforces
+coverage:
+  status:
+    project:
+      default:
+        target: 90%
+        # Deleting well-covered code lowers the total without anyone writing worse code
+        threshold: 1%
+    patch:
+      default:
+        target: 90%
