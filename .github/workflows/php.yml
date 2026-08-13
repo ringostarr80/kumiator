@@ -143,7 +143,9 @@ jobs:
           cache: npm
 
       - name: Install frontend dependencies
-        run: npm ci
+        # --ignore-scripts: kein Paket im Baum braucht Lifecycle-Skripte, also
+        # gibt es keinen Grund, sie einem kompromittierten Paket anzubieten
+        run: npm ci --ignore-scripts
 
       # Feature tests render layouts using @vite, which needs a built manifest
       - name: Build assets
