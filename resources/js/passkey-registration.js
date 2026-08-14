@@ -1,3 +1,8 @@
+/**
+ * @param {string} defaultName
+ * @param {string} successMessage
+ * @param {string} defaultErrorMessage
+ */
 globalThis.passkeyRegistration = function (defaultName, successMessage, defaultErrorMessage) {
     return {
         showForm: false,
@@ -21,7 +26,8 @@ globalThis.passkeyRegistration = function (defaultName, successMessage, defaultE
                 // Notify the Livewire PasskeyManagerForm to refresh its list
                 globalThis.Livewire.dispatch('passkey-registered');
             } catch (err) {
-                this.errorMessage = err.response?.data?.message ?? err.message ?? defaultErrorMessage;
+                const failure = /** @type {{ response?: { data?: { message?: string } }, message?: string }} */ (err);
+                this.errorMessage = failure.response?.data?.message ?? failure.message ?? defaultErrorMessage;
             } finally {
                 this.loading = false;
             }

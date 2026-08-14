@@ -4,10 +4,14 @@
         "target": "es2023",
         "module": "preserve",
         "moduleDetection": "force",
+        // Ohne diesen Eintrag zieht target: es2023 die DOM-Typen mit herein, die hier niemand ausführt
+        "lib": ["es2023"],
         "types": ["node"],
         "strict": true,
         "skipLibCheck": true,
-        "noEmit": true
+        "noEmit": true,
+        "allowJs": true,
+        "checkJs": true
     },
     "include": ["tests/css", "vite", "vite.config.ts", "vitest.config.ts"]
 }

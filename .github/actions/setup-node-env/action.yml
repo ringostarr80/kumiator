@@ -1,0 +1,17 @@
+name: Set up Node with dependencies
+description: Installs the Node version pinned in .nvmrc and an npm install backed by the shared cache
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        # .nvmrc keeps every workflow and local shell on the same engine
+        node-version-file: .nvmrc
+        cache: npm
+
+    - name: Install frontend dependencies
+      shell: bash
+      # --ignore-scripts: kein Paket im Baum braucht Lifecycle-Skripte, also
+      # gibt es keinen Grund, sie einem kompromittierten Paket anzubieten
+      run: npm ci --ignore-scripts

@@ -13,10 +13,17 @@ updates:
       # The Actions ecosystem does not support the semver-* variants (zizmor requires >= 7)
       default-days: 7
 
-  # A separate entry is required because the ecosystem only scans .github/workflows
-  # plus a root-level action manifest, never .github/actions subdirectories
+  # A separate entry per composite action is required because the ecosystem only scans
+  # .github/workflows plus a root-level action manifest, never .github/actions subdirectories
   - package-ecosystem: github-actions
     directory: /.github/actions/setup-php-env
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: github-actions
+    directory: /.github/actions/setup-node-env
     schedule:
       interval: weekly
     cooldown:
@@ -28,8 +35,30 @@ updates:
       interval: "weekly"
     # Wait before adopting freshly published releases to reduce the risk of
     # pulling in a compromised or yanked package version.
+    # Patch and minor deliberately share that baseline instead of soaking for a shorter
+    # period: cooldown covers version updates only, so a fix for a published advisory
+    # arrives as its own pull request no matter how long the soak lasts.
     cooldown:
       default-days: 7        # baseline for anything without a specific rule (zizmor requires >= 7)
-      semver-patch-days: 3    # patches often carry security fixes — adopt them quickly
-      semver-minor-days: 7    # minor releases get a moderate soak period
       semver-major-days: 14   # breaking changes / largest attack surface — longest soak
+    # A major stays on its own so its breaking change does not hide inside a collective pull request
+    # applies-to defaults to version updates, so a security fix keeps its own immediate pull request
+    groups:
+      composer-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+    # The major version of @types/node describes a Node major, so it has to stay on the line .nvmrc
+    # pins — otherwise tsc checks against APIs that neither CI nor a developer machine can run
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
