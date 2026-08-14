@@ -7,13 +7,14 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "test:css": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.browser.json && vitest run"
+        "test:css": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.browser.json && vitest run --coverage"
     },
     "devDependencies": {
         "@tailwindcss/forms": "^0.5.11",
         "@tailwindcss/typography": "^0.5.20",
         "@tailwindcss/vite": "^4.3.3",
         "@types/node": "^24.13.3",
+        "@vitest/coverage-v8": "^4.1.10",
         "axios": "^1.18.0",
         "concurrently": "^10.0.4",
         "laravel-vite-plugin": "^3.1.3",

@@ -1,7 +1,9 @@
 # Codecov's built-in defaults differ by account creation date, so the checks this repository relies on are pinned here
-# Both targets mirror the --min=90 gate the test suite already enforces
+# Every target mirrors the --min=90 gate the test suite already enforces
 # Codecov merges every report uploaded for a commit, so each status names the flag it
 # judges — otherwise a second suite would silently move a target meant for the PHP one
+# The front-end flag is judged on its patch alone: the existing files carry no tests, so a project
+# target would block every pull request instead of the ones that add untested code
 coverage:
   status:
     project:
@@ -16,3 +18,7 @@ coverage:
         target: 90%
         flags:
           - php
+      frontend:
+        target: 90%
+        flags:
+          - frontend

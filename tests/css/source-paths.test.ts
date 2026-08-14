@@ -46,6 +46,11 @@ describe('missingSourcePaths', () => {
         expect(missing[0]).toMatch(/resources\/viewsXX$/);
     });
 
+    /** Steht der Platzhalter vor jedem Verzeichnistrenner, bleibt als prüfbarer Ort nur das CSS-Verzeichnis. */
+    it('meldet nichts bei einem Glob-Muster ohne Verzeichnis davor', () => {
+        expect(missingSourcePaths("@source '*.blade.php';", APP_CSS)).toEqual([]);
+    });
+
     it('prüft auch den Ausschluss von @source not', () => {
         expect(missingSourcePaths("@source not '../viewsXX';", APP_CSS)).toHaveLength(1);
     });
