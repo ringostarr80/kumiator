@@ -1,0 +1,11 @@
+{
+    "$schema": "https://www.schemastore.org/tsconfig.json",
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "lib": ["es2023", "dom", "dom.iterable"],
+        // Ein eigenes Programm, weil types programmweit gilt: sonst wäre process im Browser deklariert
+        // und ein process.env.APP_URL käme erst beim Klick des Nutzers als ReferenceError heraus
+        "types": []
+    },
+    "include": ["resources/js"]
+}

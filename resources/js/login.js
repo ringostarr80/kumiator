@@ -19,10 +19,11 @@ globalThis.passkeyLogin = function (defaultErrorMessage) {
             this.errorMessage = '';
             this.loading = true;
             try {
-                const email = document.getElementById('email')?.value ?? null;
-                globalThis.location.href = await globalThis.Passkeys.authenticateWithPasskey(email);
+                const emailField = /** @type {HTMLInputElement | null} */ (document.getElementById('email'));
+                globalThis.location.href = await globalThis.Passkeys.authenticateWithPasskey(emailField?.value ?? null);
             } catch (err) {
-                this.errorMessage = err.response?.data?.message ?? defaultErrorMessage;
+                const failure = /** @type {{ response?: { data?: { message?: string } } }} */ (err);
+                this.errorMessage = failure.response?.data?.message ?? defaultErrorMessage;
             } finally {
                 this.loading = false;
             }

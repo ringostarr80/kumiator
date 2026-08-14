@@ -24,7 +24,9 @@ export async function registerPasskey(credentialName) {
     const options = PublicKeyCredential.parseCreationOptionsFromJSON(optionsResponse.data);
 
     // 2. Ask the authenticator to create a new credential
-    const credential = await navigator.credentials.create({ publicKey: options });
+    const credential = /** @type {PublicKeyCredential | null} */ (
+        await navigator.credentials.create({ publicKey: options })
+    );
 
     if (!credential) {
         throw new Error('No credential returned by the authenticator.');
@@ -54,7 +56,9 @@ export async function authenticateWithPasskey(email = null) {
     const options = PublicKeyCredential.parseRequestOptionsFromJSON(optionsResponse.data);
 
     // 2. Ask the authenticator for an assertion
-    const credential = await navigator.credentials.get({ publicKey: options });
+    const credential = /** @type {PublicKeyCredential | null} */ (
+        await navigator.credentials.get({ publicKey: options })
+    );
 
     if (!credential) {
         throw new Error('No credential returned by the authenticator.');

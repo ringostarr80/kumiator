@@ -54,6 +54,11 @@ updates:
     cooldown:
       default-days: 7
       semver-major-days: 14
+    # The major version of @types/node describes a Node major, so it has to stay on the line .nvmrc
+    # pins — otherwise tsc checks against APIs that neither CI nor a developer machine can run
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       npm-minor-patch:
         update-types: [minor, patch]
