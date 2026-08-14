@@ -1,0 +1,53 @@
+name: Frontend
+
+permissions: {}
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # A pull request only needs a verdict for its latest push, every main commit keeps its own
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  npm-integrity:
+    name: npm advisories
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read  # Required by actions/checkout to read the repository
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # setup-node-env stays out of this job: npm audit reads the lockfile, so neither the install nor
+      # the cache that action brings along would serve a single step here
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      # Every entry is a devDependency that builds the shipped assets, so omitting them would audit nothing
+      - name: Audit dependencies for known advisories
+        run: npm audit
+
+  assets:
+    name: CSS & TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read  # Required by actions/checkout to read the repository
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-node-env
+
+      # tests/css/global-setup.ts builds on its own, so no leftover artefact gets checked
+      - name: Check styles and types
+        run: npm run test:css

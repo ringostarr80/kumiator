@@ -137,15 +137,7 @@ jobs:
       - name: Generate application key
         run: php artisan key:generate
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: '24'
-          cache: npm
-
-      - name: Install frontend dependencies
-        # --ignore-scripts: kein Paket im Baum braucht Lifecycle-Skripte, also
-        # gibt es keinen Grund, sie einem kompromittierten Paket anzubieten
-        run: npm ci --ignore-scripts
+      - uses: ./.github/actions/setup-node-env
 
       # Feature tests render layouts using @vite, which needs a built manifest
       - name: Build assets
@@ -166,6 +158,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
           disable_search: true
+          # codecov.yml scopes the coverage targets to this flag
+          flags: php
           # A silently failed upload would freeze the badge on a stale value, and no status check would report it
           fail_ci_if_error: true
 
@@ -177,4 +171,5 @@ jobs:
           files: ./junit.xml
           disable_search: true
           report_type: test_results
+          flags: php
           fail_ci_if_error: true

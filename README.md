@@ -4,7 +4,8 @@
 [![License](https://img.shields.io/github/license/ringostarr80/kumiator)](LICENSE)
 [![PHP 8.4+](https://img.shields.io/badge/PHP-8.4%2B-blue)](https://www.php.net/)
 [![Laravel](https://img.shields.io/badge/Laravel-13.x-red)](https://laravel.com/)
-[![CI Status](https://github.com/ringostarr80/kumiator/actions/workflows/php.yml/badge.svg)](https://github.com/ringostarr80/kumiator/actions/workflows/php.yml)
+[![PHP CI](https://github.com/ringostarr80/kumiator/actions/workflows/php.yml/badge.svg)](https://github.com/ringostarr80/kumiator/actions/workflows/php.yml)
+[![Frontend CI](https://github.com/ringostarr80/kumiator/actions/workflows/frontend.yml/badge.svg)](https://github.com/ringostarr80/kumiator/actions/workflows/frontend.yml)
 [![codecov](https://codecov.io/gh/ringostarr80/kumiator/graph/badge.svg?token=nWqL6zWbgz)](https://codecov.io/gh/ringostarr80/kumiator)
 [![Quality gate status](https://sonarcloud.io/api/project_badges/measure?project=ringostarr80_kumiator&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ringostarr80_kumiator)
 
