@@ -9,14 +9,14 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Rejects requests whose body exceeds the configured byte limit.
+ * Weist Requests ab, deren Body das konfigurierte Byte-Limit überschreitet.
  *
- * Usage in routes:
+ * Einsatz in Routen:
  *   ->middleware('max.json.body:65536')
  *
- * The limit is given in bytes. When omitted, the default of 65 536 bytes
- * (64 KiB) is used — well above any legitimate WebAuthn response while still
- * protecting against oversized payloads being fed to the deserializer.
+ * Das Limit zählt Bytes. Ohne Angabe gelten 65 536 Bytes (64 KiB) — weit über
+ * jeder legitimen WebAuthn-Antwort und dennoch eng genug, damit keine
+ * überdimensionierten Payloads in den Deserializer laufen.
  */
 final class MaxJsonBodySize
 {

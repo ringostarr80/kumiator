@@ -26,14 +26,14 @@ use Webauthn\PublicKeyCredentialRpEntity;
 use Webauthn\PublicKeyCredentialUserEntity;
 
 /**
- * Orchestrates the WebAuthn registration (attestation) ceremony.
+ * Orchestriert die WebAuthn-Registrierungszeremonie (Attestation).
  *
- * Flow:
- *   1. Call createOptions() to get a PublicKeyCredentialCreationOptions object.
- *      Serialise it to JSON and send to the browser. Store it in the session.
- *   2. The browser calls navigator.credentials.create() and POSTs the result.
- *   3. Call verifyAndSave() with the raw JSON, the stored options, and a
- *      user-chosen name for the new passkey.
+ * Ablauf:
+ *   1. `createOptions()` liefert die PublicKeyCredentialCreationOptions. Als JSON
+ *      an den Browser schicken und in der Session ablegen.
+ *   2. Der Browser ruft `navigator.credentials.create()` auf und postet das Ergebnis.
+ *   3. `verifyAndSave()` mit dem rohen JSON, den abgelegten Optionen und dem vom
+ *      Nutzer gewählten Namen für den neuen Passkey aufrufen.
  */
 final class PasskeyRegistrationService implements PasskeyRegistrationContract
 {
@@ -45,12 +45,9 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
     }
 
     /**
-     * Build the creation options that must be sent to the browser to start the
-     * registration ceremony.
-     *
-     * The returned object must be serialised to JSON (using the WebAuthn
-     * serializer) and stored in the session so that verifyAndSave() can
-     * validate the browser response against the original challenge.
+     * Das Ergebnis muss als JSON (über den WebAuthn-Serializer) in die Session,
+     * damit `verifyAndSave()` die Browser-Antwort gegen die ursprüngliche
+     * Challenge prüfen kann.
      */
     public function createOptions(User $user): PublicKeyCredentialCreationOptions
     {
@@ -59,23 +56,23 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
             id: WebauthnConfig::rpId(),
         );
 
-        // The user handle must be a stable, opaque identifier – NOT the e-mail
-        // address. We use the primary key of the user.
+        // Der User-Handle muss ein stabiler, undurchsichtiger Bezeichner sein –
+        // KEINE E-Mail-Adresse. Wir nehmen den Primärschlüssel des Nutzers.
         $userEntity = PublicKeyCredentialUserEntity::create(
             name: $user->email,
             id: $user->getWebAuthnUserHandle(),
             displayName: $user->name,
         );
 
-        // Prefer ES256 (ECDSA P-256) which is supported by all modern passkey
-        // providers; RS256 is the fallback for Windows Hello / TPM-backed keys.
+        // ES256 (ECDSA P-256) zuerst, das beherrschen alle modernen Passkey-
+        // Anbieter; RS256 ist der Rückfall für Windows Hello / TPM-Schlüssel.
         $pubKeyCredParams = [
             PublicKeyCredentialParameters::create('public-key', ES256::ID),
             PublicKeyCredentialParameters::create('public-key', RS256::ID),
         ];
 
-        // Exclude already-registered credentials so that the same authenticator
-        // cannot be registered twice for the same user.
+        // Bereits registrierte Credentials ausschließen, damit derselbe
+        // Authenticator nicht zweimal für denselben Nutzer angelegt wird.
         $excludeCredentials = PasskeyDescriptorBuilder::fromCollection(
             $this->repository->findAllForUser($user),
         );
@@ -87,8 +84,11 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
             user: $userEntity,
             challenge: random_bytes(32),
             pubKeyCredParams: $pubKeyCredParams,
+            // `required`, weil der Login keine `allowCredentials` sendet: Ein nur
+            // serverseitig auffindbarer Passkey ließe sich nie zum Anmelden
+            // verwenden. Lieber hier sichtbar scheitern als später stumm.
             authenticatorSelection: AuthenticatorSelectionCriteria::create(
-                residentKey: AuthenticatorSelectionCriteria::RESIDENT_KEY_REQUIREMENT_PREFERRED,
+                residentKey: AuthenticatorSelectionCriteria::RESIDENT_KEY_REQUIREMENT_REQUIRED,
                 userVerification: WebauthnConfig::userVerification(),
             ),
             attestation: WebauthnConfig::attestationConveyance(),
@@ -98,13 +98,11 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
     }
 
     /**
-     * Validate the browser response and persist the new credential.
-     *
-     * @param string $rawResponse JSON string as received from the browser
-     * @param PublicKeyCredentialCreationOptions $storedOptions The options that
-     *        were stored in the session when createOptions() was called
-     * @param string $credentialName User-chosen label for this passkey
-     * @param string $host The effective domain (e.g. "localhost" or "example.com")
+     * @param string $rawResponse JSON-String, wie ihn der Browser schickt
+     * @param PublicKeyCredentialCreationOptions $storedOptions Die Optionen, die
+     *        beim Aufruf von createOptions() in der Session abgelegt wurden
+     * @param string $credentialName Vom Nutzer gewählte Bezeichnung für diesen Passkey
+     * @param string $host Die effektive Domain (z. B. "localhost" oder "example.com")
      */
     public function verifyAndSave(
         User $user,
@@ -118,7 +116,7 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
         $response = $publicKeyCredential->response;
 
         if (!($response instanceof AuthenticatorAttestationResponse)) {
-            throw new AuthenticatorResponseVerificationException(__('app.passkey_invalid_response_type'));
+            throw new AuthenticatorResponseVerificationException('invalid_response_type');
         }
 
         $validator = $this->validatorFactory->buildAttestationValidator(WebauthnConfig::appUrl());
@@ -132,7 +130,7 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // Helpers
+    // Hilfsmethoden
     // ──────────────────────────────────────────────────────────────────────────
 
     private function buildNewCredentialData(CredentialRecord $record): NewPasskeyCredentialData

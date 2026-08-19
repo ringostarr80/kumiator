@@ -9,12 +9,12 @@ use Illuminate\Http\Request;
 use Symfony\Component\Serializer\SerializerInterface;
 
 /**
- * Handles the session-based state shared across both WebAuthn ceremony steps.
+ * Hält den Session-Zustand, den beide Schritte einer WebAuthn-Zeremonie teilen.
  *
- * Both the registration and authentication ceremonies follow the same two-step
- * pattern: (1) generate options → store in session, (2) pull options from session
- * → verify response. This service centralises that session I/O so the controllers
- * stay thin and the logic is tested in one place.
+ * Registrierung und Anmeldung laufen nach demselben Zweischritt-Muster:
+ * (1) Optionen erzeugen → in die Session legen, (2) Optionen aus der Session
+ * ziehen → Antwort prüfen. Dieser Service bündelt die Session-Ein-/Ausgabe, damit
+ * die Controller dünn bleiben und die Logik an einer Stelle getestet wird.
  */
 final class WebAuthnCeremonySession implements WebAuthnCeremonySessionContract
 {
@@ -23,12 +23,9 @@ final class WebAuthnCeremonySession implements WebAuthnCeremonySessionContract
     }
 
     /**
-     * Serialize $options, persist the JSON in the session under $sessionKey,
-     * and return the null-stripped array ready for a JSON response.
-     *
-     * The stored value is wrapped with an `expires_at` Unix timestamp so that
-     * stale challenges are rejected independently of the Laravel session lifetime.
-     * The TTL is configured via `webauthn.ceremony_session_ttl` (seconds).
+     * Der abgelegte Wert trägt einen `expires_at`-Unix-Zeitstempel, damit
+     * veraltete Challenges unabhängig von der Laravel-Session-Lebensdauer
+     * verfallen. Die TTL steht in `webauthn.ceremony_session_ttl` (Sekunden).
      *
      * @return array<mixed>
      */
@@ -50,13 +47,11 @@ final class WebAuthnCeremonySession implements WebAuthnCeremonySessionContract
     }
 
     /**
-     * Pull the serialized options from the session and deserialize them.
-     *
-     * Returns null when:
-     * - the session entry is missing (never set or already consumed),
-     * - the stored envelope is malformed (corrupted or tampered session),
-     * - the challenge has expired (see `webauthn.ceremony_session_ttl`),
-     * - the JSON cannot be deserialized into the expected class.
+     * Liefert `null`, wenn:
+     * - der Session-Eintrag fehlt (nie gesetzt oder bereits verbraucht),
+     * - der abgelegte Umschlag unbrauchbar ist (defekte oder manipulierte Session),
+     * - die Challenge abgelaufen ist (siehe `webauthn.ceremony_session_ttl`),
+     * - sich das JSON nicht in die erwartete Klasse deserialisieren lässt.
      *
      * @template T of object
      * @param class-string<T> $class

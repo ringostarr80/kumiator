@@ -22,17 +22,29 @@ use Webauthn\PublicKeyCredentialRequestOptions;
 use Webauthn\TrustPath\EmptyTrustPath;
 
 /**
- * Orchestrates the WebAuthn authentication (assertion) ceremony.
+ * Orchestriert die WebAuthn-Anmeldezeremonie (Assertion).
  *
- * Flow:
- *   1. Call createOptions() to get a PublicKeyCredentialRequestOptions object.
- *      Serialise it to JSON and send to the browser. Store it in the session.
- *   2. The browser calls navigator.credentials.get() and POSTs the result.
- *   3. Call verify() with the raw JSON, the stored options and an optional
- *      user hint. On success, the matched PasskeyCredential is returned.
+ * Ablauf:
+ *   1. `createOptions()` liefert die PublicKeyCredentialRequestOptions. Als JSON
+ *      an den Browser schicken und in der Session ablegen.
+ *   2. Der Browser ruft `navigator.credentials.get()` auf und postet das Ergebnis.
+ *   3. `verify()` mit dem rohen JSON, den abgelegten Optionen und dem effektiven
+ *      Host aufrufen. Bei Erfolg kommt die passende PasskeyCredential zurück.
  */
 final class PasskeyAuthenticationService implements PasskeyAuthenticationContract
 {
+    /**
+     * Öffentlicher ES256-Schlüssel (COSE/CBOR, hex) für die Fake-Verifikation.
+     *
+     * Muss ein gültiger Kurvenpunkt sein: Einen unlesbaren Schlüssel verwirft die
+     * Zeremonie vor der Signaturprüfung, und der eingesparte Rechenweg wäre genau
+     * das Zeitsignal, das die Fake-Verifikation verwischen soll. Der zugehörige
+     * private Schlüssel wurde verworfen — geprüft wird hier nie erfolgreich.
+     */
+    private const string FAKE_COSE_PUBLIC_KEY_HEX = 'a5010203262001215820bf7616acd433fac06857842cf5cbc188'
+        . '381154d24a2eb29c80b1f814266f8cf32258200ad5a5e562ed39a217cd1ad9715aa4b45ab40e926ce23bfc55eacf4a'
+        . '4565b0f2';
+
     public function __construct(
         private readonly WebAuthnValidatorFactoryContract $validatorFactory,
         private readonly PasskeyCredentialRepositoryContract $repository,
@@ -42,45 +54,33 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
     }
 
     /**
-     * Build the request options for an authentication ceremony.
-     *
-     * When $user is provided (e.g. because the user typed their e-mail first),
-     * only that user's credentials are included in allowCredentials, which
-     * improves UX on browsers that use it for roaming authenticators.
-     *
-     * Passing no user (discoverable-credential flow) leaves allowCredentials
-     * empty so the browser can pick any eligible passkey.
+     * `allowCredentials` bleibt leer: Eine nutzerbezogene Liste würde einem
+     * unauthentifizierten Aufrufer verraten, ob zu einer E-Mail-Adresse ein
+     * Passkey existiert, und deren Credential-IDs offenlegen. Der Browser
+     * wählt stattdessen selbst aus den discoverable Passkeys der RP.
      */
-    public function createOptions(?User $user = null): PublicKeyCredentialRequestOptions
+    public function createOptions(): PublicKeyCredentialRequestOptions
     {
-        $allowCredentials = $user !== null
-            ? PasskeyDescriptorBuilder::fromCollection($this->repository->findAllForUser($user))
-            : [];
-
         $timeout = WebauthnConfig::timeoutMs();
 
         return PublicKeyCredentialRequestOptions::create(
             challenge: random_bytes(32),
             rpId: WebauthnConfig::rpId(),
-            allowCredentials: $allowCredentials,
             userVerification: WebauthnConfig::userVerification(),
             timeout: $timeout,
         );
     }
 
     /**
-     * Validate the browser assertion response.
+     * Der Audit-Eintrag für den Erfolg und das Freischaltungs-Gate sind Sache des
+     * Aufrufers, und zwar NACH abgeschlossenem Login — so erzeugt ein nicht
+     * freigeschalteter Nutzer nie einen `passkey_login_succeeded`-Eintrag.
      *
-     * Returns the matched PasskeyCredential on success. The successful-login
-     * audit entry and the approval gate are the caller's job, AFTER the login
-     * actually completes — so an unapproved user (rejected by the gate) never
-     * produces a `passkey_login_succeeded` entry.
-     * Throws AuthenticatorResponseVerificationException on client errors.
-     *
-     * @param string $rawResponse JSON string as received from the browser
-     * @param PublicKeyCredentialRequestOptions $storedOptions The options stored
-     *        in the session when createOptions() was called
-     * @param string $host The effective domain (e.g. "localhost")
+     * @param string $rawResponse JSON-String, wie ihn der Browser schickt
+     * @param PublicKeyCredentialRequestOptions $storedOptions Die Optionen, die
+     *        beim Aufruf von createOptions() in der Session abgelegt wurden
+     * @param string $host Die effektive Domain (z. B. "localhost")
+     * @throws AuthenticatorResponseVerificationException bei Client-Fehlern
      */
     public function verify(
         string $rawResponse,
@@ -92,12 +92,10 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
         $response = $publicKeyCredential->response;
 
         if (!($response instanceof AuthenticatorAssertionResponse)) {
-            throw new AuthenticatorResponseVerificationException(
-                __('app.passkey_invalid_response_type'),
-            );
+            throw new AuthenticatorResponseVerificationException('invalid_response_type');
         }
 
-        // Resolve the credential by its ID (Base64URL-encoded in the browser response)
+        // Credential über die ID auflösen (in der Browser-Antwort Base64URL-codiert)
         $credentialId = Base64UrlSafe::encodeUnpadded($publicKeyCredential->rawId);
         $passkeyModel = $this->repository->findByCredentialId($credentialId);
 
@@ -107,14 +105,18 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
 
         if ($passkeyModel === null || $credentialRecord === null) {
             $this->runFakeVerification($response, $storedOptions, $host);
-            throw new AuthenticatorResponseVerificationException(__('app.passkey_credential_not_found'));
+            throw new AuthenticatorResponseVerificationException('credential_not_found');
         }
 
-        $userHandle = $response->userHandle;
         $validator = $this->validatorFactory->buildAssertionValidator(WebauthnConfig::appUrl());
-        $updatedRecord = $validator->check($credentialRecord, $response, $storedOptions, $host, $userHandle);
 
-        // Persist updated counter and backup flags
+        // Ohne `allowCredentials` verlangt die Spezifikation, dass der Authenticator
+        // den User-Handle mitliefert; `CheckUserHandle` prüft ihn gegen den
+        // gespeicherten. Den gespeicherten selbst einzusetzen hieße, gegen sich
+        // selbst zu vergleichen — die Prüfung wäre wirkungslos.
+        $updatedRecord = $validator->check($credentialRecord, $response, $storedOptions, $host, $response->userHandle);
+
+        // Aktualisierten Counter und die Backup-Flags festschreiben
         $this->repository->updateAfterAuthentication(
             $passkeyModel,
             $this->serializer->serialize($updatedRecord, 'json'),
@@ -150,23 +152,8 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
         }
     }
 
-    /**
-     * Run a fake credential DB lookup to equalise response time between known
-     * and unknown e-mail addresses on the options endpoint.
-     *
-     * The query mirrors PasskeyCredentialRepository::findAllForUser() but uses
-     * user ID 0, which is never issued by the auto-increment primary key, so
-     * the result is always empty. This prevents timing-based e-mail enumeration.
-     */
-    public function runFakeCredentialLookup(): void
-    {
-        $fakeUser = new User();
-        $fakeUser->id = 0;
-        $this->repository->findAllForUser($fakeUser);
-    }
-
     // ──────────────────────────────────────────────────────────────────────────
-    // Helpers
+    // Hilfsmethoden
     // ──────────────────────────────────────────────────────────────────────────
 
     private function deserializeCredentialSource(PasskeyCredential $model): CredentialRecord
@@ -177,9 +164,17 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
     }
 
     /**
-     * Perform a deliberately failing verification with a fake credential to
-     * equalise response time when a credential ID is not found in the database.
-     * This prevents timing-based enumeration of valid credential IDs.
+     * Verifiziert absichtlich erfolglos gegen ein Fake-Credential, damit eine
+     * unbekannte Credential-ID die Zeremonie ebenso durchläuft wie eine bekannte.
+     *
+     * Angeglichen wird die Zeremonie ab `CheckClientDataCollectorType`. Der Schritt
+     * davor, `CheckUserHandle`, bleibt asymmetrisch: Er vergleicht gegen den
+     * gespeicherten Handle, den ein Fake-Credential nicht kennen kann. Passt der
+     * mitgeschickte Handle nicht, bricht der bekannte Pfad dort ab, während der Fake
+     * bis zur Signaturprüfung weiterläuft. Bewusst in Kauf genommen: TR-03188 NRM-7
+     * zielt auf Rückschlüsse darauf, ob ein Benutzer registriert ist, und dazu trägt
+     * eine zufällige Credential-ID nichts bei. Aus demselben Grund bildet der Fake
+     * auch die Deserialisierung des gespeicherten Records nicht nach.
      */
     private function runFakeVerification(
         AuthenticatorAssertionResponse $response,
@@ -194,22 +189,23 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
                 attestationType: 'none',
                 trustPath: new EmptyTrustPath(),
                 aaguid: Uuid::fromString('00000000-0000-0000-0000-000000000000'),
-                // 77 bytes ≈ minimum CBOR-encoded size of an ES256 (EC2/P-256) COSE public key.
-                // The value is intentionally invalid; the verification is designed to fail anyway.
-                credentialPublicKey: random_bytes(77),
-                userHandle: random_bytes(16),
+                credentialPublicKey: pack('H*', self::FAKE_COSE_PUBLIC_KEY_HEX),
+                // Handle aus der Antwort übernehmen, damit der Fake wie eine reguläre
+                // Anmeldung bis zur Signaturprüfung durchläuft; ein zufälliger würde
+                // ihn schon in `CheckUserHandle` abbrechen lassen.
+                userHandle: $response->userHandle ?? random_bytes(16),
                 counter: 0,
             );
 
             $validator = $this->validatorFactory->buildAssertionValidator(WebauthnConfig::appUrl());
-            $validator->check($fakeSource, $response, $storedOptions, $host, null);
-            // If we reach here, the fake verification unexpectedly succeeded.
-            // This is safe: the caller still throws credential_not_found.
+            $validator->check($fakeSource, $response, $storedOptions, $host, $response->userHandle);
+            // Hier anzukommen hieße, die Fake-Verifikation wäre unerwartet
+            // durchgegangen. Unkritisch: Der Aufrufer wirft ohnehin weiter.
         } catch (AuthenticatorResponseVerificationException) {
-            // Expected — the fake credential is designed to be rejected.
+            // Erwartet — das Fake-Credential ist auf Ablehnung ausgelegt.
         } catch (\Throwable $e) {
-            // Unexpected error (e.g. library incompatibility) — log it, but do not
-            // rethrow. The caller denies access regardless.
+            // Unerwarteter Fehler (etwa eine Inkompatibilität der Bibliothek):
+            // melden, aber nicht weiterwerfen. Der Aufrufer verweigert so oder so.
             report($e);
         }
     }

@@ -166,8 +166,13 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
      *
      * @param string $reason Stabiler Maschinen-Code des Fehlerpfads (`verification_failed`, `internal_error`).
      * @param string $rawBody Roh-Body des Authenticate-Requests.
+     * @param string|null $detail Wortlaut der WebAuthn-Bibliothek oder, wo die Zeremonie an einer
+     *        eigenen Prüfung scheitert, ein fester Code. Nie übersetzt: Der Wert bleibt dem Browser
+     *        vorenthalten, damit die Antwort den Abbruchgrund nicht verrät, und muss über Requests
+     *        hinweg vergleichbar bleiben — sonst gäbe es keine Spur mehr, an welchem Schritt es
+     *        scheiterte.
      */
-    public static function recordFailedLoginActivity(string $reason, string $rawBody): void
+    public static function recordFailedLoginActivity(string $reason, string $rawBody, ?string $detail = null): void
     {
         $properties = ['failure_reason' => $reason];
 
@@ -175,6 +180,10 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
 
         if ($credentialIdHash !== null) {
             $properties['credential_id_hash'] = $credentialIdHash;
+        }
+
+        if ($detail !== null) {
+            $properties['failure_detail'] = $detail;
         }
 
         try {
@@ -206,14 +215,23 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
      * gemeldet, statt den HTTP-Response-Pfad des Aufrufers zu unterbrechen.
      *
      * @param string $reason Stabiler Maschinen-Code des Fehlerpfads (`verification_failed`, `internal_error`).
+     * @param string|null $detail Wortlaut der WebAuthn-Bibliothek oder ein fester Code aus einer
+     *        eigenen Prüfung; nie übersetzt, damit die Einträge vergleichbar bleiben. Der Browser
+     *        sieht ihn nicht.
      */
-    public static function recordFailedRegistrationActivity(User $user, string $reason): void
+    public static function recordFailedRegistrationActivity(User $user, string $reason, ?string $detail = null): void
     {
+        $properties = ['failure_reason' => $reason];
+
+        if ($detail !== null) {
+            $properties['failure_detail'] = $detail;
+        }
+
         try {
             Activity::useLog(ActivityChannel::PASSKEY->value)
                 ->event(ActivityEvent::PASSKEY_REGISTRATION_FAILED->value)
                 ->causedBy($user)
-                ->withProperties(['failure_reason' => $reason])
+                ->withProperties($properties)
                 ->log('');
         } catch (\Throwable $e) {
             report($e);

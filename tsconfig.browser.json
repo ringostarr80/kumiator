@@ -7,5 +7,5 @@
         // und ein process.env.APP_URL käme erst beim Klick des Nutzers als ReferenceError heraus
         "types": []
     },
-    "include": ["resources/js"]
+    "include": ["resources/js", "tests/js"]
 }

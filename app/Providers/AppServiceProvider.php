@@ -191,8 +191,9 @@ class AppServiceProvider extends ServiceProvider
                 ->onFailure(static fn () => $pinger->ping($slug, HealthcheckPingPhase::Failure));
         });
 
-        // Bremst E-Mail-Enumeration über das `allowCredentials`-Feld, ohne legitime
-        // UX zu treffen — ein echter Login braucht höchstens einen Options-Call.
+        // Jeder Aufruf erzeugt eine Challenge und schreibt sie in die Session; das
+        // Limit deckelt diesen Aufwand, ohne legitime UX zu treffen — ein echter
+        // Login braucht höchstens einen Options-Call.
         RateLimiter::for(
             'passkey-authenticate-options',
             static fn (Request $request): Limit => Limit::perMinute(20)->by($request->ip()),

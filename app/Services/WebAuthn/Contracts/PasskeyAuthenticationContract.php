@@ -10,7 +10,7 @@ use Webauthn\PublicKeyCredentialRequestOptions;
 
 interface PasskeyAuthenticationContract
 {
-    public function createOptions(?User $user = null): PublicKeyCredentialRequestOptions;
+    public function createOptions(): PublicKeyCredentialRequestOptions;
 
     public function verify(
         string $rawResponse,
@@ -27,11 +27,4 @@ interface PasskeyAuthenticationContract
      * und würde sonst doppelt gezählt.
      */
     public function loginAuthenticatedUser(User $user): void;
-
-    /**
-     * Run a fake credential DB lookup to equalise response time between known
-     * and unknown e-mail addresses, preventing timing-based e-mail enumeration
-     * on the options endpoint.
-     */
-    public function runFakeCredentialLookup(): void;
 }

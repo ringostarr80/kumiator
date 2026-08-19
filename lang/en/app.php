@@ -214,14 +214,14 @@ return [
     'passkey_never_used' => 'Never used',
     'sign_in_with_passkey' => 'Sign in with Passkey',
     'passkey_auth_error' => 'Passkey authentication failed. Please try again.',
-    'passkey_credential_not_found' => 'Credential not found.',
-    'passkey_invalid_response_type' => 'Invalid authenticator response type for authentication.',
-    'passkey_orphaned_credential' => 'Credential record references a non-existent user (data integrity violation).',
     'passkey_session_expired' => 'Authentication session expired. Please try again.',
     'passkey_registration_session_expired' => 'Registration session expired. Please try again.',
     'passkey_empty_request' => 'Empty request body.',
     'passkey_authentication_failed' => 'Authentication failed.',
     'passkey_registration_failed' => 'Passkey registration failed.',
+    'passkey_registration_server_error' => 'The passkey could not be saved. Please try again later.',
+    'passkey_registration_aborted' => 'The passkey was not created. The process may have been cancelled'
+        . ' — or, if you are using a security key, it may be out of space.',
     'unsupported_media_type' => 'Unsupported Media Type.',
     'request_payload_too_large' => 'Request payload too large.',
 

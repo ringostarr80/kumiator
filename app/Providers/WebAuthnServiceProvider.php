@@ -22,11 +22,11 @@ use Webauthn\AttestationStatement\NoneAttestationStatementSupport;
 use Webauthn\Denormalizer\WebauthnSerializerFactory;
 
 /**
- * Registers all WebAuthn-related bindings in the service container.
+ * Registriert alle WebAuthn-Bindungen im Service-Container.
  *
- * The WebAuthn serializer is a singleton because building it via the
- * Symfony normalizer chain is relatively expensive and it is stateless.
- * The other services are resolved freshly each request (transient).
+ * Der WebAuthn-Serializer ist ein Singleton, weil sein Aufbau über die
+ * Normalizer-Kette von Symfony vergleichsweise teuer und er selbst zustandslos
+ * ist. Die übrigen Services entstehen pro Request neu.
  */
 final class WebAuthnServiceProvider extends ServiceProvider
 {
@@ -77,6 +77,6 @@ final class WebAuthnServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // no boot-time work needed
+        // beim Booten ist nichts zu tun
     }
 }

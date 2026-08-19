@@ -15,12 +15,11 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
- * Livewire component that lists a user's passkeys and handles deletion.
+ * Listet die Passkeys eines Nutzers auf und löscht sie.
  *
- * Registration is initiated client-side via JavaScript (passkeys.js) and
- * completed via the JSON API endpoints. After registration the JS dispatches
- * a "passkey-registered" browser event, which triggers onPasskeyRegistered()
- * to refresh the list without a full page reload.
+ * Die Registrierung startet clientseitig im JavaScript und läuft über die
+ * JSON-Endpunkte. Danach löst das JavaScript das Browser-Event
+ * "passkey-registered" aus, worauf die Liste ohne vollen Seiten-Reload neu lädt.
  */
 class PasskeyManagerForm extends Component
 {
@@ -51,10 +50,6 @@ class PasskeyManagerForm extends Component
         $this->loadPasskeys();
     }
 
-    /**
-     * Switch the row of the given passkey into rename-edit mode and prefill
-     * the input with the current name.
-     */
     public function startRenaming(string $passkeyId): void
     {
         $passkey = $this->repository->findByIdOrFail($passkeyId);
@@ -66,9 +61,6 @@ class PasskeyManagerForm extends Component
         $this->resetValidation();
     }
 
-    /**
-     * Leave rename-edit mode without persisting changes.
-     */
     public function cancelRenaming(): void
     {
         $this->editingPasskeyId = null;
@@ -76,10 +68,6 @@ class PasskeyManagerForm extends Component
         $this->resetValidation();
     }
 
-    /**
-     * Persist the new name for the currently-edited passkey. Authorization
-     * is delegated to PasskeyCredentialPolicy.
-     */
     public function renamePasskey(): void
     {
         $this->validate([
@@ -104,9 +92,6 @@ class PasskeyManagerForm extends Component
         session()->flash('passkey_renamed', true);
     }
 
-    /**
-     * Delete a passkey. Authorization is delegated to PasskeyCredentialPolicy.
-     */
     public function deletePasskey(string $passkeyId): void
     {
         $passkey = $this->repository->findByIdOrFail($passkeyId);

@@ -7,18 +7,17 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Validates the JSON body for the passkey registration store endpoint.
+ * Prüft den JSON-Body des Endpunkts, der einen neuen Passkey speichert.
  *
- * The `name` field is optional. When present it must be a non-empty string
- * of at most 80 characters (matching the maxlength enforced by the UI).
- * When omitted or empty the controller falls back to the localised default
- * name for the new passkey.
+ * `name` ist optional: Ist es gesetzt, muss es eine nicht-leere Zeichenkette mit
+ * höchstens 80 Zeichen sein (passend zum `maxlength` der Oberfläche). Fehlt es
+ * oder ist es leer, greift im Controller der übersetzte Standardname.
  */
 final class PasskeyStoreRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Route-level middleware (auth) handles access control.
+        // Den Zugriff regelt die `auth`-Middleware der Route.
         return true;
     }
 

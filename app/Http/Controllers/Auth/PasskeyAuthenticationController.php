@@ -6,9 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Config\Vendor\Webauthn\WebauthnConfig;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\PasskeyAuthenticateOptionsRequest;
 use App\Models\PasskeyCredential;
-use App\Models\User;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
 use App\Services\WebAuthn\Contracts\WebAuthnCeremonySessionContract;
@@ -19,15 +17,15 @@ use Webauthn\Exception\AuthenticatorResponseVerificationException;
 use Webauthn\PublicKeyCredentialRequestOptions;
 
 /**
- * Handles the passkey authentication (assertion) ceremony for guests.
+ * Wickelt die Passkey-Anmeldezeremonie (Assertion) für Gäste ab.
  *
- * Endpoints:
- *   GET /passkeys/authenticate/options – generate and return request options
- *   POST /passkeys/authenticate – verify browser response and log in
+ * Endpunkte:
+ *   GET /passkeys/authenticate/options – erzeugt und liefert die Request-Optionen
+ *   POST /passkeys/authenticate – prüft die Browser-Antwort und meldet an
  */
 final class PasskeyAuthenticationController extends Controller
 {
-    /** Session key used to store the pending request options. */
+    /** Session-Schlüssel für die noch offenen Request-Optionen. */
     private const SESSION_KEY = 'webauthn.authentication.options';
 
     public function __construct(
@@ -38,37 +36,19 @@ final class PasskeyAuthenticationController extends Controller
     }
 
     /**
-     * Generate PublicKeyCredentialRequestOptions and store them in the session.
-     *
-     * An optional `email` query parameter narrows down the allowed credentials
-     * to a specific user, improving UX for non-discoverable passkeys.
-     * When omitted, the browser can use any available passkey (discoverable flow).
+     * Der Endpunkt kennt keine Eingabe: Die Optionen sind für jeden Aufrufer
+     * identisch, damit die Antwort nichts über registrierte Konten verrät.
      */
-    public function options(PasskeyAuthenticateOptionsRequest $request): JsonResponse
+    public function options(Request $request): JsonResponse
     {
-        $user = null;
-
-        /** @var ?string $email */
-        $email = $request->validated()['email'] ?? null;
-
-        if ($email !== null) {
-            $user = User::queryByEmail($email)->first();
-
-            if ($user === null) {
-                $this->authenticationService->runFakeCredentialLookup();
-            }
-        }
-
-        $options = $this->authenticationService->createOptions($user);
+        $options = $this->authenticationService->createOptions();
 
         return response()->json($this->ceremonySession->storeOptions($options, self::SESSION_KEY, $request));
     }
 
     /**
-     * Verify the browser's assertion response and log in the user.
-     *
-     * The request body must be the raw JSON from the browser.
-     * On success, returns a JSON object with a redirect URL.
+     * Der Request-Body muss das rohe JSON des Browsers sein. Bei Erfolg steht in
+     * der Antwort eine Redirect-URL.
      */
     public function authenticate(Request $request): JsonResponse
     {
@@ -98,9 +78,16 @@ final class PasskeyAuthenticationController extends Controller
                 host: WebauthnConfig::effectiveHost(),
             );
         } catch (AuthenticatorResponseVerificationException $e) {
-            PasskeyCredential::recordFailedLoginActivity('verification_failed', $rawResponse);
+            PasskeyCredential::recordFailedLoginActivity('verification_failed', $rawResponse, $e->getMessage());
 
-            return response()->json(['message' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+            // Immer derselbe Text, egal woran die Zeremonie scheiterte: Die Gründe
+            // unterscheiden „Credential unbekannt“ von „Signatur falsch“ und verrieten
+            // damit im Klartext, was die Fake-Verifikation über den Zeitkanal gerade
+            // verbirgt. Der Grund steht nur noch im Forensik-Log.
+            return response()->json(
+                ['message' => __('app.passkey_auth_error')],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
         } catch (\Throwable $e) {
             report($e);
             PasskeyCredential::recordFailedLoginActivity('internal_error', $rawResponse);
@@ -116,15 +103,15 @@ final class PasskeyAuthenticationController extends Controller
         if ($user === null) {
             // Credential ohne Owner ist ein Integritätsbruch (der FK verhindert
             // ihn praktisch); wie eine fehlgeschlagene Verifikation behandeln.
-            PasskeyCredential::recordFailedLoginActivity('verification_failed', $rawResponse);
+            PasskeyCredential::recordFailedLoginActivity('verification_failed', $rawResponse, 'orphaned_credential');
 
             return response()->json(
-                ['message' => __('app.passkey_credential_not_found')],
+                ['message' => __('app.passkey_auth_error')],
                 Response::HTTP_UNPROCESSABLE_ENTITY,
             );
         }
 
-        // Respect the approval workflow: only approved users may log in.
+        // Nur freigeschaltete Konten dürfen sich anmelden.
         // Audit-Eintrag VOR dem 401: hier ist die Identität durch die
         // WebAuthn-Verifikation eindeutig belegt (Counter geprüft, Credential
         // dem User zugeordnet) — der Eintrag ist daher mit Causer/Subject

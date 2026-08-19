@@ -45,7 +45,7 @@
             </div>
         </form>
 
-        {{-- Passkey login --}}
+        {{-- Passkey-Anmeldung --}}
         <div x-data="passkeyLogin('{{ __('app.passkey_auth_error') }}')" class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
             <x-secondary-button
                 type="button"

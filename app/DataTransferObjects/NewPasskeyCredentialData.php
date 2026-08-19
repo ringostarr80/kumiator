@@ -5,21 +5,21 @@ declare(strict_types=1);
 namespace App\DataTransferObjects;
 
 /**
- * Carries the data extracted from a WebAuthn registration ceremony
- * that the repository needs to persist a new passkey credential.
+ * Trägt die Daten aus einer abgeschlossenen Registrierungszeremonie, die das
+ * Repository zum Anlegen eines neuen Passkeys braucht.
  *
- * This DTO decouples the repository from the WebAuthn library types.
+ * Das DTO entkoppelt das Repository von den Typen der WebAuthn-Bibliothek.
  */
 final readonly class NewPasskeyCredentialData
 {
     /**
-     * @param string $credentialId Base64URL-encoded (no padding) raw credential ID.
-     * @param string $serializedCredentialSource Full PublicKeyCredentialSource serialised to JSON.
-     * @param int $counter Signature counter reported by the authenticator.
-     * @param array<string> $transports Authenticator transport hints (e.g. "internal", "usb").
-     * @param bool $backupEligible Whether the credential supports backup/sync (BE flag).
-     * @param bool $backupState Whether the credential is currently backed up (BS flag).
-     * @param string $aaguid Authenticator Attestation GUID as RFC 4122 UUID string.
+     * @param string $credentialId Rohe Credential-ID, Base64URL-codiert (ohne Padding).
+     * @param string $serializedCredentialSource Vollständiger CredentialRecord als JSON.
+     * @param int $counter Signaturzähler, wie ihn der Authenticator meldet.
+     * @param array<string> $transports Transport-Hinweise des Authenticators (z. B. "internal", "usb").
+     * @param bool $backupEligible Ob das Credential Backup/Sync beherrscht (BE-Flag).
+     * @param bool $backupState Ob das Credential derzeit gesichert ist (BS-Flag).
+     * @param string $aaguid Authenticator Attestation GUID als UUID-String nach RFC 4122.
      */
     public function __construct(
         public string $credentialId,

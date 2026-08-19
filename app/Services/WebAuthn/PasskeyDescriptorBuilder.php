@@ -10,10 +10,7 @@ use ParagonIE\ConstantTime\Base64UrlSafe;
 use Webauthn\PublicKeyCredentialDescriptor;
 
 /**
- * Builds PublicKeyCredentialDescriptors from PasskeyCredential models.
- *
- * Used by both the registration and authentication services to populate
- * excludeCredentials / allowCredentials in WebAuthn ceremony options.
+ * Baut PublicKeyCredentialDescriptors aus PasskeyCredential-Modellen.
  */
 final class PasskeyDescriptorBuilder
 {
@@ -30,7 +27,7 @@ final class PasskeyDescriptorBuilder
         );
     }
 
-    public static function fromCredential(PasskeyCredential $credential): PublicKeyCredentialDescriptor
+    private static function fromCredential(PasskeyCredential $credential): PublicKeyCredentialDescriptor
     {
         return PublicKeyCredentialDescriptor::create(
             type: 'public-key',

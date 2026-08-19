@@ -23,11 +23,13 @@ globalThis.passkeyRegistration = function (defaultName, successMessage, defaultE
                 this.successMessage = successMessage;
                 this.showForm = false;
                 this.credentialName = '';
-                // Notify the Livewire PasskeyManagerForm to refresh its list
+                // Der Livewire-Komponente sagen, dass sie ihre Liste neu laden soll
                 globalThis.Livewire.dispatch('passkey-registered');
             } catch (err) {
-                const failure = /** @type {{ response?: { data?: { message?: string } }, message?: string }} */ (err);
-                this.errorMessage = failure.response?.data?.message ?? failure.message ?? defaultErrorMessage;
+                // `err.message` bleibt bewusst außen vor: Schlägt schon der Browser fehl,
+                // steht dort der englische DOMException-Text.
+                const failure = /** @type {{ response?: { data?: { message?: string } } }} */ (err);
+                this.errorMessage = failure.response?.data?.message ?? defaultErrorMessage;
             } finally {
                 this.loading = false;
             }

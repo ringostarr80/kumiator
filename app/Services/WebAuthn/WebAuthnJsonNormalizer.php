@@ -5,21 +5,17 @@ declare(strict_types=1);
 namespace App\Services\WebAuthn;
 
 /**
- * Strips null values from a decoded WebAuthn options array before sending it
- * to the browser.
+ * Entfernt `null`-Werte aus den WebAuthn-Optionen, bevor sie an den Browser gehen.
  *
- * The PHP webauthn-lib serializer includes optional fields as null when they
- * are not configured (e.g. rp.id, authenticatorAttachment), but the native
- * browser API parseCreationOptionsFromJSON / parseRequestOptionsFromJSON
- * coerces null to the string "null" via WebIDL, causing RP ID mismatches and
- * other ceremony errors.
+ * Der Serializer der webauthn-lib schreibt nicht konfigurierte Felder als `null`
+ * mit (etwa `rp.id` oder `authenticatorAttachment`). Die Browser-API
+ * `parseCreationOptionsFromJSON` / `parseRequestOptionsFromJSON` macht daraus
+ * über WebIDL die Zeichenkette "null" — das führt zu RP-ID-Mismatches und
+ * anderen Zeremonie-Fehlern.
  */
 final class WebAuthnJsonNormalizer
 {
     /**
-     * Decode a serialised WebAuthn options JSON string, strip null values,
-     * and return the resulting array for a JSON response.
-     *
      * @return array<mixed>
      */
     public static function normalizeOptionsJson(string $json): array
@@ -34,10 +30,10 @@ final class WebAuthnJsonNormalizer
     }
 
     /**
-     * Recursively remove null values from a decoded JSON structure.
+     * Arbeitet rekursiv, weil die Optionen verschachtelte Objekte enthalten.
      *
-     * @param mixed $data Decoded JSON value (array, scalar, or null)
-     * @return mixed The same structure with all null values removed
+     * @param mixed $data Dekodierter JSON-Wert (Array, Skalar oder null)
+     * @return mixed Dieselbe Struktur ohne `null`-Werte
      */
     public static function stripNulls(mixed $data): mixed
     {
