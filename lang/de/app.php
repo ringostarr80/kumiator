@@ -220,15 +220,18 @@ return [
     'passkey_never_used' => 'Noch nicht verwendet',
     'sign_in_with_passkey' => 'Mit Passkey anmelden',
     'passkey_auth_error' => 'Passkey-Anmeldung fehlgeschlagen. Bitte versuche es erneut.',
-    'passkey_credential_not_found' => 'Passkey nicht gefunden.',
-    'passkey_invalid_response_type' => 'Ungültiger Authentifikator-Antworttyp für die Authentifizierung.',
-    'passkey_orphaned_credential' => 'Der Credential-Datensatz verweist auf einen nicht vorhandenen Benutzer'
-        . ' (Datenintegritätsverletzung).',
     'passkey_session_expired' => 'Authentifizierungs-Sitzung abgelaufen. Bitte versuche es erneut.',
     'passkey_registration_session_expired' => 'Registrierungs-Sitzung abgelaufen. Bitte versuche es erneut.',
     'passkey_empty_request' => 'Leerer Anfrage-Body.',
     'passkey_authentication_failed' => 'Authentifizierung fehlgeschlagen.',
     'passkey_registration_failed' => 'Passkey-Registrierung fehlgeschlagen.',
+    'passkey_registration_server_error' => 'Der Passkey konnte nicht gespeichert werden. Bitte versuche es'
+        . ' später erneut.',
+    // Abbruch, Timeout und ein voller Sicherheitsschlüssel kommen ununterscheidbar als
+    // `NotAllowedError` an, und der Text dient zugleich als Ausweichtext für jeden Fehler
+    // ohne Server-Antwort. Deshalb beide Ursachen nur als Möglichkeit nennen.
+    'passkey_registration_aborted' => 'Der Passkey wurde nicht angelegt. Möglicherweise wurde der Vorgang'
+        . ' abgebrochen — oder, falls du einen Sicherheitsschlüssel verwendest, ist dort kein Platz mehr frei.',
     'unsupported_media_type' => 'Nicht unterstützter Medientyp.',
     'request_payload_too_large' => 'Die Anfrage ist zu groß.',
 

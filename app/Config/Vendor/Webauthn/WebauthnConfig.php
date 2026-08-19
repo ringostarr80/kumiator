@@ -8,11 +8,11 @@ use Webauthn\AuthenticatorSelectionCriteria;
 use Webauthn\PublicKeyCredentialCreationOptions;
 
 /**
- * Typed accessor for the `config/webauthn.php` configuration.
+ * Getypter Zugriff auf `config/webauthn.php`.
  *
- * Using raw `config()` calls throughout the service layer returns `mixed` and
- * requires casts that PHPStan rejects at level max. Centralising the access
- * here keeps the services clean and the types explicit.
+ * Rohe `config()`-Aufrufe quer durch die Service-Schicht liefern `mixed` und
+ * verlangen Casts, die PHPStan auf Level max ablehnt. Der gebündelte Zugriff
+ * hält die Services frei davon und die Typen explizit.
  */
 final class WebauthnConfig
 {
@@ -26,18 +26,16 @@ final class WebauthnConfig
     }
 
     /**
-     * Returns the explicitly configured RP ID (effective domain), or null when unset.
+     * SICHERHEIT: Die RP-ID **muss** die effektive Domain (oder ein registrierbares
+     * Suffix davon) sein, unter der die App ausgeliefert wird. Läuft sie etwa auf
+     * `app.example.com`, sind `app.example.com` und `example.com` gültig.
      *
-     * SECURITY: The RP ID **must** be the effective domain (or a registrable
-     * suffix of it) from which the app is served. For example, if the app runs
-     * on `app.example.com`, valid RP IDs are `app.example.com` or `example.com`.
-     *
-     * Origin / RP ID validation is delegated to webauthn-lib. A misconfigured
-     * RP ID will cause all ceremonies to fail (safe), but an overly broad RP ID
-     * (e.g. a shared parent domain) could allow sibling subdomains to replay
-     * assertions. Set `WEBAUTHN_RP_ID` in `.env` to the narrowest domain that
-     * covers all app origins. Leave unset to auto-derive from `APP_URL` via
-     * {@see self::effectiveHost()}.
+     * Die Prüfung von Origin und RP-ID übernimmt die webauthn-lib. Eine falsch
+     * gesetzte RP-ID lässt jede Zeremonie scheitern (ungefährlich), eine zu weit
+     * gefasste (etwa eine gemeinsame Eltern-Domain) erlaubt dagegen benachbarten
+     * Subdomains, Assertions erneut einzuspielen. `WEBAUTHN_RP_ID` in `.env` auf
+     * die engste Domain setzen, die alle Origins der App abdeckt. Ohne Wert wird
+     * sie aus `APP_URL` abgeleitet.
      */
     public static function rpId(): ?string
     {
@@ -49,7 +47,7 @@ final class WebauthnConfig
     }
 
     /**
-     * Returns the timeout in milliseconds (minimum 1 ms, default 60 000 ms).
+     * Mindestens 1 ms, im Zweifel 60 000 ms.
      *
      * @return positive-int
      */
@@ -90,11 +88,9 @@ final class WebauthnConfig
     }
 
     /**
-     * Returns the effective RP host used for WebAuthn validator calls.
-     *
-     * Prefers the explicit `relying_party.id` from config. Falls back to the
-     * host component of `app.url`. Returns an empty string when neither is set,
-     * which will cause the library to reject the assertion – a safe failure.
+     * Bevorzugt die explizite `relying_party.id` aus der Konfiguration, sonst den
+     * Host-Anteil von `app.url`. Fehlt beides, kommt eine leere Zeichenkette
+     * zurück — die Bibliothek weist die Assertion dann ab, was der sichere Ausgang ist.
      */
     public static function effectiveHost(): string
     {

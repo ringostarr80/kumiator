@@ -26,22 +26,21 @@ Route::get('/locale/{locale}', [LocaleController::class, 'switch'])->name('local
 Route::get('/', static fn () => view('welcome'));
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Passkey authentication (guests only)
+// Passkey-Anmeldung (nur für Gäste)
 //
-// Note: Although these endpoints accept JSON, they are registered under the
-// "web" middleware group (via routes/web.php) and therefore covered by
-// VerifyCsrfToken. Axios sends the X-XSRF-TOKEN header automatically, so
-// CSRF protection is fully active. The JSON Content-Type also prevents
-// plain HTML form submissions from cross-origin sites.
+// Die Endpunkte sprechen JSON, liegen aber in der `web`-Middleware-Gruppe und
+// damit hinter VerifyCsrfToken; Axios schickt den X-XSRF-TOKEN-Header von
+// selbst. Der JSON-Content-Type verhindert zusätzlich, dass ein einfaches
+// HTML-Formular von einer fremden Seite aus posten kann.
 // ──────────────────────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(static function (): void {
-    // Returns PublicKeyCredentialRequestOptions JSON for the browser.
-    // Rate-limited to slow down e-mail enumeration via the allowCredentials field.
+    // Liefert die PublicKeyCredentialRequestOptions als JSON an den Browser.
+    // Rate-Limit, weil jeder Aufruf eine Challenge erzeugt und in die Session schreibt.
     Route::get('/passkeys/authenticate/options', [PasskeyAuthenticationController::class, 'options'])
         ->middleware('throttle:passkey-authenticate-options')
         ->name('passkeys.authenticate.options');
 
-    // Verifies the assertion and logs the user in
+    // Prüft die Assertion und meldet den Nutzer an
     Route::post('/passkeys/authenticate', [PasskeyAuthenticationController::class, 'authenticate'])
         ->middleware(['throttle:passkey-authenticate', 'max.json.body'])
         ->name('passkeys.authenticate');

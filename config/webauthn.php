@@ -9,15 +9,15 @@ return [
     | Relying Party
     |--------------------------------------------------------------------------
     |
-    | The Relying Party identifies this application to the authenticator.
-    | The ID must match the effective domain (or a registrable domain suffix)
-    | of the origin from which the WebAuthn ceremony is initiated.
+    | Die Relying Party weist diese Anwendung gegenüber dem Authenticator aus.
+    | Die ID muss der effektiven Domain (oder einem registrierbaren Suffix davon)
+    | des Origins entsprechen, von dem die WebAuthn-Zeremonie ausgeht.
     |
     */
 
     'relying_party' => [
         'name' => env('WEBAUTHN_RP_NAME', env('APP_NAME', 'Kumiator')),
-        'id' => env('WEBAUTHN_RP_ID', null), // null = derived from request host
+        'id' => env('WEBAUTHN_RP_ID', null), // null = wird aus dem Request-Host abgeleitet
     ],
 
     /*
@@ -25,8 +25,8 @@ return [
     | Timeout
     |--------------------------------------------------------------------------
     |
-    | The time in milliseconds the browser will wait for a user interaction
-    | before aborting the WebAuthn ceremony.
+    | Zeit in Millisekunden, die der Browser auf eine Nutzerinteraktion wartet,
+    | bevor er die WebAuthn-Zeremonie abbricht.
     |
     */
 
@@ -37,11 +37,11 @@ return [
     | Ceremony Session TTL
     |--------------------------------------------------------------------------
     |
-    | How long (in seconds) the server-side ceremony options remain valid in
-    | the session. If the user does not complete the WebAuthn gesture within
-    | this window, the stored challenge is treated as expired and the ceremony
-    | must be restarted. Should be slightly longer than `timeout` (ms above)
-    | to account for network latency.
+    | Wie lange (in Sekunden) die serverseitigen Zeremonie-Optionen in der Session
+    | gültig bleiben. Vollzieht der Nutzer die WebAuthn-Geste nicht in diesem
+    | Fenster, gilt die abgelegte Challenge als abgelaufen und die Zeremonie muss
+    | neu beginnen. Sollte etwas über `timeout` (Millisekunden, siehe oben) liegen,
+    | um Netzwerklatenz aufzufangen.
     |
     */
 
@@ -52,11 +52,11 @@ return [
     | Attestation Conveyance
     |--------------------------------------------------------------------------
     |
-    | Controls whether the authenticator should provide attestation.
-    | 'none' is the recommended default for passkeys as it maximises
-    | compatibility and does not expose device information.
+    | Steuert, ob der Authenticator eine Attestation liefern soll.
+    | 'none' ist für Passkeys der empfohlene Standard: größte Kompatibilität,
+    | und es werden keine Geräteinformationen preisgegeben.
     |
-    | Possible values: 'none', 'indirect', 'direct', 'enterprise'
+    | Mögliche Werte: 'none', 'indirect', 'direct', 'enterprise'
     |
     */
 
@@ -67,10 +67,10 @@ return [
     | User Verification
     |--------------------------------------------------------------------------
     |
-    | Controls whether user verification (biometric / PIN) is required.
-    | 'preferred' asks the authenticator to verify the user if it can.
+    | Steuert, ob eine Nutzerverifikation (Biometrie / PIN) verlangt wird.
+    | 'preferred' bittet den Authenticator, den Nutzer zu prüfen, sofern er kann.
     |
-    | Possible values: 'required', 'preferred', 'discouraged'
+    | Mögliche Werte: 'required', 'preferred', 'discouraged'
     |
     */
 

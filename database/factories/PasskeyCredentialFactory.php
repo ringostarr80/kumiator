@@ -48,9 +48,11 @@ class PasskeyCredentialFactory extends Factory
                 uvInitialized: $source->uvInitialized,
             );
 
-            $credential->updateQuietly([
-                'credential_public_key' => $serializer->serialize($corrected, 'json'),
-            ]);
+            PasskeyCredential::withoutEvents(
+                fn (): bool => $credential->updateOrFail([
+                    'credential_public_key' => $serializer->serialize($corrected, 'json'),
+                ]),
+            );
         });
     }
 
@@ -59,11 +61,11 @@ class PasskeyCredentialFactory extends Factory
      */
     public function definition(): array
     {
-        // Generate a random credential ID (32 bytes → Base64URL)
+        // Zufällige Credential-ID erzeugen (32 Bytes → Base64URL)
         $credentialIdBytes = random_bytes(32);
         $credentialId = Base64UrlSafe::encodeUnpadded($credentialIdBytes);
 
-        // Build a minimal PublicKeyCredentialSource and serialise it for storage
+        // Minimalen CredentialRecord bauen und für die Ablage serialisieren
         $credentialRecord = CredentialRecord::create(
             publicKeyCredentialId: $credentialIdBytes,
             type: 'public-key',
@@ -71,12 +73,12 @@ class PasskeyCredentialFactory extends Factory
             attestationType: 'none',
             trustPath: new EmptyTrustPath(),
             aaguid: Uuid::fromString('00000000-0000-0000-0000-000000000000'),
-            // 77 bytes ≈ minimum CBOR-encoded size of an ES256 (EC2/P-256) COSE public key:
-            // 1 byte map header + 5 key-value pairs (kty, alg, crv, x[32], y[32]).
-            // The value is never cryptographically verified in tests; any non-empty byte
-            // string of plausible length is sufficient for the serializer to round-trip.
+            // 77 Bytes ≈ kleinstmögliche CBOR-Kodierung eines ES256-COSE-Schlüssels
+            // (EC2/P-256): 1 Byte Map-Header + 5 Paare (kty, alg, crv, x[32], y[32]).
+            // Der Wert wird in Tests nie kryptografisch geprüft; für den Roundtrip
+            // durch den Serializer genügt jede nicht-leere Bytefolge dieser Länge.
             credentialPublicKey: random_bytes(77),
-            userHandle: '0', // placeholder – overwritten by afterCreating() with the real user ID
+            userHandle: '0', // Platzhalter – afterCreating() setzt die echte User-ID ein
             counter: 0,
         );
 

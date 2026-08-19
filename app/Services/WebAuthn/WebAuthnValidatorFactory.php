@@ -10,16 +10,15 @@ use Webauthn\AuthenticatorAttestationResponseValidator;
 use Webauthn\CeremonyStep\CeremonyStepManagerFactory;
 
 /**
- * Creates WebAuthn ceremony validators for registration and authentication.
+ * Erzeugt die Zeremonie-Validatoren für Registrierung und Anmeldung.
  *
- * This is a pure factory — it has no state and simply configures the
- * webauthn-lib ceremony machinery with the allowed origins.
+ * Reine Factory ohne Zustand: Sie richtet die Zeremonie-Maschinerie der
+ * webauthn-lib lediglich auf die erlaubten Origins ein.
  */
 final class WebAuthnValidatorFactory implements WebAuthnValidatorFactoryContract
 {
     /**
-     * Build a validator for the registration (attestation) ceremony.
-     * A new instance is created each time because it is lightweight.
+     * Jedes Mal eine neue Instanz, weil sie leichtgewichtig ist.
      */
     public function buildAttestationValidator(string $appUrl): AuthenticatorAttestationResponseValidator
     {
@@ -30,9 +29,6 @@ final class WebAuthnValidatorFactory implements WebAuthnValidatorFactoryContract
         );
     }
 
-    /**
-     * Build a validator for the authentication (assertion) ceremony.
-     */
     public function buildAssertionValidator(string $appUrl): AuthenticatorAssertionResponseValidator
     {
         $factory = $this->buildConfiguredStepManagerFactory($appUrl);
@@ -42,16 +38,17 @@ final class WebAuthnValidatorFactory implements WebAuthnValidatorFactoryContract
         );
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Helpers
-    // ──────────────────────────────────────────────────────────────────────────
-
-    private function buildConfiguredStepManagerFactory(string $appUrl): CeremonyStepManagerFactory
+    /**
+     * Öffentlich, damit ein mitschneidender Validator dieselbe Zeremonie
+     * bekommt: nachgebaut würde sie unbemerkt von dieser Konfiguration
+     * abweichen.
+     */
+    public function buildConfiguredStepManagerFactory(string $appUrl): CeremonyStepManagerFactory
     {
         $factory = new CeremonyStepManagerFactory();
 
-        // Tell the factory which origins are valid so that CheckOrigin /
-        // CheckAllowedOrigins passes during both ceremonies.
+        // Der Factory mitteilen, welche Origins gültig sind, damit CheckOrigin /
+        // CheckAllowedOrigins in beiden Zeremonien durchlaufen.
         $factory->setAllowedOrigins([$appUrl]);
 
         return $factory;

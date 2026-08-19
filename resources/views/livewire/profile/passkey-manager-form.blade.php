@@ -20,7 +20,7 @@
             </div>
         @endif
 
-        {{-- List of registered passkeys --}}
+        {{-- Liste der registrierten Passkeys --}}
         @if ($passkeys->isEmpty())
             <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('app.passkeys_empty') }}</p>
         @else
@@ -88,9 +88,9 @@
             </div>
         @endif
 
-        {{-- Add passkey button --}}
+        {{-- Button zum Hinzufügen eines Passkeys --}}
         <div class="mt-5">
-            <div x-data="passkeyRegistration('{{ __('app.passkey_default_name') }}', '{{ __('app.passkey_added') }}', '{{ __('app.whoops') }}')" @keydown.escape.window="showForm = false">
+            <div x-data="passkeyRegistration('{{ __('app.passkey_default_name') }}', '{{ __('app.passkey_added') }}', '{{ __('app.passkey_registration_aborted') }}')" @keydown.escape.window="showForm = false">
                 <template x-if="!showForm">
                     <x-button type="button" @click="showForm = true">
                         {{ __('app.add_passkey') }}

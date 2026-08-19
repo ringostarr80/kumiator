@@ -226,4 +226,17 @@ final class PasskeyManagerFormTest extends TestCase
 
         $this->assertSame('Owner-Name', $passkey->fresh()?->name);
     }
+
+    /**
+     * Der Wortlaut bleibt draußen, geprüft wird die Argument-Position: An
+     * zweiter Stelle stünde der Text als Erfolgsmeldung im Formular.
+     */
+    public function testRegistrationErrorTextIsPassedAsTheFallbackArgument(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->assertSeeHtml("', '" . e(__('app.passkey_registration_aborted')) . "')");
+    }
 }

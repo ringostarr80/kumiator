@@ -213,7 +213,7 @@ final class PasskeyRegistrationTest extends TestCase
             ->postJson(self::REGISTER_URL, ['data' => 'test'], ['Content-Type' => self::CONTENT_TYPE_JSON]);
 
         $response->assertUnprocessable();
-        $response->assertJson(['message' => 'Verification failed.']);
+        $response->assertJson(['message' => __('app.passkey_registration_failed')]);
 
         // Audit-Symmetrie zum Erfolgs-Pfad (`passkey_registered`): jeder
         // gescheiterte Attest-Verify hinterlässt einen Eintrag mit dem
@@ -228,6 +228,10 @@ final class PasskeyRegistrationTest extends TestCase
         $this->assertNotNull($activity);
         $this->assertSame($user->getKey(), $activity->causer_id);
         $this->assertSame('verification_failed', $activity->properties?->get('failure_reason'));
+
+        // Der Wortlaut der Bibliothek bleibt auffindbar, erreicht aber den Browser nicht.
+        $this->assertSame('Verification failed.', $activity->properties->get('failure_detail'));
+        $this->assertStringNotContainsString('Verification failed.', $response->content());
     }
 
     public function testStoreEndpointReturns500WhenUnexpectedExceptionOccurs(): void
@@ -245,6 +249,10 @@ final class PasskeyRegistrationTest extends TestCase
             ->postJson(self::REGISTER_URL, ['data' => 'test'], ['Content-Type' => self::CONTENT_TYPE_JSON]);
 
         $response->assertInternalServerError();
+
+        // Eigener Text: Bei einem Serverfehler hilft nur ein späterer Versuch, beim
+        // abgelehnten Attestat dagegen ein anderer Authenticator.
+        $response->assertJsonPath('message', __('app.passkey_registration_server_error'));
 
         $activity = Activity::query()
             ->where('log_name', 'passkey')

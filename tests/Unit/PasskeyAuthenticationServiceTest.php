@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\Config\Vendor\Webauthn\WebauthnConfig;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
@@ -13,8 +14,11 @@ use App\Services\WebAuthn\WebAuthnValidatorFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
+use Tests\Support\RecordingValidatorFactory;
+use Tests\Support\VirtualAuthenticator;
 use Tests\TestCase;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
+use Webauthn\Exception\InvalidUserHandleException;
 use Webauthn\PublicKeyCredentialRequestOptions;
 
 final class PasskeyAuthenticationServiceTest extends TestCase
@@ -23,45 +27,15 @@ final class PasskeyAuthenticationServiceTest extends TestCase
 
     private PasskeyAuthenticationService $service;
 
-    public function testCreateOptionsWithoutUserReturnsEmptyAllowCredentials(): void
+    public function testCreateOptionsReturnsEmptyAllowCredentialsEvenWhenPasskeysExist(): void
     {
+        $user = User::factory()->create();
+        PasskeyCredential::factory()->for($user)->count(2)->create();
+
         $options = $this->service->createOptions();
 
         $this->assertInstanceOf(PublicKeyCredentialRequestOptions::class, $options);
         $this->assertEmpty($options->allowCredentials);
-    }
-
-    public function testCreateOptionsWithUserIncludesUsersCredentials(): void
-    {
-        $user = User::factory()->create();
-        PasskeyCredential::factory()->for($user)->count(2)->create();
-
-        $options = $this->service->createOptions($user);
-
-        $this->assertInstanceOf(PublicKeyCredentialRequestOptions::class, $options);
-        $this->assertCount(2, $options->allowCredentials);
-    }
-
-    public function testCreateOptionsWithUserHavingNoCredentialsReturnsEmptyAllowCredentials(): void
-    {
-        $user = User::factory()->create();
-
-        $options = $this->service->createOptions($user);
-
-        $this->assertInstanceOf(PublicKeyCredentialRequestOptions::class, $options);
-        $this->assertEmpty($options->allowCredentials);
-    }
-
-    public function testCreateOptionsDoesNotIncludeOtherUsersCredentials(): void
-    {
-        $user = User::factory()->create();
-        $other = User::factory()->create();
-        PasskeyCredential::factory()->for($user)->count(2)->create();
-        PasskeyCredential::factory()->for($other)->count(3)->create();
-
-        $options = $this->service->createOptions($user);
-
-        $this->assertCount(2, $options->allowCredentials);
     }
 
     public function testCreateOptionsGeneratesNonEmptyChallenge(): void
@@ -102,9 +76,131 @@ final class PasskeyAuthenticationServiceTest extends TestCase
         ]);
 
         $this->expectException(AuthenticatorResponseVerificationException::class);
-        $this->expectExceptionMessageIs(__('app.passkey_credential_not_found'));
+        $this->expectExceptionMessageIs('credential_not_found');
 
         $this->service->verify($rawResponse, $options, 'localhost');
+    }
+
+    public function testVerifyAcceptsAGenuineAssertionAndPersistsTheNewCounter(): void
+    {
+        $user = User::factory()->create();
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor($user);
+        $options = $this->service->createOptions();
+
+        $verified = $this->service->verify(
+            $authenticator->signAssertion($credential, $options, counter: 7),
+            $options,
+            WebauthnConfig::effectiveHost(),
+        );
+
+        $this->assertSame($credential->id, $verified->id);
+        $this->assertSame(7, $credential->refresh()->counter);
+    }
+
+    public function testVerifyRejectsAnAssertionSignedByAForeignKey(): void
+    {
+        $user = User::factory()->create();
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor($user);
+        $options = $this->service->createOptions();
+
+        // Zweiter Authenticator signiert für den Passkey des ersten.
+        $impostor = VirtualAuthenticator::create();
+
+        // Der Wortlaut der Bibliothek ist hier die einzige Zusicherung, dass die
+        // Zeremonie erst an der Signaturprüfung scheitert und nicht schon vorher.
+        $this->expectException(AuthenticatorResponseVerificationException::class);
+        $this->expectExceptionMessageIs('Invalid signature.');
+
+        $this->service->verify(
+            $impostor->signAssertion($credential, $options),
+            $options,
+            WebauthnConfig::effectiveHost(),
+        );
+    }
+
+    public function testVerifyRejectsAnAssertionWithoutUserHandle(): void
+    {
+        $user = User::factory()->create();
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor($user);
+        $options = $this->service->createOptions();
+
+        // Ohne `allowCredentials` verlangt die Spezifikation einen User-Handle in
+        // der Antwort (WebAuthn L3, §7.2 Schritt 6).
+        $this->expectException(InvalidUserHandleException::class);
+
+        $this->service->verify(
+            $authenticator->signAssertion($credential, $options, withUserHandle: false),
+            $options,
+            WebauthnConfig::effectiveHost(),
+        );
+    }
+
+    public function testVerifyRejectsAnAssertionWithAForeignUserHandle(): void
+    {
+        $user = User::factory()->create();
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor($user);
+        $options = $this->service->createOptions();
+
+        $this->expectException(InvalidUserHandleException::class);
+
+        $this->service->verify(
+            $authenticator->signAssertion($credential, $options, userHandleOverride: 'someone-else'),
+            $options,
+            WebauthnConfig::effectiveHost(),
+        );
+    }
+
+    public function testFakeVerificationFailsAtTheSameStepAsAGenuineSignatureMismatch(): void
+    {
+        $factory = new RecordingValidatorFactory();
+        $service = new PasskeyAuthenticationService(
+            $factory,
+            new PasskeyCredentialRepository(),
+            app(SerializerInterface::class),
+            new PasskeyLoginContext(),
+        );
+
+        $user = User::factory()->create();
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor($user);
+        $host = WebauthnConfig::effectiveHost();
+
+        // Referenz: bekanntes Credential, fremd signiert — scheitert an der Signaturprüfung.
+        $options = $service->createOptions();
+        $impostor = VirtualAuthenticator::create();
+
+        try {
+            $service->verify($impostor->signAssertion($credential, $options), $options, $host);
+            $this->fail('Die fremd signierte Assertion hätte abgelehnt werden müssen.');
+        } catch (AuthenticatorResponseVerificationException) {
+            // erwartet
+        }
+
+        // Fake-Pfad: dieselbe Assertion, aber das Credential existiert nicht mehr.
+        $options = $service->createOptions();
+        $rawResponse = $authenticator->signAssertion($credential, $options);
+        $credential->deleteOrFail();
+
+        try {
+            $service->verify($rawResponse, $options, $host);
+            $this->fail('Eine unbekannte Credential-ID hätte abgelehnt werden müssen.');
+        } catch (AuthenticatorResponseVerificationException) {
+            // erwartet
+        }
+
+        $calls = $factory->recordedCalls();
+
+        $this->assertCount(2, $calls);
+        $this->assertInstanceOf(\Throwable::class, $calls[0]['error']);
+        $this->assertInstanceOf(\Throwable::class, $calls[1]['error']);
+
+        // Gleiche Fehlermeldung heißt: gleicher Zeremonie-Schritt, also vergleichbare
+        // Laufzeit. Verglichen werden zwei Laufzeitwerte, kein festgeschriebener Text.
+        $this->assertSame($calls[0]['error']->getMessage(), $calls[1]['error']->getMessage());
     }
 
     public function testCreateOptionsGeneratesDifferentChallengesOnEachCall(): void
@@ -113,13 +209,6 @@ final class PasskeyAuthenticationServiceTest extends TestCase
         $optionsB = $this->service->createOptions();
 
         $this->assertNotSame($optionsA->challenge, $optionsB->challenge);
-    }
-
-    public function testRunFakeCredentialLookupDoesNotThrow(): void
-    {
-        // Should complete silently with no matching rows.
-        $this->service->runFakeCredentialLookup();
-        $this->addToAssertionCount(1);
     }
 
     protected function setUp(): void

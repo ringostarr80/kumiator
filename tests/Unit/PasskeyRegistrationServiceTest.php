@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
 use Tests\TestCase;
+use Webauthn\AuthenticatorSelectionCriteria;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
 use Webauthn\PublicKeyCredentialCreationOptions;
 
@@ -30,6 +31,20 @@ final class PasskeyRegistrationServiceTest extends TestCase
 
         $this->assertInstanceOf(PublicKeyCredentialCreationOptions::class, $options);
         $this->assertSame($user->getWebAuthnUserHandle(), $options->user->id);
+    }
+
+    public function testCreateOptionsRequiresADiscoverableCredential(): void
+    {
+        $user = User::factory()->create();
+
+        $options = $this->service->createOptions($user);
+
+        // Der Login sendet keine `allowCredentials`; ein Passkey ist deshalb nur
+        // brauchbar, wenn der Authenticator ihn discoverable ablegt.
+        $this->assertSame(
+            AuthenticatorSelectionCriteria::RESIDENT_KEY_REQUIREMENT_REQUIRED,
+            $options->authenticatorSelection?->residentKey,
+        );
     }
 
     public function testCreateOptionsExcludesAlreadyRegisteredCredentials(): void
@@ -105,7 +120,7 @@ final class PasskeyRegistrationServiceTest extends TestCase
         ]);
 
         $this->expectException(AuthenticatorResponseVerificationException::class);
-        $this->expectExceptionMessageIs(__('app.passkey_invalid_response_type'));
+        $this->expectExceptionMessageIs('invalid_response_type');
 
         $this->service->verifyAndSave($user, $rawResponse, $options, 'Test Key', 'localhost');
     }

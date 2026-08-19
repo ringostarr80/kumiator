@@ -1,29 +1,30 @@
 /**
- * WebAuthn / Passkey helpers for the front-end.
+ * WebAuthn-/Passkey-Helfer für das Frontend.
  *
- * Both the registration and authentication flows follow the same pattern:
- *  1. Fetch options from the server (GET → JSON).
- *  2. Call navigator.credentials.create / get with those options.
- *  3. Send the browser response back to the server (POST → JSON).
+ * Registrierung und Anmeldung laufen nach demselben Muster:
+ *  1. Optionen vom Server holen (GET → JSON).
+ *  2. `navigator.credentials.create` / `get` damit aufrufen.
+ *  3. Die Browser-Antwort an den Server zurückschicken (POST → JSON).
  *
- * Binary field conversion (Base64URL ↔ ArrayBuffer) is handled natively by
- * the WebAuthn Level 3 APIs (parseCreationOptionsFromJSON, parseRequestOptionsFromJSON,
- * PublicKeyCredential.toJSON), supported in Chrome 129+, Firefox 119+, Safari 18+.
+ * Die Umwandlung der Binärfelder (Base64URL ↔ ArrayBuffer) erledigen die
+ * WebAuthn-Level-3-APIs selbst (parseCreationOptionsFromJSON,
+ * parseRequestOptionsFromJSON, PublicKeyCredential.toJSON) — verfügbar ab
+ * Chrome 129, Firefox 119 und Safari 18.
  */
 
 /**
- * Register a new passkey for the currently authenticated user.
+ * Registriert einen neuen Passkey für den angemeldeten Nutzer.
  *
- * @param {string} credentialName User-chosen name for this passkey
- * @returns {Promise<object>}     Server response JSON on success
- * @throws {Error}                On WebAuthn or HTTP errors
+ * @param {string} credentialName Vom Nutzer gewählter Name für diesen Passkey
+ * @returns {Promise<object>}     Server-Antwort als JSON bei Erfolg
+ * @throws {Error}                Bei WebAuthn- oder HTTP-Fehlern
  */
 export async function registerPasskey(credentialName) {
-    // 1. Fetch creation options from the server
+    // 1. Creation-Optionen vom Server holen
     const optionsResponse = await globalThis.axios.get('/user/passkeys/register/options');
     const options = PublicKeyCredential.parseCreationOptionsFromJSON(optionsResponse.data);
 
-    // 2. Ask the authenticator to create a new credential
+    // 2. Den Authenticator ein neues Credential erzeugen lassen
     const credential = /** @type {PublicKeyCredential | null} */ (
         await navigator.credentials.create({ publicKey: options })
     );
@@ -32,7 +33,7 @@ export async function registerPasskey(credentialName) {
         throw new Error('No credential returned by the authenticator.');
     }
 
-    // 3. Send the attestation response to the server
+    // 3. Die Attestation-Antwort an den Server schicken
     const storeResponse = await globalThis.axios.post(
         '/user/passkeys/register',
         { ...credential.toJSON(), name: credentialName },
@@ -43,19 +44,17 @@ export async function registerPasskey(credentialName) {
 }
 
 /**
- * Authenticate with a passkey.
+ * Meldet mit einem Passkey an.
  *
- * @param {string|null} email Optional e-mail to narrow the allowed credentials
- * @returns {Promise<string>} Redirect URL on success
- * @throws {Error}            On WebAuthn or HTTP errors
+ * @returns {Promise<string>} Redirect-URL bei Erfolg
+ * @throws {Error}            Bei WebAuthn- oder HTTP-Fehlern
  */
-export async function authenticateWithPasskey(email = null) {
-    // 1. Fetch request options from the server
-    const params = email ? { email } : {};
-    const optionsResponse = await globalThis.axios.get('/passkeys/authenticate/options', { params });
+export async function authenticateWithPasskey() {
+    // 1. Request-Optionen vom Server holen
+    const optionsResponse = await globalThis.axios.get('/passkeys/authenticate/options');
     const options = PublicKeyCredential.parseRequestOptionsFromJSON(optionsResponse.data);
 
-    // 2. Ask the authenticator for an assertion
+    // 2. Den Authenticator um eine Assertion bitten
     const credential = /** @type {PublicKeyCredential | null} */ (
         await navigator.credentials.get({ publicKey: options })
     );
@@ -64,7 +63,7 @@ export async function authenticateWithPasskey(email = null) {
         throw new Error('No credential returned by the authenticator.');
     }
 
-    // 3. Send the assertion response to the server
+    // 3. Die Assertion-Antwort an den Server schicken
     const authResponse = await globalThis.axios.post('/passkeys/authenticate', credential.toJSON(), {
         headers: { 'Content-Type': 'application/json' },
     });
@@ -72,6 +71,6 @@ export async function authenticateWithPasskey(email = null) {
     return authResponse.data.redirect;
 }
 
-// Expose on globalThis so Alpine.js x-data handlers can call these functions
-// without needing ES module imports inside Blade template scripts.
+// Auf `globalThis` gelegt, damit die x-data-Handler von Alpine.js sie ohne
+// ES-Module-Import im Blade-Template aufrufen können.
 globalThis.Passkeys = { registerPasskey, authenticateWithPasskey };

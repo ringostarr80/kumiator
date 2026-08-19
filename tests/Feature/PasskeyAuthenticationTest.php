@@ -8,17 +8,17 @@ use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
-use App\Services\WebAuthn\PasskeyAuthenticationService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Testing\TestResponse;
 use Mockery\MockInterface;
+use Symfony\Component\Serializer\SerializerInterface;
+use Tests\Support\VirtualAuthenticator;
 use Tests\TestCase;
-use Webauthn\Exception\AuthenticatorResponseVerificationException;
+use Webauthn\PublicKeyCredentialRequestOptions;
 
 final class PasskeyAuthenticationTest extends TestCase
 {
@@ -58,49 +58,20 @@ final class PasskeyAuthenticationTest extends TestCase
         $response->assertJsonStructure(['challenge']);
     }
 
-    public function testOptionsEndpointAcceptsEmailParameterToNarrowCredentials(): void
+    /**
+     * Die Antwort ist für jeden Aufrufer dieselbe; eine gefüllte
+     * `allowCredentials`-Liste machte daraus eine Auskunft über registrierte
+     * Konten.
+     */
+    public function testOptionsEndpointNeverListsCredentials(): void
     {
         $user = User::factory()->create();
         PasskeyCredential::factory()->for($user)->create();
 
-        $response = $this->getJson(self::AUTHENTICATE_OPTIONS_URL . '?email=' . urlencode($user->email));
+        $response = $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
 
         $response->assertOk();
-        $response->assertJsonStructure(['challenge', 'allowCredentials']);
-    }
-
-    public function testOptionsEndpointWithUnknownEmailReturnsOptionsWithEmptyAllowCredentials(): void
-    {
-        $response = $this->getJson(self::AUTHENTICATE_OPTIONS_URL . '?email=unknown@example.com');
-
-        $response->assertOk();
-        $response->assertJsonStructure(['challenge']);
         $response->assertJsonCount(0, 'allowCredentials');
-    }
-
-    public function testOptionsEndpointRunsFakeCredentialLookupForUnknownEmail(): void
-    {
-        DB::enableQueryLog();
-
-        $this->getJson(self::AUTHENTICATE_OPTIONS_URL . '?email=unknown@example.com')
-            ->assertOk();
-
-        $credentialQueries = array_filter(
-            DB::getQueryLog(),
-            static fn (array $q): bool => str_contains($q['query'], 'passkey_credentials'),
-        );
-
-        DB::disableQueryLog();
-
-        $this->assertNotEmpty($credentialQueries, 'Expected a fake passkey_credentials query for an unknown e-mail.');
-    }
-
-    public function testOptionsEndpointReturns422ForInvalidEmail(): void
-    {
-        $response = $this->getJson(self::AUTHENTICATE_OPTIONS_URL . '?email=not-an-email');
-
-        $response->assertUnprocessable();
-        $response->assertJsonValidationErrors(['email']);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -161,28 +132,77 @@ final class PasskeyAuthenticationTest extends TestCase
         $response->assertBadRequest();
     }
 
-    // The following tests mock PasskeyAuthenticationContract::verify() because a real
-    // WebAuthn assertion requires a valid cryptographic signature produced by an actual
-    // authenticator. Reproducing such a response in an automated test environment is not
-    // practically possible, so mocking the verification boundary is the accepted exception
-    // to the project's "avoid mocks" guideline for these specific controller code paths.
-
     public function testAuthenticateReturns422WhenVerificationFails(): void
     {
-        $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
+        $user = User::factory()->create();
+        $credential = VirtualAuthenticator::create()->registerFor($user);
+        $options = $this->requestOptions();
 
-        $this->partialMock(PasskeyAuthenticationContract::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('verify')->andThrow(
-                new AuthenticatorResponseVerificationException('Verification failed.'),
-            );
-        });
-
-        $response = $this->postJson(self::AUTHENTICATE_URL, ['data' => 'test']);
+        // Ein fremder Authenticator signiert für einen Passkey, der ihm nicht gehört.
+        $response = $this->postAssertion(
+            VirtualAuthenticator::create()->signAssertion($credential, $options),
+        );
 
         $response->assertUnprocessable();
-        $response->assertJson(['message' => 'Verification failed.']);
+        $response->assertJson(['message' => __('app.passkey_auth_error')]);
     }
 
+    /**
+     * Der Abbruchgrund darf die Antwort nicht unterscheidbar machen: Wer eine
+     * Credential-ID besitzt, läse sonst am Antworttext ab, ob sie hier
+     * registriert ist — ohne jede Zeitmessung.
+     */
+    public function testAnUnknownCredentialAnswersLikeAWrongSignature(): void
+    {
+        $user = User::factory()->create();
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor($user);
+
+        $wrongSignature = $this->postAssertion(
+            VirtualAuthenticator::create()->signAssertion($credential, $this->requestOptions()),
+        );
+
+        // Gültig signiert, aber der Datensatz ist zwischenzeitlich verschwunden.
+        $assertion = $authenticator->signAssertion($credential, $this->requestOptions());
+        $credential->deleteOrFail();
+        $unknownCredential = $this->postAssertion($assertion);
+
+        $wrongSignature->assertUnprocessable();
+        $unknownCredential->assertUnprocessable();
+        $this->assertSame($wrongSignature->json('message'), $unknownCredential->json('message'));
+    }
+
+    public function testTheLibraryReasonIsLoggedButNotSentToTheBrowser(): void
+    {
+        $user = User::factory()->create();
+        $credential = VirtualAuthenticator::create()->registerFor($user);
+
+        $response = $this->postAssertion(
+            VirtualAuthenticator::create()->signAssertion($credential, $this->requestOptions()),
+        );
+
+        $activity = Activity::query()
+            ->where('event', 'passkey_login_failed')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+
+        $rawDetail = $activity->properties?->get('failure_detail');
+        $detail = is_string($rawDetail)
+            ? $rawDetail
+            : '';
+
+        // Ohne den Bibliotheks-Grund im Log wäre die generische Antwort nicht mehr zu debuggen.
+        $this->assertNotSame('', $detail);
+        $this->assertStringNotContainsString($detail, $response->content());
+    }
+
+    /**
+     * Der interne Fehler wird gemockt, weil ein Defekt unterhalb der
+     * Verifikation (etwa ein Serialisierungsfehler der Bibliothek) sich mit
+     * einer wohlgeformten Antwort nicht auslösen lässt.
+     */
     public function testAuthenticateReturns500WhenUnexpectedExceptionOccurs(): void
     {
         $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
@@ -199,27 +219,11 @@ final class PasskeyAuthenticationTest extends TestCase
     public function testSuccessfulAuthenticationLogsInUser(): void
     {
         $user = User::factory()->create();
-        $credential = PasskeyCredential::factory()->for($user)->create();
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor($user);
+        $options = $this->requestOptions();
 
-        // Populate the session via the real options endpoint
-        $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
-
-        $this->partialMock(
-            PasskeyAuthenticationContract::class,
-            function (MockInterface $mock) use ($credential): void {
-                $mock->shouldReceive('verify')->andReturn($credential);
-                // `loginAuthenticatedUser` ist nun Teil des Contracts; im
-            // Test-Doppel muss es gegen das echte `Auth::login()` delegieren,
-            // damit `assertAuthenticatedAs()` greift. Der Controller übergibt
-            // den aus der Credential abgeleiteten Owner — daher kein `->with()`.
-                $mock->shouldReceive('loginAuthenticatedUser')
-                    ->andReturnUsing(function (User $u): void {
-                        Auth::login($u);
-                    });
-            },
-        );
-
-        $response = $this->postJson(self::AUTHENTICATE_URL, []);
+        $response = $this->postAssertion($authenticator->signAssertion($credential, $options));
 
         $response->assertOk();
         $response->assertJsonStructure(['redirect']);
@@ -248,28 +252,13 @@ final class PasskeyAuthenticationTest extends TestCase
         Exceptions::fake();
 
         $user = User::factory()->create();
-        $credential = PasskeyCredential::factory()->for($user)->create();
-
-        $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
-
-        // `loginAuthenticatedUser` an die echte Implementierung delegieren statt
-        // `Auth::login()` nachzubauen: Nur sie setzt den Passkey-Marker, der den
-        // `LogAuthenticationActivityListener` stillhält. Ohne ihn schlüge schon
-        // dessen Insert fehl und der Test träfe den falschen Pfad.
-        $realService = $this->app->make(PasskeyAuthenticationService::class);
-
-        $this->partialMock(
-            PasskeyAuthenticationContract::class,
-            function (MockInterface $mock) use ($credential, $realService): void {
-                $mock->shouldReceive('verify')->andReturn($credential);
-                $mock->shouldReceive('loginAuthenticatedUser')
-                    ->andReturnUsing($realService->loginAuthenticatedUser(...));
-            },
-        );
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor($user);
+        $options = $this->requestOptions();
 
         Schema::drop('activity_log');
 
-        $response = $this->postJson(self::AUTHENTICATE_URL, []);
+        $response = $this->postAssertion($authenticator->signAssertion($credential, $options));
 
         $response->assertOk();
         $response->assertJsonStructure(['redirect']);
@@ -280,18 +269,11 @@ final class PasskeyAuthenticationTest extends TestCase
     public function testUnapprovedUserCannotAuthenticateViaPasskey(): void
     {
         $user = User::factory()->unapproved()->create();
-        $credential = PasskeyCredential::factory()->for($user)->create();
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor($user);
+        $options = $this->requestOptions();
 
-        $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
-
-        $this->partialMock(
-            PasskeyAuthenticationContract::class,
-            function (MockInterface $mock) use ($credential): void {
-                $mock->shouldReceive('verify')->andReturn($credential);
-            },
-        );
-
-        $response = $this->postJson(self::AUTHENTICATE_URL, []);
+        $response = $this->postAssertion($authenticator->signAssertion($credential, $options));
 
         $response->assertUnauthorized();
         $this->assertGuest();
@@ -316,5 +298,34 @@ final class PasskeyAuthenticationTest extends TestCase
         // Clear the IP-based rate limiter between tests so requests from the
         // shared test IP (127.0.0.1) don't accumulate across test methods.
         RateLimiter::clear('passkey-authenticate');
+    }
+
+    /**
+     * Holt die Optionen über den echten Endpunkt — nur so landet die Challenge
+     * in der Session, gegen die der spätere POST geprüft wird.
+     */
+    private function requestOptions(): PublicKeyCredentialRequestOptions
+    {
+        $content = $this->getJson(self::AUTHENTICATE_OPTIONS_URL)->content();
+
+        return app(SerializerInterface::class)->deserialize($content, PublicKeyCredentialRequestOptions::class, 'json');
+    }
+
+    /**
+     * Sendet die Assertion als rohen JSON-Body, wie es der Browser tut.
+     *
+     * @return TestResponse<\Illuminate\Http\Response>
+     */
+    private function postAssertion(string $rawResponse): TestResponse
+    {
+        return $this->call(
+            'POST',
+            self::AUTHENTICATE_URL,
+            [],
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'],
+            $rawResponse,
+        );
     }
 }
