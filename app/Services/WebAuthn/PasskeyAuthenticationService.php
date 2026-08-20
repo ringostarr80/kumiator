@@ -66,7 +66,9 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
         return PublicKeyCredentialRequestOptions::create(
             challenge: random_bytes(32),
             rpId: WebauthnConfig::rpId(),
-            userVerification: WebauthnConfig::userVerification(),
+            // Nicht konfigurierbar: Nur `required` lässt die Bibliothek das
+            // UV-Flag prüfen; sonst bliebe der Passkey ein reiner Besitzfaktor.
+            userVerification: PublicKeyCredentialRequestOptions::USER_VERIFICATION_REQUIREMENT_REQUIRED,
             timeout: $timeout,
         );
     }

@@ -56,6 +56,14 @@ final class PasskeyAuthenticationTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonStructure(['challenge']);
+
+        // Erst die Antwort bestimmt, was der Browser verlangt. Ohne dieses
+        // Argument bliebe das Feld `null`, der Normalizer entfernte es aus der
+        // Antwort, und der Browser fiele auf `preferred` zurück.
+        $response->assertJsonPath(
+            'userVerification',
+            PublicKeyCredentialRequestOptions::USER_VERIFICATION_REQUIREMENT_REQUIRED,
+        );
     }
 
     /**
@@ -145,6 +153,30 @@ final class PasskeyAuthenticationTest extends TestCase
 
         $response->assertUnprocessable();
         $response->assertJson(['message' => __('app.passkey_auth_error')]);
+    }
+
+    /**
+     * Die Optionen laufen im echten Request durch Serialisierung, Session und
+     * Deserialisierung, bevor die Zeremonie sie zu sehen bekommt. Verlöre
+     * `userVerification` dabei seinen Wert, prüfte die Bibliothek das UV-Flag
+     * nicht mehr und ließe eine Assertion ohne Nutzerverifikation durch.
+     */
+    public function testAuthenticateRejectsAnAssertionWithoutUserVerification(): void
+    {
+        $user = User::factory()->create();
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor($user);
+        $options = $this->requestOptions();
+
+        // Signatur, Zähler und User-Handle stimmen; allein das fehlende UV-Flag
+        // muss die Anmeldung verhindern.
+        $response = $this->postAssertion(
+            $authenticator->signAssertion($credential, $options, userVerified: false),
+        );
+
+        $response->assertUnprocessable();
+        $response->assertJson(['message' => __('app.passkey_auth_error')]);
+        $this->assertGuest();
     }
 
     /**

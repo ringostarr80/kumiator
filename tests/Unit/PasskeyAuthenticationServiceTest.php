@@ -17,6 +17,7 @@ use Symfony\Component\Serializer\SerializerInterface;
 use Tests\Support\RecordingValidatorFactory;
 use Tests\Support\VirtualAuthenticator;
 use Tests\TestCase;
+use Webauthn\AuthenticatorData;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
 use Webauthn\Exception\InvalidUserHandleException;
 use Webauthn\PublicKeyCredentialRequestOptions;
@@ -46,6 +47,16 @@ final class PasskeyAuthenticationServiceTest extends TestCase
         $this->assertGreaterThanOrEqual(16, strlen($options->challenge));
     }
 
+    public function testCreateOptionsRequiresUserVerification(): void
+    {
+        $options = $this->service->createOptions();
+
+        $this->assertSame(
+            PublicKeyCredentialRequestOptions::USER_VERIFICATION_REQUIREMENT_REQUIRED,
+            $options->userVerification,
+        );
+    }
+
     public function testVerifyThrowsForUnknownCredential(): void
     {
         $options = $this->service->createOptions();
@@ -61,8 +72,10 @@ final class PasskeyAuthenticationServiceTest extends TestCase
         );
 
         // authenticatorData has a fixed binary structure the library parses during deserialisation:
-        // 32 bytes RP-ID hash | 1 byte flags (UP+UV = 0x05) | 4 bytes sign counter (big-endian)
-        $authenticatorData = str_repeat("\x00", 32) . "\x05" . "\x00\x00\x00\x01";
+        // 32 bytes RP-ID hash | 1 byte flags (UP+UV) | 4 bytes sign counter (big-endian)
+        $authenticatorData = str_repeat("\x00", 32)
+            . chr(AuthenticatorData::FLAG_UP | AuthenticatorData::FLAG_UV)
+            . "\x00\x00\x00\x01";
 
         $rawResponse = (string) json_encode([
             'id' => Base64UrlSafe::encodeUnpadded($rawId),
@@ -115,6 +128,25 @@ final class PasskeyAuthenticationServiceTest extends TestCase
 
         $this->service->verify(
             $impostor->signAssertion($credential, $options),
+            $options,
+            WebauthnConfig::effectiveHost(),
+        );
+    }
+
+    public function testVerifyRejectsAnAssertionWithoutUserVerification(): void
+    {
+        $user = User::factory()->create();
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor($user);
+        $options = $this->service->createOptions();
+
+        // Signatur und Zähler stimmen; abgewiesen wird allein, weil der
+        // Authenticator den Nutzer nicht verifiziert hat.
+        $this->expectException(AuthenticatorResponseVerificationException::class);
+        $this->expectExceptionMessageIs('User authentication required.');
+
+        $this->service->verify(
+            $authenticator->signAssertion($credential, $options, userVerified: false),
             $options,
             WebauthnConfig::effectiveHost(),
         );

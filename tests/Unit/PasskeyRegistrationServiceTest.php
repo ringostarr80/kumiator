@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\Config\Vendor\Webauthn\WebauthnConfig;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
@@ -12,6 +13,7 @@ use App\Services\WebAuthn\WebAuthnValidatorFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
+use Tests\Support\VirtualAuthenticator;
 use Tests\TestCase;
 use Webauthn\AuthenticatorSelectionCriteria;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
@@ -44,6 +46,18 @@ final class PasskeyRegistrationServiceTest extends TestCase
         $this->assertSame(
             AuthenticatorSelectionCriteria::RESIDENT_KEY_REQUIREMENT_REQUIRED,
             $options->authenticatorSelection?->residentKey,
+        );
+    }
+
+    public function testCreateOptionsRequiresUserVerification(): void
+    {
+        $user = User::factory()->create();
+
+        $options = $this->service->createOptions($user);
+
+        $this->assertSame(
+            AuthenticatorSelectionCriteria::USER_VERIFICATION_REQUIREMENT_REQUIRED,
+            $options->authenticatorSelection?->userVerification,
         );
     }
 
@@ -123,6 +137,26 @@ final class PasskeyRegistrationServiceTest extends TestCase
         $this->expectExceptionMessageIs('invalid_response_type');
 
         $this->service->verifyAndSave($user, $rawResponse, $options, 'Test Key', 'localhost');
+    }
+
+    public function testVerifyAndSaveRejectsAnAttestationWithoutUserVerification(): void
+    {
+        $user = User::factory()->create();
+        $authenticator = VirtualAuthenticator::create();
+        $options = $this->service->createOptions($user);
+
+        // Die Attestation ist formal in Ordnung; abgewiesen wird sie allein, weil
+        // der Authenticator den Nutzer nicht verifiziert hat.
+        $this->expectException(AuthenticatorResponseVerificationException::class);
+        $this->expectExceptionMessageIs('User authentication required.');
+
+        $this->service->verifyAndSave(
+            $user,
+            $authenticator->signAttestation($options, userVerified: false),
+            $options,
+            'Test Key',
+            WebauthnConfig::effectiveHost(),
+        );
     }
 
     protected function setUp(): void
