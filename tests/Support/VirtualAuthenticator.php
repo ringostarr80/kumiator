@@ -10,10 +10,13 @@ use App\Models\User;
 use CBOR\ByteStringObject;
 use CBOR\MapObject;
 use CBOR\NegativeIntegerObject;
+use CBOR\TextStringObject;
 use CBOR\UnsignedIntegerObject;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
+use Webauthn\AuthenticatorData;
 use Webauthn\CredentialRecord;
+use Webauthn\PublicKeyCredentialCreationOptions;
 use Webauthn\PublicKeyCredentialRequestOptions;
 
 /**
@@ -25,8 +28,7 @@ use Webauthn\PublicKeyCredentialRequestOptions;
  */
 final class VirtualAuthenticator
 {
-    /** Flags-Byte in `authenticatorData`: User Present + User Verified. */
-    private const int FLAGS_UP_AND_UV = 0x05;
+    private const int AAGUID_LENGTH = 16;
 
     /** Feste Koordinatenlänge einer P-256-Kurve in Byte. */
     private const int P256_COORDINATE_LENGTH = 32;
@@ -87,6 +89,65 @@ final class VirtualAuthenticator
     }
 
     /**
+     * Baut die Antwort, die der Browser nach `navigator.credentials.create()`
+     * an den Server schickt.
+     *
+     * Anders als die Assertion trägt sie keine Signatur: Beim Format `none` prüft
+     * die Bibliothek allein, dass das Attestation-Statement leer ist.
+     *
+     * `$userVerified` bildet einen Authenticator ab, der den Nutzer nur als
+     * anwesend meldet, ohne ihn per Biometrie oder PIN zu prüfen.
+     *
+     * @return array<string, mixed>
+     */
+    public function attestation(PublicKeyCredentialCreationOptions $options, bool $userVerified = true): array
+    {
+        $clientDataJson = (string) json_encode([
+            'type' => 'webauthn.create',
+            'challenge' => Base64UrlSafe::encodeUnpadded($options->challenge),
+            'origin' => WebauthnConfig::appUrl(),
+            'crossOrigin' => false,
+        ]);
+
+        $credentialId = random_bytes(32);
+
+        // Wie bei der Assertion, erweitert um das AT-Flag und die daran
+        // anschließenden Credential-Daten:
+        // 16 Byte AAGUID | 2 Byte ID-Länge (big-endian) | ID | öffentlicher Schlüssel.
+        $flags = AuthenticatorData::FLAG_UP
+            | AuthenticatorData::FLAG_AT
+            | ($userVerified ? AuthenticatorData::FLAG_UV : 0);
+
+        $authenticatorData = hash('sha256', WebauthnConfig::effectiveHost(), true)
+            . chr($flags)
+            . pack('N', 0)
+            . str_repeat("\0", self::AAGUID_LENGTH)
+            . pack('n', strlen($credentialId))
+            . $credentialId
+            . $this->coseKey;
+
+        $attestationObject = (string) MapObject::create()
+            ->add(TextStringObject::create('fmt'), TextStringObject::create('none'))
+            ->add(TextStringObject::create('attStmt'), MapObject::create())
+            ->add(TextStringObject::create('authData'), ByteStringObject::create($authenticatorData));
+
+        return [
+            'id' => Base64UrlSafe::encodeUnpadded($credentialId),
+            'rawId' => Base64UrlSafe::encodeUnpadded($credentialId),
+            'response' => [
+                'clientDataJSON' => Base64UrlSafe::encodeUnpadded($clientDataJson),
+                'attestationObject' => Base64UrlSafe::encodeUnpadded($attestationObject),
+            ],
+            'type' => 'public-key',
+        ];
+    }
+
+    public function signAttestation(PublicKeyCredentialCreationOptions $options, bool $userVerified = true): string
+    {
+        return (string) json_encode($this->attestation($options, $userVerified));
+    }
+
+    /**
      * Baut die JSON-Antwort, die der Browser nach `navigator.credentials.get()`
      * an den Server schickt.
      *
@@ -94,6 +155,9 @@ final class VirtualAuthenticator
      * (Authenticator kennt den Handle und liefert ihn mit) und nicht-discoverable
      * Credentials (kein Handle in der Antwort) ab; `$userHandleOverride` liefert
      * einen abweichenden Handle, wie ihn nur ein manipulierter Client sendet.
+     *
+     * `$userVerified` bildet einen Authenticator ab, der den Nutzer nur als
+     * anwesend meldet, ohne ihn per Biometrie oder PIN zu prüfen.
      */
     public function signAssertion(
         PasskeyCredential $credential,
@@ -101,6 +165,7 @@ final class VirtualAuthenticator
         int $counter = 1,
         bool $withUserHandle = true,
         ?string $userHandleOverride = null,
+        bool $userVerified = true,
     ): string {
         $clientDataJson = (string) json_encode([
             'type' => 'webauthn.get',
@@ -111,8 +176,9 @@ final class VirtualAuthenticator
 
         // Binärformat laut WebAuthn-Spezifikation:
         // 32 Byte RP-ID-Hash | 1 Byte Flags | 4 Byte Signaturzähler (big-endian).
+        $flags = AuthenticatorData::FLAG_UP | ($userVerified ? AuthenticatorData::FLAG_UV : 0);
         $authenticatorData = hash('sha256', WebauthnConfig::effectiveHost(), true)
-            . chr(self::FLAGS_UP_AND_UV)
+            . chr($flags)
             . pack('N', $counter);
 
         $signature = '';

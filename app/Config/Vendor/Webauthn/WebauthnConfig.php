@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Config\Vendor\Webauthn;
 
-use Webauthn\AuthenticatorSelectionCriteria;
 use Webauthn\PublicKeyCredentialCreationOptions;
 
 /**
@@ -67,15 +66,6 @@ final class WebauthnConfig
         return in_array($value, PublicKeyCredentialCreationOptions::ATTESTATION_CONVEYANCE_PREFERENCES, true)
             ? $value
             : PublicKeyCredentialCreationOptions::ATTESTATION_CONVEYANCE_PREFERENCE_NONE;
-    }
-
-    public static function userVerification(): string
-    {
-        $value = config('webauthn.user_verification');
-
-        return in_array($value, AuthenticatorSelectionCriteria::USER_VERIFICATION_REQUIREMENTS, true)
-            ? $value
-            : AuthenticatorSelectionCriteria::USER_VERIFICATION_REQUIREMENT_PREFERRED;
     }
 
     public static function appUrl(): string
