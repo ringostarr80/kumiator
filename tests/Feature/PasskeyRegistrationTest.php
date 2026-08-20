@@ -7,13 +7,16 @@ namespace Tests\Feature;
 use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
-use App\Services\WebAuthn\Contracts\PasskeyRegistrationContract;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\RateLimiter;
-use Mockery;
-use Mockery\MockInterface;
+use Illuminate\Support\Facades\Schema;
+use Symfony\Component\Serializer\SerializerInterface;
+use Tests\Support\VirtualAuthenticator;
 use Tests\TestCase;
-use Webauthn\Exception\AuthenticatorResponseVerificationException;
+use Webauthn\AuthenticatorSelectionCriteria;
+use Webauthn\PublicKeyCredentialCreationOptions;
 
 final class PasskeyRegistrationTest extends TestCase
 {
@@ -22,6 +25,10 @@ final class PasskeyRegistrationTest extends TestCase
     private const string REGISTER_OPTIONS_URL = '/user/passkeys/register/options';
     private const string REGISTER_URL = '/user/passkeys/register';
     private const string CONTENT_TYPE_JSON = 'application/json';
+    private const string SESSION_KEY = 'webauthn.registration.options';
+
+    /** Wortlaut aus CheckUserVerification der webauthn-lib. */
+    private const string LIBRARY_UV_REJECTION = 'User authentication required.';
 
     public function testRegistrationEndpointsAreRateLimited(): void
     {
@@ -63,6 +70,14 @@ final class PasskeyRegistrationTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonStructure(['challenge', 'rp', 'user', 'pubKeyCredParams']);
+
+        // Erst die Antwort bestimmt, was der Browser verlangt. Ohne dieses
+        // Argument setzte `AuthenticatorSelectionCriteria` stillschweigend
+        // `preferred`, und die Nutzerverifikation wäre nur noch erwünscht.
+        $response->assertJsonPath(
+            'authenticatorSelection.userVerification',
+            AuthenticatorSelectionCriteria::USER_VERIFICATION_REQUIREMENT_REQUIRED,
+        );
     }
 
     public function testOptionsEndpointStoresChallengeInSession(): void
@@ -71,7 +86,7 @@ final class PasskeyRegistrationTest extends TestCase
 
         $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL);
 
-        $this->assertNotNull(session('webauthn.registration.options'));
+        $this->assertNotNull(session(self::SESSION_KEY));
     }
 
     public function testOptionsEndpointExcludesAlreadyRegisteredCredentials(): void
@@ -126,7 +141,7 @@ final class PasskeyRegistrationTest extends TestCase
         // Simulate a ceremony whose TTL has already elapsed.
         $response = $this->actingAs($user)
             ->withSession([
-                'webauthn.registration.options' => [
+                self::SESSION_KEY => [
                     'data' => '{"challenge":"dGVzdA"}',
                     'expires_at' => now()->subMinutes(5)->timestamp,
                 ],
@@ -142,44 +157,31 @@ final class PasskeyRegistrationTest extends TestCase
         // A non-array value in the session key must be treated as missing/invalid.
         $response = $this->actingAs($user)
             ->withSession([
-                'webauthn.registration.options' => 'corrupted-session-string',
+                self::SESSION_KEY => 'corrupted-session-string',
             ])->postJson(self::REGISTER_URL, [], ['Content-Type' => self::CONTENT_TYPE_JSON]);
 
         $response->assertUnprocessable();
     }
 
-    // The following tests mock PasskeyRegistrationContract::verifyAndSave() because a real
-    // WebAuthn attestation requires a valid authenticator response with correct CBOR-encoded
-    // data signed by the authenticator's private key. Reproducing such a response in an
-    // automated test environment is not practically possible, so mocking the verification
-    // boundary is the accepted exception to the project's "avoid mocks" guideline for these
-    // specific controller code paths.
-
     public function testStoreEndpointPersistsCredentialOnSuccess(): void
     {
         $user = User::factory()->create();
-        $passkey = PasskeyCredential::factory()->for($user)->create();
+        $options = $this->startCeremony($user);
 
-        // Call the real options endpoint first so the session is populated by the
-        // fully initialised service (constructor-injected properties are set).
-        $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL);
-
-        // Bind the partial mock only after the GET, so the POST goes through the
-        // mock while the GET used the real service. verifyAndSave() is the only
-        // method called during store(), so uninitialised mock properties are
-        // never accessed.
-        $this->partialMock(
-            PasskeyRegistrationContract::class,
-            function (MockInterface $mock) use ($passkey): void {
-                $mock->shouldReceive('verifyAndSave')->andReturn($passkey);
-            },
+        $response = $this->actingAs($user)->postJson(
+            self::REGISTER_URL,
+            // Der Controller liest die Attestation aus dem gesamten Body und den
+            // Namen aus demselben JSON, deshalb reisen beide in einem Rumpf.
+            [...VirtualAuthenticator::create()->attestation($options), 'name' => 'Test Passkey'],
+            ['Content-Type' => self::CONTENT_TYPE_JSON],
         );
-
-        $response = $this->actingAs($user)
-            ->postJson(self::REGISTER_URL, ['name' => 'Test Passkey'], ['Content-Type' => self::CONTENT_TYPE_JSON]);
 
         $response->assertCreated();
         $response->assertJsonStructure(['id', 'name', 'created_at']);
+
+        $credential = PasskeyCredential::query()->where('user_id', $user->getKey())->sole();
+
+        $this->assertSame('Test Passkey', $credential->name);
     }
 
     public function testStoreEndpointReturns400WhenRequestBodyIsEmpty(): void
@@ -201,16 +203,15 @@ final class PasskeyRegistrationTest extends TestCase
     public function testStoreEndpointReturns422WhenVerificationFails(): void
     {
         $user = User::factory()->create();
+        $options = $this->startCeremony($user);
 
-        $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL);
-
-        $this->partialMock(PasskeyRegistrationContract::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('verifyAndSave')
-                ->andThrow(new AuthenticatorResponseVerificationException('Verification failed.'));
-        });
-
-        $response = $this->actingAs($user)
-            ->postJson(self::REGISTER_URL, ['data' => 'test'], ['Content-Type' => self::CONTENT_TYPE_JSON]);
+        // Eine Attestation, die der Authenticator ohne Nutzerverifikation liefert:
+        // die Zeremonie weist sie ab, ohne dass etwas gemockt werden muss.
+        $response = $this->actingAs($user)->postJson(
+            self::REGISTER_URL,
+            VirtualAuthenticator::create()->attestation($options, userVerified: false),
+            ['Content-Type' => self::CONTENT_TYPE_JSON],
+        );
 
         $response->assertUnprocessable();
         $response->assertJson(['message' => __('app.passkey_registration_failed')]);
@@ -230,25 +231,29 @@ final class PasskeyRegistrationTest extends TestCase
         $this->assertSame('verification_failed', $activity->properties?->get('failure_reason'));
 
         // Der Wortlaut der Bibliothek bleibt auffindbar, erreicht aber den Browser nicht.
-        $this->assertSame('Verification failed.', $activity->properties->get('failure_detail'));
-        $this->assertStringNotContainsString('Verification failed.', $response->content());
+        $this->assertSame(self::LIBRARY_UV_REJECTION, $activity->properties->get('failure_detail'));
+        $this->assertStringNotContainsString(self::LIBRARY_UV_REJECTION, $response->content());
     }
 
     public function testStoreEndpointReturns500WhenUnexpectedExceptionOccurs(): void
     {
+        Exceptions::fake();
+
         $user = User::factory()->create();
+        $options = $this->startCeremony($user);
 
-        $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL);
+        // Die Zeremonie läuft vollständig durch; erst das Speichern trifft die
+        // fehlende Tabelle und erzeugt so den Fehler unterhalb der Zeremonie.
+        Schema::drop('passkey_credentials');
 
-        $this->partialMock(PasskeyRegistrationContract::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('verifyAndSave')
-                ->andThrow(new \RuntimeException('Unexpected error.'));
-        });
-
-        $response = $this->actingAs($user)
-            ->postJson(self::REGISTER_URL, ['data' => 'test'], ['Content-Type' => self::CONTENT_TYPE_JSON]);
+        $response = $this->actingAs($user)->postJson(
+            self::REGISTER_URL,
+            VirtualAuthenticator::create()->attestation($options),
+            ['Content-Type' => self::CONTENT_TYPE_JSON],
+        );
 
         $response->assertInternalServerError();
+        Exceptions::assertReported(QueryException::class);
 
         // Eigener Text: Bei einem Serverfehler hilft nur ein späterer Versuch, beim
         // abgelehnten Attestat dagegen ein anderer Authenticator.
@@ -268,55 +273,33 @@ final class PasskeyRegistrationTest extends TestCase
     public function testStoreEndpointUsesDefaultNameWhenNameIsOmitted(): void
     {
         $user = User::factory()->create();
-        $passkey = PasskeyCredential::factory()->for($user)->create();
+        $options = $this->startCeremony($user);
 
-        $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL);
+        $this->actingAs($user)->postJson(
+            self::REGISTER_URL,
+            VirtualAuthenticator::create()->attestation($options),
+            ['Content-Type' => self::CONTENT_TYPE_JSON],
+        )->assertCreated();
 
-        $this->partialMock(
-            PasskeyRegistrationContract::class,
-            function (MockInterface $mock) use ($passkey): void {
-                $mock->shouldReceive('verifyAndSave')
-                    ->with(
-                        Mockery::any(),
-                        Mockery::any(),
-                        Mockery::any(),
-                        Mockery::on(fn (string $name): bool => $name === __('app.passkey_default_name')),
-                        Mockery::any(),
-                    )
-                    ->andReturn($passkey);
-            },
-        );
+        $credential = PasskeyCredential::query()->where('user_id', $user->getKey())->sole();
 
-        $this->actingAs($user)
-            ->postJson(self::REGISTER_URL, [], ['Content-Type' => self::CONTENT_TYPE_JSON])
-            ->assertCreated();
+        $this->assertSame(__('app.passkey_default_name'), $credential->name);
     }
 
     public function testStoreEndpointUsesDefaultNameWhenNameIsBlank(): void
     {
         $user = User::factory()->create();
-        $passkey = PasskeyCredential::factory()->for($user)->create();
+        $options = $this->startCeremony($user);
 
-        $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL);
+        $this->actingAs($user)->postJson(
+            self::REGISTER_URL,
+            [...VirtualAuthenticator::create()->attestation($options), 'name' => '   '],
+            ['Content-Type' => self::CONTENT_TYPE_JSON],
+        )->assertCreated();
 
-        $this->partialMock(
-            PasskeyRegistrationContract::class,
-            function (MockInterface $mock) use ($passkey): void {
-                $mock->shouldReceive('verifyAndSave')
-                    ->with(
-                        Mockery::any(),
-                        Mockery::any(),
-                        Mockery::any(),
-                        Mockery::on(fn (string $name): bool => $name === __('app.passkey_default_name')),
-                        Mockery::any(),
-                    )
-                    ->andReturn($passkey);
-            },
-        );
+        $credential = PasskeyCredential::query()->where('user_id', $user->getKey())->sole();
 
-        $this->actingAs($user)
-            ->postJson(self::REGISTER_URL, ['name' => '   '], ['Content-Type' => self::CONTENT_TYPE_JSON])
-            ->assertCreated();
+        $this->assertSame(__('app.passkey_default_name'), $credential->name);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -362,5 +345,21 @@ final class PasskeyRegistrationTest extends TestCase
         // Clear the user-based rate limiter between tests for safety,
         // even though each test creates its own user (unique limiter key).
         RateLimiter::clear('passkey-register');
+    }
+
+    /**
+     * Ruft den Options-Endpunkt auf und liefert die Optionen zurück, die der
+     * Server sich für den folgenden POST gemerkt hat.
+     */
+    private function startCeremony(User $user): PublicKeyCredentialCreationOptions
+    {
+        $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL)->assertOk();
+
+        $stored = session(self::SESSION_KEY);
+        $json = is_array($stored) && is_string($stored['data'] ?? null)
+            ? $stored['data']
+            : throw new \RuntimeException('Der Options-Endpunkt hat nichts in der Session hinterlegt.');
+
+        return app(SerializerInterface::class)->deserialize($json, PublicKeyCredentialCreationOptions::class, 'json');
     }
 }

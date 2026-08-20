@@ -89,7 +89,9 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
             // verwenden. Lieber hier sichtbar scheitern als später stumm.
             authenticatorSelection: AuthenticatorSelectionCriteria::create(
                 residentKey: AuthenticatorSelectionCriteria::RESIDENT_KEY_REQUIREMENT_REQUIRED,
-                userVerification: WebauthnConfig::userVerification(),
+                // Nicht konfigurierbar: Nur `required` lässt die Bibliothek das
+                // UV-Flag prüfen; sonst bliebe der Passkey ein reiner Besitzfaktor.
+                userVerification: AuthenticatorSelectionCriteria::USER_VERIFICATION_REQUIREMENT_REQUIRED,
             ),
             attestation: WebauthnConfig::attestationConveyance(),
             excludeCredentials: $excludeCredentials,
