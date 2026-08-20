@@ -62,18 +62,4 @@ return [
 
     'attestation_conveyance' => env('WEBAUTHN_ATTESTATION', 'none'),
 
-    /*
-    |--------------------------------------------------------------------------
-    | User Verification
-    |--------------------------------------------------------------------------
-    |
-    | Steuert, ob eine Nutzerverifikation (Biometrie / PIN) verlangt wird.
-    | 'preferred' bittet den Authenticator, den Nutzer zu prüfen, sofern er kann.
-    |
-    | Mögliche Werte: 'required', 'preferred', 'discouraged'
-    |
-    */
-
-    'user_verification' => env('WEBAUTHN_USER_VERIFICATION', 'preferred'),
-
 ];
