@@ -46,6 +46,10 @@ final class LivewireComponentsAreIndependentTest
                 // projekt-spezifisches Verhalten ergänzen können, ohne sie
                 // komplett neu zu implementieren.
                 Selector::inNamespace('Laravel\\Jetstream\\Http\\Livewire'),
+                // Jetstreams Livewire-Gegenstück zur `password.confirm`-Middleware:
+                // derselbe Framework-Stack, in dem die Komponente ohnehin lebt, und
+                // kein Projekt-Service.
+                Selector::classname('Laravel\\Jetstream\\ConfirmsPasswords'),
                 // Folge der Jetstream-Erweiterung: deren Methoden type-hinten
                 // Fortify-Contracts (z. B. UpdatesUserProfileInformation) —
                 // Overrides müssen dieselbe Signatur tragen. Nur die Contracts,
@@ -63,7 +67,8 @@ final class LivewireComponentsAreIndependentTest
                 'Livewire-Komponenten dürfen nur von Models, DTOs, Repository- '
                 . 'und Service-Contracts, Illuminate, Livewire, Jetstream-Profil-'
                 . 'komponenten (zur Erweiterung) samt deren Fortify-Contract-'
-                . 'Signaturen, der Activity-Facade und PHP-Sprach-Builtins '
+                . 'Signaturen, Jetstreams ConfirmsPasswords-Trait, der '
+                . 'Activity-Facade und PHP-Sprach-Builtins '
                 . '(\\Throwable) abhängen.',
                 'Sie sind eine Präsentationsschicht und dürfen keine konkreten '
                 . 'Services oder Repositories kennen — DI erfolgt über Contracts. '

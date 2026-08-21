@@ -8,10 +8,12 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Symfony\Component\HttpFoundation\Response;
+use Tests\Support\ConfirmsPassword;
 use Tests\TestCase;
 
 final class MaxJsonBodySizeMiddlewareTest extends TestCase
 {
+    use ConfirmsPassword;
     use RefreshDatabase;
 
     private const string AUTHENTICATE_URL = '/passkeys/authenticate';
@@ -35,7 +37,10 @@ final class MaxJsonBodySizeMiddlewareTest extends TestCase
 
         $oversized = str_repeat('x', 65_537);
 
+        // Die Registrierungsroute liegt hinter `password.confirm`; ohne
+        // Bestätigung käme der Redirect dorthin statt der Prüfung des Rumpfes.
         $this->actingAs($user)
+            ->confirmPassword()
             ->call('POST', self::REGISTER_URL, [], [], [], ['CONTENT_TYPE' => 'application/json'], $oversized)
             ->assertStatus(Response::HTTP_REQUEST_ENTITY_TOO_LARGE)
             ->assertJson(['message' => __('app.request_payload_too_large')]);
@@ -53,6 +58,7 @@ final class MaxJsonBodySizeMiddlewareTest extends TestCase
         $user = User::factory()->create(['approved_at' => now()]);
 
         $this->actingAs($user)
+            ->confirmPassword()
             ->call(
                 'POST',
                 self::REGISTER_URL,

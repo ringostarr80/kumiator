@@ -232,6 +232,11 @@ return [
     // ohne Server-Antwort. Deshalb beide Ursachen nur als Möglichkeit nennen.
     'passkey_registration_aborted' => 'Der Passkey wurde nicht angelegt. Möglicherweise wurde der Vorgang'
         . ' abgebrochen — oder, falls du einen Sicherheitsschlüssel verwendest, ist dort kein Platz mehr frei.',
+    'passkey_confirmation_expired' => 'Die Passwortbestätigung ist abgelaufen. Bitte bestätige dein Passwort'
+        . ' erneut.',
+    'passkey_too_many_attempts' => 'Zu viele Versuche. Bitte warte einen Moment und versuche es erneut.',
+    'passkey_page_expired' => 'Deine Sitzung ist abgelaufen. Bitte lade die Seite neu.',
+    'passkey_login_expired' => 'Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.',
     'unsupported_media_type' => 'Nicht unterstützter Medientyp.',
     'request_payload_too_large' => 'Die Anfrage ist zu groß.',
 

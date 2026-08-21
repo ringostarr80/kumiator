@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Laravel\Jetstream\ConfirmsPasswords;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -23,6 +24,8 @@ use Livewire\Component;
  */
 class PasskeyManagerForm extends Component
 {
+    use ConfirmsPasswords;
+
     /**
      * @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\PasskeyCredential>
      */
@@ -50,6 +53,22 @@ class PasskeyManagerForm extends Component
         $this->loadPasskeys();
     }
 
+    /**
+     * Der Alpine-Teil des Formulars hört auf das Event; die Freigabe fällt
+     * hier, damit sie am selben Gate hängt wie die JSON-Endpunkte dahinter.
+     */
+    public function startPasskeyRegistration(): void
+    {
+        $this->ensurePasswordIsConfirmed();
+
+        $this->dispatch('passkey-registration-confirmed');
+    }
+
+    /**
+     * Bewusst ohne Passwortbestätigung: der Wechsel in den Bearbeitungsmodus
+     * schreibt nichts, und `editingPasskeyId` lässt sich als public Property
+     * ohnehin direkt setzen. Die Bestätigung hängt deshalb am Speichern.
+     */
     public function startRenaming(string $passkeyId): void
     {
         $passkey = $this->repository->findByIdOrFail($passkeyId);
@@ -82,6 +101,11 @@ class PasskeyManagerForm extends Component
 
         Gate::authorize('update', $passkey);
 
+        // Erst das Gate, dann die Bestätigung: andernfalls endete ein Zugriff
+        // auf fremde Passkeys am 403 der Bestätigung, bevor der
+        // `authorization_denied`-Eintrag entstehen kann.
+        $this->ensurePasswordIsConfirmed();
+
         $this->repository->updateName($passkey, trim($this->editingPasskeyName));
 
         $this->editingPasskeyId = null;
@@ -97,6 +121,10 @@ class PasskeyManagerForm extends Component
         $passkey = $this->repository->findByIdOrFail($passkeyId);
 
         Gate::authorize('delete', $passkey);
+
+        // Reihenfolge wie beim Umbenennen: das Gate zuerst, damit ein
+        // Fremdzugriff im Audit-Log landet.
+        $this->ensurePasswordIsConfirmed();
 
         $this->repository->delete($passkey);
 

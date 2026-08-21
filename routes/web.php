@@ -160,8 +160,14 @@ Route::middleware([
 
     // ──────────────────────────────────────────────────────────────────────────
     // Passkey management (authenticated users)
+    //
+    // `password.confirm` läuft als Middleware zwangsläufig vor der Policy im
+    // Controller: Ein Zugriff auf fremde Passkeys ohne bestätigtes Passwort
+    // endet mit 423, bevor ein `authorization_denied`-Eintrag entstehen kann.
+    // Bewusst hingenommen — die Alternative wäre, die Bestätigung in jeden
+    // Controller zu ziehen.
     // ──────────────────────────────────────────────────────────────────────────
-    Route::middleware('throttle:passkey-register')->group(static function (): void {
+    Route::middleware(['throttle:passkey-register', 'password.confirm'])->group(static function (): void {
         // Returns PublicKeyCredentialCreationOptions JSON for the browser
         Route::get('/user/passkeys/register/options', [PasskeyRegistrationController::class, 'options'])
             ->name('passkeys.register.options');
