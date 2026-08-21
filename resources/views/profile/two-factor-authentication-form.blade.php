@@ -120,5 +120,7 @@
 
             @endif
         </div>
+
+        <x-password-confirmation-modal scope="two-factor" />
     </x-slot>
 </x-action-section>

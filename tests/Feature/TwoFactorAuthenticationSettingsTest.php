@@ -9,10 +9,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Fortify\Features;
 use Laravel\Jetstream\Http\Livewire\TwoFactorAuthenticationForm;
 use Livewire\Livewire;
+use Tests\Support\ConfirmsPassword;
 use Tests\TestCase;
 
 final class TwoFactorAuthenticationSettingsTest extends TestCase
 {
+    use ConfirmsPassword;
     use RefreshDatabase;
 
     public function testTwoFactorAuthenticationCanBeEnabled(): void
@@ -23,7 +25,7 @@ final class TwoFactorAuthenticationSettingsTest extends TestCase
 
         $this->actingAs($user = User::factory()->create());
 
-        $this->withSession(['auth.password_confirmed_at' => time()]);
+        $this->confirmPassword();
 
         Livewire::test(TwoFactorAuthenticationForm::class)
             ->call('enableTwoFactorAuthentication');
@@ -43,7 +45,7 @@ final class TwoFactorAuthenticationSettingsTest extends TestCase
 
         $this->actingAs($user = User::factory()->create());
 
-        $this->withSession(['auth.password_confirmed_at' => time()]);
+        $this->confirmPassword();
 
         $component = Livewire::test(TwoFactorAuthenticationForm::class)
             ->call('enableTwoFactorAuthentication')
@@ -73,7 +75,7 @@ final class TwoFactorAuthenticationSettingsTest extends TestCase
 
         $this->actingAs($user = User::factory()->create());
 
-        $this->withSession(['auth.password_confirmed_at' => time()]);
+        $this->confirmPassword();
 
         $component = Livewire::test(TwoFactorAuthenticationForm::class)
             ->call('enableTwoFactorAuthentication');

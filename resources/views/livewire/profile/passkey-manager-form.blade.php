@@ -34,7 +34,8 @@
                                     type="text"
                                     wire:model="editingPasskeyName"
                                     maxlength="80"
-                                    wire:keydown.enter="renamePasskey"
+                                    x-data
+                                    @keydown.enter="document.getElementById('passkey-save-{{ $passkey->id }}').click()"
                                     wire:keydown.escape="cancelRenaming"
                                     class="w-full"
                                     autofocus
@@ -44,9 +45,11 @@
                                 @enderror
                             </div>
                             <div class="flex items-center gap-2" wire:key="passkey-{{ $passkey->id }}-edit-actions">
-                                <x-button type="button" wire:click="renamePasskey" wire:key="passkey-{{ $passkey->id }}-save">
-                                    {{ __('app.save') }}
-                                </x-button>
+                                <x-confirms-password wire:then="renamePasskey">
+                                    <x-button type="button" id="passkey-save-{{ $passkey->id }}" wire:key="passkey-{{ $passkey->id }}-save">
+                                        {{ __('app.save') }}
+                                    </x-button>
+                                </x-confirms-password>
                                 <x-secondary-button type="button" wire:click="cancelRenaming" wire:key="passkey-{{ $passkey->id }}-cancel">
                                     {{ __('app.cancel') }}
                                 </x-secondary-button>
@@ -65,22 +68,26 @@
                                 </p>
                             </div>
                             <div class="flex items-center gap-2" wire:key="passkey-{{ $passkey->id }}-view-actions">
-                                <x-secondary-button
-                                    size="sm"
-                                    type="button"
-                                    wire:click="startRenaming('{{ $passkey->id }}')"
-                                    wire:key="passkey-{{ $passkey->id }}-rename"
-                                >
-                                    {{ __('app.passkey_rename') }}
-                                </x-secondary-button>
-                                <x-danger-button
-                                    size="sm"
-                                    wire:click="deletePasskey('{{ $passkey->id }}')"
+                                <x-confirms-password wire:then="startRenaming('{{ $passkey->id }}')">
+                                    <x-secondary-button
+                                        size="sm"
+                                        type="button"
+                                        wire:key="passkey-{{ $passkey->id }}-rename"
+                                    >
+                                        {{ __('app.passkey_rename') }}
+                                    </x-secondary-button>
+                                </x-confirms-password>
+                                <x-confirms-password
+                                    wire:then="deletePasskey('{{ $passkey->id }}')"
                                     wire:confirm="{{ __('app.passkey_delete_confirm') }}"
-                                    wire:key="passkey-{{ $passkey->id }}-delete"
                                 >
-                                    {{ __('app.delete') }}
-                                </x-danger-button>
+                                    <x-danger-button
+                                        size="sm"
+                                        wire:key="passkey-{{ $passkey->id }}-delete"
+                                    >
+                                        {{ __('app.delete') }}
+                                    </x-danger-button>
+                                </x-confirms-password>
                             </div>
                         @endif
                     </div>
@@ -90,12 +97,32 @@
 
         {{-- Button zum Hinzufügen eines Passkeys --}}
         <div class="mt-5">
-            <div x-data="passkeyRegistration('{{ __('app.passkey_default_name') }}', '{{ __('app.passkey_added') }}', '{{ __('app.passkey_registration_aborted') }}')" @keydown.escape.window="showForm = false">
-                <template x-if="!showForm">
-                    <x-button type="button" @click="showForm = true">
-                        {{ __('app.add_passkey') }}
-                    </x-button>
-                </template>
+            {{-- Antworten, die schon in der Middleware entstehen, tragen einen im Framework
+                 fest verdrahteten Text; diese Zuordnung ist ihre einzige Übersetzung. Die
+                 Sitzung (401) läuft vor der Passwortbestätigung (423) ab. --}}
+            <div
+                x-data="passkeyRegistration(
+                    '{{ __('app.passkey_default_name') }}',
+                    '{{ __('app.passkey_added') }}',
+                    '{{ __('app.passkey_registration_aborted') }}',
+                    {
+                        401: '{{ __('app.passkey_login_expired') }}',
+                        419: '{{ __('app.passkey_page_expired') }}',
+                        423: '{{ __('app.passkey_confirmation_expired') }}',
+                        429: '{{ __('app.passkey_too_many_attempts') }}',
+                    },
+                )"
+                @keydown.escape.window="showForm = false"
+                @passkey-registration-confirmed.window="showForm = true"
+            >
+                {{-- x-show statt x-if: Livewire braucht das Bestätigungs-Element dauerhaft im DOM. --}}
+                <div x-show="!showForm">
+                    <x-confirms-password wire:then="startPasskeyRegistration">
+                        <x-button type="button">
+                            {{ __('app.add_passkey') }}
+                        </x-button>
+                    </x-confirms-password>
+                </div>
 
                 <template x-if="showForm">
                     <div class="flex items-center gap-3">
@@ -121,5 +148,7 @@
                 <p x-show="successMessage" x-text="successMessage" class="mt-2 text-sm text-green-600"></p>
             </div>
         </div>
+
+        <x-password-confirmation-modal scope="passkeys" />
     </x-slot>
 </x-action-section>

@@ -13,9 +13,11 @@ use App\Services\Audit\AuditIdHasher;
 use App\Services\Audit\AuthorizationAuditor;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
+use Tests\Support\ConfirmsPassword;
 use Tests\TestCase;
 
 /**
@@ -31,6 +33,7 @@ use Tests\TestCase;
  */
 final class AuthorizationDeniedActivityLogTest extends TestCase
 {
+    use ConfirmsPassword;
     use RefreshDatabase;
 
     public function testDeniedResponseResultIsLogged(): void
@@ -166,11 +169,37 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
         $other = User::factory()->create();
         $passkey = PasskeyCredential::factory()->for($owner)->create();
 
+        // `password.confirm` liegt als Middleware vor der Policy: ohne
+        // Bestätigung endet der Aufruf mit 423, statt den Verstoß zu erreichen.
         $this->actingAs($other)
+            ->confirmPassword()
             ->delete('/user/passkeys/' . $passkey->id)
             ->assertForbidden();
 
         $this->assertAuthorizationDeniedLogged($other, 'delete', $passkey);
+    }
+
+    /**
+     * Hält die in `routes/web.php` dokumentierte Lücke fest: `password.confirm`
+     * bricht vor der Policy ab, der Verstoß bleibt daher un-auditiert. Dreht
+     * jemand die Reihenfolge oder entfällt die Middleware, wird der Test rot
+     * und die Entscheidung neu bewertet, statt still zu kippen.
+     */
+    public function testPasskeyRegistrationControllerDestroyByNonOwnerWithoutConfirmedPasswordIsNotLogged(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $passkey = PasskeyCredential::factory()->for($owner)->create();
+
+        $this->actingAs($other)
+            ->deleteJson('/user/passkeys/' . $passkey->id)
+            ->assertStatus(HttpResponse::HTTP_LOCKED);
+
+        $this->assertNull(
+            $this->latestAuthorizationDenied(),
+            'Der Abbruch durch password.confirm erzeugt bewusst keinen Eintrag.',
+        );
+        $this->assertModelExists($passkey);
     }
 
     public function testActivityLogTableMountWithoutPermissionIsLogged(): void

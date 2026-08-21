@@ -9,10 +9,12 @@ use App\Models\PasskeyCredential;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\Serializer\SerializerInterface;
+use Tests\Support\ConfirmsPassword;
 use Tests\Support\VirtualAuthenticator;
 use Tests\TestCase;
 use Webauthn\AuthenticatorSelectionCriteria;
@@ -20,6 +22,7 @@ use Webauthn\PublicKeyCredentialCreationOptions;
 
 final class PasskeyRegistrationTest extends TestCase
 {
+    use ConfirmsPassword;
     use RefreshDatabase;
 
     private const string REGISTER_OPTIONS_URL = '/user/passkeys/register/options';
@@ -35,10 +38,10 @@ final class PasskeyRegistrationTest extends TestCase
         $user = User::factory()->create();
 
         for ($i = 0; $i < 5; $i++) {
-            $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL)->assertOk();
+            $this->actingAsConfirmed($user)->getJson(self::REGISTER_OPTIONS_URL)->assertOk();
         }
 
-        $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL)->assertTooManyRequests();
+        $this->actingAsConfirmed($user)->getJson(self::REGISTER_OPTIONS_URL)->assertTooManyRequests();
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -50,6 +53,15 @@ final class PasskeyRegistrationTest extends TestCase
         $response = $this->getJson(self::REGISTER_OPTIONS_URL);
 
         $response->assertUnauthorized();
+    }
+
+    public function testOptionsEndpointRequiresConfirmedPassword(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL);
+
+        $response->assertStatus(Response::HTTP_LOCKED);
     }
 
     public function testOptionsEndpointAbortsWhenAuthUserIsNotAUserInstance(): void
@@ -66,7 +78,7 @@ final class PasskeyRegistrationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL);
+        $response = $this->actingAsConfirmed($user)->getJson(self::REGISTER_OPTIONS_URL);
 
         $response->assertOk();
         $response->assertJsonStructure(['challenge', 'rp', 'user', 'pubKeyCredParams']);
@@ -84,7 +96,7 @@ final class PasskeyRegistrationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL);
+        $this->actingAsConfirmed($user)->getJson(self::REGISTER_OPTIONS_URL);
 
         $this->assertNotNull(session(self::SESSION_KEY));
     }
@@ -94,7 +106,7 @@ final class PasskeyRegistrationTest extends TestCase
         $user = User::factory()->create();
         PasskeyCredential::factory()->for($user)->count(2)->create();
 
-        $response = $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL);
+        $response = $this->actingAsConfirmed($user)->getJson(self::REGISTER_OPTIONS_URL);
 
         $response->assertOk();
         $response->assertJsonCount(2, 'excludeCredentials');
@@ -106,8 +118,8 @@ final class PasskeyRegistrationTest extends TestCase
         // A repeated challenge would allow replay attacks.
         $user = User::factory()->create();
 
-        $first = $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL)->json('challenge');
-        $second = $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL)->json('challenge');
+        $first = $this->actingAsConfirmed($user)->getJson(self::REGISTER_OPTIONS_URL)->json('challenge');
+        $second = $this->actingAsConfirmed($user)->getJson(self::REGISTER_OPTIONS_URL)->json('challenge');
 
         $this->assertNotSame($first, $second, 'Each options request must produce a unique challenge.');
     }
@@ -123,11 +135,23 @@ final class PasskeyRegistrationTest extends TestCase
         $response->assertUnauthorized();
     }
 
+    public function testStoreEndpointRequiresConfirmedPassword(): void
+    {
+        $user = User::factory()->create();
+
+        // Ohne Bestätigung greift die Middleware vor der Zeremonie; sonst
+        // stünde hier die 422 der fehlenden Options in der Session.
+        $response = $this->actingAs($user)
+            ->postJson(self::REGISTER_URL, [], ['Content-Type' => self::CONTENT_TYPE_JSON]);
+
+        $response->assertStatus(Response::HTTP_LOCKED);
+    }
+
     public function testStoreEndpointReturns422WhenSessionIsMissing(): void
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)
+        $response = $this->actingAsConfirmed($user)
             ->withSession([])
             ->postJson(self::REGISTER_URL, [], ['Content-Type' => self::CONTENT_TYPE_JSON]);
 
@@ -139,7 +163,7 @@ final class PasskeyRegistrationTest extends TestCase
         $user = User::factory()->create();
 
         // Simulate a ceremony whose TTL has already elapsed.
-        $response = $this->actingAs($user)
+        $response = $this->actingAsConfirmed($user)
             ->withSession([
                 self::SESSION_KEY => [
                     'data' => '{"challenge":"dGVzdA"}',
@@ -155,7 +179,7 @@ final class PasskeyRegistrationTest extends TestCase
         $user = User::factory()->create();
 
         // A non-array value in the session key must be treated as missing/invalid.
-        $response = $this->actingAs($user)
+        $response = $this->actingAsConfirmed($user)
             ->withSession([
                 self::SESSION_KEY => 'corrupted-session-string',
             ])->postJson(self::REGISTER_URL, [], ['Content-Type' => self::CONTENT_TYPE_JSON]);
@@ -168,7 +192,7 @@ final class PasskeyRegistrationTest extends TestCase
         $user = User::factory()->create();
         $options = $this->startCeremony($user);
 
-        $response = $this->actingAs($user)->postJson(
+        $response = $this->actingAsConfirmed($user)->postJson(
             self::REGISTER_URL,
             // Der Controller liest die Attestation aus dem gesamten Body und den
             // Namen aus demselben JSON, deshalb reisen beide in einem Rumpf.
@@ -188,7 +212,7 @@ final class PasskeyRegistrationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL);
+        $this->actingAsConfirmed($user)->getJson(self::REGISTER_OPTIONS_URL);
 
         $response = $this->call(
             'POST',
@@ -207,7 +231,7 @@ final class PasskeyRegistrationTest extends TestCase
 
         // Eine Attestation, die der Authenticator ohne Nutzerverifikation liefert:
         // die Zeremonie weist sie ab, ohne dass etwas gemockt werden muss.
-        $response = $this->actingAs($user)->postJson(
+        $response = $this->actingAsConfirmed($user)->postJson(
             self::REGISTER_URL,
             VirtualAuthenticator::create()->attestation($options, userVerified: false),
             ['Content-Type' => self::CONTENT_TYPE_JSON],
@@ -246,7 +270,7 @@ final class PasskeyRegistrationTest extends TestCase
         // fehlende Tabelle und erzeugt so den Fehler unterhalb der Zeremonie.
         Schema::drop('passkey_credentials');
 
-        $response = $this->actingAs($user)->postJson(
+        $response = $this->actingAsConfirmed($user)->postJson(
             self::REGISTER_URL,
             VirtualAuthenticator::create()->attestation($options),
             ['Content-Type' => self::CONTENT_TYPE_JSON],
@@ -275,7 +299,7 @@ final class PasskeyRegistrationTest extends TestCase
         $user = User::factory()->create();
         $options = $this->startCeremony($user);
 
-        $this->actingAs($user)->postJson(
+        $this->actingAsConfirmed($user)->postJson(
             self::REGISTER_URL,
             VirtualAuthenticator::create()->attestation($options),
             ['Content-Type' => self::CONTENT_TYPE_JSON],
@@ -291,7 +315,7 @@ final class PasskeyRegistrationTest extends TestCase
         $user = User::factory()->create();
         $options = $this->startCeremony($user);
 
-        $this->actingAs($user)->postJson(
+        $this->actingAsConfirmed($user)->postJson(
             self::REGISTER_URL,
             [...VirtualAuthenticator::create()->attestation($options), 'name' => '   '],
             ['Content-Type' => self::CONTENT_TYPE_JSON],
@@ -315,12 +339,23 @@ final class PasskeyRegistrationTest extends TestCase
         $response->assertUnauthorized();
     }
 
-    public function testOwnerCanDeletePasskey(): void
+    public function testDestroyRequiresConfirmedPassword(): void
     {
         $user = User::factory()->create();
         $passkey = PasskeyCredential::factory()->for($user)->create();
 
         $response = $this->actingAs($user)->deleteJson("/user/passkeys/{$passkey->id}");
+
+        $response->assertStatus(Response::HTTP_LOCKED);
+        $this->assertModelExists($passkey);
+    }
+
+    public function testOwnerCanDeletePasskey(): void
+    {
+        $user = User::factory()->create();
+        $passkey = PasskeyCredential::factory()->for($user)->create();
+
+        $response = $this->actingAsConfirmed($user)->deleteJson("/user/passkeys/{$passkey->id}");
 
         $response->assertNoContent();
         $this->assertModelMissing($passkey);
@@ -332,7 +367,7 @@ final class PasskeyRegistrationTest extends TestCase
         $other = User::factory()->create();
         $passkey = PasskeyCredential::factory()->for($owner)->create();
 
-        $response = $this->actingAs($other)->deleteJson("/user/passkeys/{$passkey->id}");
+        $response = $this->actingAsConfirmed($other)->deleteJson("/user/passkeys/{$passkey->id}");
 
         $response->assertForbidden();
         $this->assertModelExists($passkey);
@@ -347,13 +382,18 @@ final class PasskeyRegistrationTest extends TestCase
         RateLimiter::clear('passkey-register');
     }
 
+    private function actingAsConfirmed(User $user): static
+    {
+        return $this->actingAs($user)->confirmPassword();
+    }
+
     /**
      * Ruft den Options-Endpunkt auf und liefert die Optionen zurück, die der
      * Server sich für den folgenden POST gemerkt hat.
      */
     private function startCeremony(User $user): PublicKeyCredentialCreationOptions
     {
-        $this->actingAs($user)->getJson(self::REGISTER_OPTIONS_URL)->assertOk();
+        $this->actingAsConfirmed($user)->getJson(self::REGISTER_OPTIONS_URL)->assertOk();
 
         $stored = session(self::SESSION_KEY);
         $json = is_array($stored) && is_string($stored['data'] ?? null)

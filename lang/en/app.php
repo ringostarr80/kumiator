@@ -222,6 +222,11 @@ return [
     'passkey_registration_server_error' => 'The passkey could not be saved. Please try again later.',
     'passkey_registration_aborted' => 'The passkey was not created. The process may have been cancelled'
         . ' — or, if you are using a security key, it may be out of space.',
+    'passkey_confirmation_expired' => 'Your password confirmation has expired. Please confirm your password'
+        . ' again.',
+    'passkey_too_many_attempts' => 'Too many attempts. Please wait a moment and try again.',
+    'passkey_page_expired' => 'Your session has expired. Please reload the page.',
+    'passkey_login_expired' => 'Your login has expired. Please log in again.',
     'unsupported_media_type' => 'Unsupported Media Type.',
     'request_payload_too_large' => 'Request payload too large.',
 
