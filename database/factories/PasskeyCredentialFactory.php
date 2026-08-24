@@ -20,42 +20,6 @@ class PasskeyCredentialFactory extends Factory
 {
     protected $model = PasskeyCredential::class;
 
-    public function configure(): static
-    {
-        return $this->afterCreating(function (PasskeyCredential $credential): void {
-            $user = $credential->user()->firstOrFail();
-            $serializer = app(SerializerInterface::class);
-
-            $source = $serializer->deserialize(
-                $credential->credential_public_key,
-                CredentialRecord::class,
-                'json',
-            );
-
-            $corrected = CredentialRecord::create(
-                publicKeyCredentialId: $source->publicKeyCredentialId,
-                type: $source->type,
-                transports: $source->transports,
-                attestationType: $source->attestationType,
-                trustPath: $source->trustPath,
-                aaguid: $source->aaguid,
-                credentialPublicKey: $source->credentialPublicKey,
-                userHandle: $user->getWebAuthnUserHandle(),
-                counter: $source->counter,
-                otherUI: $source->otherUI,
-                backupEligible: $source->backupEligible,
-                backupStatus: $source->backupStatus,
-                uvInitialized: $source->uvInitialized,
-            );
-
-            PasskeyCredential::withoutEvents(
-                fn (): bool => $credential->updateOrFail([
-                    'credential_public_key' => $serializer->serialize($corrected, 'json'),
-                ]),
-            );
-        });
-    }
-
     /**
      * @return array<string, mixed>
      */
@@ -65,8 +29,35 @@ class PasskeyCredentialFactory extends Factory
         $credentialIdBytes = random_bytes(32);
         $credentialId = Base64UrlSafe::encodeUnpadded($credentialIdBytes);
 
-        // Minimalen CredentialRecord bauen und für die Ablage serialisieren
-        $credentialRecord = CredentialRecord::create(
+        return [
+            // Muss vor `credential_public_key` stehen: Der Record dort trägt den
+            // Handle des Nutzers und kommt erst an ihn, wenn Laravel diesen Eintrag
+            // zu einer ID aufgelöst hat.
+            'user_id' => User::factory(),
+            'credential_id' => $credentialId,
+            'credential_public_key' => static fn (array $attributes): string => self::serializeRecord(
+                $credentialIdBytes,
+                $attributes['user_id'] ?? null,
+            ),
+            'counter' => 0,
+            'transports' => ['internal'],
+            'backup_eligible' => false,
+            'backup_state' => false,
+            'aaguid' => '00000000-0000-0000-0000-000000000000',
+            'name' => fake()->words(2, true),
+            'last_used_at' => null,
+        ];
+    }
+
+    /**
+     * Der Handle im Record muss zu dem am Nutzer passen, sonst weist die
+     * Assertion-Zeremonie das Credential ab.
+     */
+    private static function serializeRecord(string $credentialIdBytes, mixed $userId): string
+    {
+        $user = User::query()->whereKey($userId)->firstOrFail();
+
+        $record = CredentialRecord::create(
             publicKeyCredentialId: $credentialIdBytes,
             type: 'public-key',
             transports: ['internal'],
@@ -78,24 +69,10 @@ class PasskeyCredentialFactory extends Factory
             // Der Wert wird in Tests nie kryptografisch geprüft; für den Roundtrip
             // durch den Serializer genügt jede nicht-leere Bytefolge dieser Länge.
             credentialPublicKey: random_bytes(77),
-            userHandle: '0', // Platzhalter – afterCreating() setzt die echte User-ID ein
+            userHandle: $user->getWebAuthnUserHandle(),
             counter: 0,
         );
 
-        $serializer = app(SerializerInterface::class);
-        $serialisedRecord = $serializer->serialize($credentialRecord, 'json');
-
-        return [
-            'user_id' => User::factory(),
-            'credential_id' => $credentialId,
-            'credential_public_key' => $serialisedRecord,
-            'counter' => 0,
-            'transports' => ['internal'],
-            'backup_eligible' => false,
-            'backup_state' => false,
-            'aaguid' => '00000000-0000-0000-0000-000000000000',
-            'name' => fake()->words(2, true),
-            'last_used_at' => null,
-        ];
+        return app(SerializerInterface::class)->serialize($record, 'json');
     }
 }

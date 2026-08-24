@@ -70,14 +70,22 @@ final class VirtualAuthenticator
      * Legt einen Passkey für $user an, dessen hinterlegter öffentlicher
      * Schlüssel zu diesem Authenticator gehört — nur so kann die spätere
      * Signaturprüfung überhaupt gelingen.
+     *
+     * `$userHandleOverride` schreibt einen vom Nutzer abweichenden Handle in den
+     * gespeicherten Record — die Zeremonie prüft gegen den Record, nicht gegen
+     * den Nutzer.
      */
-    public function registerFor(User $user): PasskeyCredential
+    public function registerFor(User $user, ?string $userHandleOverride = null): PasskeyCredential
     {
         $credential = PasskeyCredential::factory()->for($user)->create();
         $serializer = app(SerializerInterface::class);
 
         $record = $serializer->deserialize($credential->credential_public_key, CredentialRecord::class, 'json');
         $record->credentialPublicKey = $this->coseKey;
+
+        if ($userHandleOverride !== null) {
+            $record->userHandle = $userHandleOverride;
+        }
 
         PasskeyCredential::withoutEvents(
             fn (): bool => $credential->updateOrFail([
@@ -154,7 +162,8 @@ final class VirtualAuthenticator
      * `$withUserHandle` bildet den Unterschied zwischen discoverable Credentials
      * (Authenticator kennt den Handle und liefert ihn mit) und nicht-discoverable
      * Credentials (kein Handle in der Antwort) ab; `$userHandleOverride` liefert
-     * einen abweichenden Handle, wie ihn nur ein manipulierter Client sendet.
+     * einen vom gespeicherten Record abweichenden Handle, wie ihn nur ein
+     * manipulierter Client sendet.
      *
      * `$userVerified` bildet einen Authenticator ab, der den Nutzer nur als
      * anwesend meldet, ohne ihn per Biometrie oder PIN zu prüfen.
@@ -204,8 +213,12 @@ final class VirtualAuthenticator
         ];
 
         if ($withUserHandle) {
-            $handle = $userHandleOverride ?? $credential->user()->firstOrFail()->getWebAuthnUserHandle();
-            $response['userHandle'] = Base64UrlSafe::encodeUnpadded($handle);
+            // Ein Authenticator sendet den Handle, den er beim Registrieren gespeichert
+            // hat — also den aus dem Record, nicht den aktuellen des Nutzers.
+            $record = app(SerializerInterface::class)
+                ->deserialize($credential->credential_public_key, CredentialRecord::class, 'json');
+
+            $response['userHandle'] = Base64UrlSafe::encodeUnpadded($userHandleOverride ?? $record->userHandle);
         }
 
         return (string) json_encode([

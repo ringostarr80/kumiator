@@ -12,6 +12,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\MissingAttributeException;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -34,6 +35,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property ?\Illuminate\Support\Carbon $pending_email_sent_at
  * @property ?\Illuminate\Support\Carbon $approved_at
  * @property ?\Illuminate\Support\Carbon $deleted_at
+ * @property ?string $webauthn_user_handle Nullable trotz NOT-NULL-Spalte: Eine Teil-Selektion lädt sie nicht mit
  */
 class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
 {
@@ -75,6 +77,7 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
         'remember_token',
         'two_factor_recovery_codes',
         'two_factor_secret',
+        'webauthn_user_handle',
     ];
 
     /**
@@ -87,13 +90,53 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     ];
 
     /**
-     * Der WebAuthn-User-Handle muss über die Lebensdauer des Kontos stabil
-     * bleiben und nach außen bedeutungslos sein — daher der unveränderliche
-     * Integer-Primärschlüssel.
+     * Der Handle wandert auf den Authenticator und bei synchronisierten Passkeys
+     * in den Cloud-Dienst des Anbieters. Er muss über die Lebensdauer des Kontos
+     * stabil bleiben: Ändert er sich, verwaisen alle registrierten Passkeys.
+     *
+     * Setzt eine gespeicherte, vollständig geladene Instanz voraus: Der Wert
+     * entsteht erst im Insert, und eine Teil-Selektion lädt die Spalte nicht mit.
+     * Ohne den Guard bliebe davon nur ein `TypeError` aus dem Rückgabetyp, der
+     * die Ursache nicht benennt.
      */
     public function getWebAuthnUserHandle(): string
     {
-        return (string)$this->id;
+        return $this->webauthn_user_handle
+            ?? throw new MissingAttributeException($this, 'webauthn_user_handle');
+    }
+
+    /**
+     * `usesUniqueIds` statt eines `creating`-Hooks, weil `Model::performInsert()`
+     * `setUniqueIds()` noch vor dem Event-Dispatch aufruft: Der Wert der
+     * NOT-NULL-Spalte entsteht damit auch dann, wenn der global geteilte
+     * Model-Dispatcher ausgehängt ist — `Event::fake()`, `Model::withoutEvents()`,
+     * `saveQuietly()` und der Seeder-Trait `WithoutModelEvents` tun genau das.
+     */
+    public function usesUniqueIds(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function uniqueIds(): array
+    {
+        return ['webauthn_user_handle'];
+    }
+
+    /**
+     * Base64URL ohne Padding, wie die Credential-IDs daneben. Von Hand statt über
+     * die Bibliothek der Zeremonie, weil Models nicht von Vendor-Paketen außerhalb
+     * der Allowlist abhängen dürfen.
+     *
+     * 32 Zufallsbytes ergeben 43 Zeichen. Mehr als 48 Bytes passen nicht: Darüber
+     * überschreitet die Base64URL-Form die 64 Bytes, die die WebAuthn-Spezifikation
+     * für `user.id` zulässt.
+     */
+    public function newUniqueId(): string
+    {
+        return rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
     }
 
     public function isApproved(): bool
