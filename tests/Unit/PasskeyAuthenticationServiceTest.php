@@ -111,6 +111,28 @@ final class PasskeyAuthenticationServiceTest extends TestCase
         $this->assertSame(7, $credential->refresh()->counter);
     }
 
+    /**
+     * Maßstab ist der Handle im gespeicherten CredentialRecord, nicht der am
+     * Nutzer: Weichen beide ab, bleibt die Assertion gültig, solange der
+     * Authenticator den Handle des Records sendet.
+     */
+    public function testVerifyAcceptsACredentialWhoseRecordHandleDiffersFromTheUsers(): void
+    {
+        $user = User::factory()->create();
+        $recordHandle = (string) $user->id;
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor($user, $recordHandle);
+        $options = $this->service->createOptions();
+
+        $verified = $this->service->verify(
+            $authenticator->signAssertion($credential, $options),
+            $options,
+            WebauthnConfig::effectiveHost(),
+        );
+
+        $this->assertSame($credential->id, $verified->id);
+    }
+
     public function testVerifyRejectsAnAssertionSignedByAForeignKey(): void
     {
         $user = User::factory()->create();

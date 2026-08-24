@@ -16,12 +16,9 @@ final class PasskeyCredentialFactoryTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * Der serialisierte CredentialRecord trägt in `definition()` bewusst den
-     * Platzhalter-userHandle `'0'`; erst der `afterCreating`-Hook stempelt die
-     * echte User-ID ein. Weil Laravels Factory immutable ist, geht dieser Hook
-     * verloren, sobald `configure()` den Rückgabewert von `afterCreating()`
-     * verwirft — der Record behält dann `'0'`, was zu `getWebAuthnUserHandle()`
-     * nicht mehr passt.
+     * Weicht der Handle im serialisierten Record von dem am Nutzer ab, weist die
+     * Assertion-Zeremonie jedes so erzeugte Credential ab — und die Passkey-Tests
+     * scheitern weit weg von der Ursache.
      */
     public function testFactoryStampsRealUserHandleOntoCredentialRecord(): void
     {

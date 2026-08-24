@@ -57,7 +57,8 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
         );
 
         // Der User-Handle muss ein stabiler, undurchsichtiger Bezeichner sein –
-        // KEINE E-Mail-Adresse. Wir nehmen den Primärschlüssel des Nutzers.
+        // KEINE E-Mail-Adresse und kein Primärschlüssel, weil er den Authenticator
+        // erreicht und dort erhalten bleibt.
         $userEntity = PublicKeyCredentialUserEntity::create(
             name: $user->email,
             id: $user->getWebAuthnUserHandle(),

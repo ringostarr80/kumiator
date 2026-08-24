@@ -32,7 +32,7 @@ final class PasskeyRegistrationServiceTest extends TestCase
         $options = $this->service->createOptions($user);
 
         $this->assertInstanceOf(PublicKeyCredentialCreationOptions::class, $options);
-        $this->assertSame($user->getWebAuthnUserHandle(), $options->user->id);
+        $this->assertSame($user->webauthn_user_handle, $options->user->id);
     }
 
     public function testCreateOptionsRequiresADiscoverableCredential(): void
