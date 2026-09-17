@@ -215,8 +215,26 @@ return [
     'passkey_added' => 'Passkey erfolgreich hinzugefügt.',
     'passkey_deleted' => 'Passkey gelöscht.',
     'passkey_delete_confirm' => 'Möchtest du diesen Passkey wirklich löschen?',
+    'passkey_delete_last_blocked' => 'Das ist dein letzter Passkey.'
+        . ' Solange die Passwort-Anmeldung abgeschaltet ist, käme niemand mehr in das Konto.',
+    'password_login_title' => 'Passwort-Anmeldung',
+    'password_login_description' => 'Steuert, ob dieses Konto sich noch mit E-Mail-Adresse und Passwort anmelden darf.',
+    'password_login_state_on' => 'Die Anmeldung mit Passwort ist möglich.',
+    'password_login_state_off' => 'Die Anmeldung ist nur noch per Passkey möglich.',
+    'password_login_disable' => 'Passwort-Anmeldung abschalten',
+    'password_login_enable' => 'Passwort-Anmeldung wieder zulassen',
+    'password_login_needs_passkey' => 'Registriere zuerst einen Passkey — sonst führt kein Weg mehr in das Konto.',
+    'password_login_disabled_flash' => 'Die Passwort-Anmeldung ist abgeschaltet.',
+    'password_login_enabled_flash' => 'Die Passwort-Anmeldung ist wieder zugelassen.',
     'password_change_passkey_hint' => 'Bestätige den Wechsel mit deinem Passkey.'
         . ' Dein bisheriges Passwort zählt an diesem Konto nicht mehr.',
+    'password_login_disabled_hint' => 'Danach bestätigst du Änderungen auf dieser Seite mit deinem Passkey'
+        . ' statt mit dem Passwort, und der Link zum Zurücksetzen wird nicht mehr verschickt.'
+        . ' Wer seinen letzten Passkey verliert, braucht die Hilfe einer Administration.',
+    'password_login_enable_warning' => 'Dein Passwort aus der Zeit vor dem Abschalten wird dabei verworfen,'
+        . ' und deine anderen Geräte werden abgemeldet.'
+        . ' Willst du dich danach wieder mit Passwort anmelden, setze vorher oben unter „Passwort ändern" ein neues'
+        . ' — sonst bleibt nur „Passwort vergessen?" auf der Anmeldeseite, nachdem du dich abgemeldet hast.',
     'passkey_rename' => 'Umbenennen',
     'passkey_renamed' => 'Passkey umbenannt.',
     'passkey_registered_at' => 'Registriert am',
@@ -319,6 +337,8 @@ return [
     'activity_password_updated' => 'Passwort geändert',
     'activity_password_update_failed' => 'Passwortänderung fehlgeschlagen',
     'activity_password_confirmation_failed' => 'Passwort-Bestätigung fehlgeschlagen',
+    'activity_password_login_disabled' => 'Passwort-Anmeldung abgeschaltet',
+    'activity_password_login_enabled' => 'Passwort-Anmeldung wieder zugelassen',
     'activity_password_reset' => 'Passwort zurückgesetzt',
     'activity_password_reset_requested' => 'Passwort-Reset-Link angefordert',
     'activity_password_reset_failed' => 'Passwort-Reset abgelehnt',

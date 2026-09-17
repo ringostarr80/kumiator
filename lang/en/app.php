@@ -209,8 +209,26 @@ return [
     'passkey_added' => 'Passkey added successfully.',
     'passkey_deleted' => 'Passkey deleted.',
     'passkey_delete_confirm' => 'Are you sure you want to delete this passkey?',
+    'passkey_delete_last_blocked' => 'This is your last passkey.'
+        . ' With password login turned off, nobody could get into the account.',
+    'password_login_title' => 'Password login',
+    'password_login_description' => 'Controls whether this account may still sign in with email address and password.',
+    'password_login_state_on' => 'Signing in with a password is possible.',
+    'password_login_state_off' => 'Signing in is only possible with a passkey.',
+    'password_login_disable' => 'Turn off password login',
+    'password_login_enable' => 'Allow password login again',
+    'password_login_needs_passkey' => 'Register a passkey first — otherwise no way into the account is left.',
+    'password_login_disabled_flash' => 'Password login is turned off.',
+    'password_login_enabled_flash' => 'Password login is allowed again.',
     'password_change_passkey_hint' => 'Confirm the change with your passkey.'
         . ' Your previous password no longer counts for this account.',
+    'password_login_disabled_hint' => 'From then on you confirm changes on this page with your passkey'
+        . ' instead of your password, and the reset link is no longer sent.'
+        . ' Anyone who loses their last passkey needs help from an administrator.',
+    'password_login_enable_warning' => 'Your password from before the switch-off is discarded in the process,'
+        . ' and your other devices are signed out.'
+        . ' To sign in with a password again afterwards, set a new one under "Update Password" above first'
+        . ' — otherwise only "Forgot your password?" on the login page remains, after you have signed out.',
     'passkey_rename' => 'Rename',
     'passkey_renamed' => 'Passkey renamed.',
     'passkey_registered_at' => 'Registered on',
@@ -310,6 +328,8 @@ return [
     'activity_password_updated' => 'Password changed',
     'activity_password_update_failed' => 'Password change failed',
     'activity_password_confirmation_failed' => 'Password confirmation failed',
+    'activity_password_login_disabled' => 'Password login turned off',
+    'activity_password_login_enabled' => 'Password login turned back on',
     'activity_password_reset' => 'Password reset',
     'activity_password_reset_requested' => 'Password reset link requested',
     'activity_password_reset_failed' => 'Password reset denied',

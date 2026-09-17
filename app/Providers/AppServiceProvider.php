@@ -15,8 +15,10 @@ use App\Services\Audit\AuthorizationAuditor;
 use App\Services\Audit\Contracts\AuthorizationAuditorContract;
 use App\Services\Audit\Contracts\SanctumTokenAuditorContract;
 use App\Services\Audit\SanctumTokenAuditor;
+use App\Services\Auth\Contracts\LoginMethodChangerContract;
 use App\Services\Auth\Contracts\OtherSessionRevokerContract;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
+use App\Services\Auth\LoginMethodChanger;
 use App\Services\Auth\OtherSessionRevoker;
 use App\Services\Console\ConsoleActorContext;
 use App\Services\Console\Contracts\ConsoleActorContextContract;
@@ -72,6 +74,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ProfilePhotoOptimizerContract::class, ProfilePhotoOptimizer::class);
         $this->app->bind(UserSessionTerminatorContract::class, UserSessionTerminator::class);
         $this->app->bind(OtherSessionRevokerContract::class, OtherSessionRevoker::class);
+        $this->app->bind(LoginMethodChangerContract::class, LoginMethodChanger::class);
         $this->app->bind(SanctumTokenAuditorContract::class, SanctumTokenAuditor::class);
         $this->app->bind(AuthorizationAuditorContract::class, AuthorizationAuditor::class);
         $this->app->singleton(ConsoleActorContextContract::class, ConsoleActorContext::class);

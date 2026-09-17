@@ -34,4 +34,6 @@ interface PasskeyCredentialRepositoryContract
     public function updateName(PasskeyCredential $model, string $name): void;
 
     public function delete(PasskeyCredential $model): void;
+
+    public function countForUser(User $user): int;
 }

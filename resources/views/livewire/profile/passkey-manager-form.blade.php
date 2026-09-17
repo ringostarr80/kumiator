@@ -20,6 +20,10 @@
             </div>
         @endif
 
+        @error('passkey_delete')
+            <p class="mb-4 text-sm text-red-600">{{ $message }}</p>
+        @enderror
+
         {{-- Liste der registrierten Passkeys --}}
         @if ($passkeys->isEmpty())
             <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('app.passkeys_empty') }}</p>
@@ -146,6 +150,67 @@
 
                 <p x-show="errorMessage" x-text="errorMessage" class="mt-2 text-sm text-red-600"></p>
                 <p x-show="successMessage" x-text="successMessage" class="mt-2 text-sm text-green-600"></p>
+            </div>
+        </div>
+
+
+        {{-- Ein- und Ausschalten der Passwort-Anmeldung --}}
+        <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                {{ __('app.password_login_title') }}
+            </h3>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                {{ __('app.password_login_description') }}
+            </p>
+
+            @if (session('password_login_disabled'))
+                <div class="mt-3 font-medium text-sm text-green-600">
+                    {{ __('app.password_login_disabled_flash') }}
+                </div>
+            @endif
+
+            @if (session('password_login_enabled'))
+                <div class="mt-3 font-medium text-sm text-green-600">
+                    {{ __('app.password_login_enabled_flash') }}
+                </div>
+            @endif
+
+            @error('passkeys')
+                <p class="mt-3 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+
+            <p class="mt-3 text-sm text-gray-900 dark:text-gray-100">
+                @if ($passwordLoginDisabled)
+                    {{ __('app.password_login_state_off') }}
+                @else
+                    {{ __('app.password_login_state_on') }}
+                @endif
+            </p>
+
+            <div class="mt-3">
+                @if ($passwordLoginDisabled)
+                    <x-confirms-password wire:then="enablePasswordLogin">
+                        <x-secondary-button type="button" wire:key="password-login-enable">
+                            {{ __('app.password_login_enable') }}
+                        </x-secondary-button>
+                    </x-confirms-password>
+
+                    @if ($passwordDistrusted)
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            {{ __('app.password_login_enable_warning') }}
+                        </p>
+                    @endif
+                @else
+                    <x-confirms-password wire:then="disablePasswordLogin">
+                        <x-danger-button wire:key="password-login-disable">
+                            {{ __('app.password_login_disable') }}
+                        </x-danger-button>
+                    </x-confirms-password>
+
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        {{ __('app.password_login_disabled_hint') }}
+                    </p>
+                @endif
             </div>
         </div>
 
