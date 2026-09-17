@@ -70,9 +70,28 @@ class ResetPassword extends Command
             return self::FAILURE;
         }
 
-        $this->resetter->reset($user, $password);
+        // Auf dem Stand von jetzt, nicht dem vom Beginn des Dialogs: Wer den
+        // Passwort-Login schließt, während der Admin die Passwörter tippt, tut
+        // das bei Verdacht — und bekäme ihn sonst ungefragt und ohne Hinweis mit
+        // dem Passwort wieder geöffnet, das der Admin gleich durchgibt.
+        $wasPasswordLoginDisabled = $user->refresh()->isPasswordLoginDisabled();
+
+        // Die Frage steht vor dem Reset, damit die Antwort noch etwas ändern kann.
+        // Enter lässt die Sperre stehen, weil nur diese Richtung umkehrbar ist: Ein
+        // versehentliches Nein korrigiert der nächste Lauf dieses Befehls, ein
+        // versehentliches Ja nur der Kontoinhaber selbst in seinem Profil.
+        $reenablePasswordLogin = !$wasPasswordLoginDisabled
+            || $this->confirm(__('commands.reset_password.confirm_reenable_password_login'));
+
+        $this->resetter->reset($user, $password, $reenablePasswordLogin);
 
         $this->info(__('commands.reset_password.success', ['name' => $user->name, 'email' => $email]));
+
+        if ($wasPasswordLoginDisabled) {
+            $this->warn($reenablePasswordLogin
+                ? __('commands.reset_password.password_login_reenabled')
+                : __('commands.reset_password.password_login_kept_disabled'));
+        }
 
         return self::SUCCESS;
     }

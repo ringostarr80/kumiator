@@ -139,6 +139,12 @@ return [
         'ask_password' => 'New password',
         'ask_password_confirm' => 'Confirm new password',
         'success' => 'Password for user ":name" (:email) was successfully reset.',
+        'confirm_reenable_password_login' => 'Signing in by password is turned off for this account.'
+            . ' Should it be turned back on?',
+        'password_login_reenabled' => 'Note: signing in by password was turned off for this account'
+            . ' and applies again now.',
+        'password_login_kept_disabled' => 'Note: signing in by password stays turned off for this account.'
+            . ' The new password will not apply until it is turned back on.',
     ],
 
     'cleanup_pending_email_changes' => [
