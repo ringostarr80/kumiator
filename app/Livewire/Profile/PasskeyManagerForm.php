@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace App\Livewire\Profile;
 
+use App\Livewire\Profile\Concerns\RequiresFreshPasswordConfirmation;
 use App\Models\User;
 use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
+use App\Services\Auth\Contracts\LoginMethodChangerContract;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Laravel\Jetstream\ConfirmsPasswords;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -24,7 +26,7 @@ use Livewire\Component;
  */
 class PasskeyManagerForm extends Component
 {
-    use ConfirmsPasswords;
+    use RequiresFreshPasswordConfirmation;
 
     /**
      * @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\PasskeyCredential>
@@ -37,9 +39,14 @@ class PasskeyManagerForm extends Component
 
     private PasskeyCredentialRepositoryContract $repository;
 
-    public function boot(PasskeyCredentialRepositoryContract $repository): void
-    {
+    private LoginMethodChangerContract $loginMethods;
+
+    public function boot(
+        PasskeyCredentialRepositoryContract $repository,
+        LoginMethodChangerContract $loginMethods,
+    ): void {
         $this->repository = $repository;
+        $this->loginMethods = $loginMethods;
     }
 
     public function mount(): void
@@ -126,26 +133,108 @@ class PasskeyManagerForm extends Component
         // Fremdzugriff im Audit-Log landet.
         $this->ensurePasswordIsConfirmed();
 
-        $this->repository->delete($passkey);
+        if (!$this->loginMethods->deletePasskey($passkey)) {
+            // Eigener Schlüssel, weil die Meldung an der Liste steht und
+            // nicht beim Knopf für den Passwort-Login, der `passkeys` belegt.
+            throw ValidationException::withMessages([
+                'passkey_delete' => [__('app.passkey_delete_last_blocked')],
+            ]);
+        }
 
         $this->loadPasskeys();
 
         session()->flash('passkey_deleted', true);
     }
 
+    /**
+     * Das Abschalten verlangt einen registrierten Passkey, sonst bliebe kein Weg
+     * ins Konto.
+     */
+    public function disablePasswordLogin(): void
+    {
+        $this->ensurePasswordIsConfirmed(self::FRESH_CONFIRMATION_SECONDS);
+
+        $user = $this->currentUser();
+
+        if (!$this->loginMethods->disablePasswordLogin($user)) {
+            throw ValidationException::withMessages([
+                'passkeys' => [__('app.password_login_needs_passkey')],
+            ]);
+        }
+
+        // Geschrieben hat der Dienst auf der Zeile, die er gesperrt hat, nicht auf
+        // dieser Instanz. Ohne das Nachladen zeigte die Anzeige den Passwort-Login
+        // noch als offen, obwohl er abgeschaltet ist.
+        $user->refresh();
+
+        $this->flashPasswordLoginState(true);
+    }
+
+    public function enablePasswordLogin(): void
+    {
+        $this->ensurePasswordIsConfirmed();
+
+        $user = $this->currentUser();
+
+        if ($this->loginMethods->enablePasswordLogin($user)) {
+            // Geschrieben hat der Dienst auf der gesperrten Zeile; ohne das Nachladen
+            // zeigte die Anzeige den Passwort-Login noch als abgeschaltet.
+            $user->refresh();
+
+            // Ein verworfenes Passwort ist ein neuer Hash, und `AuthenticateSession`
+            // beendet jede Sitzung, die noch den alten trägt — die anderen Geräte
+            // wie nach jedem Passwortwechsel, und ohne diese Zeile auch diese hier:
+            // Livewire lässt die Middleware vor der Aktion laufen, sie sähe den
+            // Wechsel erst beim nächsten Request und hielte ihn für fremd.
+            session()->put(['password_hash_' . Auth::getDefaultDriver() => $user->getAuthPassword()]);
+        }
+
+        $this->flashPasswordLoginState(false);
+    }
+
+    /**
+     * Ob der Passwort-Login abgeschaltet ist, wird bei jedem Rendern gelesen statt
+     * zwischen den Aufrufen gehalten: Schaltet ein zweiter Tab ihn um, zeigte ein
+     * gehaltener Wert bis zum nächsten Seitenaufbau den falschen Text und den
+     * falschen Knopf.
+     */
     public function render(): View
     {
-        return view('livewire.profile.passkey-manager-form');
+        $user = $this->currentUser();
+
+        return view('livewire.profile.passkey-manager-form', [
+            'passwordLoginDisabled' => $user->isPasswordLoginDisabled(),
+            'passwordDistrusted' => $user->hasDistrustedPassword(),
+        ]);
+    }
+
+    /**
+     * Nur das Abschalten sperrt fremde Geräte aus; das Einschalten meldet sie
+     * bei verworfenem Passwort zwar ab, doch der Passkey, ohne den es kein
+     * Abschalten gab, bringt sie wieder hinein. Die Registrierung bleibt an der
+     * Frist der JSON-Endpunkte dahinter — ein strengerer Dialog davor schützte
+     * sie nicht —, und Umbenennen wie Löschen tragen keine Folge, die den
+     * kürzeren Nachweis rechtfertigte.
+     *
+     * @return list<string>
+     */
+    protected function freshlyConfirmedActions(): array
+    {
+        return ['disablePasswordLogin'];
+    }
+
+    private function flashPasswordLoginState(bool $disabled): void
+    {
+        session()->flash($disabled ? 'password_login_disabled' : 'password_login_enabled', true);
     }
 
     private function loadPasskeys(): void
     {
-        $user = Auth::user();
+        $this->passkeys = $this->repository->findAllForUser($this->currentUser());
+    }
 
-        if (!($user instanceof User)) {
-            abort(Response::HTTP_UNAUTHORIZED);
-        }
-
-        $this->passkeys = $this->repository->findAllForUser($user);
+    private function currentUser(): User
+    {
+        return Auth::user() ?? abort(Response::HTTP_UNAUTHORIZED);
     }
 }

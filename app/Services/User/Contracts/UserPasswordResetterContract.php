@@ -25,5 +25,5 @@ use App\Models\User;
  */
 interface UserPasswordResetterContract
 {
-    public function reset(User $user, string $newPassword): void;
+    public function reset(User $user, string $newPassword, bool $reenablePasswordLogin): void;
 }

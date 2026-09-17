@@ -12,10 +12,25 @@ interface PasskeyAuthenticationContract
 {
     public function createOptions(): PublicKeyCredentialRequestOptions;
 
+    /**
+     * Anders als beim Login steht die Identität hier schon fest, deshalb darf
+     * `allowCredentials` gefüllt sein: Der Browser bietet dann nur die Passkeys
+     * dieses Kontos an, statt den Nutzer aus allen für die Domain gespeicherten
+     * wählen zu lassen.
+     */
+    public function createConfirmationOptions(User $user): PublicKeyCredentialRequestOptions;
+
+    /**
+     * @param ?User $identifiedUser Der bereits angemeldete Nutzer im
+     *        Bestätigungspfad; ist er gesetzt, muss das Credential ihm gehören.
+     *        Im Login bleibt er `null`, weil die Identität dort erst die
+     *        Assertion selbst liefert.
+     */
     public function verify(
         string $rawResponse,
         PublicKeyCredentialRequestOptions $storedOptions,
         string $host,
+        ?User $identifiedUser = null,
     ): PasskeyCredential;
 
     /**

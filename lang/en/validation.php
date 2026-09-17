@@ -130,6 +130,8 @@ return [
         'symbols' => 'The :attribute field must contain at least one symbol.',
         'uncompromised' => 'The given :attribute has appeared in a data leak. Please choose a different :attribute.',
     ],
+    'recently_confirmed' => 'Confirm the change with your passkey first.',
+    'password_login_enabled' => 'Password login is turned off for this account.',
     'present' => 'The :attribute field must be present.',
     'present_if' => 'The :attribute field must be present when :other is :value.',
     'present_unless' => 'The :attribute field must be present unless :other is :value.',

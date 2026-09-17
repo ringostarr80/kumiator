@@ -11,6 +11,7 @@ declare global {
     var Passkeys: {
         registerPasskey(credentialName: string): Promise<object>;
         authenticateWithPasskey(): Promise<string>;
+        confirmWithPasskey(wantsRememberedTarget?: boolean): Promise<string>;
     };
 
     // Die Alpine-Factories bleiben hier ungetypt: Ein Funktionstyp würde zum kontextuellen Typ des
@@ -18,6 +19,8 @@ declare global {
     // gegen die Form des Literals selbst. Die Parameter bekommen ihre Typen aus dem JSDoc der Factory.
     var passkeyLogin: unknown;
     var passkeyRegistration: unknown;
+    var passkeyConfirmation: unknown;
+    var passkeyConfirmationPage: unknown;
 
     /** Kommt von der Livewire-Runtime, die ihr eigenes Script-Tag mitbringt */
     var Livewire: {

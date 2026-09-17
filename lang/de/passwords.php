@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 return [
 
+    'disabled' => 'Für dieses Konto ist die Passwort-Anmeldung abgeschaltet. Melde dich mit deinem Passkey an.',
     'reset' => 'Dein Passwort wurde zurückgesetzt.',
     'sent' => 'Wir haben dir einen Link zum Zurücksetzen deines Passworts per E-Mail gesendet.',
     'throttled' => 'Bitte warte, bevor du es erneut versuchst.',

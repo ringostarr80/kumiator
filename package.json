@@ -7,20 +7,20 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "test:css": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.browser.json && vitest run --coverage"
+        "test:frontend": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.browser.json && vitest run --coverage"
     },
     "devDependencies": {
         "@tailwindcss/forms": "^0.5.11",
         "@tailwindcss/typography": "^0.5.20",
         "@tailwindcss/vite": "^4.3.3",
-        "@types/node": "^24.13.3",
-        "@vitest/coverage-v8": "^4.1.10",
-        "axios": "^1.19.0",
-        "concurrently": "^10.0.4",
+        "@types/node": "^24.13.4",
+        "@vitest/coverage-v8": "^4.1.11",
+        "axios": "^1.20.0",
+        "concurrently": "^10.0.5",
         "laravel-vite-plugin": "^3.2.0",
         "tailwindcss": "^4.3.3",
         "typescript": "^7.0.2",
-        "vite": "^8.2.1",
-        "vitest": "^4.1.10"
+        "vite": "^8.3.0",
+        "vitest": "^4.1.11"
     }
 }

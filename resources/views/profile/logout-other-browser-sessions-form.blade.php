@@ -47,10 +47,14 @@
             </div>
         @endif
 
+        {{-- Der Nachweis kommt zuerst, die Rückfrage danach: Bis dahin steht fest,
+             wer da klickt, und der Dialog muss kein Passwortfeld mehr tragen. --}}
         <div class="flex items-center mt-5">
-            <x-button wire:click="confirmLogout" wire:loading.attr="disabled">
-                {{ __('app.logout_other_sessions') }}
-            </x-button>
+            <x-confirms-password wire:then="confirmLogout">
+                <x-button type="button" wire:loading.attr="disabled">
+                    {{ __('app.logout_other_sessions') }}
+                </x-button>
+            </x-confirms-password>
 
             <x-action-message class="ms-3" on="loggedOut">
                 {{ __('app.done') }}
@@ -65,17 +69,6 @@
 
             <x-slot name="content">
                 {{ __('app.logout_other_sessions_confirm') }}
-
-                <div class="mt-4" x-data="{}" x-on:confirming-logout-other-browser-sessions.window="setTimeout(() => $refs.password.focus(), 250)">
-                    <x-input type="password" class="mt-1 block w-3/4"
-                                autocomplete="current-password"
-                                placeholder="{{ __('app.password') }}"
-                                x-ref="password"
-                                wire:model="password"
-                                wire:keydown.enter="logoutOtherBrowserSessions" />
-
-                    <x-input-error for="password" class="mt-2" />
-                </div>
             </x-slot>
 
             <x-slot name="footer">
@@ -90,5 +83,7 @@
                 </x-button>
             </x-slot>
         </x-dialog-modal>
+
+        <x-password-confirmation-modal scope="browser-sessions" />
     </x-slot>
 </x-action-section>

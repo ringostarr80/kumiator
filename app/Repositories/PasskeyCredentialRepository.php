@@ -82,4 +82,9 @@ final class PasskeyCredentialRepository implements PasskeyCredentialRepositoryCo
     {
         $model->deleteOrFail();
     }
+
+    public function countForUser(User $user): int
+    {
+        return PasskeyCredential::where('user_id', $user->id)->count();
+    }
 }

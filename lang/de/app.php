@@ -89,9 +89,12 @@ return [
 
     // Auth - Confirm Password
     'confirm_password_title' => 'Passwort bestätigen',
+    'confirm_identity_title' => 'Identität bestätigen',
     'confirm_password_security' => 'Bitte bestätige aus Sicherheitsgründen dein Passwort, um fortzufahren.',
     'secure_area' => 'Dies ist ein geschützter Bereich der Anwendung. Bitte bestätige dein Passwort,'
         . ' bevor du fortfährst.',
+    'password_confirmation_unavailable' => 'Für dieses Konto ist die Passwort-Anmeldung abgeschaltet und es ist'
+        . ' kein Passkey hinterlegt. Eine Bestätigung ist hier nicht möglich — bitte wende dich an die Administration.',
 
     // Auth - Email Verification
     'verify_email_description' => 'Bevor du fortfährst, bestätige bitte deine E-Mail-Adresse, indem du auf den'
@@ -161,8 +164,8 @@ return [
     'this_device' => 'Dieses Gerät',
     'last_active' => 'Zuletzt aktiv',
     'logout_other_sessions' => 'Andere Browser-Sitzungen beenden',
-    'logout_other_sessions_confirm' => 'Bitte gib dein Passwort ein, um zu bestätigen, dass du alle anderen'
-        . ' Browser-Sitzungen auf all deinen Geräten beenden möchtest.',
+    'logout_other_sessions_confirm' => 'Möchtest du wirklich alle anderen Browser-Sitzungen auf all deinen Geräten'
+        . ' beenden?',
 
     // Delete Account
     'delete_account' => 'Konto löschen',
@@ -170,8 +173,7 @@ return [
     'delete_account_info' => 'Sobald dein Konto gelöscht wird, werden alle zugehörigen Daten unwiderruflich gelöscht.'
         . ' Bitte lade vor dem Löschen alle Daten herunter, die du behalten möchtest.',
     'delete_account_confirm' => 'Bist du sicher, dass du dein Konto löschen möchtest? Sobald dein Konto gelöscht wird,'
-        . ' werden alle zugehörigen Daten unwiderruflich gelöscht. Bitte gib dein Passwort ein, um die dauerhafte'
-        . ' Löschung deines Kontos zu bestätigen.',
+        . ' werden alle zugehörigen Daten unwiderruflich gelöscht.',
 
     // API Tokens
     'create_api_token' => 'API-Token erstellen',
@@ -213,6 +215,26 @@ return [
     'passkey_added' => 'Passkey erfolgreich hinzugefügt.',
     'passkey_deleted' => 'Passkey gelöscht.',
     'passkey_delete_confirm' => 'Möchtest du diesen Passkey wirklich löschen?',
+    'passkey_delete_last_blocked' => 'Das ist dein letzter Passkey.'
+        . ' Solange die Passwort-Anmeldung abgeschaltet ist, käme niemand mehr in das Konto.',
+    'password_login_title' => 'Passwort-Anmeldung',
+    'password_login_description' => 'Steuert, ob dieses Konto sich noch mit E-Mail-Adresse und Passwort anmelden darf.',
+    'password_login_state_on' => 'Die Anmeldung mit Passwort ist möglich.',
+    'password_login_state_off' => 'Die Anmeldung ist nur noch per Passkey möglich.',
+    'password_login_disable' => 'Passwort-Anmeldung abschalten',
+    'password_login_enable' => 'Passwort-Anmeldung wieder zulassen',
+    'password_login_needs_passkey' => 'Registriere zuerst einen Passkey — sonst führt kein Weg mehr in das Konto.',
+    'password_login_disabled_flash' => 'Die Passwort-Anmeldung ist abgeschaltet.',
+    'password_login_enabled_flash' => 'Die Passwort-Anmeldung ist wieder zugelassen.',
+    'password_change_passkey_hint' => 'Bestätige den Wechsel mit deinem Passkey.'
+        . ' Dein bisheriges Passwort zählt an diesem Konto nicht mehr.',
+    'password_login_disabled_hint' => 'Danach bestätigst du Änderungen auf dieser Seite mit deinem Passkey'
+        . ' statt mit dem Passwort, und der Link zum Zurücksetzen wird nicht mehr verschickt.'
+        . ' Wer seinen letzten Passkey verliert, braucht die Hilfe einer Administration.',
+    'password_login_enable_warning' => 'Dein Passwort aus der Zeit vor dem Abschalten wird dabei verworfen,'
+        . ' und deine anderen Geräte werden abgemeldet.'
+        . ' Willst du dich danach wieder mit Passwort anmelden, setze vorher oben unter „Passwort ändern" ein neues'
+        . ' — sonst bleibt nur „Passwort vergessen?" auf der Anmeldeseite, nachdem du dich abgemeldet hast.',
     'passkey_rename' => 'Umbenennen',
     'passkey_renamed' => 'Passkey umbenannt.',
     'passkey_registered_at' => 'Registriert am',
@@ -227,6 +249,14 @@ return [
     'passkey_registration_failed' => 'Passkey-Registrierung fehlgeschlagen.',
     'passkey_registration_server_error' => 'Der Passkey konnte nicht gespeichert werden. Bitte versuche es'
         . ' später erneut.',
+    'passkey_confirmation_failed' => 'Die Bestätigung mit dem Passkey ist fehlgeschlagen.'
+        . ' Bitte versuche es erneut.',
+    'passkey_confirmation_server_error' => 'Die Bestätigung konnte nicht abgeschlossen werden. Bitte versuche'
+        . ' es später erneut.',
+    'passkey_confirmation_no_passkey' => 'Für dieses Konto ist kein Passkey hinterlegt.',
+    'confirm_with_passkey' => 'Mit Passkey bestätigen',
+    'confirm_password_or_passkey_security' => 'Bitte weise aus Sicherheitsgründen erneut nach, dass du es'
+        . ' bist, um fortzufahren.',
     // Abbruch, Timeout und ein voller Sicherheitsschlüssel kommen ununterscheidbar als
     // `NotAllowedError` an, und der Text dient zugleich als Ausweichtext für jeden Fehler
     // ohne Server-Antwort. Deshalb beide Ursachen nur als Möglichkeit nennen.
@@ -293,6 +323,8 @@ return [
     'activity_passkey_login_succeeded' => 'Passkey-Anmeldung erfolgreich',
     'activity_passkey_login_failed' => 'Passkey-Anmeldung fehlgeschlagen',
     'activity_passkey_registration_failed' => 'Passkey-Registrierung fehlgeschlagen',
+    'activity_passkey_confirmation_succeeded' => 'Bestätigung per Passkey erfolgreich',
+    'activity_passkey_confirmation_failed' => 'Bestätigung per Passkey fehlgeschlagen',
     'activity_authorization_denied' => 'Autorisierung verweigert',
     'activity_activity_log_viewed' => 'Aktivitätsprotokoll eingesehen',
     'activity_password_login_succeeded' => 'Passwort-Anmeldung erfolgreich',
@@ -300,12 +332,16 @@ return [
     'activity_logout' => 'Abmeldung',
     'activity_login_failed' => 'Anmeldung fehlgeschlagen',
     'activity_login_unapproved' => 'Anmeldung abgelehnt (Konto nicht freigeschaltet)',
+    'activity_login_password_disabled' => 'Anmeldung abgelehnt (Passwort-Anmeldung abgeschaltet)',
     'activity_login_locked_out' => 'Anmeldung gesperrt (zu viele Fehlversuche)',
     'activity_password_updated' => 'Passwort geändert',
     'activity_password_update_failed' => 'Passwortänderung fehlgeschlagen',
     'activity_password_confirmation_failed' => 'Passwort-Bestätigung fehlgeschlagen',
+    'activity_password_login_disabled' => 'Passwort-Anmeldung abgeschaltet',
+    'activity_password_login_enabled' => 'Passwort-Anmeldung wieder zugelassen',
     'activity_password_reset' => 'Passwort zurückgesetzt',
     'activity_password_reset_requested' => 'Passwort-Reset-Link angefordert',
+    'activity_password_reset_failed' => 'Passwort-Reset abgelehnt',
     'activity_user_self_registered' => 'Konto durch Selbstregistrierung angelegt',
     'activity_user_created' => 'Konto angelegt',
     'activity_user_approved' => 'Konto freigeschaltet',
@@ -387,6 +423,8 @@ return [
         . ' abgebrochen. Deine bestehende E-Mail-Adresse bleibt unverändert.',
 
     // E-Mail-Änderung: Profil-Formular (Re-Authentifizierung)
+    'email_change_passkey_hint' => 'Bestätige die Änderung deiner E-Mail-Adresse mit deinem Passkey.'
+        . ' Dein Passwort zählt an diesem Konto nicht mehr.',
     'email_change_current_password_hint' => 'Bestätige die Änderung deiner E-Mail-Adresse mit deinem'
         . ' aktuellen Passwort.',
     'email_change_current_password_required' => 'Für die Änderung der E-Mail-Adresse ist dein aktuelles'

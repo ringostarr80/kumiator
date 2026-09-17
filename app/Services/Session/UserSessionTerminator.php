@@ -35,16 +35,16 @@ final class UserSessionTerminator implements UserSessionTerminatorContract
             ->delete();
     }
 
-    public function countOtherSessionsForUser(int|string $userId, string $currentSessionId): int
+    public function deleteOtherSessionsForUser(User $user, string $currentSessionId): int
     {
         if (!$this->usesDatabaseDriver()) {
             return 0;
         }
 
         return $this->sessions()
-            ->where('user_id', $userId)
+            ->where('user_id', $user->getKey())
             ->where('id', '!=', $currentSessionId)
-            ->count();
+            ->delete();
     }
 
     public function usesDatabaseDriver(): bool

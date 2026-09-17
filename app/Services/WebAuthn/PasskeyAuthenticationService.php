@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Services\WebAuthn;
 
 use App\Config\Vendor\Webauthn\WebauthnConfig;
+use App\Enums\ActivityFailureReason;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
 use App\Services\WebAuthn\Contracts\WebAuthnValidatorFactoryContract;
+use App\Services\WebAuthn\Exceptions\CredentialOwnerMismatchException;
 use Illuminate\Support\Facades\Auth;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -17,6 +19,7 @@ use Symfony\Component\Uid\Uuid;
 use Webauthn\AuthenticatorAssertionResponse;
 use Webauthn\CredentialRecord;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
+use Webauthn\Exception\WebauthnException;
 use Webauthn\PublicKeyCredential;
 use Webauthn\PublicKeyCredentialRequestOptions;
 use Webauthn\TrustPath\EmptyTrustPath;
@@ -74,6 +77,26 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
     }
 
     /**
+     * `allowCredentials` bleibt dem Bestätigungspfad vorbehalten: Dort ist der
+     * Aufrufer bereits angemeldet, die Liste verrät ihm also nichts, was er nicht
+     * ohnehin über sein eigenes Konto weiß. Sie ist reiner Komfort — dass die
+     * Assertion wirklich zu diesem Konto gehört, entscheidet die Verifikation
+     * selbst anhand des angemeldeten Kontos.
+     */
+    public function createConfirmationOptions(User $user): PublicKeyCredentialRequestOptions
+    {
+        return PublicKeyCredentialRequestOptions::create(
+            challenge: random_bytes(32),
+            rpId: WebauthnConfig::rpId(),
+            allowCredentials: PasskeyDescriptorBuilder::fromCollection(
+                $this->repository->findAllForUser($user),
+            ),
+            userVerification: PublicKeyCredentialRequestOptions::USER_VERIFICATION_REQUIREMENT_REQUIRED,
+            timeout: WebauthnConfig::timeoutMs(),
+        );
+    }
+
+    /**
      * Der Audit-Eintrag für den Erfolg und das Freischaltungs-Gate sind Sache des
      * Aufrufers, und zwar NACH abgeschlossenem Login — so erzeugt ein nicht
      * freigeschalteter Nutzer nie einen `passkey_login_succeeded`-Eintrag.
@@ -82,12 +105,19 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
      * @param PublicKeyCredentialRequestOptions $storedOptions Die Optionen, die
      *        beim Aufruf von createOptions() in der Session abgelegt wurden
      * @param string $host Die effektive Domain (z. B. "localhost")
-     * @throws AuthenticatorResponseVerificationException bei Client-Fehlern
+     * @param ?User $identifiedUser Der bereits angemeldete Nutzer im
+     *        Bestätigungspfad; ist er gesetzt, muss das Credential ihm gehören.
+     *        Im Login bleibt er `null`, weil die Identität dort erst die
+     *        Assertion selbst liefert.
+     * @throws \Webauthn\Exception\WebauthnException wenn die Zeremonie die Antwort des
+     *         Browsers verwirft — darunter der nicht gestiegene Signaturzähler eines
+     *         geklonten Authenticators.
      */
     public function verify(
         string $rawResponse,
         PublicKeyCredentialRequestOptions $storedOptions,
         string $host,
+        ?User $identifiedUser = null,
     ): PasskeyCredential {
         $publicKeyCredential = $this->serializer->deserialize($rawResponse, PublicKeyCredential::class, 'json');
 
@@ -113,10 +143,36 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
         $validator = $this->validatorFactory->buildAssertionValidator(WebauthnConfig::appUrl());
 
         // Ohne `allowCredentials` verlangt die Spezifikation, dass der Authenticator
-        // den User-Handle mitliefert; `CheckUserHandle` prüft ihn gegen den
-        // gespeicherten. Den gespeicherten selbst einzusetzen hieße, gegen sich
-        // selbst zu vergleichen — die Prüfung wäre wirkungslos.
-        $updatedRecord = $validator->check($credentialRecord, $response, $storedOptions, $host, $response->userHandle);
+        // den User-Handle mitliefert; `CheckUserHandle` prüft ihn dann gegen den
+        // gespeicherten. Steht der Nutzer dagegen schon vor der Zeremonie fest, darf
+        // der Authenticator ihn weglassen (`null` oder `""` — die Bibliothek liest
+        // beides als fehlend) — dann tritt der Handle des angemeldeten Kontos an
+        // seine Stelle, und geprüft wird das Credential gegen dieses Konto.
+        $responseUserHandle = $response->userHandle;
+        $userHandle = $responseUserHandle !== null && $responseUserHandle !== ''
+            ? $responseUserHandle
+            : $identifiedUser?->getWebAuthnUserHandle();
+
+        // Wem das Credential gehört, sagt die eigene Datenbank — abgewiesen wird ein
+        // fremdes aber zuerst von der Zeremonie: Ist `allowCredentials` gefüllt, kennt
+        // ihr erster Schritt nur die eigenen. Der Vergleich hier gibt der Ablehnung
+        // den genaueren Namen und trägt allein, wenn die Liste leer blieb.
+        $ownedByIdentifiedUser = $identifiedUser === null || $passkeyModel->user_id === $identifiedUser->id;
+
+        try {
+            $updatedRecord = $validator->check($credentialRecord, $response, $storedOptions, $host, $userHandle);
+        } catch (WebauthnException $e) {
+            throw $ownedByIdentifiedUser
+                ? $e
+                : new CredentialOwnerMismatchException($e->getMessage(), $e);
+        }
+
+        // Die bestandene Zeremonie belegt die Antwort, nicht das Konto dahinter. Der
+        // Wurf steht vor dem Schreiben: danach bliebe an der fremden Zeile ein Zähler
+        // und ein `last_used_at` zurück, obwohl die Bestätigung scheiterte.
+        if (!$ownedByIdentifiedUser) {
+            throw new CredentialOwnerMismatchException(ActivityFailureReason::CREDENTIAL_OWNER_MISMATCH->value);
+        }
 
         // Aktualisierten Counter und die Backup-Flags festschreiben
         $this->repository->updateAfterAuthentication(

@@ -206,6 +206,15 @@ final class PasskeyCredentialRepositoryTest extends TestCase
         $this->assertModelMissing($model);
     }
 
+    public function testCountForUserCountsOnlyThePasskeysOfThatUser(): void
+    {
+        $user = User::factory()->create();
+        PasskeyCredential::factory()->for($user)->count(2)->create();
+        PasskeyCredential::factory()->create();
+
+        $this->assertSame(2, $this->repository->countForUser($user));
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

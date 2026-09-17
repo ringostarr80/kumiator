@@ -6,9 +6,10 @@ namespace App\Listeners;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
+use App\Models\User;
 use App\Services\Audit\AuditEmailHasher;
 use App\Services\Audit\AuditIpTruncator;
-use App\Services\Auth\Contracts\OtherDeviceLogoutContextContract;
+use App\Services\Auth\Contracts\DisabledPasswordLoginContextContract;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use Illuminate\Auth\Events\Failed;
@@ -52,8 +53,10 @@ use Spatie\Activitylog\Facades\Activity;
  */
 final class LogAuthenticationActivityListener
 {
-    public function __construct(private readonly UnapprovedLoginContextContract $unapprovedLoginContext)
-    {
+    public function __construct(
+        private readonly UnapprovedLoginContextContract $unapprovedLoginContext,
+        private readonly DisabledPasswordLoginContextContract $disabledPasswordLoginContext,
+    ) {
     }
 
     /**
@@ -166,6 +169,14 @@ final class LogAuthenticationActivityListener
             return;
         }
 
+        // Gleiches Consume-once für den abgeschalteten Passwort-Login: Der
+        // dedizierte `login_password_disabled`-Eintrag steht bereits.
+        if ($this->disabledPasswordLoginContext->isActive()) {
+            $this->disabledPasswordLoginContext->clear();
+
+            return;
+        }
+
         $properties = ['guard' => $event->guard];
 
         $email = $event->credentials['email'] ?? null;
@@ -225,10 +236,19 @@ final class LogAuthenticationActivityListener
             return;
         }
 
+        $properties = $this->forensicProperties(request());
+
+        // Der Broker feuert dieses Event auch, wenn `User::sendPasswordResetNotification()`
+        // den Versand verweigert. Ohne die Notiz läse sich der Eintrag als „Link ging
+        // raus", und ein Support-Fall („ich bekomme keine Mail") liefe ins Leere.
+        if ($user instanceof User && $user->isPasswordLoginDisabled()) {
+            $properties['notification_suppressed'] = true;
+        }
+
         Activity::useLog(ActivityChannel::FORENSIC->value)
             ->event(ActivityEvent::PASSWORD_RESET_REQUESTED->value)
             ->performedOn($user)
-            ->withProperties($this->forensicProperties(request()))
+            ->withProperties($properties)
             ->log('');
     }
 
@@ -254,20 +274,14 @@ final class LogAuthenticationActivityListener
     }
 
     /**
-     * Native `Auth::logoutOtherDevices()`-Aufrufe sichtbar machen. Der
-     * Livewire-Form-Pfad schreibt einen reicheren `other_sessions_logged_out`-
-     * Eintrag mit `terminated_session_count` und setzt davor den
-     * `OtherDeviceLogoutContext`-Marker — den prüfen wir hier, um den
-     * Form-Pfad nicht doppelt zu loggen. Der eigene Event-Code
-     * `other_devices_logged_out` bleibt für native (Nicht-Form-)Aufrufe
-     * reserviert.
+     * Die eigenen Wege der App, fremde Sitzungen zu beenden, halten das als
+     * `other_sessions_logged_out` mit Zahl fest. Der Framework-Weg über
+     * `Auth::logoutOtherDevices()` bleibt trotzdem beobachtet: Ein eigener
+     * Controller, eine künftige API oder ein Tinker-Aufruf soll nicht
+     * unprotokolliert bleiben.
      */
     public function handleOtherDeviceLogout(OtherDeviceLogout $event): void
     {
-        if (app(OtherDeviceLogoutContextContract::class)->isActive()) {
-            return;
-        }
-
         $user = $event->user;
 
         if (!$user instanceof Model) {

@@ -8,6 +8,7 @@ use App\Livewire\Profile\PasskeyManagerForm;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use DOMDocument;
+use DOMElement;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -471,18 +472,34 @@ final class PasskeyManagerFormTest extends TestCase
         $this->assertStringNotContainsString('app.passkey_', $html);
     }
 
+    /**
+     * Der Dialog bleibt beim Schließen ausgeblendet im DOM stehen, also überlebt
+     * sein Alpine-Zustand. Ohne diesen Listener begrüßte die Meldung eines
+     * abgebrochenen Versuchs die nächste, völlig andere Bestätigung.
+     */
+    public function testTheDialogClearsAStalePasskeyErrorWhenItOpens(): void
+    {
+        $user = User::factory()->create();
+        PasskeyCredential::factory()->for($user)->create();
+
+        $html = Livewire::actingAs($user)
+            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->html();
+
+        $xpath = $this->parseHtml($html);
+
+        $block = $xpath->query('//*[starts-with(@x-data, "passkeyConfirmation(")]');
+        $this->assertNotFalse($block);
+        $this->assertSame(1, $block->length, 'Ohne diesen Anker prüft die Abfrage darunter nichts.');
+
+        $element = $block->item(0);
+        $this->assertInstanceOf(DOMElement::class, $element);
+        $this->assertSame("errorMessage = ''", $element->getAttribute('x-on:confirming-password.window'));
+    }
+
     private function assertDialogSitsOutsideTheRegistrationBlock(string $html): void
     {
-        $document = new DOMDocument();
-
-        // Alpine-Attribute wie `@keydown.escape.window` sind kein gültiges
-        // XML; libxml überspringt sie, die hier abgefragten bleiben erhalten.
-        $internalErrors = libxml_use_internal_errors(true);
-        $document->loadHTML('<?xml encoding="UTF-8">' . $html);
-        libxml_clear_errors();
-        libxml_use_internal_errors($internalErrors);
-
-        $xpath = new DOMXPath($document);
+        $xpath = $this->parseHtml($html);
 
         $block = $xpath->query('//*[@x-show="!showForm"]');
         $this->assertNotFalse($block);
@@ -491,5 +508,21 @@ final class PasskeyManagerFormTest extends TestCase
         $dialog = $xpath->query('//*[@id="confirm-password-passkeys"][not(ancestor::*[@x-show="!showForm"])]');
         $this->assertNotFalse($dialog);
         $this->assertSame(1, $dialog->length);
+    }
+
+    /**
+     * Alpine-Attribute wie `@keydown.escape.window` sind kein gültiges XML;
+     * libxml überspringt sie, die hier abgefragten bleiben erhalten.
+     */
+    private function parseHtml(string $html): DOMXPath
+    {
+        $document = new DOMDocument();
+
+        $internalErrors = libxml_use_internal_errors(true);
+        $document->loadHTML('<?xml encoding="UTF-8">' . $html);
+        libxml_clear_errors();
+        libxml_use_internal_errors($internalErrors);
+
+        return new DOMXPath($document);
     }
 }

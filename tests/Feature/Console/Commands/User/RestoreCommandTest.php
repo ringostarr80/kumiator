@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Console\Commands\User;
 
+use App\Models\PasskeyCredential;
 use App\Models\User;
+use App\Services\User\Contracts\UserSoftDeleterContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Testing\PendingCommand;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -72,6 +75,38 @@ final class RestoreCommandTest extends TestCase
         $restored = User::where('email', self::TEST_EMAIL)->first();
         $this->assertNotNull($restored);
         $this->assertTrue($restored->hasPermissionTo('activity-log.view'));
+    }
+
+    /**
+     * Nahm die Löschung dem Konto seine Passkeys, fiel dort auch die Abschaltung
+     * des Passwort-Logins — und mit ihr das Passwort, dem gerade nicht mehr zu
+     * trauen war. Wer wiederherstellt, muss wissen, dass das Konto sich damit
+     * nicht mehr wie zuvor anmeldet.
+     */
+    public function testRestoreHintsThatTheFormerPasswordNoLongerApplies(): void
+    {
+        $user = User::factory()->create([
+            'email' => self::TEST_EMAIL,
+            'password' => Hash::make('old-password'),
+            'password_login_disabled_at' => now(),
+        ]);
+        PasskeyCredential::factory()->for($user)->create();
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+
+        $command = $this->artisan('user:restore');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
+            ->expectsOutputToContain(__('commands.restore_user.password_hint'))
+            ->expectsConfirmation(__('commands.restore_user.confirm_restore'), 'yes')
+            ->assertSuccessful()
+            ->run();
+
+        $restored = User::where('email', self::TEST_EMAIL)->first();
+        $this->assertNotNull($restored);
+        $this->assertFalse(Hash::check('old-password', $restored->password));
     }
 
     public function testRestoreCanBeCancelled(): void

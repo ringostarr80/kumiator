@@ -13,7 +13,10 @@ use App\Models\User;
  * — insbesondere die Activity-Log-Verweise auf den Benutzer — erhalten;
  * gelöscht werden ausschließlich aktive Zugriffsmittel (Sessions, Sanctum-
  * Tokens, Passkeys), damit ein späteres `restore()` keinen Wieder-Zugang
- * über Alt-Cookies/Tokens/Passkeys eröffnet.
+ * über Alt-Cookies/Tokens/Passkeys eröffnet. Mit den Passkeys fällt auch ein
+ * abgeschalteter Passwort-Login — sonst stünde das wiederhergestellte Konto
+ * ohne jeden Anmeldeweg da — und mit ihm das Passwort, dem die Abschaltung
+ * gerade das Vertrauen entzogen hatte.
  *
  * Der Service ist zuständig für die Audit-Symmetrie zum UI-Pfad: jedes
  * widerrufene Token erhält denselben `api_token_revoked`-Eintrag, den auch

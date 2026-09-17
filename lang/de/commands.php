@@ -38,6 +38,9 @@ return [
         'permissions_hint' => 'Achtung: Rollen und Direkt-Berechtigungen (z. B. activity-log.view)'
             . ' wurden beim Löschen nicht entfernt und gelten nach der Wiederherstellung'
             . ' sofort wieder.',
+        'password_hint' => 'Hinweis: War der Passwort-Login für dieses Konto abgeschaltet,'
+            . ' wurde er beim Löschen wieder geöffnet und das damalige Passwort verworfen.'
+            . ' Die Anmeldung führt dann über den Link zum Zurücksetzen oder user:reset-password.',
         'success' => 'Benutzer ":name" (:email) wurde erfolgreich wiederhergestellt.',
     ],
 
@@ -141,6 +144,12 @@ return [
         'ask_password' => 'Neues Passwort',
         'ask_password_confirm' => 'Neues Passwort bestätigen',
         'success' => 'Das Passwort für Benutzer ":name" (:email) wurde erfolgreich zurückgesetzt.',
+        'confirm_reenable_password_login' => 'Für dieses Konto ist die Anmeldung per Passwort'
+            . ' abgeschaltet. Soll sie wieder eingeschaltet werden?',
+        'password_login_reenabled' => 'Hinweis: Die Anmeldung per Passwort war für dieses Konto'
+            . ' abgeschaltet und gilt jetzt wieder.',
+        'password_login_kept_disabled' => 'Hinweis: Für dieses Konto bleibt die Anmeldung per Passwort'
+            . ' abgeschaltet. Das neue Passwort gilt erst nach dem Wiedereinschalten.',
     ],
 
     'cleanup_pending_email_changes' => [

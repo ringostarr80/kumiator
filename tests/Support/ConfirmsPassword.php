@@ -14,8 +14,8 @@ namespace Tests\Support;
  */
 trait ConfirmsPassword
 {
-    protected function confirmPassword(): static
+    protected function confirmPassword(int $secondsAgo = 0): static
     {
-        return $this->withSession(['auth.password_confirmed_at' => time()]);
+        return $this->withSession(['auth.password_confirmed_at' => time() - $secondsAgo]);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\ActivityLog;
 
+use App\Enums\ActivityFailureReason;
 use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,7 +31,7 @@ final class PasskeyAuthenticationFailedActivityLogTest extends TestCase
     {
         $rawBody = (string) json_encode(['rawId' => 'AAECAwQFBgcICQ', 'id' => 'AAECAwQFBgcICQ']);
 
-        PasskeyCredential::recordFailedLoginActivity('verification_failed', $rawBody);
+        PasskeyCredential::recordFailedLoginActivity(ActivityFailureReason::VERIFICATION_FAILED, $rawBody);
 
         $activity = Activity::query()
             ->where('log_name', 'forensic')
@@ -53,7 +54,7 @@ final class PasskeyAuthenticationFailedActivityLogTest extends TestCase
     public function testRecordsInternalErrorReason(): void
     {
         PasskeyCredential::recordFailedLoginActivity(
-            'internal_error',
+            ActivityFailureReason::INTERNAL_ERROR,
             (string) json_encode(['rawId' => 'XYZ']),
         );
 
@@ -73,7 +74,7 @@ final class PasskeyAuthenticationFailedActivityLogTest extends TestCase
         $secretCredentialId = 'super-secret-credential-id';
 
         PasskeyCredential::recordFailedLoginActivity(
-            'verification_failed',
+            ActivityFailureReason::VERIFICATION_FAILED,
             (string) json_encode(['rawId' => $secretCredentialId]),
         );
 
@@ -95,7 +96,7 @@ final class PasskeyAuthenticationFailedActivityLogTest extends TestCase
 
     public function testNonJsonBodyOmitsCredentialIdHash(): void
     {
-        PasskeyCredential::recordFailedLoginActivity('verification_failed', 'not-json-at-all');
+        PasskeyCredential::recordFailedLoginActivity(ActivityFailureReason::VERIFICATION_FAILED, 'not-json-at-all');
 
         $activity = Activity::query()
             ->where('log_name', 'forensic')
@@ -112,7 +113,7 @@ final class PasskeyAuthenticationFailedActivityLogTest extends TestCase
     public function testJsonBodyWithoutCredentialIdOmitsHash(): void
     {
         PasskeyCredential::recordFailedLoginActivity(
-            'verification_failed',
+            ActivityFailureReason::VERIFICATION_FAILED,
             (string) json_encode(['response' => ['something' => 'else']]),
         );
 
@@ -129,7 +130,7 @@ final class PasskeyAuthenticationFailedActivityLogTest extends TestCase
 
     public function testEmptyBodyOmitsCredentialIdHash(): void
     {
-        PasskeyCredential::recordFailedLoginActivity('verification_failed', '');
+        PasskeyCredential::recordFailedLoginActivity(ActivityFailureReason::VERIFICATION_FAILED, '');
 
         $activity = Activity::query()
             ->where('log_name', 'forensic')

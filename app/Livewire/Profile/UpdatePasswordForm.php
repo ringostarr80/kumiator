@@ -8,6 +8,7 @@ use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
+use Laravel\Jetstream\ConfirmsPasswords;
 use Laravel\Jetstream\Http\Livewire\UpdatePasswordForm as JetstreamUpdatePasswordForm;
 use Spatie\Activitylog\Facades\Activity;
 
@@ -22,6 +23,13 @@ use Spatie\Activitylog\Facades\Activity;
  */
 final class UpdatePasswordForm extends JetstreamUpdatePasswordForm
 {
+    /**
+     * Ohne nutzbares Passwort tritt die per Passkey bestätigte Sitzung an seine
+     * Stelle. Der Dialog dafür kommt aus demselben Trait, den die übrigen
+     * Abschnitte des Profils schon benutzen.
+     */
+    use ConfirmsPasswords;
+
     public function updatePassword(UpdatesUserPasswords $updater): void
     {
         parent::updatePassword($updater);

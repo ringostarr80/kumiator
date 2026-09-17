@@ -37,6 +37,8 @@ final class ControllersAreIndependentTest
             ->classes(
                 Selector::inNamespace(self::CONTROLLERS_NAMESPACE),
                 Selector::inNamespace('App\\Http\\Requests'),
+                // App\Enums: zentrale Activity-Event-/Channel-Codes (Magic-String-Ersatz).
+                Selector::inNamespace('App\\Enums'),
                 Selector::inNamespace('App\\Models'),
                 Selector::inNamespace('App\\DataTransferObjects'),
                 Selector::inNamespace('App\\Config\\Vendor\\Webauthn'),
@@ -49,16 +51,19 @@ final class ControllersAreIndependentTest
                 Selector::isThrowable(),
             )
             ->because(
-                'Controller dürfen nur von FormRequests, Models, DTOs, Vendor-Configs, '
-                . 'Repository- und Service-Contracts, Service-Exceptions, Illuminate, '
-                . 'Webauthn und der `\\Throwable`-Hierarchie abhängen.',
+                'Controller dürfen nur von FormRequests, Enums, Models, DTOs, '
+                . 'Vendor-Configs, Repository- und Service-Contracts, Service-Exceptions, '
+                . 'Illuminate, Webauthn und der `\\Throwable`-Hierarchie abhängen.',
                 'Sie sind eine Präsentationsschicht und dürfen keine konkreten '
                 . 'Services oder Repositories kennen — DI erfolgt über Contracts. '
                 . 'Geschäftslogik gehört in die Service-Schicht. Fachliche Service-'
                 . 'Exceptions (`App\\Services\\*\\Exceptions\\`) sind freigegeben, '
                 . 'damit Controller Service-Aufrufe mit `catch` differenzieren können — '
                 . 'der einzige sinnvolle Weg, semantische Fehler eines Service-Calls '
-                . 'in unterschiedliche View-Antworten zu übersetzen.',
+                . 'in unterschiedliche View-Antworten zu übersetzen. `App\\Enums` ist '
+                . 'freigegeben, weil die Audit-Codes, die ein Controller beim Schreiben '
+                . 'benennt, sonst als Magic-Strings dastünden — symmetrisch zur Freigabe '
+                . 'in Actions, Models und Services.',
             );
     }
 }

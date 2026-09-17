@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Number;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
+use Laravel\Jetstream\ConfirmsPasswords;
 use Laravel\Jetstream\Http\Livewire\UpdateProfileInformationForm as JetstreamUpdateProfileInformationForm;
 use Spatie\Activitylog\Facades\Activity;
 
@@ -32,6 +33,13 @@ use Spatie\Activitylog\Facades\Activity;
  */
 final class UpdateProfileInformationForm extends JetstreamUpdateProfileInformationForm
 {
+    /**
+     * Ohne nutzbares Passwort tritt die per Passkey bestätigte Sitzung an seine
+     * Stelle. Der Dialog dafür kommt aus demselben Trait, den die übrigen
+     * Abschnitte des Profils schon benutzen.
+     */
+    use ConfirmsPasswords;
+
     private UploadLimitResolverContract $uploadLimitResolver;
 
     /**

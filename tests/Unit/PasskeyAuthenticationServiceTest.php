@@ -8,6 +8,7 @@ use App\Config\Vendor\Webauthn\WebauthnConfig;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
+use App\Services\WebAuthn\Exceptions\CredentialOwnerMismatchException;
 use App\Services\WebAuthn\PasskeyAuthenticationService;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use App\Services\WebAuthn\WebAuthnValidatorFactory;
@@ -206,6 +207,92 @@ final class PasskeyAuthenticationServiceTest extends TestCase
             $options,
             WebauthnConfig::effectiveHost(),
         );
+    }
+
+    /**
+     * Der eingesetzte Handle stammt vom angemeldeten Konto, nicht aus dem
+     * gespeicherten Record: Sonst vergliche `CheckUserHandle` den Record gegen
+     * sich selbst, und von der Prüfung bliebe nur die Fassade. Woran die Zeremonie
+     * scheiterte, hängt als Ursache an der Ablehnung — benannt ist sie nach dem
+     * fremden Konto, das die Antwort vorgelegt hat.
+     */
+    public function testTheSubstitutedUserHandleBelongsToTheIdentifiedUser(): void
+    {
+        $user = User::factory()->create();
+        $stranger = User::factory()->create();
+        $authenticator = VirtualAuthenticator::create();
+        $strangersCredential = $authenticator->registerFor($stranger);
+        $options = $this->service->createConfirmationOptions($stranger);
+
+        try {
+            $this->service->verify(
+                $authenticator->signAssertion($strangersCredential, $options, withUserHandle: false),
+                $options,
+                WebauthnConfig::effectiveHost(),
+                identifiedUser: $user,
+            );
+            $this->fail('Der Handle des angemeldeten Kontos hätte nicht zum fremden Record passen dürfen.');
+        } catch (CredentialOwnerMismatchException $e) {
+            $this->assertInstanceOf(InvalidUserHandleException::class, $e->getPrevious());
+        }
+    }
+
+    /**
+     * Die Bibliothek wertet einen leeren Handle in der Antwort wie einen
+     * fehlenden; der Dienst muss das ebenso tun, sonst tritt `''` an die Stelle
+     * des Konto-Handles und der eigene Passkey scheitert am Vergleich.
+     */
+    public function testAnEmptyUserHandleCountsAsAbsentForTheIdentifiedUser(): void
+    {
+        $user = User::factory()->create();
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor($user);
+        $options = $this->service->createConfirmationOptions($user);
+
+        $verified = $this->service->verify(
+            // `userHandleOverride: ''` landet als `"userHandle": ""` in der Antwort.
+            $authenticator->signAssertion($credential, $options, userHandleOverride: ''),
+            $options,
+            WebauthnConfig::effectiveHost(),
+            identifiedUser: $user,
+        );
+
+        $this->assertTrue($verified->is($credential));
+    }
+
+    /**
+     * Steht der Eigentümer nicht zur Sitzung, bricht die Zeremonie ab, bevor sie
+     * den Datensatz anfasst: Zähler und `last_used_at` stünden sonst in der
+     * Passkey-Verwaltung des Eigentümers für eine Nutzung, die zu keiner
+     * Bestätigung geführt hat.
+     */
+    public function testAForeignCredentialIsRejectedWithoutTouchingItsRecord(): void
+    {
+        $user = User::factory()->create();
+        $stranger = User::factory()->create();
+        $authenticator = VirtualAuthenticator::create();
+        $strangersCredential = $authenticator->registerFor($stranger);
+
+        // Ohne eigenen Passkey bleibt `allowCredentials` leer, und die Zeremonie
+        // lässt ihre Credential-Prüfung dann aus. Über den Endpunkt ist dieser
+        // Zustand nicht erreichbar; direkt am Service gestellt, zeigt er, dass
+        // der Eigentümervergleich auch ohne die Liste trägt.
+        $options = $this->service->createConfirmationOptions($user);
+        $untouched = $strangersCredential->refresh()->getAttributes();
+
+        try {
+            $this->service->verify(
+                $authenticator->signAssertion($strangersCredential, $options),
+                $options,
+                WebauthnConfig::effectiveHost(),
+                identifiedUser: $user,
+            );
+            $this->fail('Der Passkey eines anderen Kontos hätte abgelehnt werden müssen.');
+        } catch (AuthenticatorResponseVerificationException $e) {
+            $this->assertSame('credential_owner_mismatch', $e->getMessage());
+        }
+
+        $this->assertSame($untouched, $strangersCredential->refresh()->getAttributes());
     }
 
     public function testFakeVerificationFailsAtTheSameStepAsAGenuineSignatureMismatch(): void
