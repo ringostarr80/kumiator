@@ -7,7 +7,7 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "test:css": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.browser.json && vitest run --coverage"
+        "test:frontend": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.browser.json && vitest run --coverage"
     },
     "devDependencies": {
         "@tailwindcss/forms": "^0.5.11",
