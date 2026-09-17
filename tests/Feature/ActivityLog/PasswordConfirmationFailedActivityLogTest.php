@@ -6,7 +6,10 @@ namespace Tests\Feature\ActivityLog;
 
 use App\Models\Activity;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Jetstream\Http\Livewire\TwoFactorAuthenticationForm;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -134,5 +137,27 @@ final class PasswordConfirmationFailedActivityLogTest extends TestCase
                 ->where('event', 'password_confirmation_failed')
                 ->count(),
         );
+    }
+
+    /**
+     * Der Erfolgsfall schreibt nichts und übersteht einen Ausfall der
+     * Audit-Senke deshalb von allein. Ohne diese Absicherung hinge allein die
+     * Abweisung daran und antwortete mit 500 statt mit dem Validierungsfehler.
+     */
+    public function testTheMismatchSurvivesAFailingAuditWrite(): void
+    {
+        Exceptions::fake();
+
+        $user = User::factory()->create();
+
+        Schema::drop('activity_log');
+
+        $response = $this->actingAs($user)->post(self::CONFIRM_PASSWORD_URL_PATH, [
+            'password' => 'wrong-password',
+        ]);
+
+        $response->assertSessionHasErrors();
+        $this->assertNull(session('auth.password_confirmed_at'));
+        Exceptions::assertReported(QueryException::class);
     }
 }

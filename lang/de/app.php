@@ -89,9 +89,12 @@ return [
 
     // Auth - Confirm Password
     'confirm_password_title' => 'Passwort bestätigen',
+    'confirm_identity_title' => 'Identität bestätigen',
     'confirm_password_security' => 'Bitte bestätige aus Sicherheitsgründen dein Passwort, um fortzufahren.',
     'secure_area' => 'Dies ist ein geschützter Bereich der Anwendung. Bitte bestätige dein Passwort,'
         . ' bevor du fortfährst.',
+    'password_confirmation_unavailable' => 'Für dieses Konto ist die Passwort-Anmeldung abgeschaltet und es ist'
+        . ' kein Passkey hinterlegt. Eine Bestätigung ist hier nicht möglich — bitte wende dich an die Administration.',
 
     // Auth - Email Verification
     'verify_email_description' => 'Bevor du fortfährst, bestätige bitte deine E-Mail-Adresse, indem du auf den'
@@ -227,6 +230,14 @@ return [
     'passkey_registration_failed' => 'Passkey-Registrierung fehlgeschlagen.',
     'passkey_registration_server_error' => 'Der Passkey konnte nicht gespeichert werden. Bitte versuche es'
         . ' später erneut.',
+    'passkey_confirmation_failed' => 'Die Bestätigung mit dem Passkey ist fehlgeschlagen.'
+        . ' Bitte versuche es erneut.',
+    'passkey_confirmation_server_error' => 'Die Bestätigung konnte nicht abgeschlossen werden. Bitte versuche'
+        . ' es später erneut.',
+    'passkey_confirmation_no_passkey' => 'Für dieses Konto ist kein Passkey hinterlegt.',
+    'confirm_with_passkey' => 'Mit Passkey bestätigen',
+    'confirm_password_or_passkey_security' => 'Bitte weise aus Sicherheitsgründen erneut nach, dass du es'
+        . ' bist, um fortzufahren.',
     // Abbruch, Timeout und ein voller Sicherheitsschlüssel kommen ununterscheidbar als
     // `NotAllowedError` an, und der Text dient zugleich als Ausweichtext für jeden Fehler
     // ohne Server-Antwort. Deshalb beide Ursachen nur als Möglichkeit nennen.
@@ -293,6 +304,8 @@ return [
     'activity_passkey_login_succeeded' => 'Passkey-Anmeldung erfolgreich',
     'activity_passkey_login_failed' => 'Passkey-Anmeldung fehlgeschlagen',
     'activity_passkey_registration_failed' => 'Passkey-Registrierung fehlgeschlagen',
+    'activity_passkey_confirmation_succeeded' => 'Bestätigung per Passkey erfolgreich',
+    'activity_passkey_confirmation_failed' => 'Bestätigung per Passkey fehlgeschlagen',
     'activity_authorization_denied' => 'Autorisierung verweigert',
     'activity_activity_log_viewed' => 'Aktivitätsprotokoll eingesehen',
     'activity_password_login_succeeded' => 'Passwort-Anmeldung erfolgreich',

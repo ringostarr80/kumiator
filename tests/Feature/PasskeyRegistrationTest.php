@@ -37,11 +37,42 @@ final class PasskeyRegistrationTest extends TestCase
     /** Wortlaut aus PublicKeyCredentialDenormalizer der webauthn-lib. */
     private const string LIBRARY_ID_MISMATCH = 'Invalid ID';
 
-    public function testRegistrationEndpointsAreRateLimited(): void
+    /**
+     * Zugesagt sind fünf Registrierungsversuche. Im Browser besteht jeder davon
+     * aus zwei Aufrufen — erst die Optionen, dann die Attestation. Zählen beide
+     * auf denselben Zähler, bleiben davon zwei.
+     */
+    public function testFiveFailedAttemptsFitIntoTheLimitAlthoughEachFetchesOptions(): void
     {
         $user = User::factory()->create();
 
+        // Eine Attestation ohne Nutzerverifikation ist der verpatzte Versuch: Der
+        // Authenticator antwortet, der Server weist ab, und beide Aufrufe zählen.
         for ($i = 0; $i < 5; $i++) {
+            $this->actingAsConfirmed($user)->postJson(
+                self::REGISTER_URL,
+                VirtualAuthenticator::create()->attestation($this->startCeremony($user), userVerified: false),
+                ['Content-Type' => self::CONTENT_TYPE_JSON],
+            )->assertUnprocessable();
+        }
+
+        $this->actingAsConfirmed($user)->postJson(
+            self::REGISTER_URL,
+            VirtualAuthenticator::create()->attestation($this->startCeremony($user)),
+            ['Content-Type' => self::CONTENT_TYPE_JSON],
+        )->assertTooManyRequests();
+    }
+
+    /**
+     * Der Zähler des Options-Aufrufs liegt höher als der des Registrierens, damit
+     * er nicht vorher ausgeht: Ein abgebrochener Authenticator-Dialog holt
+     * Optionen, ohne je zu posten.
+     */
+    public function testRegistrationOptionsEndpointIsRateLimited(): void
+    {
+        $user = User::factory()->create();
+
+        for ($i = 0; $i < 20; $i++) {
             $this->actingAsConfirmed($user)->getJson(self::REGISTER_OPTIONS_URL)->assertOk();
         }
 

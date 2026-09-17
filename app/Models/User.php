@@ -91,6 +91,13 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     ];
 
     /**
+     * Dieselbe Instanz wird im Lauf eines Requests mehrfach nach einem Passkey
+     * gefragt; die Antwort wird je Instanz einmal geholt statt je Frage. Wer den
+     * Stand der Zeile will, frischt auf — das leert auch das Gemerkte.
+     */
+    private ?bool $memoizedHasPasskey = null;
+
+    /**
      * Der Handle wandert auf den Authenticator und bei synchronisierten Passkeys
      * in den Cloud-Dienst des Anbieters. Er muss über die Lebensdauer des Kontos
      * stabil bleiben: Ändert er sich, verwaisen alle registrierten Passkeys.
@@ -188,6 +195,23 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     public function passkeyCredentials(): HasMany
     {
         return $this->hasMany(PasskeyCredential::class);
+    }
+
+    public function hasPasskey(): bool
+    {
+        return $this->memoizedHasPasskey ??= $this->passkeyCredentials()->exists();
+    }
+
+    /**
+     * Wer auffrischt, misstraut der Instanz und will den Stand der Zeile. Eine
+     * gemerkte Antwort, die den Abgleich überlebt, machte daraus eine halbe — und
+     * ausgerechnet der Griff dagegen träfe sie nicht.
+     */
+    public function refresh(): static
+    {
+        $this->memoizedHasPasskey = null;
+
+        return parent::refresh();
     }
 
     /**

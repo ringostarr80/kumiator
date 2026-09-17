@@ -8,14 +8,15 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
-use App\Enums\ActivityChannel;
-use App\Enums\ActivityEvent;
+use App\Enums\ActivityFailureReason;
 use App\Models\User;
 use App\Services\Auth\Contracts\DisabledPasswordLoginContextContract;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
+use App\Services\Auth\Contracts\SessionConfirmationAuditContract;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\Auth\DisabledPasswordLoginContext;
 use App\Services\Auth\SelfRegistrationContext;
+use App\Services\Auth\SessionConfirmationAudit;
 use App\Services\Auth\UnapprovedLoginContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -25,7 +26,6 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Fortify;
-use Spatie\Activitylog\Facades\Activity;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -40,6 +40,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->app->scoped(UnapprovedLoginContextContract::class, UnapprovedLoginContext::class);
         $this->app->scoped(SelfRegistrationContextContract::class, SelfRegistrationContext::class);
         $this->app->scoped(DisabledPasswordLoginContextContract::class, DisabledPasswordLoginContext::class);
+        $this->app->bind(SessionConfirmationAuditContract::class, SessionConfirmationAudit::class);
     }
 
     /**
@@ -72,16 +73,14 @@ class FortifyServiceProvider extends ServiceProvider
                 return false;
             }
 
-            if (Hash::check($password, $user->password)) {
-                return true;
+            if (!Hash::check($password, $user->password)) {
+                app(SessionConfirmationAuditContract::class)
+                    ->recordPasswordFailure($user, ActivityFailureReason::CURRENT_PASSWORD_MISMATCH);
+
+                return false;
             }
 
-            Activity::useLog(ActivityChannel::AUTH->value)
-                ->event(ActivityEvent::PASSWORD_CONFIRMATION_FAILED->value)
-                ->causedBy($user)
-                ->log('');
-
-            return false;
+            return true;
         });
 
         Fortify::authenticateUsing(static function (Request $request): ?User {

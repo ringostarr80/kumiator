@@ -71,6 +71,43 @@ export async function authenticateWithPasskey() {
     return authResponse.data.redirect;
 }
 
+/**
+ * Bestätigt die laufende Sitzung mit einem Passkey, wo sonst das Passwort
+ * abgefragt würde.
+ *
+ * Der Server setzt die Bestätigung selbst in die Sitzung; zurück kommt nur das
+ * Ziel für die Vollseiten-Variante.
+ *
+ * @param   {boolean} [wantsRememberedTarget] Fordert die Adresse an, die die
+ *                    Middleware vor dem Umleiten gemerkt hat. Der Server zieht sie
+ *                    dabei aus der Sitzung, weshalb nur die Vollseiten-Variante
+ *                    fragen darf — der Dialog nähme sie einer wartenden Seite weg.
+ * @returns {Promise<string>} Redirect-URL bei Erfolg
+ * @throws  {Error}           Bei WebAuthn- oder HTTP-Fehlern
+ */
+export async function confirmWithPasskey(wantsRememberedTarget = false) {
+    // 1. Request-Optionen vom Server holen
+    const optionsResponse = await globalThis.axios.get('/user/passkeys/confirm/options');
+    const options = PublicKeyCredential.parseRequestOptionsFromJSON(optionsResponse.data);
+
+    // 2. Den Authenticator um eine Assertion bitten
+    const credential = /** @type {PublicKeyCredential | null} */ (
+        await navigator.credentials.get({ publicKey: options })
+    );
+
+    if (!credential) {
+        throw new Error('No credential returned by the authenticator.');
+    }
+
+    // 3. Die Assertion-Antwort an den Server schicken
+    const url = wantsRememberedTarget ? '/user/passkeys/confirm?intended=1' : '/user/passkeys/confirm';
+    const confirmResponse = await globalThis.axios.post(url, credential.toJSON(), {
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    return confirmResponse.data.redirect;
+}
+
 // Auf `globalThis` gelegt, damit die x-data-Handler von Alpine.js sie ohne
 // ES-Module-Import im Blade-Template aufrufen können.
-globalThis.Passkeys = { registerPasskey, authenticateWithPasskey };
+globalThis.Passkeys = { registerPasskey, authenticateWithPasskey, confirmWithPasskey };

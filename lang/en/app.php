@@ -88,8 +88,11 @@ return [
 
     // Auth - Confirm Password
     'confirm_password_title' => 'Confirm Password',
+    'confirm_identity_title' => 'Confirm identity',
     'confirm_password_security' => 'For your security, please confirm your password to continue.',
     'secure_area' => 'This is a secure area of the application. Please confirm your password before continuing.',
+    'password_confirmation_unavailable' => 'Password login is turned off for this account and no passkey is'
+        . ' registered. Confirmation is not possible here — please contact an administrator.',
 
     // Auth - Email Verification
     'verify_email_description' => 'Before continuing, could you verify your email address by clicking on the link'
@@ -220,6 +223,12 @@ return [
     'passkey_authentication_failed' => 'Authentication failed.',
     'passkey_registration_failed' => 'Passkey registration failed.',
     'passkey_registration_server_error' => 'The passkey could not be saved. Please try again later.',
+    'passkey_confirmation_failed' => 'Confirming with your passkey failed. Please try again.',
+    'passkey_confirmation_server_error' => 'The confirmation could not be completed. Please try again later.',
+    'passkey_confirmation_no_passkey' => 'No passkey is registered for this account.',
+    'confirm_with_passkey' => 'Confirm with passkey',
+    'confirm_password_or_passkey_security' => 'For your security, please prove again that it is you in order'
+        . ' to continue.',
     'passkey_registration_aborted' => 'The passkey was not created. The process may have been cancelled'
         . ' — or, if you are using a security key, it may be out of space.',
     'passkey_confirmation_expired' => 'Your password confirmation has expired. Please confirm your password'
@@ -286,6 +295,8 @@ return [
     'activity_passkey_login_succeeded' => 'Passkey login succeeded',
     'activity_passkey_login_failed' => 'Passkey login failed',
     'activity_passkey_registration_failed' => 'Passkey registration failed',
+    'activity_passkey_confirmation_succeeded' => 'Confirmation via passkey succeeded',
+    'activity_passkey_confirmation_failed' => 'Confirmation via passkey failed',
     'activity_authorization_denied' => 'Authorization denied',
     'activity_activity_log_viewed' => 'Activity log viewed',
     'activity_password_login_succeeded' => 'Password login succeeded',

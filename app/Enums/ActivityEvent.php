@@ -52,6 +52,8 @@ enum ActivityEvent: string
     case TWO_FA_RECOVERY_CODE_USED = '2fa_recovery_code_used';
     case TWO_FA_FAILED = '2fa_failed';
     case PASSKEY_LOGIN_FAILED = 'passkey_login_failed';
+    case PASSKEY_CONFIRMATION_SUCCEEDED = 'passkey_confirmation_succeeded';
+    case PASSKEY_CONFIRMATION_FAILED = 'passkey_confirmation_failed';
 
     // user
     case USER_CREATED = 'user_created';

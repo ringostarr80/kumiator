@@ -2,3 +2,4 @@ import './bootstrap';
 import './passkeys';
 import './login';
 import './passkey-registration';
+import './passkey-confirmation';
