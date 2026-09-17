@@ -9,7 +9,6 @@ use App\Livewire\Profile\ApiTokenManager;
 use App\Livewire\Profile\LogoutOtherBrowserSessionsForm;
 use App\Models\Activity;
 use App\Models\User;
-use App\Services\Auth\Contracts\OtherDeviceLogoutContextContract;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use Illuminate\Auth\Events\Failed;
@@ -826,7 +825,7 @@ final class AuthenticationActivityLogTest extends TestCase
     {
         Activity::query()->delete();
 
-        $nonEloquent = new class implements CanResetPassword {
+        $nonEloquent = new class () implements CanResetPassword {
             public function getEmailForPasswordReset(): string
             {
                 // Anonyme Klasse: kein Zugriff auf die `private const` der
@@ -902,28 +901,27 @@ final class AuthenticationActivityLogTest extends TestCase
     }
 
     /**
-     * Den Database-Driver-Pfad (Happy + Wrong-Password) lässt sich hier nicht
-     * sinnvoll durch `Livewire::test` simulieren: Livewire erstellt intern
-     * einen eigenen Request, dem die Session-Middleware nichts zuweist, weil
-     * `phpunit.xml` `SESSION_DRIVER=array` erzwingt. Eine vollständige Setup-
-     * Reproduktion wäre brüchig. Der Happy-Path ist produktiv über
-     * `profile/show.blade.php` plus Code-Review abgedeckt; hier prüfen wir die
+     * Den Database-Driver-Pfad lässt sich hier nicht durch `Livewire::test`
+     * fahren: Jetstreams `getSessionsProperty()` liest beim Rendern
+     * `request()->session()->getId()`, und dem internen Request eines
+     * Livewire-Tests weist die abgeschaltete Middleware keinen Session-Store zu.
+     * Die Mechanik dahinter deckt `OtherSessionRevokerTest` ab; hier steht die
      * sicherheitsrelevante Negativ-Garantie: bei nicht-DB-Driver darf KEIN
      * Activity-Eintrag entstehen.
      */
     public function testLogoutOtherBrowserSessionsWithArrayDriverDoesNotLog(): void
     {
-        // Mit array-Driver terminiert der Parent gar keine Session — daher
-        // darf auch kein Activity-Eintrag entstehen.
+        // Mit array-Driver liegen die Sitzungen ausserhalb der Datenbank und
+        // enden nicht — daher darf auch kein Activity-Eintrag entstehen.
         Config::set('session.driver', 'array');
 
         $user = User::factory()->create();
+        $this->withSession(['auth.password_confirmed_at' => time()]);
         $this->actingAs($user);
 
         Activity::query()->delete();
 
         Livewire::test(LogoutOtherBrowserSessionsForm::class)
-            ->set('password', 'password')
             ->call('logoutOtherBrowserSessions')
             ->assertSuccessful();
 
@@ -965,37 +963,6 @@ final class AuthenticationActivityLogTest extends TestCase
 
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertSame('web', $properties['guard'] ?? null);
-    }
-
-    /**
-     * Im Form-Pfad setzt `LogoutOtherBrowserSessionsForm` vor dem Parent-
-     * Aufruf den Marker, der Listener muss diesen Vorgang stumm bleiben —
-     * sonst entstünde derselbe Vorgang doppelt (einmal als
-     * `other_sessions_logged_out` aus dem Form, einmal als
-     * `other_devices_logged_out` aus dem Listener).
-     */
-    public function testOtherDeviceLogoutListenerIsSilencedWhenContextActive(): void
-    {
-        $user = User::factory()->create();
-        Activity::query()->delete();
-
-        app(OtherDeviceLogoutContextContract::class)->markActive();
-
-        try {
-            Event::dispatch(new OtherDeviceLogout('web', $user));
-        } finally {
-            app(OtherDeviceLogoutContextContract::class)->clear();
-        }
-
-        $this->assertSame(
-            0,
-            Activity::query()
-                ->where('log_name', 'auth')
-                ->where('event', 'other_devices_logged_out')
-                ->count(),
-            'Bei aktivem OtherDeviceLogoutContext darf kein Listener-Eintrag '
-            . 'entstehen — der Form-Pfad schreibt seinen eigenen Eintrag.',
-        );
     }
 
     /**

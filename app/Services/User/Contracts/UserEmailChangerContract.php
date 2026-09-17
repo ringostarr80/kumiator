@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\User\Contracts;
 
+use App\Enums\ActivityFailureReason;
 use App\Models\User;
 
 /**
@@ -39,14 +40,18 @@ interface UserEmailChangerContract
 
     /**
      * Auditiert einen Änderungsantrag, der an der Re-Authentifizierung
-     * gescheitert ist (aktuelles Passwort falsch): `auth/email_change_request_failed`
-     * mit `failure_reason = 'current_password_mismatch'`. Forensisch relevant,
-     * weil genau dieser Fehlversuch das Signal für eine gekaperte Session ist —
-     * ein legitimer Nutzer kennt sein Passwort. Die versuchte Zieladresse wird
-     * nur als Hash abgelegt (`pending_email_hash`, Datenminimierung wie bei
-     * `requestChange()`). Es findet keine State-Mutation statt.
+     * gescheitert ist: `auth/email_change_request_failed` mit dem übergebenen
+     * `failure_reason`. Forensisch relevant, weil genau dieser Fehlversuch das
+     * Signal für eine gekaperte Session ist — ein legitimer Nutzer kennt sein
+     * Passwort. Die versuchte Zieladresse wird nur als Hash abgelegt
+     * (`pending_email_hash`, Datenminimierung wie bei `requestChange()`). Es
+     * findet keine State-Mutation statt.
      */
-    public function recordRequestFailed(User $user, ?string $attemptedEmail): void;
+    public function recordRequestFailed(
+        User $user,
+        ?string $attemptedEmail,
+        ActivityFailureReason $failureReason,
+    ): void;
 
     /**
      * Akzeptiert nur den CONFIRM-Token. Ein Cancel-Token landet im

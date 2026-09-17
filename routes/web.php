@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Auth\CancelEmailChangeController;
 use App\Http\Controllers\Auth\ConfirmEmailChangeController;
 use App\Http\Controllers\Auth\PasskeyAuthenticationController;
+use App\Http\Controllers\Auth\PasskeyConfirmationController;
 use App\Http\Controllers\Auth\PasskeyRegistrationController;
 use App\Http\Controllers\Auth\ResendEmailVerificationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
@@ -159,28 +160,32 @@ Route::middleware([
     });
 
     // ──────────────────────────────────────────────────────────────────────────
-    // Passkey management (authenticated users)
+    // Passkey-Bestätigung einer laufenden Sitzung
     //
-    // `password.confirm` läuft als Middleware zwangsläufig vor der Policy im
-    // Controller: Ein Zugriff auf fremde Passkeys ohne bestätigtes Passwort
-    // endet mit 423, bevor ein `authorization_denied`-Eintrag entstehen kann.
-    // Bewusst hingenommen — die Alternative wäre, die Bestätigung in jeden
-    // Controller zu ziehen.
+    // Bewusst NICHT hinter `password.confirm`: Diese Endpunkte sind der Weg, die
+    // Bestätigung überhaupt zu erlangen. Lägen sie dahinter, käme ein Konto ohne
+    // Passwort-Login nie an sie heran.
     // ──────────────────────────────────────────────────────────────────────────
-    Route::middleware(['throttle:passkey-register', 'password.confirm'])->group(static function (): void {
-        // Returns PublicKeyCredentialCreationOptions JSON for the browser
-        Route::get('/user/passkeys/register/options', [PasskeyRegistrationController::class, 'options'])
-            ->name('passkeys.register.options');
+    Route::get('/user/passkeys/confirm/options', [PasskeyConfirmationController::class, 'options'])
+        ->middleware('throttle:passkey-confirm-options')
+        ->name('passkeys.confirm.options');
 
-        // Verifies the attestation and stores the new passkey
-        Route::post('/user/passkeys/register', [PasskeyRegistrationController::class, 'store'])
-            ->middleware('max.json.body')
-            ->name('passkeys.register');
+    Route::post('/user/passkeys/confirm', [PasskeyConfirmationController::class, 'store'])
+        ->middleware(['throttle:passkey-confirm', 'max.json.body'])
+        ->name('passkeys.confirm');
 
-        // Removes a passkey
-        Route::delete('/user/passkeys/{passkeyCredential}', [PasskeyRegistrationController::class, 'destroy'])
-            ->name('passkeys.destroy');
-    });
+    // ──────────────────────────────────────────────────────────────────────────
+    // Passkey management (authenticated users)
+    // ──────────────────────────────────────────────────────────────────────────
+    // Returns PublicKeyCredentialCreationOptions JSON for the browser
+    Route::get('/user/passkeys/register/options', [PasskeyRegistrationController::class, 'options'])
+        ->middleware(['throttle:passkey-register-options', 'password.confirm'])
+        ->name('passkeys.register.options');
+
+    // Verifies the attestation and stores the new passkey
+    Route::post('/user/passkeys/register', [PasskeyRegistrationController::class, 'store'])
+        ->middleware(['throttle:passkey-register', 'password.confirm', 'max.json.body'])
+        ->name('passkeys.register');
 
     // ──────────────────────────────────────────────────────────────────────────
     // Admin area

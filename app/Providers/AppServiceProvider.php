@@ -15,7 +15,11 @@ use App\Services\Audit\AuthorizationAuditor;
 use App\Services\Audit\Contracts\AuthorizationAuditorContract;
 use App\Services\Audit\Contracts\SanctumTokenAuditorContract;
 use App\Services\Audit\SanctumTokenAuditor;
+use App\Services\Auth\Contracts\LoginMethodChangerContract;
+use App\Services\Auth\Contracts\OtherSessionRevokerContract;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
+use App\Services\Auth\LoginMethodChanger;
+use App\Services\Auth\OtherSessionRevoker;
 use App\Services\Console\ConsoleActorContext;
 use App\Services\Console\Contracts\ConsoleActorContextContract;
 use App\Services\Schedule\HealthcheckPingPhase;
@@ -42,6 +46,7 @@ use App\Services\User\UserEmailVerifier;
 use App\Services\User\UserHardDeleter;
 use App\Services\User\UserPasswordResetter;
 use App\Services\User\UserSoftDeleter;
+use Closure;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Event as ScheduledEvent;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -68,6 +73,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UploadLimitResolverContract::class, UploadLimitResolver::class);
         $this->app->bind(ProfilePhotoOptimizerContract::class, ProfilePhotoOptimizer::class);
         $this->app->bind(UserSessionTerminatorContract::class, UserSessionTerminator::class);
+        $this->app->bind(OtherSessionRevokerContract::class, OtherSessionRevoker::class);
+        $this->app->bind(LoginMethodChangerContract::class, LoginMethodChanger::class);
         $this->app->bind(SanctumTokenAuditorContract::class, SanctumTokenAuditor::class);
         $this->app->bind(AuthorizationAuditorContract::class, AuthorizationAuditor::class);
         $this->app->singleton(ConsoleActorContextContract::class, ConsoleActorContext::class);
@@ -206,13 +213,21 @@ class AppServiceProvider extends ServiceProvider
             static fn (Request $request): Limit => Limit::perMinute(5)->by($request->ip()),
         );
 
-        RateLimiter::for('passkey-register', static function (Request $request): Limit {
-            $user = $request->user();
+        // Vom Bestätigen getrennt gezählt, obwohl beide zusammen einen Versuch
+        // ergeben: Named Limiter schlüsseln auf ihren Namen, nicht auf die Route.
+        // Aus einem gemeinsamen Zähler würden die zehn Versuche fünf.
+        RateLimiter::for('passkey-confirm-options', self::perUserOrIp(20));
 
-            return $user instanceof User
-                ? Limit::perMinute(5)->by((string) $user->id)
-                : Limit::perMinute(5)->by($request->ip());
-        });
+        // Bestätigt eine schon angemeldete Sitzung, deshalb pro Konto statt pro IP.
+        // Knapper als beim Registrieren: Wer bestätigt, hat seinen Authenticator
+        // in der Hand und braucht keine Serie von Versuchen.
+        RateLimiter::for('passkey-confirm', self::perUserOrIp(10));
+
+        // Höher als das Registrieren selbst, weil ein abgebrochener
+        // Authenticator-Dialog Optionen holt, ohne je zu posten.
+        RateLimiter::for('passkey-register-options', self::perUserOrIp(20));
+
+        RateLimiter::for('passkey-register', self::perUserOrIp(5));
 
         // Öffentliche Confirm/Cancel-Endpoints (Gäste): deckelt Endpoint-Missbrauch.
         // Token-Raten ist schon durch die 256-Bit-Entropie aussichtslos — das Limit
@@ -222,5 +237,16 @@ class AppServiceProvider extends ServiceProvider
             'email-change-link',
             static fn (Request $request): Limit => Limit::perMinute(10)->by($request->ip()),
         );
+    }
+
+    private static function perUserOrIp(int $perMinute): Closure
+    {
+        return static function (Request $request) use ($perMinute): Limit {
+            $user = $request->user();
+
+            return $user instanceof User
+                ? Limit::perMinute($perMinute)->by((string) $user->id)
+                : Limit::perMinute($perMinute)->by($request->ip());
+        };
     }
 }

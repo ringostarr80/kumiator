@@ -15,6 +15,7 @@ return [
     |
     */
 
+    'disabled' => 'Password login is turned off for this account. Sign in with your passkey instead.',
     'reset' => 'Your password has been reset.',
     'sent' => 'We have emailed your password reset link.',
     'throttled' => 'Please wait before retrying.',

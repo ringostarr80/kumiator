@@ -12,7 +12,7 @@ Jeder Verein hat dabei seine eigene unabhängige Instanz (URL) zur Verfügung.
     - `vendor/bin/phpstan analyse --configuration=phpstan-8.4.neon --memory-limit=512M`
     - `vendor/bin/phpstan analyse --configuration=phpstan-arch.neon --memory-limit=512M`
     - `php artisan config:clear --ansi && php artisan test --coverage --parallel --min=90`
-    - `npm run test:css` – prüft die TypeScript-Typen, baut die Assets und lässt die Frontend-Tests laufen
+    - `npm run test:frontend` – prüft die TypeScript-Typen, baut die Assets und lässt die Frontend-Tests laufen
 
    Schlägt `dev:analyze:phpat` fehl, darfst du überlegen, ob eine Architekturregel angepasst werden sollte – **vorher nachfragen**, nie eigenmächtig ändern.
 

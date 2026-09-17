@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\ActivityLog;
 
+use App\Enums\ActivityFailureReason;
 use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
@@ -31,7 +32,7 @@ final class PasskeyRegistrationFailedActivityLogTest extends TestCase
     {
         $user = User::factory()->create();
 
-        PasskeyCredential::recordFailedRegistrationActivity($user, 'verification_failed');
+        PasskeyCredential::recordFailedRegistrationActivity($user, ActivityFailureReason::VERIFICATION_FAILED);
 
         $activity = Activity::query()
             ->where('log_name', 'passkey')
@@ -54,7 +55,7 @@ final class PasskeyRegistrationFailedActivityLogTest extends TestCase
     {
         $user = User::factory()->create();
 
-        PasskeyCredential::recordFailedRegistrationActivity($user, 'internal_error');
+        PasskeyCredential::recordFailedRegistrationActivity($user, ActivityFailureReason::INTERNAL_ERROR);
 
         $activity = Activity::query()
             ->where('log_name', 'passkey')
@@ -71,7 +72,7 @@ final class PasskeyRegistrationFailedActivityLogTest extends TestCase
     {
         $user = User::factory()->create();
 
-        PasskeyCredential::recordFailedRegistrationActivity($user, 'verification_failed');
+        PasskeyCredential::recordFailedRegistrationActivity($user, ActivityFailureReason::VERIFICATION_FAILED);
 
         $activity = Activity::query()
             ->where('log_name', 'passkey')

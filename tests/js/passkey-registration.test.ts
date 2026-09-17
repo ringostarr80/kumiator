@@ -33,6 +33,7 @@ function failRegistrationWith(reason: unknown): void {
     globalThis.Passkeys = {
         registerPasskey: () => Promise.reject(reason),
         authenticateWithPasskey: () => Promise.reject(reason),
+        confirmWithPasskey: () => Promise.reject(reason),
     };
 }
 

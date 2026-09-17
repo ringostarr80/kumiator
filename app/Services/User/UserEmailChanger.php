@@ -6,6 +6,7 @@ namespace App\Services\User;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
+use App\Enums\ActivityFailureReason;
 use App\Enums\EmailChangeCancellationReason;
 use App\Models\User;
 use App\Notifications\EmailChangeRequestedNotification;
@@ -113,14 +114,17 @@ final class UserEmailChanger implements UserEmailChangerContract
         );
     }
 
-    public function recordRequestFailed(User $user, ?string $attemptedEmail): void
-    {
+    public function recordRequestFailed(
+        User $user,
+        ?string $attemptedEmail,
+        ActivityFailureReason $failureReason,
+    ): void {
         Activity::useLog(ActivityChannel::AUTH->value)
             ->event(ActivityEvent::EMAIL_CHANGE_REQUEST_FAILED->value)
             ->causedBy($user)
             ->performedOn($user)
             ->withProperties([
-                'failure_reason' => 'current_password_mismatch',
+                'failure_reason' => $failureReason->value,
                 'pending_email_hash' => AuditEmailHasher::hash($attemptedEmail),
             ])
             ->log('');

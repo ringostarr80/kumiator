@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
@@ -34,6 +36,8 @@ use Spatie\Permission\Traits\HasRoles;
  * @property ?string $pending_email_cancel_token_hash
  * @property ?\Illuminate\Support\Carbon $pending_email_sent_at
  * @property ?\Illuminate\Support\Carbon $approved_at
+ * @property ?\Illuminate\Support\Carbon $password_login_disabled_at
+ * @property ?\Illuminate\Support\Carbon $password_changed_at
  * @property ?\Illuminate\Support\Carbon $deleted_at
  * @property ?string $webauthn_user_handle Nullable trotz NOT-NULL-Spalte: Eine Teil-Selektion lädt sie nicht mit
  */
@@ -90,6 +94,13 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     ];
 
     /**
+     * Dieselbe Instanz wird im Lauf eines Requests mehrfach nach einem Passkey
+     * gefragt; die Antwort wird je Instanz einmal geholt statt je Frage. Wer den
+     * Stand der Zeile will, frischt auf — das leert auch das Gemerkte.
+     */
+    private ?bool $memoizedHasPasskey = null;
+
+    /**
      * Der Handle wandert auf den Authenticator und bei synchronisierten Passkeys
      * in den Cloud-Dienst des Anbieters. Er muss über die Lebensdauer des Kontos
      * stabil bleiben: Ändert er sich, verwaisen alle registrierten Passkeys.
@@ -144,6 +155,68 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
         return $this->approved_at !== null;
     }
 
+    public function isPasswordLoginDisabled(): bool
+    {
+        return $this->password_login_disabled_at !== null;
+    }
+
+    /**
+     * Der Verdacht hinter dem abgeschalteten Passwort-Login gilt dem Passwort von
+     * damals, nicht jedem, das je gesetzt wird: Was seither kam, wurde per
+     * Passkey-bestätigter Sitzung oder auf der Konsole gesetzt und darf das
+     * Wiedereinschalten überleben. Ohne Stempel zählt das Passwort als alt — für
+     * Bestandszeilen und Pfade ohne Model-Events ist Verwerfen die sichere Richtung.
+     */
+    public function hasDistrustedPassword(): bool
+    {
+        if ($this->password_login_disabled_at === null) {
+            return false;
+        }
+
+        return $this->password_changed_at === null
+            || $this->password_changed_at->lte($this->password_login_disabled_at);
+    }
+
+    /**
+     * Abgeschaltet wird der Passwort-Login, wenn dem Passwort nicht mehr zu
+     * trauen ist. Bliebe es stehen, nähme der wieder offene Zugang diese
+     * Aussage still zurück; ein seither neu gesetztes trifft der Verdacht
+     * nicht. Ein Zufallswert statt eines leeren Feldes, weil die Spalte
+     * `NOT NULL` ist; hinein führt der Link zum Zurücksetzen, den es für
+     * dieses Konto ja wieder gibt.
+     *
+     * Speichert nicht: Transaktion und Zeitpunkt gehören dem Aufrufer.
+     */
+    public function reopenPasswordLogin(): void
+    {
+        if ($this->hasDistrustedPassword()) {
+            $this->password = Hash::make(Str::random(64));
+        }
+
+        $this->password_login_disabled_at = null;
+    }
+
+    /**
+     * Der Versand entfällt, sobald das Konto den Passwort-Login abgeschaltet hat: Ein
+     * neu gesetztes Passwort öffnete sonst über den Postfachzugang wieder genau den
+     * Weg, den die Abschaltung schließen soll.
+     *
+     * Unterdrückt wird der Versand, nicht die Anforderung: Würde `/forgot-password`
+     * für solche Konten sichtbar anders antworten, verriete die Antwort einem
+     * Unbeteiligten, dass zu dieser Adresse ein Konto mit Passkey existiert.
+     *
+     * `mixed` statt `string`, weil die Basissignatur untypisiert ist und PHP
+     * Parametertypen nur erweitern, nicht verengen lässt.
+     */
+    public function sendPasswordResetNotification(mixed $token): void
+    {
+        if ($this->isPasswordLoginDisabled()) {
+            return;
+        }
+
+        parent::sendPasswordResetNotification($token);
+    }
+
     /**
      * Macht die (im `HasProfilePhoto`-Trait `protected`) Disk-Auflösung für die
      * Profilfoto-Action zugänglich, die das Schreiben/Löschen der Datei aus der
@@ -161,6 +234,23 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     public function passkeyCredentials(): HasMany
     {
         return $this->hasMany(PasskeyCredential::class);
+    }
+
+    public function hasPasskey(): bool
+    {
+        return $this->memoizedHasPasskey ??= $this->passkeyCredentials()->exists();
+    }
+
+    /**
+     * Wer auffrischt, misstraut der Instanz und will den Stand der Zeile. Eine
+     * gemerkte Antwort, die den Abgleich überlebt, machte daraus eine halbe — und
+     * ausgerechnet der Griff dagegen träfe sie nicht.
+     */
+    public function refresh(): static
+    {
+        $this->memoizedHasPasskey = null;
+
+        return parent::refresh();
     }
 
     /**
@@ -229,6 +319,8 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
             'email_verified_at' => 'datetime',
             'pending_email_sent_at' => 'datetime',
             'approved_at' => 'datetime',
+            'password_login_disabled_at' => 'datetime',
+            'password_changed_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -254,6 +346,20 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
                 ? null
                 : self::normalizeEmail($value),
         );
+    }
+
+    /**
+     * Der Stempel entsteht am Model, damit keine der Stellen, die ein Passwort
+     * schreiben, ihn vergessen kann: Ein vergessener Stempel ließe ein frisches
+     * Passwort als altes gelten und verwerfen.
+     */
+    protected static function booted(): void
+    {
+        static::saving(static function (self $user): void {
+            if ($user->isDirty('password')) {
+                $user->password_changed_at = now();
+            }
+        });
     }
 
     protected static function activityRemapChannel(): string

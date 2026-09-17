@@ -5,19 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Config\Vendor\Webauthn\WebauthnConfig;
+use App\Enums\ActivityFailureReason;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PasskeyStoreRequest;
 use App\Models\PasskeyCredential;
-use App\Models\User;
-use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use App\Services\WebAuthn\Contracts\PasskeyRegistrationContract;
 use App\Services\WebAuthn\Contracts\WebAuthnCeremonySessionContract;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
-use Webauthn\Exception\AuthenticatorResponseVerificationException;
+use Webauthn\Exception\WebauthnException;
 use Webauthn\PublicKeyCredentialCreationOptions;
 
 /**
@@ -26,29 +24,21 @@ use Webauthn\PublicKeyCredentialCreationOptions;
  * Endpunkte:
  *   GET /user/passkeys/register/options – erzeugt und liefert die Creation-Optionen
  *   POST /user/passkeys/register – prüft die Browser-Antwort und speichert
- *   DELETE /user/passkeys/{id} – entfernt einen gespeicherten Passkey
  */
 final class PasskeyRegistrationController extends Controller
 {
-    use AuthorizesRequests;
-
     /** Session-Schlüssel für die noch offenen Creation-Optionen. */
     private const SESSION_KEY = 'webauthn.registration.options';
 
     public function __construct(
         private readonly PasskeyRegistrationContract $registrationService,
         private readonly WebAuthnCeremonySessionContract $ceremonySession,
-        private readonly PasskeyCredentialRepositoryContract $repository,
     ) {
     }
 
     public function options(Request $request): JsonResponse
     {
-        $user = Auth::user();
-
-        if (!($user instanceof User)) {
-            abort(Response::HTTP_UNAUTHORIZED);
-        }
+        $user = Auth::user() ?? abort(Response::HTTP_UNAUTHORIZED);
 
         $options = $this->registrationService->createOptions($user);
 
@@ -76,11 +66,7 @@ final class PasskeyRegistrationController extends Controller
             return response()->json(['message' => __('app.passkey_empty_request')], Response::HTTP_BAD_REQUEST);
         }
 
-        $user = Auth::user();
-
-        if (!($user instanceof User)) {
-            abort(Response::HTTP_UNAUTHORIZED);
-        }
+        $user = Auth::user() ?? abort(Response::HTTP_UNAUTHORIZED);
 
         try {
             $nameRaw = $request->validated('name');
@@ -98,19 +84,26 @@ final class PasskeyRegistrationController extends Controller
                 credentialName: $credentialName,
                 host: WebauthnConfig::effectiveHost(),
             );
-        } catch (AuthenticatorResponseVerificationException $e) {
-            PasskeyCredential::recordFailedRegistrationActivity($user, 'verification_failed', $e->getMessage());
+        } catch (WebauthnException $e) {
+            // Die Oberklasse statt der Einzeltypen: Jede von ihr abgeleitete
+            // Exception sagt, dass die Antwort des Browsers das Attestat nicht
+            // bestanden hat — schon beim Deserialisieren, nicht erst in der
+            // Zeremonie. Ein Serverfehler ist das nie.
+            PasskeyCredential::recordFailedRegistrationActivity(
+                $user,
+                ActivityFailureReason::VERIFICATION_FAILED,
+                $e->getMessage(),
+            );
 
             // Die Meldungen der Bibliothek sind englisch und für den Nutzer ohne
-            // Handlungswert („Unsupported attestation statement format.“); der
-            // Wortlaut bleibt im Forensik-Log.
+            // Handlungswert („Invalid ID"); der Wortlaut bleibt im Forensik-Log.
             return response()->json(
                 ['message' => __('app.passkey_registration_failed')],
                 Response::HTTP_UNPROCESSABLE_ENTITY,
             );
         } catch (\Throwable $e) {
             report($e);
-            PasskeyCredential::recordFailedRegistrationActivity($user, 'internal_error');
+            PasskeyCredential::recordFailedRegistrationActivity($user, ActivityFailureReason::INTERNAL_ERROR);
 
             return response()->json(
                 ['message' => __('app.passkey_registration_server_error')],
@@ -125,17 +118,5 @@ final class PasskeyRegistrationController extends Controller
             'name' => $passkeyCredential->name,
             'created_at' => $passkeyCredential->created_at->toIso8601String(),
         ], Response::HTTP_CREATED);
-    }
-
-    /**
-     * Nur der Eigentümer darf seine eigenen Passkeys löschen.
-     */
-    public function destroy(PasskeyCredential $passkeyCredential): JsonResponse
-    {
-        $this->authorize('delete', $passkeyCredential);
-
-        $this->repository->delete($passkeyCredential);
-
-        return response()->json(null, Response::HTTP_NO_CONTENT);
     }
 }

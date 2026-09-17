@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
+use App\Enums\ActivityFailureReason;
 use App\Models\Concerns\RemapsActivityEvent;
 use App\Models\Contracts\AuthorizationAuditable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -164,7 +165,6 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
      * Resilient gegen Activity-Log-Ausfälle: ein Schreibfehler wird still
      * gemeldet, statt den Auth-Pfad des Aufrufers zu unterbrechen.
      *
-     * @param string $reason Stabiler Maschinen-Code des Fehlerpfads (`verification_failed`, `internal_error`).
      * @param string $rawBody Roh-Body des Authenticate-Requests.
      * @param string|null $detail Wortlaut der WebAuthn-Bibliothek oder, wo die Zeremonie an einer
      *        eigenen Prüfung scheitert, ein fester Code. Nie übersetzt: Der Wert bleibt dem Browser
@@ -172,9 +172,12 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
      *        hinweg vergleichbar bleiben — sonst gäbe es keine Spur mehr, an welchem Schritt es
      *        scheiterte.
      */
-    public static function recordFailedLoginActivity(string $reason, string $rawBody, ?string $detail = null): void
-    {
-        $properties = ['failure_reason' => $reason];
+    public static function recordFailedLoginActivity(
+        ActivityFailureReason $reason,
+        string $rawBody,
+        ?string $detail = null,
+    ): void {
+        $properties = ['failure_reason' => $reason->value];
 
         $credentialIdHash = self::hashCredentialIdFromBody($rawBody);
 
@@ -214,14 +217,16 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
      * Resilient gegen Activity-Log-Ausfälle: ein Schreibfehler wird still
      * gemeldet, statt den HTTP-Response-Pfad des Aufrufers zu unterbrechen.
      *
-     * @param string $reason Stabiler Maschinen-Code des Fehlerpfads (`verification_failed`, `internal_error`).
      * @param string|null $detail Wortlaut der WebAuthn-Bibliothek oder ein fester Code aus einer
      *        eigenen Prüfung; nie übersetzt, damit die Einträge vergleichbar bleiben. Der Browser
      *        sieht ihn nicht.
      */
-    public static function recordFailedRegistrationActivity(User $user, string $reason, ?string $detail = null): void
-    {
-        $properties = ['failure_reason' => $reason];
+    public static function recordFailedRegistrationActivity(
+        User $user,
+        ActivityFailureReason $reason,
+        ?string $detail = null,
+    ): void {
+        $properties = ['failure_reason' => $reason->value];
 
         if ($detail !== null) {
             $properties['failure_detail'] = $detail;

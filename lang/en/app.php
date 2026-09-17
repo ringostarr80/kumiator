@@ -88,8 +88,11 @@ return [
 
     // Auth - Confirm Password
     'confirm_password_title' => 'Confirm Password',
+    'confirm_identity_title' => 'Confirm identity',
     'confirm_password_security' => 'For your security, please confirm your password to continue.',
     'secure_area' => 'This is a secure area of the application. Please confirm your password before continuing.',
+    'password_confirmation_unavailable' => 'Password login is turned off for this account and no passkey is'
+        . ' registered. Confirmation is not possible here — please contact an administrator.',
 
     // Auth - Email Verification
     'verify_email_description' => 'Before continuing, could you verify your email address by clicking on the link'
@@ -155,8 +158,8 @@ return [
     'this_device' => 'This device',
     'last_active' => 'Last active',
     'logout_other_sessions' => 'Log Out Other Browser Sessions',
-    'logout_other_sessions_confirm' => 'Please enter your password to confirm you would like to log out of your'
-        . ' other browser sessions across all of your devices.',
+    'logout_other_sessions_confirm' => 'Do you really want to log out of your other browser sessions across all of'
+        . ' your devices?',
 
     // Delete Account
     'delete_account' => 'Delete Account',
@@ -164,8 +167,7 @@ return [
     'delete_account_info' => 'Once your account is deleted, all of its resources and data will be permanently deleted.'
         . ' Before deleting your account, please download any data or information that you wish to retain.',
     'delete_account_confirm' => 'Are you sure you want to delete your account? Once your account is deleted,'
-        . ' all of its resources and data will be permanently deleted. Please enter your password to confirm you'
-        . ' would like to permanently delete your account.',
+        . ' all of its resources and data will be permanently deleted.',
 
     // API Tokens
     'create_api_token' => 'Create API Token',
@@ -207,6 +209,26 @@ return [
     'passkey_added' => 'Passkey added successfully.',
     'passkey_deleted' => 'Passkey deleted.',
     'passkey_delete_confirm' => 'Are you sure you want to delete this passkey?',
+    'passkey_delete_last_blocked' => 'This is your last passkey.'
+        . ' With password login turned off, nobody could get into the account.',
+    'password_login_title' => 'Password login',
+    'password_login_description' => 'Controls whether this account may still sign in with email address and password.',
+    'password_login_state_on' => 'Signing in with a password is possible.',
+    'password_login_state_off' => 'Signing in is only possible with a passkey.',
+    'password_login_disable' => 'Turn off password login',
+    'password_login_enable' => 'Allow password login again',
+    'password_login_needs_passkey' => 'Register a passkey first — otherwise no way into the account is left.',
+    'password_login_disabled_flash' => 'Password login is turned off.',
+    'password_login_enabled_flash' => 'Password login is allowed again.',
+    'password_change_passkey_hint' => 'Confirm the change with your passkey.'
+        . ' Your previous password no longer counts for this account.',
+    'password_login_disabled_hint' => 'From then on you confirm changes on this page with your passkey'
+        . ' instead of your password, and the reset link is no longer sent.'
+        . ' Anyone who loses their last passkey needs help from an administrator.',
+    'password_login_enable_warning' => 'Your password from before the switch-off is discarded in the process,'
+        . ' and your other devices are signed out.'
+        . ' To sign in with a password again afterwards, set a new one under "Update Password" above first'
+        . ' — otherwise only "Forgot your password?" on the login page remains, after you have signed out.',
     'passkey_rename' => 'Rename',
     'passkey_renamed' => 'Passkey renamed.',
     'passkey_registered_at' => 'Registered on',
@@ -220,6 +242,12 @@ return [
     'passkey_authentication_failed' => 'Authentication failed.',
     'passkey_registration_failed' => 'Passkey registration failed.',
     'passkey_registration_server_error' => 'The passkey could not be saved. Please try again later.',
+    'passkey_confirmation_failed' => 'Confirming with your passkey failed. Please try again.',
+    'passkey_confirmation_server_error' => 'The confirmation could not be completed. Please try again later.',
+    'passkey_confirmation_no_passkey' => 'No passkey is registered for this account.',
+    'confirm_with_passkey' => 'Confirm with passkey',
+    'confirm_password_or_passkey_security' => 'For your security, please prove again that it is you in order'
+        . ' to continue.',
     'passkey_registration_aborted' => 'The passkey was not created. The process may have been cancelled'
         . ' — or, if you are using a security key, it may be out of space.',
     'passkey_confirmation_expired' => 'Your password confirmation has expired. Please confirm your password'
@@ -286,6 +314,8 @@ return [
     'activity_passkey_login_succeeded' => 'Passkey login succeeded',
     'activity_passkey_login_failed' => 'Passkey login failed',
     'activity_passkey_registration_failed' => 'Passkey registration failed',
+    'activity_passkey_confirmation_succeeded' => 'Confirmation via passkey succeeded',
+    'activity_passkey_confirmation_failed' => 'Confirmation via passkey failed',
     'activity_authorization_denied' => 'Authorization denied',
     'activity_activity_log_viewed' => 'Activity log viewed',
     'activity_password_login_succeeded' => 'Password login succeeded',
@@ -293,12 +323,16 @@ return [
     'activity_logout' => 'Logout',
     'activity_login_failed' => 'Login failed',
     'activity_login_unapproved' => 'Login denied (account not approved)',
+    'activity_login_password_disabled' => 'Login denied (password login turned off)',
     'activity_login_locked_out' => 'Login locked out (too many failed attempts)',
     'activity_password_updated' => 'Password changed',
     'activity_password_update_failed' => 'Password change failed',
     'activity_password_confirmation_failed' => 'Password confirmation failed',
+    'activity_password_login_disabled' => 'Password login turned off',
+    'activity_password_login_enabled' => 'Password login turned back on',
     'activity_password_reset' => 'Password reset',
     'activity_password_reset_requested' => 'Password reset link requested',
+    'activity_password_reset_failed' => 'Password reset denied',
     'activity_user_self_registered' => 'Account created via self-registration',
     'activity_user_created' => 'Account created',
     'activity_user_approved' => 'Account approved',
@@ -379,6 +413,8 @@ return [
         . ' Your existing email address remains unchanged.',
 
     // Email change: profile form (re-authentication)
+    'email_change_passkey_hint' => 'Confirm the change of your email address with your passkey.'
+        . ' Your password no longer counts for this account.',
     'email_change_current_password_hint' => 'Confirm the change of your email address with your current password.',
     'email_change_current_password_required' => 'Changing your email address requires your current password.',
 ];

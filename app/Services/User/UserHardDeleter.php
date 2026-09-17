@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Session\Contracts\UserSessionTerminatorContract;
 use App\Services\User\Contracts\UserHardDeleterContract;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Facades\Activity;
 use Spatie\Activitylog\Models\Activity as ActivityModel;
@@ -60,6 +61,11 @@ final class UserHardDeleter implements UserHardDeleterContract
             // Token-Auditor.
             $user->tokens()->delete();
             $user->passkeyCredentials()->delete();
+
+            // Die Token-Zeile hängt an der Adresse, nicht am Konto: Sie überstünde
+            // den Purge mit der Adresse im Klartext (DSGVO Art. 17), und wer sich
+            // damit neu registriert, erbte den noch offenen Link.
+            Password::deleteToken($user);
 
             // Sonst schriebe `forceDelete()` unten einen `deleted`-Eintrag
             // mit `subject_id = $user->getKey()`.

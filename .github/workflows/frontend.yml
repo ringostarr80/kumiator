@@ -50,7 +50,7 @@ jobs:
 
       # tests/css/global-setup.ts builds on its own, so no leftover artefact gets checked
       - name: Check styles and types
-        run: npm run test:css
+        run: npm run test:frontend
 
       # codecov.yml scopes the patch target to this flag
       # !cancelled() keeps the report flowing when the threshold fails, which is when the missing lines matter most

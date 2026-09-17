@@ -14,8 +14,12 @@ use Illuminate\Console\Attributes\Signature;
  * Pendant zum admin-initiierten Soft-Delete (`user:delete`). Tokens, Passkeys
  * und Sessions wurden dort hart gelöscht — sie kommen beim Restore NICHT
  * zurück; der User muss sich neu anmelden und ggf. seine Passkeys neu
- * registrieren. Rollen und Direkt-Permissions blieben dagegen erhalten und
- * gelten sofort wieder. Beides wird im Output prominent ausgegeben, damit
+ * registrieren. Der Passwort-Login steht dabei wieder offen, auch wenn das
+ * Konto ihn abgeschaltet hatte: ohne Passkey führte sonst kein Weg hinein. Das
+ * damalige Passwort gilt in diesem Fall nicht mehr — hinein führt der Link zum
+ * Zurücksetzen oder `user:reset-password`.
+ * Rollen und Direkt-Permissions blieben dagegen erhalten und gelten sofort
+ * wieder. Alles davon wird im Output prominent ausgegeben, damit
  * der Admin die Wiederherstellung bewusst auch als Privilegien-Restore
  * entscheidet.
  *
@@ -48,6 +52,7 @@ class Restore extends TrashedUserActionCommand
     {
         return [
             'commands.restore_user.hint',
+            'commands.restore_user.password_hint',
             'commands.restore_user.permissions_hint',
         ];
     }

@@ -6,26 +6,37 @@ namespace App\Livewire\Profile;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
-use App\Services\Auth\Contracts\OtherDeviceLogoutContextContract;
+use App\Livewire\Profile\Concerns\RequiresFreshPasswordConfirmation;
+use App\Models\User;
+use App\Services\Auth\Contracts\OtherSessionRevokerContract;
 use App\Services\Session\Contracts\UserSessionTerminatorContract;
 use Illuminate\Contracts\Auth\StatefulGuard;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Jetstream\Http\Livewire\LogoutOtherBrowserSessionsForm as JetstreamLogoutOtherBrowserSessionsForm;
 use Spatie\Activitylog\Facades\Activity;
 
 /**
- * Erweiterung der Jetstream-Komponente um Activity-Log-Erfassung.
+ * Ersetzt den Passwortvergleich der Jetstream-Komponente durch den zentralen
+ * Bestätigungspfad und schreibt den Vorgang ins Activity-Log.
  *
- * Jetstream feuert kein Framework-Event, wenn der Nutzer alle anderen
- * Browser-Sessions terminiert — dabei ist genau das ein
- * sicherheitsrelevanter Vorgang, der nachvollziehbar bleiben muss
- * (DSGVO Art. 32). Wir erweitern die Standard-Komponente und schreiben
- * den Eintrag, nachdem der Parent erfolgreich abgeschlossen hat.
+ * Jetstream prüft das Passwort selbst gegen den Hash und beendet die Sitzungen
+ * über `SessionGuard::logoutOtherDevices()`, das dafür das Klartextpasswort
+ * verlangt. Beides verträgt sich nicht mit dem abschaltbaren Passwort-Login:
+ * Die Abschaltung bliebe wirkungslos, und ein Konto ohne nutzbares Passwort käme
+ * an die Funktion gar nicht mehr heran. Geerbt bleibt die Komponente wegen
+ * ihrer Sitzungsliste, die die View über `$this->sessions` bezieht. Ihr
+ * `$password` fährt dabei ohne Leser im Livewire-Snapshot mit — die Methode,
+ * die es prüfte, ist hier überschrieben.
+ *
+ * Das Activity-Log ist der zweite Grund für die Erweiterung: Jetstream feuert
+ * kein Framework-Event, obwohl der Vorgang sicherheitsrelevant und nach
+ * DSGVO Art. 32 nachvollziehbar sein muss.
  */
 final class LogoutOtherBrowserSessionsForm extends JetstreamLogoutOtherBrowserSessionsForm
 {
-    private OtherDeviceLogoutContextContract $logoutContext;
+    use RequiresFreshPasswordConfirmation;
+
+    private OtherSessionRevokerContract $sessionRevoker;
 
     private UserSessionTerminatorContract $sessionTerminator;
 
@@ -36,69 +47,45 @@ final class LogoutOtherBrowserSessionsForm extends JetstreamLogoutOtherBrowserSe
      * Signatur brechen würde (LSP).
      */
     public function boot(
-        OtherDeviceLogoutContextContract $logoutContext,
+        OtherSessionRevokerContract $sessionRevoker,
         UserSessionTerminatorContract $sessionTerminator,
     ): void {
-        $this->logoutContext = $logoutContext;
+        $this->sessionRevoker = $sessionRevoker;
         $this->sessionTerminator = $sessionTerminator;
     }
 
+    /**
+     * Der Guard-Parameter stammt aus der Parent-Signatur und bleibt ungenutzt:
+     * Sein `logoutOtherDevices()` zieht seine Wirkung aus einem neuen
+     * Passwort-Hash, den es aus dem Klartextpasswort bildet.
+     */
     public function logoutOtherBrowserSessions(StatefulGuard $guard): void
     {
-        // Wenn die Session-Persistenz nicht über die Datenbank läuft, terminiert
-        // der Parent gar keine Sessions (frühzeitiger Return). Dann wäre ein
-        // Activity-Log-Eintrag irreführend — wir loggen nur tatsächlich
-        // ausgeführte Vorgänge.
-        if (!$this->sessionTerminator->usesDatabaseDriver()) {
-            parent::logoutOtherBrowserSessions($guard);
+        $this->ensurePasswordIsConfirmed(self::FRESH_CONFIRMATION_SECONDS);
 
-            return;
-        }
-
-        // Anzahl der gleich zu terminierenden Sessions vorab erfassen — nach
-        // dem Parent-Aufruf wären sie aus der Tabelle entfernt.
-        $terminatedSessionCount = $this->countOtherSessions();
-
-        // Parent ruft `$guard->logoutOtherDevices()` auf — das feuert nativ
-        // `OtherDeviceLogout`, das vom `LogAuthenticationActivityListener`
-        // verarbeitet würde. Im Form-Pfad schreiben wir aber selbst einen
-        // reicheren Eintrag mit `terminated_session_count`; der Marker drückt
-        // den allgemeinen Listener-Eintrag während dieses Aufrufs weg.
-        $this->logoutContext->markActive();
-
-        try {
-            parent::logoutOtherBrowserSessions($guard);
-        } finally {
-            $this->logoutContext->clear();
-        }
-
-        // Parent wirft `ValidationException` bei falschem Passwort — kommen
-        // wir hier an, war der Logout erfolgreich.
         $user = Auth::user();
 
-        if (!$user instanceof Model) {
+        if (!$user instanceof User) {
             return;
         }
 
-        Activity::useLog(ActivityChannel::AUTH->value)
-            ->event(ActivityEvent::OTHER_SESSIONS_LOGGED_OUT->value)
-            ->causedBy($user)
-            ->performedOn($user)
-            ->withProperties(['terminated_session_count' => $terminatedSessionCount])
-            ->log('');
-    }
+        $revokedSessionCount = $this->sessionRevoker->revokeFor($user);
 
-    private function countOtherSessions(): int
-    {
-        $userId = Auth::user()?->getAuthIdentifier();
+        $this->confirmingLogout = false;
 
-        if (!is_int($userId) && !is_string($userId)) {
-            return 0;
+        // Nur wenn die Sitzungen in der Datenbank liegen — sonst kam der Widerruf
+        // an keine heran, und der Eintrag behauptete Sitzungsenden, die es nicht
+        // gab. Die Entwertung des Recaller-Cookies läuft davor trotzdem; sie
+        // braucht keinen Treiber.
+        if ($this->sessionTerminator->usesDatabaseDriver()) {
+            Activity::useLog(ActivityChannel::AUTH->value)
+                ->event(ActivityEvent::OTHER_SESSIONS_LOGGED_OUT->value)
+                ->causedBy($user)
+                ->performedOn($user)
+                ->withProperties(['terminated_session_count' => $revokedSessionCount])
+                ->log('');
         }
 
-        return $this->sessionTerminator->countOtherSessionsForUser(
-            $userId,
-            request()->session()->getId(),
-        );
+        $this->dispatch('loggedOut');
     }
 }

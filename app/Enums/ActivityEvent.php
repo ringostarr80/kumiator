@@ -27,13 +27,17 @@ enum ActivityEvent: string
     case LOGIN_FAILED = 'login_failed';
     case LOGIN_LOCKED_OUT = 'login_locked_out';
     case LOGIN_UNAPPROVED = 'login_unapproved';
+    case LOGIN_PASSWORD_DISABLED = 'login_password_disabled';
     case OTHER_DEVICES_LOGGED_OUT = 'other_devices_logged_out';
     case OTHER_SESSIONS_LOGGED_OUT = 'other_sessions_logged_out';
     case PASSWORD_UPDATED = 'password_updated';
     case PASSWORD_RESET = 'password_reset';
     case PASSWORD_RESET_REQUESTED = 'password_reset_requested';
+    case PASSWORD_RESET_FAILED = 'password_reset_failed';
     case PASSWORD_UPDATE_FAILED = 'password_update_failed';
     case PASSWORD_CONFIRMATION_FAILED = 'password_confirmation_failed';
+    case PASSWORD_LOGIN_DISABLED = 'password_login_disabled';
+    case PASSWORD_LOGIN_ENABLED = 'password_login_enabled';
     case EMAIL_VERIFIED = 'email_verified';
     case EMAIL_VERIFICATION_REQUESTED = 'email_verification_requested';
     case EMAIL_VERIFICATION_FAILED = 'email_verification_failed';
@@ -50,6 +54,8 @@ enum ActivityEvent: string
     case TWO_FA_RECOVERY_CODE_USED = '2fa_recovery_code_used';
     case TWO_FA_FAILED = '2fa_failed';
     case PASSKEY_LOGIN_FAILED = 'passkey_login_failed';
+    case PASSKEY_CONFIRMATION_SUCCEEDED = 'passkey_confirmation_succeeded';
+    case PASSKEY_CONFIRMATION_FAILED = 'passkey_confirmation_failed';
 
     // user
     case USER_CREATED = 'user_created';
