@@ -151,6 +151,27 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     }
 
     /**
+     * Der Versand entfällt, sobald das Konto den Passwort-Login abgeschaltet hat: Ein
+     * neu gesetztes Passwort öffnete sonst über den Postfachzugang wieder genau den
+     * Weg, den die Abschaltung schließen soll.
+     *
+     * Unterdrückt wird der Versand, nicht die Anforderung: Würde `/forgot-password`
+     * für solche Konten sichtbar anders antworten, verriete die Antwort einem
+     * Unbeteiligten, dass zu dieser Adresse ein Konto mit Passkey existiert.
+     *
+     * `mixed` statt `string`, weil die Basissignatur untypisiert ist und PHP
+     * Parametertypen nur erweitern, nicht verengen lässt.
+     */
+    public function sendPasswordResetNotification(mixed $token): void
+    {
+        if ($this->isPasswordLoginDisabled()) {
+            return;
+        }
+
+        parent::sendPasswordResetNotification($token);
+    }
+
+    /**
      * Macht die (im `HasProfilePhoto`-Trait `protected`) Disk-Auflösung für die
      * Profilfoto-Action zugänglich, die das Schreiben/Löschen der Datei aus der
      * Lösch-Transaktion heraushebt — eine zweite Quelle der Wahrheit für die

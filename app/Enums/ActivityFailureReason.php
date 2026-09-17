@@ -14,6 +14,9 @@ namespace App\Enums;
  */
 enum ActivityFailureReason: string
 {
+    /** Das Passwort stimmte, doch das Konto hat den Passwort-Login abgeschaltet. */
+    case PASSWORD_LOGIN_DISABLED = 'password_login_disabled';
+
     /** Die WebAuthn-Zeremonie hat die Antwort des Browsers verworfen. */
     case VERIFICATION_FAILED = 'verification_failed';
 

@@ -300,6 +300,7 @@ return [
     'activity_password_confirmation_failed' => 'Password confirmation failed',
     'activity_password_reset' => 'Password reset',
     'activity_password_reset_requested' => 'Password reset link requested',
+    'activity_password_reset_failed' => 'Password reset denied',
     'activity_user_self_registered' => 'Account created via self-registration',
     'activity_user_created' => 'Account created',
     'activity_user_approved' => 'Account approved',

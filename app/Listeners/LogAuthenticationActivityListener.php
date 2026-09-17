@@ -6,6 +6,7 @@ namespace App\Listeners;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
+use App\Models\User;
 use App\Services\Audit\AuditEmailHasher;
 use App\Services\Audit\AuditIpTruncator;
 use App\Services\Auth\Contracts\DisabledPasswordLoginContextContract;
@@ -236,10 +237,19 @@ final class LogAuthenticationActivityListener
             return;
         }
 
+        $properties = $this->forensicProperties(request());
+
+        // Der Broker feuert dieses Event auch, wenn `User::sendPasswordResetNotification()`
+        // den Versand verweigert. Ohne die Notiz läse sich der Eintrag als „Link ging
+        // raus", und ein Support-Fall („ich bekomme keine Mail") liefe ins Leere.
+        if ($user instanceof User && $user->isPasswordLoginDisabled()) {
+            $properties['notification_suppressed'] = true;
+        }
+
         Activity::useLog(ActivityChannel::FORENSIC->value)
             ->event(ActivityEvent::PASSWORD_RESET_REQUESTED->value)
             ->performedOn($user)
-            ->withProperties($this->forensicProperties(request()))
+            ->withProperties($properties)
             ->log('');
     }
 

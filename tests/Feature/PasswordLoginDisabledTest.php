@@ -4,16 +4,24 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Actions\Fortify\ResetUserPassword;
 use App\Models\Activity;
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 /**
- * Hält die Anmeldung zu, sobald ein Konto den Passwort-Login abgeschaltet hat.
+ * Hält die Wege zu, die ein Passwort einem Konto sonst offen lässt, sobald es
+ * den Passwort-Login abgeschaltet hat: die Anmeldung selbst und den E-Mail-Reset,
+ * über den sich ein neues Passwort beschaffen ließe.
  */
 final class PasswordLoginDisabledTest extends TestCase
 {
@@ -129,4 +137,160 @@ final class PasswordLoginDisabledTest extends TestCase
         $response->assertSessionHasErrors();
         Exceptions::assertReported(QueryException::class);
     }
+
+    public function testResetLinkIsNotSent(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create(['password_login_disabled_at' => now()]);
+
+        $this->post('/forgot-password', ['email' => $user->email]);
+
+        Notification::assertNothingSent();
+    }
+
+    public function testResetLinkIsStillSentWithoutTheSwitch(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create();
+
+        $this->post('/forgot-password', ['email' => $user->email]);
+
+        Notification::assertSentTo($user, ResetPassword::class);
+    }
+
+    /**
+     * Die Antwort muss dieselbe bleiben: Wiche sie ab, verriete sie einem
+     * Unbeteiligten, dass zu dieser Adresse ein Konto mit Passkey existiert.
+     */
+    public function testTheRequestAnswersTheSameAsForAnyOtherAccount(): void
+    {
+        Notification::fake();
+
+        $disabled = User::factory()->create(['password_login_disabled_at' => now()]);
+        $regular = User::factory()->create();
+
+        $disabledResponse = $this->post('/forgot-password', ['email' => $disabled->email]);
+        $regularResponse = $this->post('/forgot-password', ['email' => $regular->email]);
+
+        $this->assertSame($regularResponse->getStatusCode(), $disabledResponse->getStatusCode());
+        $disabledResponse->assertSessionHas('status', __('passwords.sent'));
+        $regularResponse->assertSessionHas('status', __('passwords.sent'));
+    }
+
+    public function testTheSuppressedSendIsVisibleInTheAuditTrail(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create(['password_login_disabled_at' => now()]);
+        Activity::query()->delete();
+
+        $this->post('/forgot-password', ['email' => $user->email]);
+
+        $activity = Activity::query()
+            ->where('event', 'password_reset_requested')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertTrue($activity->properties?->get('notification_suppressed'));
+    }
+
+    /**
+     * Ein vor dem Abschalten verschickter Link lebt bis zu einer Stunde weiter.
+     * Löste er ein, taugte das gesetzte Passwort zwar nicht zur Anmeldung, wohl
+     * aber zur Passwortbestätigung — und damit zur Passkey-Verwaltung.
+     */
+    public function testAStaleResetTokenCannotSetANewPassword(): void
+    {
+        $user = User::factory()->create();
+        $token = Password::broker()->createToken($user);
+
+        $user->password_login_disabled_at = now();
+        $user->saveOrFail();
+
+        $this->post('/reset-password', [
+            'token' => $token,
+            'email' => $user->email,
+            'password' => 'brand-new-password',
+            'password_confirmation' => 'brand-new-password',
+        ]);
+
+        $user->refresh();
+
+        $this->assertFalse(Hash::check('brand-new-password', $user->password));
+    }
+
+    /**
+     * Der Broker löscht den Token erst hinter dem Callback, und die Abwehr des
+     * Guards verlässt den Callback vorher. Der abgewehrte Link bliebe damit
+     * scharf und griffe, sobald der Passwort-Login wieder offen steht.
+     */
+    public function testARefusedResetTokenIsSpentAnyway(): void
+    {
+        $user = User::factory()->create(['password_login_disabled_at' => now()]);
+
+        $payload = [
+            'token' => Password::broker()->createToken($user),
+            'email' => $user->email,
+            'password' => 'brand-new-password',
+            'password_confirmation' => 'brand-new-password',
+        ];
+
+        $this->post('/reset-password', $payload);
+
+        $user->password_login_disabled_at = null;
+        $user->saveOrFail();
+
+        $this->post('/reset-password', $payload);
+
+        $user->refresh();
+
+        $this->assertFalse(Hash::check('brand-new-password', $user->password));
+    }
+
+    public function testTheResetActionRefusesDisabledAccounts(): void
+    {
+        $user = User::factory()->create(['password_login_disabled_at' => now()]);
+
+        $this->expectException(ValidationException::class);
+
+        (new ResetUserPassword())->reset($user, ['password' => 'brand-new-password']);
+    }
+
+    /**
+     * Wer den Link einlöst, hat Zugriff auf das Postfach des Kontos — das
+     * stärkere Signal als ein bloß gekanntes Passwort, das der Login-Pfad
+     * bereits festhält. Ohne den Eintrag endete der Trail bei der Anforderung.
+     */
+    public function testTheRefusedResetIsAudited(): void
+    {
+        $user = User::factory()->create(['password_login_disabled_at' => now()]);
+        Activity::query()->delete();
+
+        $this->post('/reset-password', [
+            'token' => Password::broker()->createToken($user),
+            'email' => $user->email,
+            'password' => 'brand-new-password',
+            'password_confirmation' => 'brand-new-password',
+        ]);
+
+        $activity = Activity::query()
+            ->where('log_name', 'auth')
+            ->where('event', 'password_reset_failed')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame($user->getKey(), $activity->causer_id);
+        $this->assertSame($user->getKey(), $activity->subject_id);
+        $this->assertSame('password_login_disabled', $activity->properties?->get('failure_reason'));
+    }
+
+    /**
+     * Die `current_password`-Regel vergleicht den Hash direkt und käme ohne die
+     * vorgeschaltete Regel an der Sperre vorbei — das abgeschaltete Passwort
+     * setzte sich damit selbst neu.
+     */
 }
