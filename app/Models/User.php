@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
@@ -35,6 +37,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property ?\Illuminate\Support\Carbon $pending_email_sent_at
  * @property ?\Illuminate\Support\Carbon $approved_at
  * @property ?\Illuminate\Support\Carbon $password_login_disabled_at
+ * @property ?\Illuminate\Support\Carbon $password_changed_at
  * @property ?\Illuminate\Support\Carbon $deleted_at
  * @property ?string $webauthn_user_handle Nullable trotz NOT-NULL-Spalte: Eine Teil-Selektion lädt sie nicht mit
  */
@@ -155,6 +158,42 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     public function isPasswordLoginDisabled(): bool
     {
         return $this->password_login_disabled_at !== null;
+    }
+
+    /**
+     * Der Verdacht hinter dem abgeschalteten Passwort-Login gilt dem Passwort von
+     * damals, nicht jedem, das je gesetzt wird: Was seither kam, wurde per
+     * Passkey-bestätigter Sitzung oder auf der Konsole gesetzt und darf das
+     * Wiedereinschalten überleben. Ohne Stempel zählt das Passwort als alt — für
+     * Bestandszeilen und Pfade ohne Model-Events ist Verwerfen die sichere Richtung.
+     */
+    public function hasDistrustedPassword(): bool
+    {
+        if ($this->password_login_disabled_at === null) {
+            return false;
+        }
+
+        return $this->password_changed_at === null
+            || $this->password_changed_at->lte($this->password_login_disabled_at);
+    }
+
+    /**
+     * Abgeschaltet wird der Passwort-Login, wenn dem Passwort nicht mehr zu
+     * trauen ist. Bliebe es stehen, nähme der wieder offene Zugang diese
+     * Aussage still zurück; ein seither neu gesetztes trifft der Verdacht
+     * nicht. Ein Zufallswert statt eines leeren Feldes, weil die Spalte
+     * `NOT NULL` ist; hinein führt der Link zum Zurücksetzen, den es für
+     * dieses Konto ja wieder gibt.
+     *
+     * Speichert nicht: Transaktion und Zeitpunkt gehören dem Aufrufer.
+     */
+    public function reopenPasswordLogin(): void
+    {
+        if ($this->hasDistrustedPassword()) {
+            $this->password = Hash::make(Str::random(64));
+        }
+
+        $this->password_login_disabled_at = null;
     }
 
     /**
@@ -281,6 +320,7 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
             'pending_email_sent_at' => 'datetime',
             'approved_at' => 'datetime',
             'password_login_disabled_at' => 'datetime',
+            'password_changed_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -306,6 +346,20 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
                 ? null
                 : self::normalizeEmail($value),
         );
+    }
+
+    /**
+     * Der Stempel entsteht am Model, damit keine der Stellen, die ein Passwort
+     * schreiben, ihn vergessen kann: Ein vergessener Stempel ließe ein frisches
+     * Passwort als altes gelten und verwerfen.
+     */
+    protected static function booted(): void
+    {
+        static::saving(static function (self $user): void {
+            if ($user->isDirty('password')) {
+                $user->password_changed_at = now();
+            }
+        });
     }
 
     protected static function activityRemapChannel(): string
