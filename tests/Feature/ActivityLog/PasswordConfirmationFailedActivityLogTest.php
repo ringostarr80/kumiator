@@ -160,4 +160,22 @@ final class PasswordConfirmationFailedActivityLogTest extends TestCase
         $this->assertNull(session('auth.password_confirmed_at'));
         Exceptions::assertReported(QueryException::class);
     }
+
+    /** Derselbe Schutz für den zweiten Ausgang, der einen Eintrag schreibt. */
+    public function testTheRejectionOfADisabledAccountSurvivesAFailingAuditWrite(): void
+    {
+        Exceptions::fake();
+
+        $user = User::factory()->create(['password_login_disabled_at' => now()]);
+
+        Schema::drop('activity_log');
+
+        $response = $this->actingAs($user)->post(self::CONFIRM_PASSWORD_URL_PATH, [
+            'password' => 'password',
+        ]);
+
+        $response->assertSessionHasErrors();
+        $this->assertNull(session('auth.password_confirmed_at'));
+        Exceptions::assertReported(QueryException::class);
+    }
 }

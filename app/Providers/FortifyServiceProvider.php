@@ -73,9 +73,25 @@ class FortifyServiceProvider extends ServiceProvider
                 return false;
             }
 
+            // Der Hash-Vergleich zuerst, wie in den Regelketten der Fortify-Actions
+            // und im Login-Pfad: `password_login_disabled` belegt dort ein genanntes
+            // Passwort. Stünde diese Prüfung davor, trüge dieselbe Aussage auch jeder
+            // blinde Rateversuch, und das Raten verlöre seinen eigenen Grund an genau
+            // den Konten, an denen er zählt.
             if (!Hash::check($password, $user->password)) {
                 app(SessionConfirmationAuditContract::class)
                     ->recordPasswordFailure($user, ActivityFailureReason::CURRENT_PASSWORD_MISMATCH);
+
+                return false;
+            }
+
+            // Der abgeschaltete Passwort-Login nimmt dem Passwort auch hier die
+            // Wirkung. Ohne diese Zeile bliebe es der Schlüssel zur Passkey-
+            // Verwaltung: Wer es abgephisht hat und an eine Sitzung kommt, stünde
+            // vor derselben Hürde wie vor dem Abschalten.
+            if ($user->isPasswordLoginDisabled()) {
+                app(SessionConfirmationAuditContract::class)
+                    ->recordPasswordFailure($user, ActivityFailureReason::PASSWORD_LOGIN_DISABLED);
 
                 return false;
             }
