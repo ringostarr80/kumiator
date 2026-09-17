@@ -16,15 +16,18 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\ConfirmsPassword;
 use Tests\TestCase;
 
 /**
  * Hält die Wege zu, die ein Passwort einem Konto sonst offen lässt, sobald es
- * den Passwort-Login abgeschaltet hat: die Anmeldung selbst und den E-Mail-Reset,
- * über den sich ein neues Passwort beschaffen ließe.
+ * den Passwort-Login abgeschaltet hat: die Anmeldung selbst, den E-Mail-Reset,
+ * über den sich ein neues Passwort beschaffen ließe, und die
+ * `current_password`-Abfragen der beiden Profil-Formulare.
  */
 final class PasswordLoginDisabledTest extends TestCase
 {
+    use ConfirmsPassword;
     use RefreshDatabase;
 
     private const string LOGIN_URL_PATH = '/login';
@@ -293,4 +296,133 @@ final class PasswordLoginDisabledTest extends TestCase
      * vorgeschaltete Regel an der Sperre vorbei — das abgeschaltete Passwort
      * setzte sich damit selbst neu.
      */
+    public function testTheAccountPasswordCannotBeChangedWithIt(): void
+    {
+        $this->actingAs($user = User::factory()->create(['password_login_disabled_at' => now()]));
+
+        $this->put('/user/password', [
+            'current_password' => self::PASSWORD,
+            'password' => 'brand-new-password',
+            'password_confirmation' => 'brand-new-password',
+        ])->assertSessionHasErrorsIn('updatePassword', 'current_password');
+
+        $refreshedUser = $user->fresh();
+
+        $this->assertNotNull($refreshedUser);
+        $this->assertFalse(Hash::check('brand-new-password', $refreshedUser->password));
+    }
+
+    /**
+     * Derselbe Weg am zweiten Formular: Der E-Mail-Wechsel verlangt das aktuelle
+     * Passwort, und ein bestätigter Wechsel legte die Kontoadresse — und damit
+     * den Reset-Weg — in fremde Hand.
+     */
+    public function testTheEmailChangeCannotBeAuthorizedWithIt(): void
+    {
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create([
+            'email' => 'original@example.com',
+            'password_login_disabled_at' => now(),
+        ]));
+
+        $this->put('/user/profile-information', [
+            'name' => $user->name,
+            'email' => 'neu@example.com',
+            'current_password' => self::PASSWORD,
+        ])->assertSessionHasErrorsIn('updateProfileInformation', 'current_password');
+
+        $this->assertNull($user->fresh()?->pending_email);
+        Notification::assertNothingSent();
+    }
+
+    /**
+     * Derselbe Warnwert wie beim abgewiesenen Login: Die
+     * `password_login_enabled`-Regel steht hinter `current_password`, der Eintrag
+     * belegt also ein gültiges Passwort.
+     */
+    public function testTheBlockedPasswordChangeIsAuditedWithItsOwnReason(): void
+    {
+        $this->actingAs(User::factory()->create(['password_login_disabled_at' => now()]));
+        Activity::query()->delete();
+
+        $this->put('/user/password', [
+            'current_password' => self::PASSWORD,
+            'password' => 'brand-new-password',
+            'password_confirmation' => 'brand-new-password',
+        ]);
+
+        $activity = Activity::query()->where('event', 'password_update_failed')->latest('id')->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame('password_login_disabled', $activity->properties?->get('failure_reason'));
+    }
+
+    public function testTheBlockedEmailChangeIsAuditedWithItsOwnReason(): void
+    {
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create([
+            'email' => 'original@example.com',
+            'password_login_disabled_at' => now(),
+        ]));
+        Activity::query()->delete();
+
+        $this->put('/user/profile-information', [
+            'name' => $user->name,
+            'email' => 'neu@example.com',
+            'current_password' => self::PASSWORD,
+        ]);
+
+        $activity = Activity::query()->where('event', 'email_change_request_failed')->latest('id')->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame('password_login_disabled', $activity->properties?->get('failure_reason'));
+    }
+
+    /**
+     * Der Rateversuch bleibt sichtbar: Stünde die `password_login_enabled`-Regel vor
+     * `current_password`, verschluckte `bail` das Mismatch-Signal genau an den
+     * Konten, an denen es am meisten zählt.
+     */
+    public function testAWrongPasswordIsStillAuditedAsAMismatch(): void
+    {
+        $this->actingAs(User::factory()->create(['password_login_disabled_at' => now()]));
+        Activity::query()->delete();
+
+        $this->put('/user/password', [
+            'current_password' => 'wrong-password',
+            'password' => 'brand-new-password',
+            'password_confirmation' => 'brand-new-password',
+        ]);
+
+        $activity = Activity::query()->where('event', 'password_update_failed')->latest('id')->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame('current_password_mismatch', $activity->properties?->get('failure_reason'));
+    }
+
+    /**
+     * Nach dem Abschalten steht das Passwortfeld noch im alten Seitenaufbau —
+     * der Abschnitt daneben ist eine eigene Komponente und rendert nicht neu.
+     * Getragen wird der Wechsel von der bestätigten Sitzung; das danebenstehende
+     * Feld darf ihn weder aufhalten noch seinen Inhaber als Angreifer ausweisen.
+     */
+    public function testTheEmailChangeAcceptsTheConfirmedSessionDespiteAStalePassword(): void
+    {
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create([
+            'email' => 'original@example.com',
+            'password_login_disabled_at' => now(),
+        ]));
+        $this->confirmPassword();
+        Activity::query()->delete();
+
+        $this->put('/user/profile-information', [
+            'name' => $user->name,
+            'email' => 'neu@example.com',
+            'current_password' => self::PASSWORD,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('neu@example.com', $user->fresh()?->pending_email);
+        $this->assertNull(Activity::query()->where('event', 'email_change_request_failed')->first());
+    }
 }

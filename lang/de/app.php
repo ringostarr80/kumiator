@@ -216,6 +216,8 @@ return [
     'passkey_added' => 'Passkey erfolgreich hinzugefügt.',
     'passkey_deleted' => 'Passkey gelöscht.',
     'passkey_delete_confirm' => 'Möchtest du diesen Passkey wirklich löschen?',
+    'password_change_passkey_hint' => 'Bestätige den Wechsel mit deinem Passkey.'
+        . ' Dein bisheriges Passwort zählt an diesem Konto nicht mehr.',
     'passkey_rename' => 'Umbenennen',
     'passkey_renamed' => 'Passkey umbenannt.',
     'passkey_registered_at' => 'Registriert am',
@@ -402,6 +404,8 @@ return [
         . ' abgebrochen. Deine bestehende E-Mail-Adresse bleibt unverändert.',
 
     // E-Mail-Änderung: Profil-Formular (Re-Authentifizierung)
+    'email_change_passkey_hint' => 'Bestätige die Änderung deiner E-Mail-Adresse mit deinem Passkey.'
+        . ' Dein Passwort zählt an diesem Konto nicht mehr.',
     'email_change_current_password_hint' => 'Bestätige die Änderung deiner E-Mail-Adresse mit deinem'
         . ' aktuellen Passwort.',
     'email_change_current_password_required' => 'Für die Änderung der E-Mail-Adresse ist dein aktuelles'

@@ -210,6 +210,8 @@ return [
     'passkey_added' => 'Passkey added successfully.',
     'passkey_deleted' => 'Passkey deleted.',
     'passkey_delete_confirm' => 'Are you sure you want to delete this passkey?',
+    'password_change_passkey_hint' => 'Confirm the change with your passkey.'
+        . ' Your previous password no longer counts for this account.',
     'passkey_rename' => 'Rename',
     'passkey_renamed' => 'Passkey renamed.',
     'passkey_registered_at' => 'Registered on',
@@ -392,6 +394,8 @@ return [
         . ' Your existing email address remains unchanged.',
 
     // Email change: profile form (re-authentication)
+    'email_change_passkey_hint' => 'Confirm the change of your email address with your passkey.'
+        . ' Your password no longer counts for this account.',
     'email_change_current_password_hint' => 'Confirm the change of your email address with your current password.',
     'email_change_current_password_required' => 'Changing your email address requires your current password.',
 ];

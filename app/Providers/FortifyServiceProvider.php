@@ -20,8 +20,12 @@ use App\Services\Auth\SessionConfirmationAudit;
 use App\Services\Auth\UnapprovedLoginContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
@@ -53,6 +57,31 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::redirectUserForTwoFactorAuthenticationUsing(RedirectIfTwoFactorAuthenticatable::class);
+
+        // `current_password:web` vergleicht den Hash direkt und fragt weder
+        // `authenticateUsing` noch `confirmPasswordsUsing` — für die Fortify-Actions
+        // bliebe die Abschaltung damit wirkungslos. Diese Regel steht in ihren
+        // Regelketten HINTER `current_password`: Sie kommt erst zum Zug, wenn das
+        // Passwort gepasst hat, und ihr Audit-Eintrag trägt damit dieselbe Aussage
+        // wie der des Login-Pfads. Der Guard ist derselbe, den jene Ketten benennen.
+        Validator::extend('password_login_enabled', static function (): bool {
+            $user = Auth::guard('web')->user();
+
+            return $user instanceof User && !$user->isPasswordLoginDisabled();
+        });
+
+        // An denselben Konten tritt die frisch bestätigte Sitzung an die Stelle
+        // des Passworts: Sie lässt sich dort nur per Passkey erlangen, weil
+        // `confirmPasswordsUsing` das Passwort abweist. `extendImplicit`, weil
+        // die Regel gerade dann greifen muss, wenn das Feld fehlt. Gerechnet
+        // wird wie in `password.confirm` und Jetstreams `ConfirmsPasswords`,
+        // damit Formular und Middleware dieselbe Frist kennen.
+        Validator::extendImplicit('recently_confirmed', static function (): bool {
+            $confirmedAt = Session::get('auth.password_confirmed_at', 0);
+
+            return is_numeric($confirmedAt)
+                && (time() - (int) $confirmedAt) < Config::integer('auth.password_timeout');
+        });
 
         // Re-Auth-Failures vor 2FA-Endpoints sichtbar machen. Beide vendor-
         // seitigen Pfade — der Web-Form-Pfad über `ConfirmablePasswordController`

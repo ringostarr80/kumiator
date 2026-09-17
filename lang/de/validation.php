@@ -120,6 +120,8 @@ return [
         'uncompromised' => 'Das angegebene :attribute ist in einem Datenleck aufgetaucht.'
             . ' Bitte wähle ein anderes :attribute.',
     ],
+    'recently_confirmed' => 'Bestätige die Änderung zuerst mit deinem Passkey.',
+    'password_login_enabled' => 'Für dieses Konto ist die Anmeldung mit Passwort abgeschaltet.',
     'present' => 'Das Feld :attribute muss vorhanden sein.',
     'present_if' => 'Das Feld :attribute muss vorhanden sein, wenn :other :value ist.',
     'present_unless' => 'Das Feld :attribute muss vorhanden sein, außer wenn :other :value ist.',

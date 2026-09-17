@@ -72,7 +72,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
                 // ginge an die Angreifer-Adresse, und der erfolgreiche Confirm
                 // entwertet den Cancel-Link der alten Adresse sofort.
                 'current_password' => $emailChanged
-                    ? ['bail', 'required', 'string', 'current_password:web']
+                    ? $this->currentPasswordRules($user, $input)
                     : ['nullable', 'string'],
             ], [
                 'current_password.required' => __('app.email_change_current_password_required'),
@@ -248,9 +248,11 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
     }
 
     /**
-     * Auditiert NUR den Mismatch des aktuellen Passworts (Forensik-Signal für
-     * eine gekaperte Session), nicht den `required`-Verstoß — der ist ein
-     * UX-Eingabefehler ohne Sicherheitsaussage. Audit-Symmetrie zum
+     * Auditiert NUR die geprüften Fehlschläge der Re-Auth — den Mismatch des
+     * aktuellen Passworts und das korrekte Passwort an einem Konto mit
+     * abgeschaltetem Passwort-Login (beides Forensik-Signale für eine gekaperte
+     * Session) —, nicht den `required`-Verstoß: Der ist ein UX-Eingabefehler
+     * ohne Sicherheitsaussage. Audit-Symmetrie zum
      * `password_update_failed`-Event beim Passwort-Wechsel.
      *
      * Das Schreiben delegiert an den `UserEmailChanger`-Service, weil dort
@@ -262,7 +264,9 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
      */
     private function recordFailedCurrentPasswordCheck(User $user, array $input, ValidationException $e): void
     {
-        if (!$this->currentPasswordRuleFailed($e)) {
+        $failureReason = $this->failedCurrentPasswordReason($e);
+
+        if ($failureReason === null) {
             return;
         }
 
@@ -271,6 +275,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
         $this->emailChanger->recordRequestFailed(
             $user,
             is_string($attemptedEmail) ? $attemptedEmail : null,
+            $failureReason,
         );
     }
 }

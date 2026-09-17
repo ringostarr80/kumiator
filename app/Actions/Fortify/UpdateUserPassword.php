@@ -28,7 +28,7 @@ class UpdateUserPassword implements UpdatesUserPasswords
     {
         try {
             Validator::make($input, [
-                'current_password' => ['bail', 'required', 'string', 'current_password:web'],
+                'current_password' => $this->currentPasswordRules($user, $input),
                 'password' => $this->passwordRules(),
             ])->validateWithBag('updatePassword');
         } catch (ValidationException $e) {
@@ -43,12 +43,13 @@ class UpdateUserPassword implements UpdatesUserPasswords
     }
 
     /**
-     * Schreibt einen `password_update_failed`-Eintrag, wenn die
-     * `current_password`-Regel verletzt wurde. Reine Passwort-Rule-Fehler
-     * (zu kurz, Confirmation-Mismatch) sind UX-Eingabefehler ohne
-     * Sicherheitssignal und bleiben bewusst ungeloggt — nur der forensisch
-     * relevante Mismatch des aktuellen Passworts wird festgehalten (Indiz
-     * für Session-Hijacking, fremder Nutzer am Endgerät, Shoulder-Surfing).
+     * Schreibt einen `password_update_failed`-Eintrag für die beiden forensisch
+     * relevanten Fehlschläge: den Mismatch des aktuellen Passworts (Indiz für
+     * Session-Hijacking, fremder Nutzer am Endgerät, Shoulder-Surfing) und das
+     * korrekte Passwort an einem Konto, das den Passwort-Login abgeschaltet hat
+     * — derselbe Befund, den der Login-Pfad als `login_password_disabled`
+     * festhält. Reine Passwort-Rule-Fehler (zu kurz, Confirmation-Mismatch)
+     * sind UX-Eingabefehler ohne Sicherheitssignal und bleiben ungeloggt.
      *
      * Bewusst KEIN resilienter `try/catch`: Der Erfolgs-Pfad (das Loggen des
      * erfolgreichen Passwortwechsels) verfährt symmetrisch ohne Resilienz. Ein
@@ -57,7 +58,9 @@ class UpdateUserPassword implements UpdatesUserPasswords
      */
     private function recordFailedCurrentPasswordCheck(User $user, ValidationException $e): void
     {
-        if (!$this->currentPasswordRuleFailed($e)) {
+        $failureReason = $this->failedCurrentPasswordReason($e);
+
+        if ($failureReason === null) {
             return;
         }
 
@@ -65,7 +68,7 @@ class UpdateUserPassword implements UpdatesUserPasswords
             ->event(ActivityEvent::PASSWORD_UPDATE_FAILED->value)
             ->causedBy($user)
             ->performedOn($user)
-            ->withProperties(['failure_reason' => 'current_password_mismatch'])
+            ->withProperties(['failure_reason' => $failureReason->value])
             ->log('');
     }
 }
