@@ -158,8 +158,8 @@ return [
     'this_device' => 'This device',
     'last_active' => 'Last active',
     'logout_other_sessions' => 'Log Out Other Browser Sessions',
-    'logout_other_sessions_confirm' => 'Please enter your password to confirm you would like to log out of your'
-        . ' other browser sessions across all of your devices.',
+    'logout_other_sessions_confirm' => 'Do you really want to log out of your other browser sessions across all of'
+        . ' your devices?',
 
     // Delete Account
     'delete_account' => 'Delete Account',

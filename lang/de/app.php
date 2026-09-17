@@ -164,8 +164,8 @@ return [
     'this_device' => 'Dieses Gerät',
     'last_active' => 'Zuletzt aktiv',
     'logout_other_sessions' => 'Andere Browser-Sitzungen beenden',
-    'logout_other_sessions_confirm' => 'Bitte gib dein Passwort ein, um zu bestätigen, dass du alle anderen'
-        . ' Browser-Sitzungen auf all deinen Geräten beenden möchtest.',
+    'logout_other_sessions_confirm' => 'Möchtest du wirklich alle anderen Browser-Sitzungen auf all deinen Geräten'
+        . ' beenden?',
 
     // Delete Account
     'delete_account' => 'Konto löschen',

@@ -43,6 +43,10 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            // Laufzeit des „Angemeldet bleiben"-Cookies in Minuten. Der Guard
+            // liest sie hier — und der Dienst, der den Cookie nach dem Widerruf
+            // anderer Sitzungen neu ausstellt, ebenso.
+            'remember' => 576_000,
         ],
     ],
 

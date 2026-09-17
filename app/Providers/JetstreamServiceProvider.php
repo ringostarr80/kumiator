@@ -10,8 +10,6 @@ use App\Livewire\Profile\LogoutOtherBrowserSessionsForm;
 use App\Livewire\Profile\PasskeyManagerForm;
 use App\Livewire\Profile\UpdatePasswordForm;
 use App\Livewire\Profile\UpdateProfileInformationForm;
-use App\Services\Auth\Contracts\OtherDeviceLogoutContextContract;
-use App\Services\Auth\OtherDeviceLogoutContext;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Jetstream\Jetstream;
@@ -19,16 +17,6 @@ use Livewire\Livewire;
 
 class JetstreamServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
-    public function register(): void
-    {
-        // `scoped`, damit Setzer (`LogoutOtherBrowserSessionsForm`) und Leser
-        // (`LogAuthenticationActivityListener`) dieselbe Request-Instanz sehen.
-        $this->app->scoped(OtherDeviceLogoutContextContract::class, OtherDeviceLogoutContext::class);
-    }
-
     /**
      * Bootstrap any application services.
      */

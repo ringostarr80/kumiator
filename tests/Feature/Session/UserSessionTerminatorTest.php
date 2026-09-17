@@ -11,10 +11,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\InsertsSessions;
 use Tests\TestCase;
 
 final class UserSessionTerminatorTest extends TestCase
 {
+    use InsertsSessions;
     use RefreshDatabase;
 
     public function testDeleteForUserRemovesOnlyThatUsersSessions(): void
@@ -59,8 +61,8 @@ final class UserSessionTerminatorTest extends TestCase
 
         $user = User::factory()->create();
 
-        DB::connection('session_store')->table('sessions')->insert($this->sessionRow('on-store', $user->id));
-        DB::table('sessions')->insert($this->sessionRow('on-default', $user->id));
+        $this->insertSession('on-store', $user->id, 'session_store');
+        $this->insertSession('on-default', $user->id);
 
         app(UserSessionTerminatorContract::class)->deleteForUser($user);
 
@@ -90,7 +92,7 @@ final class UserSessionTerminatorTest extends TestCase
         $this->assertSame(1, DB::table('sessions')->where('user_id', $user->id)->count());
     }
 
-    public function testCountOtherSessionsExcludesCurrentSession(): void
+    public function testDeleteOtherSessionsSparesTheCurrentSession(): void
     {
         Config::set('session.driver', 'database');
 
@@ -99,13 +101,14 @@ final class UserSessionTerminatorTest extends TestCase
         $this->insertSession('other-1', $user->id);
         $this->insertSession('other-2', $user->id);
 
-        $count = app(UserSessionTerminatorContract::class)
-            ->countOtherSessionsForUser($user->id, 'current');
+        $deleted = app(UserSessionTerminatorContract::class)
+            ->deleteOtherSessionsForUser($user, 'current');
 
-        $this->assertSame(2, $count);
+        $this->assertSame(2, $deleted);
+        $this->assertSame(1, DB::table('sessions')->where('id', 'current')->count());
     }
 
-    public function testCountOtherSessionsIsZeroWhenDriverIsNotDatabase(): void
+    public function testDeleteOtherSessionsIsNoOpWhenDriverIsNotDatabase(): void
     {
         Config::set('session.driver', 'array');
 
@@ -113,29 +116,10 @@ final class UserSessionTerminatorTest extends TestCase
         $this->insertSession('current', $user->id);
         $this->insertSession('other', $user->id);
 
-        $count = app(UserSessionTerminatorContract::class)
-            ->countOtherSessionsForUser($user->id, 'current');
+        $deleted = app(UserSessionTerminatorContract::class)
+            ->deleteOtherSessionsForUser($user, 'current');
 
-        $this->assertSame(0, $count);
-    }
-
-    private function insertSession(string $id, int $userId): void
-    {
-        DB::table('sessions')->insert($this->sessionRow($id, $userId));
-    }
-
-    /**
-     * @return array<string, int|string>
-     */
-    private function sessionRow(string $id, int $userId): array
-    {
-        return [
-            'id' => $id,
-            'user_id' => $userId,
-            'ip_address' => '127.0.0.1',
-            'user_agent' => 'phpunit',
-            'payload' => '',
-            'last_activity' => time(),
-        ];
+        $this->assertSame(0, $deleted);
+        $this->assertSame(2, DB::table('sessions')->where('user_id', $user->id)->count());
     }
 }

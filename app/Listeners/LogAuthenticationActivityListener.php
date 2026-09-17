@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Services\Audit\AuditEmailHasher;
 use App\Services\Audit\AuditIpTruncator;
 use App\Services\Auth\Contracts\DisabledPasswordLoginContextContract;
-use App\Services\Auth\Contracts\OtherDeviceLogoutContextContract;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use Illuminate\Auth\Events\Failed;
@@ -275,20 +274,14 @@ final class LogAuthenticationActivityListener
     }
 
     /**
-     * Native `Auth::logoutOtherDevices()`-Aufrufe sichtbar machen. Der
-     * Livewire-Form-Pfad schreibt einen reicheren `other_sessions_logged_out`-
-     * Eintrag mit `terminated_session_count` und setzt davor den
-     * `OtherDeviceLogoutContext`-Marker — den prüfen wir hier, um den
-     * Form-Pfad nicht doppelt zu loggen. Der eigene Event-Code
-     * `other_devices_logged_out` bleibt für native (Nicht-Form-)Aufrufe
-     * reserviert.
+     * Die eigenen Wege der App, fremde Sitzungen zu beenden, halten das als
+     * `other_sessions_logged_out` mit Zahl fest. Der Framework-Weg über
+     * `Auth::logoutOtherDevices()` bleibt trotzdem beobachtet: Ein eigener
+     * Controller, eine künftige API oder ein Tinker-Aufruf soll nicht
+     * unprotokolliert bleiben.
      */
     public function handleOtherDeviceLogout(OtherDeviceLogout $event): void
     {
-        if (app(OtherDeviceLogoutContextContract::class)->isActive()) {
-            return;
-        }
-
         $user = $event->user;
 
         if (!$user instanceof Model) {

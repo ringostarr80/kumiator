@@ -15,10 +15,12 @@ interface UserSessionTerminatorContract
     public function deleteForUser(User $user): void;
 
     /**
-     * Zählt die DB-Session-Zeilen des Users ohne die übergebene aktuelle
-     * Session. 0, solange der Session-Treiber nicht `database` ist.
+     * Entfernt die DB-Session-Zeilen des Users bis auf die übergebene aktuelle
+     * und meldet, wie viele es waren. 0, solange der Session-Treiber nicht
+     * `database` ist — dann liegen die Sitzungen ausserhalb der Datenbank und
+     * bleiben unberührt.
      */
-    public function countOtherSessionsForUser(int|string $userId, string $currentSessionId): int;
+    public function deleteOtherSessionsForUser(User $user, string $currentSessionId): int;
 
     /**
      * Ob die Session-Persistenz über die Datenbank läuft. Aufrufer, die selbst
