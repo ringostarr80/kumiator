@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Auth;
 
-use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Models\User;
-use App\Services\Audit\AuditEmailHasher;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\Concerns\MarksRequestScope;
-use Spatie\Activitylog\Facades\Activity;
+use App\Services\Concerns\RecordsRejectedLoginActivity;
 
 /**
  * Audit-Schreiber für nicht freigeschaltete Logins plus der Marker, der den
@@ -34,41 +32,10 @@ final class UnapprovedLoginContext implements UnapprovedLoginContextContract
 {
     use MarksRequestScope;
 
-    /**
-     * Geteilter Schreibpfad für den `login_unapproved`-Eintrag, damit Passwort-
-     * und Passkey-Pfad Hashing, Properties und Translation-Key nicht doppelt
-     * pflegen.
-     *
-     * Causer/Subject werden bewusst auf den User gesetzt: anders als bei
-     * anonymen `login_failed`-Versuchen ist hier die Identität verifiziert
-     * (Passwort-Hash bzw. Passkey-Verifikation war erfolgreich) — eine
-     * Doppel-Speicherung als `email_hash` UND `causer_id` ist für die
-     * Symmetrie zum `login_failed`-Pfad ausdrücklich gewünscht (erlaubt
-     * Reports, die nur über `email_hash` korrelieren, ohne Causer aufzulösen).
-     */
+    use RecordsRejectedLoginActivity;
+
     public function record(User $user, string $guard, ?string $email): void
     {
-        $properties = ['guard' => $guard];
-
-        $emailHash = AuditEmailHasher::hash($email);
-
-        if ($emailHash !== null) {
-            $properties['email_hash'] = $emailHash;
-        }
-
-        // Ein durchgereichter Insert-Fehler machte aus der regulären Abweisung
-        // einen 500er — und verriete damit, dass das Konto existiert und nur
-        // die Freischaltung fehlt. Die Antwort muss unabhängig davon dieselbe
-        // sein, ob der Audit-Sink erreichbar ist.
-        try {
-            Activity::useLog(ActivityChannel::AUTH->value)
-                ->event(ActivityEvent::LOGIN_UNAPPROVED->value)
-                ->causedBy($user)
-                ->performedOn($user)
-                ->withProperties($properties)
-                ->log('');
-        } catch (\Throwable $e) {
-            report($e);
-        }
+        $this->recordRejectedLogin($user, ActivityEvent::LOGIN_UNAPPROVED, $guard, $email);
     }
 }

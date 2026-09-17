@@ -293,6 +293,7 @@ return [
     'activity_logout' => 'Logout',
     'activity_login_failed' => 'Login failed',
     'activity_login_unapproved' => 'Login denied (account not approved)',
+    'activity_login_password_disabled' => 'Login denied (password login turned off)',
     'activity_login_locked_out' => 'Login locked out (too many failed attempts)',
     'activity_password_updated' => 'Password changed',
     'activity_password_update_failed' => 'Password change failed',

@@ -34,6 +34,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property ?string $pending_email_cancel_token_hash
  * @property ?\Illuminate\Support\Carbon $pending_email_sent_at
  * @property ?\Illuminate\Support\Carbon $approved_at
+ * @property ?\Illuminate\Support\Carbon $password_login_disabled_at
  * @property ?\Illuminate\Support\Carbon $deleted_at
  * @property ?string $webauthn_user_handle Nullable trotz NOT-NULL-Spalte: Eine Teil-Selektion lädt sie nicht mit
  */
@@ -144,6 +145,11 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
         return $this->approved_at !== null;
     }
 
+    public function isPasswordLoginDisabled(): bool
+    {
+        return $this->password_login_disabled_at !== null;
+    }
+
     /**
      * Macht die (im `HasProfilePhoto`-Trait `protected`) Disk-Auflösung für die
      * Profilfoto-Action zugänglich, die das Schreiben/Löschen der Datei aus der
@@ -229,6 +235,7 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
             'email_verified_at' => 'datetime',
             'pending_email_sent_at' => 'datetime',
             'approved_at' => 'datetime',
+            'password_login_disabled_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

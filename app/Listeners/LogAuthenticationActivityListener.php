@@ -8,6 +8,7 @@ use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Services\Audit\AuditEmailHasher;
 use App\Services\Audit\AuditIpTruncator;
+use App\Services\Auth\Contracts\DisabledPasswordLoginContextContract;
 use App\Services\Auth\Contracts\OtherDeviceLogoutContextContract;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\WebAuthn\PasskeyLoginContext;
@@ -52,8 +53,10 @@ use Spatie\Activitylog\Facades\Activity;
  */
 final class LogAuthenticationActivityListener
 {
-    public function __construct(private readonly UnapprovedLoginContextContract $unapprovedLoginContext)
-    {
+    public function __construct(
+        private readonly UnapprovedLoginContextContract $unapprovedLoginContext,
+        private readonly DisabledPasswordLoginContextContract $disabledPasswordLoginContext,
+    ) {
     }
 
     /**
@@ -162,6 +165,14 @@ final class LogAuthenticationActivityListener
             // Marker stehen, verschluckte er in einem wiederverwendeten
             // Container den nächsten echten `login_failed`-Eintrag.
             $this->unapprovedLoginContext->clear();
+
+            return;
+        }
+
+        // Gleiches Consume-once für den abgeschalteten Passwort-Login: Der
+        // dedizierte `login_password_disabled`-Eintrag steht bereits.
+        if ($this->disabledPasswordLoginContext->isActive()) {
+            $this->disabledPasswordLoginContext->clear();
 
             return;
         }

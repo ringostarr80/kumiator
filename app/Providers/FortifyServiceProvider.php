@@ -11,8 +11,10 @@ use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Models\User;
+use App\Services\Auth\Contracts\DisabledPasswordLoginContextContract;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
+use App\Services\Auth\DisabledPasswordLoginContext;
 use App\Services\Auth\SelfRegistrationContext;
 use App\Services\Auth\UnapprovedLoginContext;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -37,6 +39,7 @@ class FortifyServiceProvider extends ServiceProvider
         // Listener; SelfRegistration: `CreateNewUser` ↔ `Activity::saving`-Hook).
         $this->app->scoped(UnapprovedLoginContextContract::class, UnapprovedLoginContext::class);
         $this->app->scoped(SelfRegistrationContextContract::class, SelfRegistrationContext::class);
+        $this->app->scoped(DisabledPasswordLoginContextContract::class, DisabledPasswordLoginContext::class);
     }
 
     /**
@@ -125,6 +128,17 @@ class FortifyServiceProvider extends ServiceProvider
                 // `login_failed`-Eintrag.
                 $unapprovedLoginContext->markActive();
                 $unapprovedLoginContext->record($user, 'web', $email);
+
+                return null;
+            }
+
+            // Nach der Freischaltung geprüft, damit ein noch nicht freigeschaltetes
+            // Konto den fachlich grundlegenderen `login_unapproved`-Eintrag behält.
+            if ($user->isPasswordLoginDisabled()) {
+                $disabledPasswordLoginContext = app(DisabledPasswordLoginContextContract::class);
+
+                $disabledPasswordLoginContext->markActive();
+                $disabledPasswordLoginContext->record($user, 'web', $email);
 
                 return null;
             }

@@ -27,6 +27,7 @@ enum ActivityEvent: string
     case LOGIN_FAILED = 'login_failed';
     case LOGIN_LOCKED_OUT = 'login_locked_out';
     case LOGIN_UNAPPROVED = 'login_unapproved';
+    case LOGIN_PASSWORD_DISABLED = 'login_password_disabled';
     case OTHER_DEVICES_LOGGED_OUT = 'other_devices_logged_out';
     case OTHER_SESSIONS_LOGGED_OUT = 'other_sessions_logged_out';
     case PASSWORD_UPDATED = 'password_updated';
