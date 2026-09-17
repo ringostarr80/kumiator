@@ -50,6 +50,10 @@ final class LivewireComponentsAreIndependentTest
                 // derselbe Framework-Stack, in dem die Komponente ohnehin lebt, und
                 // kein Projekt-Service.
                 Selector::classname('Laravel\\Jetstream\\ConfirmsPasswords'),
+                // Der Lösch-Contract, den `Jetstream::deleteUsersUsing()` auf die
+                // Projekt-Action abbildet. Ein Contract wie die Fortify- und
+                // Service-Contracts darunter, keine konkrete Klasse.
+                Selector::classname('Laravel\\Jetstream\\Contracts\\DeletesUsers'),
                 // Folge der Jetstream-Erweiterung: deren Methoden type-hinten
                 // Fortify-Contracts (z. B. UpdatesUserProfileInformation) —
                 // Overrides müssen dieselbe Signatur tragen. Nur die Contracts,
@@ -66,7 +70,7 @@ final class LivewireComponentsAreIndependentTest
             ->because(
                 'Livewire-Komponenten dürfen nur von Models, DTOs, Repository- '
                 . 'und Service-Contracts, Illuminate, Livewire, Jetstream-Profil-'
-                . 'komponenten (zur Erweiterung) samt deren Fortify-Contract-'
+                . 'komponenten (zur Erweiterung) samt deren Fortify- und Jetstream-Contract-'
                 . 'Signaturen, Jetstreams ConfirmsPasswords-Trait, der '
                 . 'Activity-Facade und PHP-Sprach-Builtins '
                 . '(\\Throwable) abhängen.',

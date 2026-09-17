@@ -51,6 +51,37 @@ final class BrowserSessionsTest extends TestCase
     }
 
     /**
+     * Das Beenden fremder Sitzungen sperrt Geräte aus und verlangt deshalb
+     * einen Nachweis aus diesem Vorgang statt der Bestätigung von vor Stunden,
+     * mit der die übrigen Profilbereiche auskommen.
+     */
+    public function testAnAgedConfirmationNoLongerReachesTheLogout(): void
+    {
+        $this->confirmPassword(600);
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test(LogoutOtherBrowserSessionsForm::class)
+            ->call('logoutOtherBrowserSessions')
+            ->assertForbidden();
+    }
+
+    /**
+     * Beide Hälften des Wegs müssen dieselbe Frist kennen: Prüfte sie nur
+     * `logoutOtherBrowserSessions()`, bliebe der Dialog aus und der Nutzer
+     * liefe in ein 403, ohne dass ihm jemand die Bestätigung angeboten hätte.
+     */
+    public function testAnAgedConfirmationReopensTheDialog(): void
+    {
+        $this->confirmPassword(600);
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test(LogoutOtherBrowserSessionsForm::class)
+            ->call('startConfirmingPassword', 'browser-sessions')
+            ->assertSet('confirmingPassword', true)
+            ->assertDispatched('confirming-password');
+    }
+
+    /**
      * Der Recaller-Cookie ist der Rückweg, der keinen Treiber braucht — liegen
      * die Sitzungen ausserhalb der Datenbank, ist seine Entwertung alles, was
      * vom Beenden übrig bleibt. Das Formular muss den Widerruf deshalb auch

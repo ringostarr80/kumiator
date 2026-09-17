@@ -167,8 +167,7 @@ return [
     'delete_account_info' => 'Once your account is deleted, all of its resources and data will be permanently deleted.'
         . ' Before deleting your account, please download any data or information that you wish to retain.',
     'delete_account_confirm' => 'Are you sure you want to delete your account? Once your account is deleted,'
-        . ' all of its resources and data will be permanently deleted. Please enter your password to confirm you'
-        . ' would like to permanently delete your account.',
+        . ' all of its resources and data will be permanently deleted.',
 
     // API Tokens
     'create_api_token' => 'Create API Token',

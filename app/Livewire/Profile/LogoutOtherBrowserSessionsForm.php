@@ -6,12 +6,12 @@ namespace App\Livewire\Profile;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
+use App\Livewire\Profile\Concerns\RequiresFreshPasswordConfirmation;
 use App\Models\User;
 use App\Services\Auth\Contracts\OtherSessionRevokerContract;
 use App\Services\Session\Contracts\UserSessionTerminatorContract;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Support\Facades\Auth;
-use Laravel\Jetstream\ConfirmsPasswords;
 use Laravel\Jetstream\Http\Livewire\LogoutOtherBrowserSessionsForm as JetstreamLogoutOtherBrowserSessionsForm;
 use Spatie\Activitylog\Facades\Activity;
 
@@ -34,7 +34,7 @@ use Spatie\Activitylog\Facades\Activity;
  */
 final class LogoutOtherBrowserSessionsForm extends JetstreamLogoutOtherBrowserSessionsForm
 {
-    use ConfirmsPasswords;
+    use RequiresFreshPasswordConfirmation;
 
     private OtherSessionRevokerContract $sessionRevoker;
 
@@ -61,7 +61,7 @@ final class LogoutOtherBrowserSessionsForm extends JetstreamLogoutOtherBrowserSe
      */
     public function logoutOtherBrowserSessions(StatefulGuard $guard): void
     {
-        $this->ensurePasswordIsConfirmed();
+        $this->ensurePasswordIsConfirmed(self::FRESH_CONFIRMATION_SECONDS);
 
         $user = Auth::user();
 

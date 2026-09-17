@@ -173,8 +173,7 @@ return [
     'delete_account_info' => 'Sobald dein Konto gelöscht wird, werden alle zugehörigen Daten unwiderruflich gelöscht.'
         . ' Bitte lade vor dem Löschen alle Daten herunter, die du behalten möchtest.',
     'delete_account_confirm' => 'Bist du sicher, dass du dein Konto löschen möchtest? Sobald dein Konto gelöscht wird,'
-        . ' werden alle zugehörigen Daten unwiderruflich gelöscht. Bitte gib dein Passwort ein, um die dauerhafte'
-        . ' Löschung deines Kontos zu bestätigen.',
+        . ' werden alle zugehörigen Daten unwiderruflich gelöscht.',
 
     // API Tokens
     'create_api_token' => 'API-Token erstellen',

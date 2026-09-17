@@ -12,10 +12,15 @@
             {{ __('app.delete_account_info') }}
         </div>
 
+        {{-- Der Nachweis kommt zuerst, die Warnung zuletzt: Sie ist die letzte
+             Hürde vor einer Löschung, die sich nicht zurücknehmen lässt, und
+             ginge neben einem Eingabefeld unter. --}}
         <div class="mt-5">
-            <x-danger-button wire:click="confirmUserDeletion" wire:loading.attr="disabled">
-                {{ __('app.delete_account') }}
-            </x-danger-button>
+            <x-confirms-password wire:then="confirmUserDeletion">
+                <x-danger-button type="button" wire:loading.attr="disabled">
+                    {{ __('app.delete_account') }}
+                </x-danger-button>
+            </x-confirms-password>
         </div>
 
         <!-- Delete User Confirmation Modal -->
@@ -26,17 +31,6 @@
 
             <x-slot name="content">
                 {{ __('app.delete_account_confirm') }}
-
-                <div class="mt-4" x-data="{}" x-on:confirming-delete-user.window="setTimeout(() => $refs.password.focus(), 250)">
-                    <x-input type="password" class="mt-1 block w-3/4"
-                                autocomplete="current-password"
-                                placeholder="{{ __('app.password') }}"
-                                x-ref="password"
-                                wire:model="password"
-                                wire:keydown.enter="deleteUser" />
-
-                    <x-input-error for="password" class="mt-2" />
-                </div>
             </x-slot>
 
             <x-slot name="footer">
@@ -49,5 +43,7 @@
                 </x-danger-button>
             </x-slot>
         </x-dialog-modal>
+
+        <x-password-confirmation-modal scope="delete-user" />
     </x-slot>
 </x-action-section>
