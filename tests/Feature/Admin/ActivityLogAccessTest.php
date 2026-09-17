@@ -124,7 +124,7 @@ final class ActivityLogAccessTest extends TestCase
         $user = User::factory()->create();
 
         Livewire::actingAs($user)
-            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->test(ActivityLogTable::class)
             ->assertForbidden();
     }
 
@@ -155,7 +155,7 @@ final class ActivityLogAccessTest extends TestCase
             ->latest('id')
             ->firstOrFail();
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->assertOk();
 
         $admin->revokePermissionTo('activity-log.view');
@@ -184,7 +184,7 @@ final class ActivityLogAccessTest extends TestCase
     {
         $admin = $this->makeAuditor();
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->assertOk();
 
         $admin->revokePermissionTo('activity-log.view');
@@ -207,7 +207,7 @@ final class ActivityLogAccessTest extends TestCase
             ->firstOrFail();
 
         Livewire::actingAs($user)
-            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->test(ActivityLogTable::class)
             ->assertOk()
             ->assertSee($activity->description);
     }
@@ -226,7 +226,7 @@ final class ActivityLogAccessTest extends TestCase
             ->log('VERALTETE EINGEFRORENE BESCHREIBUNG');
 
         Livewire::actingAs($admin)
-            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->test(ActivityLogTable::class)
             ->assertOk()
             ->assertSee(ActivityEvent::LOGIN_FAILED->description())
             ->assertDontSee('VERALTETE EINGEFRORENE BESCHREIBUNG');
@@ -246,7 +246,7 @@ final class ActivityLogAccessTest extends TestCase
             ->log('Nicht gespeicherter Text');
 
         Livewire::actingAs($admin)
-            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->test(ActivityLogTable::class)
             ->assertOk()
             ->assertSee('retired_event_code')
             ->assertDontSee('Nicht gespeicherter Text');
@@ -263,7 +263,7 @@ final class ActivityLogAccessTest extends TestCase
         $admin = $this->makeAuditor();
 
         Livewire::actingAs($admin)
-            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->test(ActivityLogTable::class)
             ->assertOk()
             ->assertSee(self::ACTOR_NAME)
             ->assertSee(self::SUBJECT_RENAMED);
@@ -287,7 +287,7 @@ final class ActivityLogAccessTest extends TestCase
         $admin = $this->makeAuditor();
 
         Livewire::actingAs($admin)
-            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->test(ActivityLogTable::class)
             ->assertOk()
             ->assertDontSee('App\\Models\\User')
             ->assertDontSee('App\\Models\\PasskeyCredential');
@@ -312,7 +312,7 @@ final class ActivityLogAccessTest extends TestCase
         $admin = $this->makeAuditor();
 
         Livewire::actingAs($admin)
-            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->test(ActivityLogTable::class)
             ->assertOk()
             ->assertSee(__('app.activity_log_deleted_record', [
                 'type' => __('app.morph_user'),
@@ -356,7 +356,7 @@ final class ActivityLogAccessTest extends TestCase
         DB::enableQueryLog();
 
         Livewire::actingAs($admin)
-            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->test(ActivityLogTable::class)
             ->assertOk();
 
         $queryCount = count(DB::getQueryLog());
@@ -402,7 +402,7 @@ final class ActivityLogAccessTest extends TestCase
             ->firstOrFail();
 
         Livewire::actingAs($admin)
-            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->test(ActivityLogTable::class)
             ->assertOk()
             ->assertSee(__('app.activity_log_properties'))
             ->assertSeeHtml('showProperties(' . $withProps->id . ')')
@@ -429,7 +429,7 @@ final class ActivityLogAccessTest extends TestCase
             ->latest('id')
             ->firstOrFail();
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
 
         $component->assertSet('showPropertiesModal', false);
         $component->assertSet('selectedProperties', null);
@@ -470,7 +470,7 @@ final class ActivityLogAccessTest extends TestCase
             ->latest('id')
             ->firstOrFail();
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->call('showProperties', $activity->id);
         $component->assertSet('showPropertiesModal', false);
         $component->assertSet('selectedProperties', null);
@@ -485,7 +485,7 @@ final class ActivityLogAccessTest extends TestCase
     {
         $admin = $this->makeAuditor();
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->call('showProperties', 999_999);
         $component->assertSet('showPropertiesModal', false);
         $component->assertSet('selectedProperties', null);
@@ -503,7 +503,7 @@ final class ActivityLogAccessTest extends TestCase
         $admin = $this->makeAuditor();
 
         Livewire::actingAs($admin)
-            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->test(ActivityLogTable::class)
             ->assertOk();
 
         $entry = $this->latestActivityLogViewed();
@@ -523,7 +523,7 @@ final class ActivityLogAccessTest extends TestCase
     {
         $admin = $this->makeAuditor();
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->assertOk();
         $component->call('gotoPage', 2);
         $component->call('gotoPage', 1);
@@ -549,7 +549,7 @@ final class ActivityLogAccessTest extends TestCase
         $this->seedMoreThanOnePage();
 
         $component = Livewire::actingAs($admin)
-            ->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+            ->test(ActivityLogTable::class);
         $component->assertOk();
 
         $html = $component->html();
@@ -578,7 +578,7 @@ final class ActivityLogAccessTest extends TestCase
         $this->seedMoreThanOnePage();
 
         $component = Livewire::actingAs($admin)
-            ->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+            ->test(ActivityLogTable::class);
         $component->assertOk();
 
         $this->assertMatchesRegularExpression(
@@ -608,7 +608,7 @@ final class ActivityLogAccessTest extends TestCase
             ActivityFacade::useLog('sort')->event('sort_neu')->log('');
         });
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->assertOk();
         $component->assertSee('sort_alt');
         $component->assertSee('sort_neu');
@@ -646,7 +646,7 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('auth')->event('marker_auth')->log('');
         ActivityFacade::useLog('user')->event('marker_user')->log('');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.channel', 'auth');
 
         $component->assertSee('marker_auth');
@@ -665,7 +665,7 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('auth')->event('marker_event_a')->log('');
         ActivityFacade::useLog('auth')->event('marker_event_b')->log('');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.event', 'marker_event_a');
 
         $component->assertSee('marker_event_a');
@@ -691,7 +691,7 @@ final class ActivityLogAccessTest extends TestCase
             ActivityFacade::useLog('test')->event('range_mai')->log('');
         });
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.dateFrom', '2026-02-01');
         $component->set('filters.dateTo', '2026-04-01');
 
@@ -720,7 +720,7 @@ final class ActivityLogAccessTest extends TestCase
             ActivityFacade::useLog('test')->event('grenzfall')->log('');
         });
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set($filterField, $filterValue);
 
         if ($shouldSee) {
@@ -745,7 +745,7 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('test')->event('demo')->causedBy($causer)->log('Tat des Gesuchten');
         ActivityFacade::useLog('test')->event('demo')->causedBy($other)->log('Tat des Anderen');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.causer', 'Gesuchter');
 
         $component->assertSee('Gesuchter Verursacher');
@@ -766,7 +766,7 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('test')->event('demo')->performedOn($subject)->log('Vorgang am Gesuchten');
         ActivityFacade::useLog('test')->event('demo')->performedOn($other)->log('Vorgang am Anderen');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.subject', 'Gesuchtes');
 
         $component->assertSee('Gesuchtes Subjekt');
@@ -788,7 +788,7 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('test')->event('treffer_percent')->causedBy($match)->log('');
         ActivityFacade::useLog('test')->event('treffer_alice')->causedBy($miss)->log('');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.causer', '%');
 
         $component->assertSee('treffer_percent');
@@ -809,7 +809,7 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('test')->event('treffer_underscore')->causedBy($match)->log('');
         ActivityFacade::useLog('test')->event('treffer_axb')->causedBy($miss)->log('');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.causer', 'a_b');
 
         $component->assertSee('treffer_underscore');
@@ -831,7 +831,7 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('test')->event('treffer_backslash')->causedBy($match)->log('');
         ActivityFacade::useLog('test')->event('treffer_axb_bs')->causedBy($miss)->log('');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.causer', 'a\\b');
 
         $component->assertSee('treffer_backslash');
@@ -851,7 +851,7 @@ final class ActivityLogAccessTest extends TestCase
         $user = User::factory()->create();
         ActivityFacade::useLog('test')->event('treffer_from_invalid')->causedBy($user)->log('');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.dateFrom', 'garbage');
 
         $component->assertHasErrors('filters.dateFrom');
@@ -869,7 +869,7 @@ final class ActivityLogAccessTest extends TestCase
         $user = User::factory()->create();
         ActivityFacade::useLog('test')->event('treffer_to_invalid')->causedBy($user)->log('');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.dateTo', '2026-13-40');
 
         $component->assertHasErrors('filters.dateTo');
@@ -890,7 +890,7 @@ final class ActivityLogAccessTest extends TestCase
         $user = User::factory()->create();
         ActivityFacade::useLog('test')->event('treffer_from_zero')->causedBy($user)->log('');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.dateFrom', '0');
 
         $component->assertHasErrors('filters.dateFrom');
@@ -908,7 +908,7 @@ final class ActivityLogAccessTest extends TestCase
         $user = User::factory()->create();
         ActivityFacade::useLog('test')->event('treffer_to_zero')->causedBy($user)->log('');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.dateTo', '0');
 
         $component->assertHasErrors('filters.dateTo');
@@ -926,7 +926,7 @@ final class ActivityLogAccessTest extends TestCase
         $user = User::factory()->create();
         ActivityFacade::useLog('test')->event('treffer_range')->causedBy($user)->log('');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.dateFrom', '2000-01-02');
         $component->set('filters.dateTo', '2000-01-01');
 
@@ -946,7 +946,7 @@ final class ActivityLogAccessTest extends TestCase
         $user = User::factory()->create();
         ActivityFacade::useLog('test')->event('treffer_valid')->causedBy($user)->log('');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.dateFrom', '2999-01-01');
 
         $component->assertHasNoErrors('filters.dateFrom');
@@ -969,7 +969,7 @@ final class ActivityLogAccessTest extends TestCase
             $subject->updateOrFail(['name' => self::RENAMED_PREFIX . $i]);
         }
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->call('gotoPage', 2);
         $component->assertSet('paginators.page', 2);
 
@@ -981,7 +981,7 @@ final class ActivityLogAccessTest extends TestCase
     {
         $admin = $this->makeAuditor();
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.channel', 'auth');
         $component->set('filters.event', 'logout');
         $component->set('filters.causer', 'irgendwer');
@@ -1010,7 +1010,7 @@ final class ActivityLogAccessTest extends TestCase
 
         ActivityFacade::useLog('test')->event('demo')->log('Irgendein Eintrag');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.causer', 'Garantiert Kein Treffer XYZ');
 
         $component->assertSee(__('app.activity_log_no_matches'));
@@ -1029,7 +1029,7 @@ final class ActivityLogAccessTest extends TestCase
         $admin = $this->makeAuditor();
         ActivityFacade::useLog('test')->event('safeguard_marker')->log('');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.causer', ['x']);
 
         $component->assertSee('safeguard_marker');
@@ -1050,7 +1050,7 @@ final class ActivityLogAccessTest extends TestCase
         ActivityFacade::useLog('auth')->event('marker_auth')->log('');
         ActivityFacade::useLog('user')->event('marker_user')->log('');
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters', ['channel' => 'auth']);
 
         $component->assertOk();
@@ -1069,7 +1069,7 @@ final class ActivityLogAccessTest extends TestCase
     {
         $admin = $this->makeAuditor();
 
-        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class); // @phpstan-ignore argument.templateType
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->assertSeeHtml('{ open: false }');
 
         $component->set('filters.channel', 'auth');

@@ -42,7 +42,7 @@ final class PasswordLoginSwitchTest extends TestCase
         $user = User::factory()->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('disablePasswordLogin')
             ->assertHasErrors('passkeys');
 
@@ -57,7 +57,7 @@ final class PasswordLoginSwitchTest extends TestCase
         PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('disablePasswordLogin')
             ->assertSee(__('app.password_login_state_off'))
             ->assertHasNoErrors();
@@ -73,7 +73,7 @@ final class PasswordLoginSwitchTest extends TestCase
         PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('enablePasswordLogin')
             ->assertSee(__('app.password_login_state_on'));
 
@@ -97,7 +97,7 @@ final class PasswordLoginSwitchTest extends TestCase
         $user->saveOrFail();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertSee(__('app.password_login_enable_warning'))
             ->call('enablePasswordLogin')
             ->assertDontSee(__('app.password_login_enable_warning'));
@@ -120,7 +120,7 @@ final class PasswordLoginSwitchTest extends TestCase
         $user->saveOrFail();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertDontSee(__('app.password_login_enable_warning'))
             ->call('enablePasswordLogin')
             ->assertSee(__('app.password_login_state_on'));
@@ -200,7 +200,7 @@ final class PasswordLoginSwitchTest extends TestCase
         PasskeyCredential::factory()->for($user)->create();
 
         $component = Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertSee(__('app.password_login_state_on'));
 
         $elsewhere = User::query()->whereKey($user->getKey())->firstOrFail();
@@ -227,7 +227,7 @@ final class PasswordLoginSwitchTest extends TestCase
         Activity::query()->delete();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('disablePasswordLogin');
 
         $activity = Activity::query()
@@ -249,7 +249,7 @@ final class PasswordLoginSwitchTest extends TestCase
         Activity::query()->delete();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('enablePasswordLogin');
 
         $this->assertSame(
@@ -273,7 +273,7 @@ final class PasswordLoginSwitchTest extends TestCase
         Activity::query()->delete();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('disablePasswordLogin')
             ->assertSee(__('app.password_login_state_off'))
             ->assertHasNoErrors();
@@ -301,7 +301,7 @@ final class PasswordLoginSwitchTest extends TestCase
         Activity::query()->delete();
 
         $form = Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class); // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class);
 
         app(LoginMethodChangerContract::class)->disablePasswordLogin($user);
         $this->travelTo(Carbon::parse('2026-01-01 10:00:05'));
@@ -323,7 +323,7 @@ final class PasswordLoginSwitchTest extends TestCase
         Activity::query()->delete();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('enablePasswordLogin')
             ->assertSee(__('app.password_login_state_on'))
             ->assertHasNoErrors();
@@ -338,7 +338,7 @@ final class PasswordLoginSwitchTest extends TestCase
         PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('disablePasswordLogin')
             ->assertForbidden();
 
@@ -350,7 +350,7 @@ final class PasswordLoginSwitchTest extends TestCase
         $user = User::factory()->create(['password_login_disabled_at' => now()]);
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('enablePasswordLogin')
             ->assertForbidden();
 
@@ -371,7 +371,7 @@ final class PasswordLoginSwitchTest extends TestCase
         PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('disablePasswordLogin')
             ->assertForbidden();
 
@@ -395,7 +395,7 @@ final class PasswordLoginSwitchTest extends TestCase
         $confirmableId = md5('disablePasswordLogin');
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertSeeHtml("startConfirmingPassword('{$confirmableId}')")
             ->call('startConfirmingPassword', $confirmableId)
             ->assertSet('confirmingPassword', true)
@@ -415,7 +415,7 @@ final class PasswordLoginSwitchTest extends TestCase
         PasskeyCredential::factory()->for($user)->create();
 
         $form = Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('startConfirmingPassword', md5('startPasskeyRegistration'))
             ->assertSet('confirmingPassword', false);
 
@@ -436,7 +436,7 @@ final class PasswordLoginSwitchTest extends TestCase
         $user = User::factory()->create(['password_login_disabled_at' => now()]);
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('enablePasswordLogin')
             ->assertHasNoErrors();
 
@@ -451,7 +451,7 @@ final class PasswordLoginSwitchTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('deletePasskey', $passkey->id)
             ->assertSee(__('app.passkey_delete_last_blocked'))
             ->assertHasErrors('passkey_delete');
@@ -468,7 +468,7 @@ final class PasswordLoginSwitchTest extends TestCase
         $second = PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('deletePasskey', $second->id)
             ->assertHasNoErrors();
 
@@ -483,7 +483,7 @@ final class PasswordLoginSwitchTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('deletePasskey', $passkey->id)
             ->assertHasNoErrors();
 
@@ -536,7 +536,7 @@ final class PasswordLoginSwitchTest extends TestCase
         $stolenRecaller = $user->id . '|' . $user->getRememberToken() . '|' . $user->getAuthPassword();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('disablePasswordLogin')
             ->assertHasNoErrors();
 
@@ -576,7 +576,7 @@ final class PasswordLoginSwitchTest extends TestCase
         $this->insertSession('other-device', $user->id);
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('disablePasswordLogin')
             ->assertHasNoErrors();
 
@@ -611,7 +611,7 @@ final class PasswordLoginSwitchTest extends TestCase
         Activity::query()->delete();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('disablePasswordLogin')
             ->assertHasNoErrors();
 
@@ -644,7 +644,7 @@ final class PasswordLoginSwitchTest extends TestCase
         Activity::query()->delete();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('disablePasswordLogin')
             ->assertHasNoErrors();
 
@@ -668,7 +668,7 @@ final class PasswordLoginSwitchTest extends TestCase
         $token = Password::broker()->createToken($user);
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('disablePasswordLogin')
             ->assertHasNoErrors();
 
@@ -714,7 +714,7 @@ final class PasswordLoginSwitchTest extends TestCase
 
         try {
             Livewire::actingAs($user)
-                ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+                ->test(PasskeyManagerForm::class)
                 ->call('disablePasswordLogin');
             $this->fail('Erwartete RuntimeException aus dem Remember-Token-Save.');
         } catch (\RuntimeException) {
@@ -746,7 +746,7 @@ final class PasswordLoginSwitchTest extends TestCase
         });
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('disablePasswordLogin')
             ->assertHasNoErrors();
 
@@ -777,7 +777,7 @@ final class PasswordLoginSwitchTest extends TestCase
         Activity::query()->delete();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('enablePasswordLogin')
             ->assertSee(__('app.password_login_state_on'))
             ->assertHasNoErrors();

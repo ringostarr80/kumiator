@@ -32,7 +32,7 @@ final class PasswordConfirmationModalTest extends TestCase
         $user = User::factory()->create(['password_login_disabled_at' => now()]);
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertSee(__('app.confirm_identity_title'))
             ->assertDontSee(__('app.confirm_password_title'))
             ->assertSee(__('app.password_confirmation_unavailable'))
@@ -49,7 +49,7 @@ final class PasswordConfirmationModalTest extends TestCase
         PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertSee(__('app.confirm_identity_title'))
             ->assertDontSee(__('app.confirm_password_title'))
             ->assertSee(__('app.confirm_password_or_passkey_security'))
@@ -66,7 +66,7 @@ final class PasswordConfirmationModalTest extends TestCase
         PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertSee('wire:model="confirmablePassword"', false)
             ->assertSee(__('app.confirm_with_passkey'))
             ->assertSee(__('app.confirm_identity_title'))
@@ -81,7 +81,7 @@ final class PasswordConfirmationModalTest extends TestCase
         $user = User::factory()->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertSee(__('app.confirm_password_title'))
             ->assertDontSee(__('app.confirm_identity_title'))
             ->assertSee(__('app.confirm_password_security'))

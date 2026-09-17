@@ -25,7 +25,7 @@ final class PasskeyManagerFormTest extends TestCase
         $user = User::factory()->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertOk();
     }
 
@@ -35,7 +35,7 @@ final class PasskeyManagerFormTest extends TestCase
         PasskeyCredential::factory()->for($user)->count(2)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertCount('passkeys', 2);
     }
 
@@ -46,7 +46,7 @@ final class PasskeyManagerFormTest extends TestCase
         PasskeyCredential::factory()->for($other)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertCount('passkeys', 0);
     }
 
@@ -57,7 +57,7 @@ final class PasskeyManagerFormTest extends TestCase
         $new = PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertSet('passkeys.0.id', $new->id)
             ->assertSet('passkeys.1.id', $old->id);
     }
@@ -75,7 +75,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('deletePasskey', $passkey->id);
 
         $this->assertModelMissing($passkey);
@@ -89,7 +89,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertCount('passkeys', 1)
             ->call('deletePasskey', $passkey->id)
             ->assertCount('passkeys', 0);
@@ -100,7 +100,7 @@ final class PasskeyManagerFormTest extends TestCase
         $user = User::factory()->create();
 
         $component = Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertCount('passkeys', 0);
 
         PasskeyCredential::factory()->for($user)->create();
@@ -118,7 +118,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($owner)->create();
 
         Livewire::actingAs($other)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('deletePasskey', $passkey->id)
             ->assertForbidden();
 
@@ -131,7 +131,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create(['name' => 'Mein iPhone']);
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('startRenaming', $passkey->id)
             ->assertSet('editingPasskeyId', $passkey->id)
             ->assertSet('editingPasskeyName', 'Mein iPhone');
@@ -143,7 +143,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create(['name' => 'MacBook']);
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('startRenaming', $passkey->id)
             ->call('cancelRenaming')
             ->assertSet('editingPasskeyId', null)
@@ -158,7 +158,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create(['name' => 'Alt']);
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('startRenaming', $passkey->id)
             ->set('editingPasskeyName', 'Neu')
             ->call('renamePasskey')
@@ -176,7 +176,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create(['name' => 'Alt']);
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('startRenaming', $passkey->id)
             ->set('editingPasskeyName', '  Mein YubiKey  ')
             ->call('renamePasskey');
@@ -192,7 +192,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create(['name' => 'Alt']);
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('startRenaming', $passkey->id)
             ->set('editingPasskeyName', '')
             ->call('renamePasskey')
@@ -209,7 +209,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create(['name' => 'Alt']);
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('startRenaming', $passkey->id)
             ->set('editingPasskeyName', str_repeat('x', 81))
             ->call('renamePasskey')
@@ -225,7 +225,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($owner)->create();
 
         Livewire::actingAs($other)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('startRenaming', $passkey->id)
             ->assertForbidden();
     }
@@ -239,7 +239,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($owner)->create(['name' => 'Owner-Name']);
 
         Livewire::actingAs($other)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->set('editingPasskeyId', $passkey->id)
             ->set('editingPasskeyName', 'Hijacked')
             ->call('renamePasskey')
@@ -254,7 +254,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('deletePasskey', $passkey->id)
             ->assertForbidden();
 
@@ -267,7 +267,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create(['name' => 'Alt']);
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->set('editingPasskeyId', $passkey->id)
             ->set('editingPasskeyName', 'Neu')
             ->call('renamePasskey')
@@ -281,7 +281,7 @@ final class PasskeyManagerFormTest extends TestCase
         $user = User::factory()->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('startPasskeyRegistration')
             ->assertForbidden();
     }
@@ -293,7 +293,7 @@ final class PasskeyManagerFormTest extends TestCase
         $this->confirmPassword();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('startPasskeyRegistration')
             ->assertDispatched('passkey-registration-confirmed');
     }
@@ -308,7 +308,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertSeeHtml("wire:then=\"deletePasskey('{$passkey->id}')\"")
             ->assertSeeHtml('wire:then="startPasskeyRegistration"');
     }
@@ -323,7 +323,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->assertSeeHtml("wire:then=\"startRenaming('{$passkey->id}')\"");
     }
 
@@ -338,7 +338,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create();
 
         $html = Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->html();
 
         $pattern = '/' . preg_quote("wire:then=\"deletePasskey('{$passkey->id}')\"", '/')
@@ -362,7 +362,7 @@ final class PasskeyManagerFormTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create();
 
         $html = Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->set('editingPasskeyId', $passkey->id)
             ->html();
 
@@ -385,7 +385,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         // Allein die Komponente rendern: ein Treffer darin kann nur ihrer sein.
         $html = Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->html();
 
         $this->assertSame(1, substr_count($html, 'wire:model="confirmablePassword"'));
@@ -415,18 +415,18 @@ final class PasskeyManagerFormTest extends TestCase
         $user = User::factory()->create();
 
         $this->assertDialogSitsOutsideTheRegistrationBlock(
-            Livewire::actingAs($user)->test(PasskeyManagerForm::class)->html(), // @phpstan-ignore argument.templateType
+            Livewire::actingAs($user)->test(PasskeyManagerForm::class)->html(),
         );
 
         $passkey = PasskeyCredential::factory()->for($user)->create();
 
         $this->assertDialogSitsOutsideTheRegistrationBlock(
-            Livewire::actingAs($user)->test(PasskeyManagerForm::class)->html(), // @phpstan-ignore argument.templateType
+            Livewire::actingAs($user)->test(PasskeyManagerForm::class)->html(),
         );
 
         $this->assertDialogSitsOutsideTheRegistrationBlock(
             Livewire::actingAs($user)
-                ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+                ->test(PasskeyManagerForm::class)
                 ->set('editingPasskeyId', $passkey->id)
                 ->html(),
         );
@@ -441,7 +441,7 @@ final class PasskeyManagerFormTest extends TestCase
         $user = User::factory()->create();
 
         $html = Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->html();
 
         $pattern = '/' . preg_quote(e(__('app.passkey_added')), '/')
@@ -460,7 +460,7 @@ final class PasskeyManagerFormTest extends TestCase
         $user = User::factory()->create();
 
         $html = Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->html();
 
         $this->assertStringContainsString("401: '" . e(__('app.passkey_login_expired')) . "'", $html);
@@ -483,7 +483,7 @@ final class PasskeyManagerFormTest extends TestCase
         PasskeyCredential::factory()->for($user)->create();
 
         $html = Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->html();
 
         $xpath = $this->parseHtml($html);

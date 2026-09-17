@@ -123,7 +123,7 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($owner)->create();
 
         Livewire::actingAs($other)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('startRenaming', $passkey->id)
             ->assertForbidden();
 
@@ -137,7 +137,7 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($owner)->create(['name' => 'Owner-Name']);
 
         Livewire::actingAs($other)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->set('editingPasskeyId', $passkey->id)
             ->set('editingPasskeyName', 'Hijacked')
             ->call('renamePasskey')
@@ -153,7 +153,7 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($owner)->create();
 
         Livewire::actingAs($other)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('deletePasskey', $passkey->id)
             ->assertForbidden();
 
@@ -165,7 +165,7 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
         $user = User::factory()->create();
 
         Livewire::actingAs($user)
-            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->test(ActivityLogTable::class)
             ->assertForbidden();
 
         $activity = $this->latestAuthorizationDenied();
@@ -188,7 +188,7 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
         $passkey = PasskeyCredential::factory()->for($user)->create(['name' => 'Alt']);
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->call('startRenaming', $passkey->id)
             ->set('editingPasskeyName', 'Neu')
             ->call('renamePasskey');
@@ -207,7 +207,7 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
         $user->givePermissionTo('activity-log.view');
 
         Livewire::actingAs($user)
-            ->test(ActivityLogTable::class) // @phpstan-ignore argument.templateType
+            ->test(ActivityLogTable::class)
             ->assertOk();
 
         $this->assertNull(

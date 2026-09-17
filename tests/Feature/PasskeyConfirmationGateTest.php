@@ -106,7 +106,7 @@ final class PasskeyConfirmationGateTest extends TestCase
         PasskeyCredential::factory()->for($user)->create();
 
         Livewire::actingAs($user)
-            ->test(PasskeyManagerForm::class) // @phpstan-ignore argument.templateType
+            ->test(PasskeyManagerForm::class)
             ->set('confirmablePassword', 'password')
             ->call('confirmPassword')
             ->assertHasErrors('confirmable_password');
@@ -303,7 +303,7 @@ final class PasskeyConfirmationGateTest extends TestCase
         $this->confirmWithPasskey($user);
 
         Livewire::actingAs($user)
-            ->test(UpdateProfileInformationForm::class) // @phpstan-ignore argument.templateType
+            ->test(UpdateProfileInformationForm::class)
             ->set('state.name', $user->name)
             ->set('state.email', 'neu@example.com')
             ->call('updateProfileInformation')
