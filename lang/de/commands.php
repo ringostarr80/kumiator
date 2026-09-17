@@ -38,6 +38,9 @@ return [
         'permissions_hint' => 'Achtung: Rollen und Direkt-Berechtigungen (z. B. activity-log.view)'
             . ' wurden beim Löschen nicht entfernt und gelten nach der Wiederherstellung'
             . ' sofort wieder.',
+        'password_hint' => 'Hinweis: War der Passwort-Login für dieses Konto abgeschaltet,'
+            . ' wurde er beim Löschen wieder geöffnet und das damalige Passwort verworfen.'
+            . ' Die Anmeldung führt dann über den Link zum Zurücksetzen oder user:reset-password.',
         'success' => 'Benutzer ":name" (:email) wurde erfolgreich wiederhergestellt.',
     ],
 

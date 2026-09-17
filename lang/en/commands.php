@@ -37,6 +37,9 @@ return [
             . ' their passkeys if applicable.',
         'permissions_hint' => 'Warning: Roles and direct permissions (e.g. activity-log.view)'
             . ' were not removed on deletion and apply again immediately after restoring.',
+        'password_hint' => 'Note: If password login was disabled for this account, it was'
+            . ' reopened on deletion and the former password was discarded. Logging in then'
+            . ' requires the password reset link or user:reset-password.',
         'success' => 'User ":name" (:email) was successfully restored.',
     ],
 

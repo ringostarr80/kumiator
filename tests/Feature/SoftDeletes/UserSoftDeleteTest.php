@@ -5,16 +5,21 @@ declare(strict_types=1);
 namespace Tests\Feature\SoftDeletes;
 
 use App\Actions\Jetstream\DeleteUser;
+use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
+use App\Services\Auth\Contracts\LoginMethodChangerContract;
 use App\Services\User\Contracts\UserHardDeleterContract;
 use App\Services\User\Contracts\UserSoftDeleterContract;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\PendingCommand;
@@ -446,6 +451,178 @@ final class UserSoftDeleteTest extends TestCase
                 ->where('tokenable_id', $user->getKey())
                 ->count(),
         );
+    }
+
+    /**
+     * Der abgeschaltete Passwort-Login setzt einen Passkey voraus, und die nimmt
+     * dieser Pfad alle mit. Bliebe die Abschaltung stehen, käme das wiederhergestellte
+     * Konto über keinen Weg mehr hinein: Das Passwort weist der Login ab, ein
+     * Passkey ist nicht mehr da, und den Link zum Zurücksetzen bekommen solche
+     * Konten nicht geschickt.
+     */
+    public function testSoftDeleteReopensPasswordLoginForALaterRestore(): void
+    {
+        $user = User::factory()->create(['password_login_disabled_at' => now()]);
+        PasskeyCredential::factory()->for($user)->create();
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+
+        $trashed = User::query()->withTrashed()->whereKey($user->getKey())->firstOrFail();
+        $trashed->restore();
+
+        $this->assertFalse($trashed->isPasswordLoginDisabled());
+    }
+
+    /**
+     * Die Instanz des Aufrufers kann älter sein als der Aufruf — schaltet der
+     * Nutzer den Passwort-Login in der Zwischenzeit ab, sieht sie ihn noch offen.
+     * Entschieden werden muss auf der gesperrten Zeile, sonst überlebt die
+     * Abschaltung den Verlust aller Passkeys.
+     */
+    public function testSoftDeleteReopensAPasswordLoginDisabledAfterTheUserWasLoaded(): void
+    {
+        $user = User::factory()->create();
+        PasskeyCredential::factory()->for($user)->create();
+
+        app(LoginMethodChangerContract::class)->disablePasswordLogin($user);
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+
+        $trashed = User::query()->withTrashed()->whereKey($user->getKey())->firstOrFail();
+        $trashed->restore();
+
+        $this->assertFalse($trashed->isPasswordLoginDisabled());
+    }
+
+    /**
+     * Die Spalte steht nicht in der `logOnly`-Allowlist des Users — ohne eigenen
+     * Eintrag spränge der Passwort-Login spurlos wieder auf.
+     */
+    public function testSoftDeleteRecordsTheReopenedPasswordLogin(): void
+    {
+        $user = User::factory()->create(['password_login_disabled_at' => now()]);
+        PasskeyCredential::factory()->for($user)->create();
+        Activity::query()->delete();
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+
+        $entry = Activity::query()
+            ->where('log_name', ActivityChannel::AUTH->value)
+            ->where('event', ActivityEvent::PASSWORD_LOGIN_ENABLED->value)
+            ->first();
+
+        $this->assertNotNull($entry);
+        $this->assertNull($entry->causer_id);
+        $this->assertSame($user->getKey(), $entry->subject_id);
+    }
+
+    /**
+     * Abgeschaltet wird der Passwort-Login, wenn jemand dem Passwort nicht mehr
+     * traut. Der wieder geöffnete Zugang dürfte diese Aussage sonst still
+     * zurücknehmen: Nach dem Restore ließe genau das verdächtige Passwort wieder
+     * hinein, ohne dass es je jemand neu gesetzt hat.
+     */
+    public function testSoftDeleteInvalidatesThePasswordItReopensTheLoginFor(): void
+    {
+        $this->travelTo(Carbon::parse('2026-01-01 10:00:00'));
+        $user = User::factory()->create(['password' => 'verdaechtiges-passwort']);
+        PasskeyCredential::factory()->for($user)->create();
+
+        $this->travelTo(Carbon::parse('2026-01-02 10:00:00'));
+        $user->password_login_disabled_at = now();
+        $user->saveOrFail();
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+
+        $trashed = User::query()->withTrashed()->whereKey($user->getKey())->firstOrFail();
+
+        $this->assertFalse(Hash::check('verdaechtiges-passwort', $trashed->password));
+    }
+
+    /**
+     * Der Verdacht gilt dem Passwort von vor dem Abschalten. Ein seither auf der
+     * Konsole gesetztes soll nach dem Restore hineinführen — das ist der einzige
+     * Anmeldeweg, der dem Konto dann noch bleibt.
+     */
+    public function testSoftDeleteKeepsAPasswordSetAfterTheDisabling(): void
+    {
+        $this->travelTo(Carbon::parse('2026-01-01 10:00:00'));
+        $user = User::factory()->create(['password_login_disabled_at' => now()]);
+        PasskeyCredential::factory()->for($user)->create();
+
+        $this->travelTo(Carbon::parse('2026-01-02 10:00:00'));
+        $user->password = 'seither-gesetzt';
+        $user->saveOrFail();
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+
+        $trashed = User::query()->withTrashed()->whereKey($user->getKey())->firstOrFail();
+
+        $this->assertFalse($trashed->isPasswordLoginDisabled());
+        $this->assertTrue(Hash::check('seither-gesetzt', $trashed->password));
+    }
+
+    /** Ein Konto, das seinen Passwort-Login noch nutzt, hat hier nichts zu verlieren. */
+    public function testSoftDeleteLeavesAnOpenSwitchAndItsPasswordAlone(): void
+    {
+        $user = User::factory()->create(['password' => 'weiter-gueltig']);
+        Activity::query()->delete();
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+
+        $trashed = User::query()->withTrashed()->whereKey($user->getKey())->firstOrFail();
+
+        $this->assertTrue(Hash::check('weiter-gueltig', $trashed->password));
+        $this->assertSame(
+            0,
+            Activity::query()->where('event', ActivityEvent::PASSWORD_LOGIN_ENABLED->value)->count(),
+        );
+    }
+
+    /**
+     * Der Pfad nimmt jedes Zugriffsmittel mit, das ein `restore()` sonst wieder
+     * scharf schaltete. Ein vorher ausgelöster Link zum Zurücksetzen überlebte als
+     * einziges — und träfe auf ein Konto, dessen Passwort dieser Pfad gerade
+     * verworfen hat, weil ihm nicht mehr zu trauen war.
+     */
+    public function testSoftDeleteInvalidatesAnOpenPasswordResetLink(): void
+    {
+        $user = User::factory()->create(['password_login_disabled_at' => now()]);
+        PasskeyCredential::factory()->for($user)->create();
+
+        $token = Password::broker()->createToken($user);
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+
+        $trashed = User::query()->withTrashed()->whereKey($user->getKey())->firstOrFail();
+        $trashed->restore();
+
+        $this->post('/reset-password', [
+            'token' => $token,
+            'email' => $trashed->email,
+            'password' => 'brand-new-password',
+            'password_confirmation' => 'brand-new-password',
+        ]);
+
+        $trashed->refresh();
+
+        $this->assertFalse(Hash::check('brand-new-password', $trashed->password));
+    }
+
+    /**
+     * Die Token-Zeile trägt die Adresse im Klartext und überdauert das Konto, das
+     * dieser Pfad gerade restlos entfernt hat (DSGVO Art. 17). Wer sich mit
+     * derselben Adresse neu registriert, erbt zudem den offenen Link.
+     */
+    public function testHardDeleteLeavesNoPasswordResetTokenBehind(): void
+    {
+        $user = User::factory()->create();
+
+        $token = Password::broker()->createToken($user);
+
+        app(UserHardDeleterContract::class)->forceDelete($user, ActivityEvent::ACCOUNT_SELF_DELETED);
+
+        $this->assertFalse(Password::broker()->tokenExists($user, $token));
     }
 
     /**
