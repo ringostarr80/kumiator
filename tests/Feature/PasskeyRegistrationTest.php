@@ -13,6 +13,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
+use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
 use Tests\Support\ConfirmsPassword;
 use Tests\Support\VirtualAuthenticator;
@@ -32,6 +33,9 @@ final class PasskeyRegistrationTest extends TestCase
 
     /** Wortlaut aus CheckUserVerification der webauthn-lib. */
     private const string LIBRARY_UV_REJECTION = 'User authentication required.';
+
+    /** Wortlaut aus PublicKeyCredentialDenormalizer der webauthn-lib. */
+    private const string LIBRARY_ID_MISMATCH = 'Invalid ID';
 
     public function testRegistrationEndpointsAreRateLimited(): void
     {
@@ -64,11 +68,10 @@ final class PasskeyRegistrationTest extends TestCase
         $response->assertStatus(Response::HTTP_LOCKED);
     }
 
-    public function testOptionsEndpointAbortsWhenAuthUserIsNotAUserInstance(): void
+    public function testOptionsEndpointAbortsWhenNobodyIsAuthenticated(): void
     {
-        // Auth::user() returns null when no user is logged in. withoutMiddleware()
-        // lets the request reach the controller so the instanceof guard on line 50
-        // is exercised instead of the auth middleware returning 401 first.
+        // withoutMiddleware() lets the request reach the controller, so its own
+        // null guard answers instead of the auth middleware returning 401 first.
         $response = $this->withoutMiddleware()->getJson(self::REGISTER_OPTIONS_URL);
 
         $response->assertUnauthorized();
@@ -259,6 +262,43 @@ final class PasskeyRegistrationTest extends TestCase
         $this->assertStringNotContainsString(self::LIBRARY_UV_REJECTION, $response->content());
     }
 
+    /**
+     * Die Bibliothek weist eine unlesbare Antwort schon beim Deserialisieren ab,
+     * bevor die Zeremonie beginnt. Auch das ist ein abgelehntes Attestat, kein
+     * Serverfehler — sonst könnte ein manipulierter Client das Fehler-Monitoring
+     * beliebig vollschreiben.
+     */
+    public function testStoreEndpointReturns422WhenTheResponseIsUnreadable(): void
+    {
+        Exceptions::fake();
+
+        $user = User::factory()->create();
+        $options = $this->startCeremony($user);
+
+        $payload = VirtualAuthenticator::create()->attestation($options);
+        $payload['rawId'] = Base64UrlSafe::encodeUnpadded(random_bytes(32));
+
+        $response = $this->actingAsConfirmed($user)->postJson(
+            self::REGISTER_URL,
+            $payload,
+            ['Content-Type' => self::CONTENT_TYPE_JSON],
+        );
+
+        $response->assertUnprocessable();
+        $response->assertJson(['message' => __('app.passkey_registration_failed')]);
+        Exceptions::assertNothingReported();
+
+        $activity = Activity::query()
+            ->where('log_name', 'passkey')
+            ->where('event', 'passkey_registration_failed')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame('verification_failed', $activity->properties?->get('failure_reason'));
+        $this->assertSame(self::LIBRARY_ID_MISMATCH, $activity->properties->get('failure_detail'));
+    }
+
     public function testStoreEndpointReturns500WhenUnexpectedExceptionOccurs(): void
     {
         Exceptions::fake();
@@ -324,53 +364,6 @@ final class PasskeyRegistrationTest extends TestCase
         $credential = PasskeyCredential::query()->where('user_id', $user->getKey())->sole();
 
         $this->assertSame(__('app.passkey_default_name'), $credential->name);
-    }
-
-    // ──────────────────────────────────────────────────────────────────────────
-    // Destroy endpoint
-    // ──────────────────────────────────────────────────────────────────────────
-
-    public function testDestroyRequiresAuthentication(): void
-    {
-        $passkey = PasskeyCredential::factory()->create();
-
-        $response = $this->deleteJson("/user/passkeys/{$passkey->id}");
-
-        $response->assertUnauthorized();
-    }
-
-    public function testDestroyRequiresConfirmedPassword(): void
-    {
-        $user = User::factory()->create();
-        $passkey = PasskeyCredential::factory()->for($user)->create();
-
-        $response = $this->actingAs($user)->deleteJson("/user/passkeys/{$passkey->id}");
-
-        $response->assertStatus(Response::HTTP_LOCKED);
-        $this->assertModelExists($passkey);
-    }
-
-    public function testOwnerCanDeletePasskey(): void
-    {
-        $user = User::factory()->create();
-        $passkey = PasskeyCredential::factory()->for($user)->create();
-
-        $response = $this->actingAsConfirmed($user)->deleteJson("/user/passkeys/{$passkey->id}");
-
-        $response->assertNoContent();
-        $this->assertModelMissing($passkey);
-    }
-
-    public function testOtherUserCannotDeletePasskey(): void
-    {
-        $owner = User::factory()->create();
-        $other = User::factory()->create();
-        $passkey = PasskeyCredential::factory()->for($owner)->create();
-
-        $response = $this->actingAsConfirmed($other)->deleteJson("/user/passkeys/{$passkey->id}");
-
-        $response->assertForbidden();
-        $this->assertModelExists($passkey);
     }
 
     protected function setUp(): void

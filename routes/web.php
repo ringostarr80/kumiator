@@ -176,10 +176,6 @@ Route::middleware([
         Route::post('/user/passkeys/register', [PasskeyRegistrationController::class, 'store'])
             ->middleware('max.json.body')
             ->name('passkeys.register');
-
-        // Removes a passkey
-        Route::delete('/user/passkeys/{passkeyCredential}', [PasskeyRegistrationController::class, 'destroy'])
-            ->name('passkeys.destroy');
     });
 
     // ──────────────────────────────────────────────────────────────────────────

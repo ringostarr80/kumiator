@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Config\Vendor\Webauthn\WebauthnConfig;
+use App\Enums\ActivityFailureReason;
 use App\Http\Controllers\Controller;
 use App\Models\PasskeyCredential;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
@@ -13,7 +14,8 @@ use App\Services\WebAuthn\Contracts\WebAuthnCeremonySessionContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Webauthn\Exception\AuthenticatorResponseVerificationException;
+use Webauthn\Exception\CounterException;
+use Webauthn\Exception\WebauthnException;
 use Webauthn\PublicKeyCredentialRequestOptions;
 
 /**
@@ -77,8 +79,18 @@ final class PasskeyAuthenticationController extends Controller
                 storedOptions: $storedOptions,
                 host: WebauthnConfig::effectiveHost(),
             );
-        } catch (AuthenticatorResponseVerificationException $e) {
-            PasskeyCredential::recordFailedLoginActivity('verification_failed', $rawResponse, $e->getMessage());
+        } catch (WebauthnException $e) {
+            // Die Zählerprüfung steht hinter der Signaturprüfung: Wer an ihr
+            // scheitert, hat mit dem echten Schlüssel signiert und meldet trotzdem
+            // einen bereits gesehenen Zählerstand. Das verlangt eine andere
+            // Reaktion als ein Fehlversuch und bekommt deshalb einen eigenen Grund.
+            PasskeyCredential::recordFailedLoginActivity(
+                $e instanceof CounterException
+                    ? ActivityFailureReason::COUNTER_INVALID
+                    : ActivityFailureReason::VERIFICATION_FAILED,
+                $rawResponse,
+                $e->getMessage(),
+            );
 
             // Immer derselbe Text, egal woran die Zeremonie scheiterte: Die Gründe
             // unterscheiden „Credential unbekannt“ von „Signatur falsch“ und verrieten
@@ -90,7 +102,7 @@ final class PasskeyAuthenticationController extends Controller
             );
         } catch (\Throwable $e) {
             report($e);
-            PasskeyCredential::recordFailedLoginActivity('internal_error', $rawResponse);
+            PasskeyCredential::recordFailedLoginActivity(ActivityFailureReason::INTERNAL_ERROR, $rawResponse);
 
             return response()->json(
                 ['message' => __('app.passkey_authentication_failed')],
@@ -103,7 +115,11 @@ final class PasskeyAuthenticationController extends Controller
         if ($user === null) {
             // Credential ohne Owner ist ein Integritätsbruch (der FK verhindert
             // ihn praktisch); wie eine fehlgeschlagene Verifikation behandeln.
-            PasskeyCredential::recordFailedLoginActivity('verification_failed', $rawResponse, 'orphaned_credential');
+            PasskeyCredential::recordFailedLoginActivity(
+                ActivityFailureReason::VERIFICATION_FAILED,
+                $rawResponse,
+                'orphaned_credential',
+            );
 
             return response()->json(
                 ['message' => __('app.passkey_auth_error')],

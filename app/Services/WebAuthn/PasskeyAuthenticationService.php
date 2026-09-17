@@ -82,7 +82,9 @@ final class PasskeyAuthenticationService implements PasskeyAuthenticationContrac
      * @param PublicKeyCredentialRequestOptions $storedOptions Die Optionen, die
      *        beim Aufruf von createOptions() in der Session abgelegt wurden
      * @param string $host Die effektive Domain (z. B. "localhost")
-     * @throws AuthenticatorResponseVerificationException bei Client-Fehlern
+     * @throws \Webauthn\Exception\WebauthnException wenn die Zeremonie die Antwort des
+     *         Browsers verwirft — darunter der nicht gestiegene Signaturzähler eines
+     *         geklonten Authenticators.
      */
     public function verify(
         string $rawResponse,

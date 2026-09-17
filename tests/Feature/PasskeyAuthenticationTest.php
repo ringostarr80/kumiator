@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
@@ -228,6 +229,39 @@ final class PasskeyAuthenticationTest extends TestCase
         // Ohne den Bibliotheks-Grund im Log wäre die generische Antwort nicht mehr zu debuggen.
         $this->assertNotSame('', $detail);
         $this->assertStringNotContainsString($detail, $response->content());
+    }
+
+    /**
+     * Der Zählerprüfung geht die Signaturprüfung voraus: Wer an ihr scheitert,
+     * besitzt den privaten Schlüssel und meldet trotzdem einen bereits gesehenen
+     * Zählerstand. Dieser Klon-Befund gehört in den Forensik-Kanal — und zwar
+     * unterscheidbar, nicht als `internal_error` neben jedem Bibliotheksfehler.
+     */
+    public function testAStagnatingSignatureCounterIsRejectedAndAudited(): void
+    {
+        $user = User::factory()->create();
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor($user);
+
+        $this->postAssertion($authenticator->signAssertion($credential, $this->requestOptions(), counter: 5))
+            ->assertOk();
+
+        // Der Endpunkt steht nur Gästen offen, und angemeldet ist der Nutzer seit
+        // der ersten Assertion.
+        Auth::logout();
+
+        // Derselbe Zählerstand ein zweites Mal: der Mitschnitt eines Klons.
+        $this->postAssertion($authenticator->signAssertion($credential, $this->requestOptions(), counter: 5))
+            ->assertUnprocessable();
+
+        $activity = Activity::query()
+            ->where('log_name', 'forensic')
+            ->where('event', 'passkey_login_failed')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame('counter_invalid', $activity->properties?->get('failure_reason'));
     }
 
     /**
