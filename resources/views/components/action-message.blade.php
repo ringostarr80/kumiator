@@ -1,13 +1,11 @@
 @props(['on'])
 
-<div x-data="{ shown: false, timeout: null }"
+<output x-data="{ shown: false, timeout: null }"
     x-init="@this.on('{{ $on }}', () => { clearTimeout(timeout); shown = true; timeout = setTimeout(() => { shown = false }, 4000); })"
     x-show.transition.out.opacity.duration.1000ms="shown"
     x-transition:leave.opacity.duration.1000ms
     style="display: none;"
-    role="status"
-    aria-live="polite"
     {{ $attributes->merge(['class' => 'inline-flex items-center gap-1.5 rounded-md bg-green-100 px-3 py-1.5 text-sm font-medium text-green-800 ring-1 ring-inset ring-green-600/20 dark:bg-green-900/40 dark:text-green-200 dark:ring-green-500/30']) }}>
     <x-heroicon-m-check class="size-4 shrink-0" aria-hidden="true" />
     <span>{{ $slot->isEmpty() ? __('app.saved') : $slot }}</span>
-</div>
+</output>
