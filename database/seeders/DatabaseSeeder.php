@@ -20,8 +20,6 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(RoleSeeder::class);
 
-        // User::factory(10)->create();
-
         DB::transaction(static function (): void {
             $user = User::factory()->create([
                 'name' => 'Test User',

@@ -6,7 +6,6 @@ use App\Http\Middleware\EnsureUserIsApproved;
 use App\Http\Middleware\MaxJsonBodySize;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
-use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -24,6 +23,4 @@ return Application::configure(basePath: dirname(__DIR__))
             'max.json.body' => MaxJsonBodySize::class,
         ]);
     })
-    ->withExceptions(function (Exceptions $exceptions): void {
-        //
-    })->create();
+    ->withExceptions()->create();
