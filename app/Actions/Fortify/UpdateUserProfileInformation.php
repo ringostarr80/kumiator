@@ -83,68 +83,24 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             throw $e;
         }
 
-        $optimizedPhoto = null;
-        $previousPhotoPath = null;
-
-        if (isset($input['photo']) && $input['photo'] instanceof UploadedFile) {
-            // Alten Pfad snapshotten: Die Datei dahinter wird erst NACH einem
-            // erfolgreichen Commit gelöscht (s. unten), nicht synchron in der
-            // Transaktion — ein Rollback könnte sie sonst nicht wiederherstellen.
-            $previousPhotoPath = $this->stringOrNull($user->getAttribute('profile_photo_path'));
-
-            // Optimierung VOR der Transaktion: schlägt der Bomben-/Decode-Schutz
-            // an, wird das als Feld-Validierung gemeldet, ohne dafür eine (leere)
-            // Transaktion zu öffnen. Nicht das Original speichern: der Optimizer
-            // rechnet das Foto auf ein quadratisches AVIF-Thumbnail herunter
-            // (inkl. EXIF-Korrektur). Pixel-/Decode-/Encode-Fehler bestehen
-            // `mimes:`+`max:`, sind aber kein Server-Defekt: Die Maße liegen erst
-            // nach dem Decode vor — als Feld-Fehler melden, nicht als HTTP 500.
-            try {
-                $optimizedPhoto = $this->profilePhotoOptimizer->optimize($input['photo']);
-            } catch (ProfilePhotoOptimizationException $e) {
-                throw ValidationException::withMessages([
-                    'photo' => $e->getMessage(),
-                ])->errorBag('updateProfileInformation');
-            }
-        }
-
+        // Validierung oben erzwingt `string` für beide Felder.
+        /** @var string $name */
         $name = $input['name'];
+
+        /** @var string $email */
         $email = $input['email'];
 
-        if (!is_string($name) || !is_string($email)) {
-            // Validierung oben erzwingt `string` für beide Felder; dieser
-            // Zweig dient ausschließlich der Typ-Eingrenzung gegenüber
-            // `array<string, mixed>`.
-            return;
-        }
+        // Alten Pfad snapshotten: Die Datei dahinter wird erst NACH einem
+        // erfolgreichen Commit gelöscht (s. unten), nicht synchron in der
+        // Transaktion — ein Rollback könnte sie sonst nicht wiederherstellen.
+        $previousPhotoPath = $this->stringOrNull($user->getAttribute('profile_photo_path'));
 
         // Die neue Foto-Datei VOR der Transaktion auf die Platte legen: ein
         // Datei-Schreibvorgang ist nicht rückrollbar und gehört darum nicht in
         // die DB-Transaktion. In der Transaktion wird nur der Pfad-Zeiger atomar
         // mit Name + E-Mail-Antrag umgelegt.
         $photoDisk = $user->profilePhotoDiskName();
-        $newPhotoPath = null;
-
-        if ($optimizedPhoto !== null) {
-            $storedPath = $optimizedPhoto->storePublicly('profile-photos', ['disk' => $photoDisk]);
-
-            // Der Optimizer gibt das Thumbnail in einer tempnam()-Datei zurück,
-            // die PHP nicht selbst wegräumt (kein $_FILES-Upload). storePublicly()
-            // kopiert per Stream — ohne dieses Löschen bliebe pro Upload eine
-            // verwaiste AVIF-Datei in sys_get_temp_dir() liegen.
-            File::delete($optimizedPhoto->getRealPath());
-
-            if ($storedPath === false) {
-                // Die Disk läuft auf `throw => false`, ein Schreibfehler (Platte
-                // voll, S3 down) liefert also `false`. Nicht still als „kein Foto"
-                // behandeln: sonst committen Name/E-Mail, die UI meldet Erfolg und
-                // das Foto fehlt kommentarlos. Hart abbrechen (vor der Transaktion,
-                // nichts committet), damit der Infra-Fehler als reportete 500 sichtbar wird.
-                throw new ProfilePhotoStorageException('Failed to store the profile photo.');
-            }
-
-            $newPhotoPath = $storedPath;
-        }
+        $newPhotoPath = $this->storeProfilePhoto($input['photo'] ?? null, $photoDisk);
 
         // Denselben Entscheid, der oben die Re-Auth-Regel setzt, an den
         // Deferred-Flow durchreichen (null = keine Änderung) — ein zweiter
@@ -205,6 +161,47 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
         if ($newPhotoPath !== null && $previousPhotoPath !== null) {
             Storage::disk($photoDisk)->delete($previousPhotoPath);
         }
+    }
+
+    private function storeProfilePhoto(mixed $photo, string $disk): ?string
+    {
+        if (!$photo instanceof UploadedFile) {
+            return null;
+        }
+
+        // Optimierung VOR der Transaktion: schlägt der Bomben-/Decode-Schutz
+        // an, wird das als Feld-Validierung gemeldet, ohne dafür eine (leere)
+        // Transaktion zu öffnen. Nicht das Original speichern: der Optimizer
+        // rechnet das Foto auf ein quadratisches AVIF-Thumbnail herunter
+        // (inkl. EXIF-Korrektur). Pixel-/Decode-/Encode-Fehler bestehen
+        // `mimes:`+`max:`, sind aber kein Server-Defekt: Die Maße liegen erst
+        // nach dem Decode vor — als Feld-Fehler melden, nicht als HTTP 500.
+        try {
+            $optimizedPhoto = $this->profilePhotoOptimizer->optimize($photo);
+        } catch (ProfilePhotoOptimizationException $e) {
+            throw ValidationException::withMessages([
+                'photo' => $e->getMessage(),
+            ])->errorBag('updateProfileInformation');
+        }
+
+        $storedPath = $optimizedPhoto->storePublicly('profile-photos', ['disk' => $disk]);
+
+        // Der Optimizer gibt das Thumbnail in einer tempnam()-Datei zurück,
+        // die PHP nicht selbst wegräumt (kein $_FILES-Upload). storePublicly()
+        // kopiert per Stream — ohne dieses Löschen bliebe pro Upload eine
+        // verwaiste AVIF-Datei in sys_get_temp_dir() liegen.
+        File::delete($optimizedPhoto->getRealPath());
+
+        if ($storedPath === false) {
+            // Die Disk läuft auf `throw => false`, ein Schreibfehler (Platte
+            // voll, S3 down) liefert also `false`. Nicht still als „kein Foto"
+            // behandeln: sonst committen Name/E-Mail, die UI meldet Erfolg und
+            // das Foto fehlt kommentarlos. Hart abbrechen (vor der Transaktion,
+            // nichts committet), damit der Infra-Fehler als reportete 500 sichtbar wird.
+            throw new ProfilePhotoStorageException('Failed to store the profile photo.');
+        }
+
+        return $storedPath;
     }
 
     /**
