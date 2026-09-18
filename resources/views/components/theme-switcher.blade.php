@@ -12,7 +12,7 @@
         </template>
     </button>
 
-    <div x-show="open" @click.outside="open = false" x-transition
+    <div x-show="open" @click.outside="open = false" @keydown.escape.window="open = false" x-transition
          class="absolute right-0 mt-2 w-36 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-100 dark:border-gray-700 z-50">
         <x-switcher-option @click="setTheme('system')" class="w-full"
                            ::class="{ 'font-semibold': theme === 'system' }">
