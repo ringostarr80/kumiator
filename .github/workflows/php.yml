@@ -54,7 +54,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: ./.github/actions/setup-php-env
+      - uses: $/.github/actions/setup-php-env
         with:
           php-version: ${{ matrix.php }}
 
@@ -80,7 +80,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: ./.github/actions/setup-php-env
+      - uses: $/.github/actions/setup-php-env
         with:
           php-version: ${{ matrix.php }}
 
@@ -101,7 +101,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: ./.github/actions/setup-php-env
+      - uses: $/.github/actions/setup-php-env
         with:
           php-version: '8.4'
 
@@ -128,7 +128,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: ./.github/actions/setup-php-env
+      - uses: $/.github/actions/setup-php-env
         with:
           php-version: ${{ matrix.php }}
           coverage: pcov
@@ -137,7 +137,7 @@ jobs:
       - name: Generate application key
         run: php artisan key:generate
 
-      - uses: ./.github/actions/setup-node-env
+      - uses: $/.github/actions/setup-node-env
 
       # Feature tests render layouts using @vite, which needs a built manifest
       - name: Build assets

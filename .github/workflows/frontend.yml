@@ -46,7 +46,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: ./.github/actions/setup-node-env
+      - uses: $/.github/actions/setup-node-env
 
       # tests/css/global-setup.ts builds on its own, so no leftover artefact gets checked
       - name: Check styles and types
