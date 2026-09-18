@@ -89,8 +89,8 @@ class FortifyServiceProvider extends ServiceProvider
         // — laufen durch `Laravel\Fortify\Actions\ConfirmPassword`. Wird hier ein
         // Callback registriert, delegiert die Action an ihn (siehe
         // `vendor/laravel/fortify/src/Actions/ConfirmPassword.php`), und wir
-        // fangen beide Pfade an einer Stelle ab. Hash-Vergleich parität zur
-        // `authenticateUsing`-Override oben.
+        // fangen beide Pfade an einer Stelle ab. Hash-Vergleich in Parität zum
+        // `authenticateUsing`-Callback.
         Fortify::confirmPasswordsUsing(static function (User $user, ?string $password): bool {
             // Ohne Passwort kein Vergleich und damit kein Mismatch: Der
             // Fortify-Controller reicht das Feld ungeprüft durch, ein direkter
@@ -128,67 +128,7 @@ class FortifyServiceProvider extends ServiceProvider
             return true;
         });
 
-        Fortify::authenticateUsing(static function (Request $request): ?User {
-            /** @var string $email */
-            $email = $request->input('email');
-
-            /** @var string $password */
-            $password = $request->input('password');
-
-            $user = User::queryByEmail($email)->first();
-
-            if ($user === null) {
-                // Timing-Angleichung gegen E-Mail-Enumeration: Ohne KDF-Lauf
-                // antwortet der Unbekannt-Pfad messbar schneller als „bekannte
-                // E-Mail, falsches Passwort". `Hash::make` kostet einen Lauf
-                // wie `Hash::check` und folgt Treiber und Cost der
-                // Konfiguration — dasselbe Muster wie der Fake-Lookup im
-                // Passkey-Options-Endpoint.
-                Hash::make($password);
-
-                return null;
-            }
-
-            if (!Hash::check($password, $user->password)) {
-                return null;
-            }
-
-            // Identität verifiziert, aber Konto noch nicht freigeschaltet:
-            // separater Audit-Eintrag, damit unapproved-Versuche scharf von
-            // generischen Login-Fehlern abgegrenzt werden können. Der Marker
-            // unterdrückt zugleich den nachgelagerten `login_failed`-Eintrag,
-            // den Fortify nach dem `null`-Return über `Auth\Events\Failed`
-            // auslöst (siehe `LogAuthenticationActivityListener::handleFailed`).
-            if ($user->approved_at === null) {
-                // Lazy auflösen: Die Closure wird einmal pro Prozess registriert
-                // und überlebt den Request — eine beim Boot gecapturte Instanz
-                // wäre unter Long-Running-Workern nicht die scoped Instanz des
-                // laufenden Requests.
-                $unapprovedLoginContext = app(UnapprovedLoginContextContract::class);
-
-                // Marker VOR dem Audit-Schreiben setzen: Selbst wenn der
-                // Audit-Insert wirft, soll der nachgelagerte `Failed`-Event
-                // unterdrückt bleiben — sonst rauschte trotzdem ein doppelter
-                // `login_failed`-Eintrag.
-                $unapprovedLoginContext->markActive();
-                $unapprovedLoginContext->record($user, 'web', $email);
-
-                return null;
-            }
-
-            // Nach der Freischaltung geprüft, damit ein noch nicht freigeschaltetes
-            // Konto den fachlich grundlegenderen `login_unapproved`-Eintrag behält.
-            if ($user->isPasswordLoginDisabled()) {
-                $disabledPasswordLoginContext = app(DisabledPasswordLoginContextContract::class);
-
-                $disabledPasswordLoginContext->markActive();
-                $disabledPasswordLoginContext->record($user, 'web', $email);
-
-                return null;
-            }
-
-            return $user;
-        });
+        Fortify::authenticateUsing(self::authenticateWithPassword(...));
 
         RateLimiter::for('login', static function (Request $request) {
             /** @var string $username */
@@ -202,5 +142,68 @@ class FortifyServiceProvider extends ServiceProvider
             'two-factor',
             static fn (Request $request) => Limit::perMinute(5)->by($request->session()->get('login.id')),
         );
+    }
+
+    private static function authenticateWithPassword(Request $request): ?User
+    {
+        /** @var string $email */
+        $email = $request->input('email');
+
+        /** @var string $password */
+        $password = $request->input('password');
+
+        $user = User::queryByEmail($email)->first();
+
+        if ($user === null) {
+            // Timing-Angleichung gegen E-Mail-Enumeration: Ohne KDF-Lauf
+            // antwortet der Unbekannt-Pfad messbar schneller als „bekannte
+            // E-Mail, falsches Passwort". `Hash::make` kostet einen Lauf
+            // wie `Hash::check` und folgt Treiber und Cost der
+            // Konfiguration — dasselbe Muster wie der Fake-Lookup im
+            // Passkey-Options-Endpoint.
+            Hash::make($password);
+
+            return null;
+        }
+
+        if (!Hash::check($password, $user->password)) {
+            return null;
+        }
+
+        // Identität verifiziert, aber Konto noch nicht freigeschaltet:
+        // separater Audit-Eintrag, damit unapproved-Versuche scharf von
+        // generischen Login-Fehlern abgegrenzt werden können. Der Marker
+        // unterdrückt zugleich den nachgelagerten `login_failed`-Eintrag,
+        // den Fortify nach dem `null`-Return über `Auth\Events\Failed`
+        // auslöst (siehe `LogAuthenticationActivityListener::handleFailed`).
+        if ($user->approved_at === null) {
+            // Lazy auflösen: Der Callback wird einmal pro Prozess registriert
+            // und überlebt den Request — eine beim Boot aufgelöste Instanz
+            // wäre unter Long-Running-Workern nicht die scoped Instanz des
+            // laufenden Requests.
+            $unapprovedLoginContext = app(UnapprovedLoginContextContract::class);
+
+            // Marker VOR dem Audit-Schreiben setzen: Selbst wenn der
+            // Audit-Insert wirft, soll der nachgelagerte `Failed`-Event
+            // unterdrückt bleiben — sonst rauschte trotzdem ein doppelter
+            // `login_failed`-Eintrag.
+            $unapprovedLoginContext->markActive();
+            $unapprovedLoginContext->record($user, 'web', $email);
+
+            return null;
+        }
+
+        // Nach der Freischaltung geprüft, damit ein noch nicht freigeschaltetes
+        // Konto den fachlich grundlegenderen `login_unapproved`-Eintrag behält.
+        if ($user->isPasswordLoginDisabled()) {
+            $disabledPasswordLoginContext = app(DisabledPasswordLoginContextContract::class);
+
+            $disabledPasswordLoginContext->markActive();
+            $disabledPasswordLoginContext->record($user, 'web', $email);
+
+            return null;
+        }
+
+        return $user;
     }
 }
