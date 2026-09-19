@@ -127,6 +127,28 @@ Passwort zurücksetzen
 Das Passwort für Benutzer "Max Mustermann" (max@example.com) wurde erfolgreich zurückgesetzt.
 ```
 
+Hat der Benutzer die Anmeldung per Passwort abgeschaltet (Profil → „Passwort-Anmeldung"), fragt
+das Kommando zusätzlich, ob sie wieder eingeschaltet werden soll. Enter belässt die Sperre; das
+neue Passwort gilt dann erst nach dem Wiedereinschalten:
+
+```
+Passwort zurücksetzen
+---------------------
+ E-Mail: max@example.com
+ Neues Passwort:
+ Neues Passwort bestätigen:
+ Für dieses Konto ist die Anmeldung per Passwort abgeschaltet. Soll sie wieder eingeschaltet werden? (yes/no) [no]: yes
+
+Das Passwort für Benutzer "Max Mustermann" (max@example.com) wurde erfolgreich zurückgesetzt.
+Hinweis: Die Anmeldung per Passwort war für dieses Konto abgeschaltet und gilt jetzt wieder.
+```
+
+**Identität vorher prüfen.** Für ein Konto mit abgeschalteter Passwort-Anmeldung ist dieses
+Kommando der einzige Weg zurück, wenn der letzte Passkey verloren ging — „Passwort vergessen?"
+verschickt für solche Konten keinen Link. Die Abschaltung schließt den E-Mail-Kanal bewusst; eine
+Anfrage allein über die hinterlegte E-Mail-Adresse genügt deshalb nicht als Nachweis. Vor dem
+Zurücksetzen ist die Person persönlich oder auf gleichwertigem Weg zu identifizieren.
+
 ## 2FA aktivieren (`user:enable-2fa`)
 
 Aktiviert die Zwei-Faktor-Authentifizierung (TOTP) für einen Benutzer. Der Befehl zeigt
