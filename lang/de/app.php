@@ -230,7 +230,8 @@ return [
         . ' Dein bisheriges Passwort zählt an diesem Konto nicht mehr.',
     'password_login_disabled_hint' => 'Danach bestätigst du Änderungen auf dieser Seite mit deinem Passkey'
         . ' statt mit dem Passwort, und der Link zum Zurücksetzen wird nicht mehr verschickt.'
-        . ' Wer seinen letzten Passkey verliert, braucht die Hilfe einer Administration.',
+        . ' Wer seinen letzten Passkey verliert, braucht die Hilfe einer Administration.'
+        . ' Registriere deshalb am besten vorher einen zweiten Passkey.',
     'password_login_enable_warning' => 'Dein Passwort aus der Zeit vor dem Abschalten wird dabei verworfen,'
         . ' und deine anderen Geräte werden abgemeldet.'
         . ' Willst du dich danach wieder mit Passwort anmelden, setze vorher oben unter „Passwort ändern" ein neues'
