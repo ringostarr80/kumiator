@@ -224,7 +224,8 @@ return [
         . ' Your previous password no longer counts for this account.',
     'password_login_disabled_hint' => 'From then on you confirm changes on this page with your passkey'
         . ' instead of your password, and the reset link is no longer sent.'
-        . ' Anyone who loses their last passkey needs help from an administrator.',
+        . ' Anyone who loses their last passkey needs help from an administrator.'
+        . ' So it is best to register a second passkey beforehand.',
     'password_login_enable_warning' => 'Your password from before the switch-off is discarded in the process,'
         . ' and your other devices are signed out.'
         . ' To sign in with a password again afterwards, set a new one under "Update Password" above first'
