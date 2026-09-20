@@ -41,7 +41,7 @@ final class ControllersAreIndependentTest
                 Selector::inNamespace('App\\Enums'),
                 Selector::inNamespace('App\\Models'),
                 Selector::inNamespace('App\\DataTransferObjects'),
-                Selector::inNamespace('App\\Config\\Vendor\\Webauthn'),
+                Selector::inNamespace('App\\Config'),
                 Selector::inNamespace('App\\Repositories\\Contracts'),
                 Selector::inNamespace('/^App\\\\Services\\\\.*\\\\Contracts$/', true),
                 Selector::inNamespace('/^App\\\\Services\\\\.*\\\\Exceptions$/', true),
@@ -52,7 +52,7 @@ final class ControllersAreIndependentTest
             )
             ->because(
                 'Controller dürfen nur von FormRequests, Enums, Models, DTOs, '
-                . 'Vendor-Configs, Repository- und Service-Contracts, Service-Exceptions, '
+                . 'Configs, Repository- und Service-Contracts, Service-Exceptions, '
                 . 'Illuminate, Webauthn und der `\\Throwable`-Hierarchie abhängen.',
                 'Sie sind eine Präsentationsschicht und dürfen keine konkreten '
                 . 'Services oder Repositories kennen — DI erfolgt über Contracts. '

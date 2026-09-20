@@ -6,6 +6,7 @@ namespace Tests\Support;
 
 use App\Services\WebAuthn\Contracts\WebAuthnValidatorFactoryContract;
 use App\Services\WebAuthn\WebAuthnValidatorFactory;
+use Webauthn\AttestationStatement\AttestationStatementSupportManager;
 use Webauthn\AuthenticatorAssertionResponseValidator;
 use Webauthn\AuthenticatorAttestationResponseValidator;
 
@@ -19,13 +20,13 @@ final class RecordingValidatorFactory implements WebAuthnValidatorFactoryContrac
 
     public function buildAttestationValidator(string $appUrl): AuthenticatorAttestationResponseValidator
     {
-        return (new WebAuthnValidatorFactory())->buildAttestationValidator($appUrl);
+        return $this->realFactory()->buildAttestationValidator($appUrl);
     }
 
     public function buildAssertionValidator(string $appUrl): AuthenticatorAssertionResponseValidator
     {
         if ($this->assertionValidator === null) {
-            $factory = (new WebAuthnValidatorFactory())->buildConfiguredStepManagerFactory($appUrl);
+            $factory = $this->realFactory()->buildConfiguredStepManagerFactory($appUrl);
 
             $this->assertionValidator = new RecordingAssertionValidator($factory->requestCeremony());
         }
@@ -39,5 +40,10 @@ final class RecordingValidatorFactory implements WebAuthnValidatorFactoryContrac
     public function recordedCalls(): array
     {
         return $this->assertionValidator?->calls() ?? [];
+    }
+
+    private function realFactory(): WebAuthnValidatorFactory
+    {
+        return new WebAuthnValidatorFactory(app(AttestationStatementSupportManager::class));
     }
 }

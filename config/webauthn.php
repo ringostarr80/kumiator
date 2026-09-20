@@ -47,19 +47,4 @@ return [
 
     'ceremony_session_ttl' => (int) env('WEBAUTHN_CEREMONY_SESSION_TTL', 120),
 
-    /*
-    |--------------------------------------------------------------------------
-    | Attestation Conveyance
-    |--------------------------------------------------------------------------
-    |
-    | Steuert, ob der Authenticator eine Attestation liefern soll.
-    | 'none' ist für Passkeys der empfohlene Standard: größte Kompatibilität,
-    | und es werden keine Geräteinformationen preisgegeben.
-    |
-    | Mögliche Werte: 'none', 'indirect', 'direct', 'enterprise'
-    |
-    */
-
-    'attestation_conveyance' => env('WEBAUTHN_ATTESTATION', 'none'),
-
 ];

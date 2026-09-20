@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\Config\Vendor\Webauthn\WebauthnConfig;
+use App\Config\WebauthnConfig;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
@@ -18,6 +18,7 @@ use Symfony\Component\Serializer\SerializerInterface;
 use Tests\Support\RecordingValidatorFactory;
 use Tests\Support\VirtualAuthenticator;
 use Tests\TestCase;
+use Webauthn\AttestationStatement\AttestationStatementSupportManager;
 use Webauthn\AuthenticatorData;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
 use Webauthn\Exception\InvalidUserHandleException;
@@ -359,7 +360,7 @@ final class PasskeyAuthenticationServiceTest extends TestCase
         $serializer = app(SerializerInterface::class);
 
         $this->service = new PasskeyAuthenticationService(
-            new WebAuthnValidatorFactory(),
+            new WebAuthnValidatorFactory(app(AttestationStatementSupportManager::class)),
             new PasskeyCredentialRepository(),
             $serializer,
             new PasskeyLoginContext(),

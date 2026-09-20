@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Config\Vendor\Webauthn;
-
-use Webauthn\PublicKeyCredentialCreationOptions;
+namespace App\Config;
 
 /**
  * Getypter Zugriff auf `config/webauthn.php`.
@@ -57,15 +55,6 @@ final class WebauthnConfig
         return is_int($value) && $value >= 1
             ? $value
             : 60_000;
-    }
-
-    public static function attestationConveyance(): ?string
-    {
-        $value = config('webauthn.attestation_conveyance');
-
-        return in_array($value, PublicKeyCredentialCreationOptions::ATTESTATION_CONVEYANCE_PREFERENCES, true)
-            ? $value
-            : PublicKeyCredentialCreationOptions::ATTESTATION_CONVEYANCE_PREFERENCE_NONE;
     }
 
     public static function appUrl(): string
