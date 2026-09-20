@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\WebAuthn;
 
-use App\Config\Vendor\Webauthn\WebauthnConfig;
+use App\Config\WebauthnConfig;
 use App\DataTransferObjects\NewPasskeyCredentialData;
 use App\Models\PasskeyCredential;
 use App\Models\User;
@@ -94,7 +94,14 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
                 // UV-Flag prüfen; sonst bliebe der Passkey ein reiner Besitzfaktor.
                 userVerification: AuthenticatorSelectionCriteria::USER_VERIFICATION_REQUIREMENT_REQUIRED,
             ),
-            attestation: WebauthnConfig::attestationConveyance(),
+            // Nicht konfigurierbar: Der Support-Manager kennt nur das Format `none`.
+            // Mit jedem anderen Wert kämen Attestationen attestierender Authenticatoren
+            // (z. B. `packed`, `tpm`) unverändert an und ließen die Registrierung
+            // scheitern; bei `none` ersetzt der Client sie durch ein leeres Statement
+            // – und die App erfährt nichts über das Gerät. Nur Self-Attestationen
+            // (`packed` ohne Zertifikat) reicht der Client durch; solche Authenticatoren
+            // bleiben ausgeschlossen.
+            attestation: PublicKeyCredentialCreationOptions::ATTESTATION_CONVEYANCE_PREFERENCE_NONE,
             excludeCredentials: $excludeCredentials,
             timeout: $timeout,
         );

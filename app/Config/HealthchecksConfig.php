@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Config;
  *
  * `config()`-Aufrufe liefern `mixed` und müssten in Services typed gecastet
  * werden — zentralisiert hier, damit der Pinger frei von Cast-Boilerplate
- * bleibt. Analog zum Muster `App\Config\Vendor\Webauthn\WebauthnConfig`.
+ * bleibt. Analog zum Muster `App\Config\WebauthnConfig`.
  */
 final class HealthchecksConfig
 {

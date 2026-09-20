@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\WebAuthn;
 
 use App\Services\WebAuthn\Contracts\WebAuthnValidatorFactoryContract;
+use Webauthn\AttestationStatement\AttestationStatementSupportManager;
 use Webauthn\AuthenticatorAssertionResponseValidator;
 use Webauthn\AuthenticatorAttestationResponseValidator;
 use Webauthn\CeremonyStep\CeremonyStepManagerFactory;
@@ -12,11 +13,16 @@ use Webauthn\CeremonyStep\CeremonyStepManagerFactory;
 /**
  * Erzeugt die Zeremonie-Validatoren für Registrierung und Anmeldung.
  *
- * Reine Factory ohne Zustand: Sie richtet die Zeremonie-Maschinerie der
- * webauthn-lib lediglich auf die erlaubten Origins ein.
+ * Reine Factory: Sie richtet die Zeremonie-Maschinerie der webauthn-lib
+ * lediglich auf die erlaubten Origins und die bekannten Attestation-Formate ein.
  */
 final class WebAuthnValidatorFactory implements WebAuthnValidatorFactoryContract
 {
+    public function __construct(
+        private readonly AttestationStatementSupportManager $attestationStatementSupportManager,
+    ) {
+    }
+
     /**
      * Jedes Mal eine neue Instanz, weil sie leichtgewichtig ist.
      */
@@ -50,6 +56,10 @@ final class WebAuthnValidatorFactory implements WebAuthnValidatorFactoryContract
         // Der Factory mitteilen, welche Origins gültig sind, damit CheckOrigin /
         // CheckAllowedOrigins in beiden Zeremonien durchlaufen.
         $factory->setAllowedOrigins([$appUrl]);
+
+        // Derselbe Manager wie beim Serializer — sonst entschiede hier der
+        // Lib-Default darüber, welche Formate die Zeremonie durchlässt.
+        $factory->setAttestationStatementSupportManager($this->attestationStatementSupportManager);
 
         return $factory;
     }

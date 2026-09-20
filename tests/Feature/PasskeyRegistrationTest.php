@@ -16,8 +16,10 @@ use Illuminate\Support\Facades\Schema;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
 use Tests\Support\ConfirmsPassword;
+use Tests\Support\FakeAttestationStatementSupport;
 use Tests\Support\VirtualAuthenticator;
 use Tests\TestCase;
+use Webauthn\AttestationStatement\AttestationStatementSupportManager;
 use Webauthn\AuthenticatorSelectionCriteria;
 use Webauthn\PublicKeyCredentialCreationOptions;
 
@@ -240,6 +242,33 @@ final class PasskeyRegistrationTest extends TestCase
         $credential = PasskeyCredential::query()->where('user_id', $user->getKey())->sole();
 
         $this->assertSame('Test Passkey', $credential->name);
+    }
+
+    public function testStoreEndpointAcceptsEveryFormatTheAttestationManagerKnows(): void
+    {
+        // Serializer und Zeremonie müssen denselben Manager benutzen — kennt
+        // nur einer das Format, bleibt die Registrierung hängen.
+        $this->app->instance(
+            AttestationStatementSupportManager::class,
+            new AttestationStatementSupportManager([new FakeAttestationStatementSupport()]),
+        );
+
+        $user = User::factory()->create();
+        $options = $this->startCeremony($user);
+
+        $response = $this->actingAsConfirmed($user)->postJson(
+            self::REGISTER_URL,
+            [
+                ...VirtualAuthenticator::create()->attestation(
+                    $options,
+                    format: FakeAttestationStatementSupport::FORMAT,
+                ),
+                'name' => 'Test Passkey',
+            ],
+            ['Content-Type' => self::CONTENT_TYPE_JSON],
+        );
+
+        $response->assertCreated();
     }
 
     public function testStoreEndpointReturns400WhenRequestBodyIsEmpty(): void

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\WebAuthn;
 
-use App\Config\Vendor\Webauthn\WebauthnConfig;
+use App\Config\WebauthnConfig;
 use App\Enums\ActivityFailureReason;
 use App\Models\PasskeyCredential;
 use App\Models\User;

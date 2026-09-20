@@ -32,13 +32,22 @@ final class WebAuthnServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton(SerializerInterface::class, static function (): SerializerInterface {
-            $attestationManager = new AttestationStatementSupportManager([
+        // Ein Manager für Serializer und Zeremonie: Er allein legt fest, welche
+        // Attestation-Formate die App annimmt — ohne die Bindung baute der
+        // Container der Zeremonie still einen zweiten Manager.
+        $this->app->singleton(
+            AttestationStatementSupportManager::class,
+            static fn (): AttestationStatementSupportManager => new AttestationStatementSupportManager([
                 new NoneAttestationStatementSupport(),
-            ]);
+            ]),
+        );
 
-            return (new WebauthnSerializerFactory($attestationManager))->create();
-        });
+        $this->app->singleton(
+            SerializerInterface::class,
+            fn (): SerializerInterface => (new WebauthnSerializerFactory(
+                $this->app->make(AttestationStatementSupportManager::class),
+            ))->create(),
+        );
 
         $this->app->singleton(WebAuthnValidatorFactoryContract::class, WebAuthnValidatorFactory::class);
 

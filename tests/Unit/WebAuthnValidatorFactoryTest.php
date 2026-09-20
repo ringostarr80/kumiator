@@ -6,6 +6,7 @@ namespace Tests\Unit;
 
 use App\Services\WebAuthn\WebAuthnValidatorFactory;
 use Tests\TestCase;
+use Webauthn\AttestationStatement\AttestationStatementSupportManager;
 use Webauthn\AuthenticatorAssertionResponseValidator;
 use Webauthn\AuthenticatorAttestationResponseValidator;
 
@@ -31,6 +32,6 @@ final class WebAuthnValidatorFactoryTest extends TestCase
     {
         parent::setUp();
 
-        $this->factory = new WebAuthnValidatorFactory();
+        $this->factory = new WebAuthnValidatorFactory(app(AttestationStatementSupportManager::class));
     }
 }

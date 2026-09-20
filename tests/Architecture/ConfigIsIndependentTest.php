@@ -17,7 +17,7 @@ final class ConfigIsIndependentTest
      *
      * Neue Nicht-Vendor-Configs werden automatisch erfasst. Neue Vendor-
      * Configs werden unter App\Config\Vendor\{VendorName}\ angelegt und
-     * brauchen lediglich eine weitere canOnly()-Regel unten — kein
+     * brauchen lediglich eine canOnly()-Regel unten — kein
      * Per-Klasse-Exclude mehr.
      */
     public function testNonVendorConfigClassesCanOnlyDependOnIlluminate(): Rule
@@ -33,24 +33,6 @@ final class ConfigIsIndependentTest
                 'Braucht eine Config-Klasse ein Vendor-Paket, gehört sie unter '
                 . 'App\\Config\\Vendor\\{VendorName}\\ und bekommt dort eine '
                 . 'eigene canOnly()-Regel.',
-            );
-    }
-
-    public function testWebauthnVendorConfigCanOnlyDependOnWebauthn(): Rule
-    {
-        return PHPat::rule()
-            ->classes(Selector::inNamespace('App\\Config\\Vendor\\Webauthn'))
-            ->canOnly()
-            ->dependOn()
-            ->classes(
-                Selector::inNamespace('Illuminate'),
-                Selector::inNamespace('Webauthn'),
-            )
-            ->because(
-                'Config-Klassen unter App\\Config\\Vendor\\Webauthn dürfen nur '
-                . 'von Illuminate und Webauthn abhängen.',
-                'Jeder Vendor-Sub-Namespace darf ausschließlich das Vendor-Paket '
-                . 'nutzen, das er konfiguriert.',
             );
     }
 }

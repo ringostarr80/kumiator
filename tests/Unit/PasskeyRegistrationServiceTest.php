@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\Config\Vendor\Webauthn\WebauthnConfig;
+use App\Config\WebauthnConfig;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
@@ -15,6 +15,7 @@ use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
 use Tests\Support\VirtualAuthenticator;
 use Tests\TestCase;
+use Webauthn\AttestationStatement\AttestationStatementSupportManager;
 use Webauthn\AuthenticatorSelectionCriteria;
 use Webauthn\Exception\AuthenticatorResponseVerificationException;
 use Webauthn\PublicKeyCredentialCreationOptions;
@@ -58,6 +59,18 @@ final class PasskeyRegistrationServiceTest extends TestCase
         $this->assertSame(
             AuthenticatorSelectionCriteria::USER_VERIFICATION_REQUIREMENT_REQUIRED,
             $options->authenticatorSelection?->userVerification,
+        );
+    }
+
+    public function testCreateOptionsDoesNotRequestAttestation(): void
+    {
+        $user = User::factory()->create();
+
+        $options = $this->service->createOptions($user);
+
+        $this->assertSame(
+            PublicKeyCredentialCreationOptions::ATTESTATION_CONVEYANCE_PREFERENCE_NONE,
+            $options->attestation,
         );
     }
 
@@ -166,7 +179,7 @@ final class PasskeyRegistrationServiceTest extends TestCase
         $serializer = app(SerializerInterface::class);
 
         $this->service = new PasskeyRegistrationService(
-            new WebAuthnValidatorFactory(),
+            new WebAuthnValidatorFactory(app(AttestationStatementSupportManager::class)),
             new PasskeyCredentialRepository(),
             $serializer,
         );

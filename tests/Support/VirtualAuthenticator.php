@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
-use App\Config\Vendor\Webauthn\WebauthnConfig;
+use App\Config\WebauthnConfig;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use CBOR\ByteStringObject;
@@ -106,10 +106,16 @@ final class VirtualAuthenticator
      * `$userVerified` bildet einen Authenticator ab, der den Nutzer nur als
      * anwesend meldet, ohne ihn per Biometrie oder PIN zu prüfen.
      *
+     * `$format` bildet einen Authenticator ab, der ein anderes Attestation-
+     * Format als `none` meldet; das Statement selbst bleibt leer.
+     *
      * @return array<string, mixed>
      */
-    public function attestation(PublicKeyCredentialCreationOptions $options, bool $userVerified = true): array
-    {
+    public function attestation(
+        PublicKeyCredentialCreationOptions $options,
+        bool $userVerified = true,
+        string $format = 'none',
+    ): array {
         $clientDataJson = (string) json_encode([
             'type' => 'webauthn.create',
             'challenge' => Base64UrlSafe::encodeUnpadded($options->challenge),
@@ -135,7 +141,7 @@ final class VirtualAuthenticator
             . $this->coseKey;
 
         $attestationObject = (string) MapObject::create()
-            ->add(TextStringObject::create('fmt'), TextStringObject::create('none'))
+            ->add(TextStringObject::create('fmt'), TextStringObject::create($format))
             ->add(TextStringObject::create('attStmt'), MapObject::create())
             ->add(TextStringObject::create('authData'), ByteStringObject::create($authenticatorData));
 
