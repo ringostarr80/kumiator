@@ -7,13 +7,20 @@ namespace Tests\Feature\Auth;
 use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
+use App\Notifications\PasskeyChangedNotification;
 use App\Services\Auth\Contracts\LoginMethodChangerContract;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 use Tests\Support\InsertsSessions;
@@ -241,6 +248,93 @@ final class LoginMethodChangerTest extends TestCase
 
         $this->assertModelMissing($removed);
         $this->assertModelExists($kept);
+    }
+
+    public function testDeletingNotifiesTheAccountOwnerAboutTheRemovedPasskey(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+        $passkey = PasskeyCredential::factory()->for($user)->create(['name' => 'Altes Handy']);
+
+        $this->changer->deletePasskey($passkey);
+
+        Notification::assertSentTo(
+            $user,
+            PasskeyChangedNotification::class,
+            fn (PasskeyChangedNotification $notification): bool => in_array(
+                __('app.passkey_removed_intro', ['passkey' => 'Altes Handy']),
+                $notification->toMail($user)->introLines,
+                true,
+            ),
+        );
+    }
+
+    /**
+     * Die Mail rendert erst im Worker, der keine Session kennt und ohne die
+     * mitgegebene Sprache auf `APP_LOCALE` zurückfiele.
+     */
+    public function testTheRemovalMailKeepsTheLanguageOfTheRequest(): void
+    {
+        Notification::fake();
+        App::setLocale('de');
+        $user = User::factory()->create();
+        $passkey = PasskeyCredential::factory()->for($user)->create();
+
+        $this->changer->deletePasskey($passkey);
+
+        Notification::assertSentTo(
+            $user,
+            PasskeyChangedNotification::class,
+            fn (PasskeyChangedNotification $notification): bool => $notification->locale === 'de',
+        );
+    }
+
+    public function testAKeptLastPasskeyNotifiesNobody(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['password_login_disabled_at' => now()]);
+        $passkey = PasskeyCredential::factory()->for($user)->create();
+
+        $this->changer->deletePasskey($passkey);
+
+        Notification::assertNothingSent();
+    }
+
+    /**
+     * Zwei Löschungen desselben Passkeys, die ihn beide noch vorfanden: Die
+     * zweite träfe keine Zeile mehr, Eloquent meldete trotzdem Erfolg, und
+     * dieselbe Entfernung ginge ein zweites Mal per Mail raus.
+     */
+    public function testAPasskeyDeletedMeanwhileIsNotReportedAgain(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+        $passkey = PasskeyCredential::factory()->for($user)->create();
+        $stale = PasskeyCredential::findOrFail($passkey->id);
+
+        $this->changer->deletePasskey($passkey);
+
+        $this->assertThrows(fn () => $this->changer->deletePasskey($stale), ModelNotFoundException::class);
+        Notification::assertSentToTimes($user, PasskeyChangedNotification::class, 1);
+    }
+
+    /**
+     * Die Mail geht erst raus, wenn der Passkey schon gelöscht ist. Ein
+     * durchgereichter Fehler meldete dann eine gescheiterte Löschung, die
+     * stattgefunden hat.
+     */
+    public function testDeletingSucceedsWhenTheNotificationCannotBeQueued(): void
+    {
+        Exceptions::fake();
+        Config::set('queue.default', 'database');
+        $passkey = PasskeyCredential::factory()->for(User::factory())->create();
+
+        Schema::drop('jobs');
+
+        $this->assertTrue($this->changer->deletePasskey($passkey));
+
+        $this->assertModelMissing($passkey);
+        Exceptions::assertReported(QueryException::class);
     }
 
     protected function setUp(): void

@@ -7,10 +7,12 @@ namespace Tests\Feature;
 use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
+use App\Notifications\PasskeyChangedNotification;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use ParagonIE\ConstantTime\Base64UrlSafe;
@@ -242,6 +244,90 @@ final class PasskeyRegistrationTest extends TestCase
         $credential = PasskeyCredential::query()->where('user_id', $user->getKey())->sole();
 
         $this->assertSame('Test Passkey', $credential->name);
+    }
+
+    public function testStoreEndpointNotifiesTheAccountOwnerAboutTheNewPasskey(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+        $options = $this->startCeremony($user);
+
+        $this->actingAsConfirmed($user)->postJson(
+            self::REGISTER_URL,
+            [...VirtualAuthenticator::create()->attestation($options), 'name' => 'Test Passkey'],
+            ['Content-Type' => self::CONTENT_TYPE_JSON],
+        )->assertCreated();
+
+        Notification::assertSentTo(
+            $user,
+            PasskeyChangedNotification::class,
+            fn (PasskeyChangedNotification $notification): bool => in_array(
+                __('app.passkey_added_intro', ['passkey' => 'Test Passkey']),
+                $notification->toMail($user)->introLines,
+                true,
+            ),
+        );
+    }
+
+    /**
+     * Die Mail rendert erst im Worker, der keine Session kennt und ohne die
+     * mitgegebene Sprache auf `APP_LOCALE` zurückfiele.
+     */
+    public function testTheNewPasskeyMailKeepsTheLanguageOfTheRequest(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+        $options = $this->startCeremony($user);
+
+        $this->actingAsConfirmed($user)->withSession(['locale' => 'de'])->postJson(
+            self::REGISTER_URL,
+            [...VirtualAuthenticator::create()->attestation($options), 'name' => 'Test Passkey'],
+            ['Content-Type' => self::CONTENT_TYPE_JSON],
+        )->assertCreated();
+
+        Notification::assertSentTo(
+            $user,
+            PasskeyChangedNotification::class,
+            fn (PasskeyChangedNotification $notification): bool => $notification->locale === 'de',
+        );
+    }
+
+    public function testARejectedAttestationNotifiesNobody(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+        $options = $this->startCeremony($user);
+
+        $this->actingAsConfirmed($user)->postJson(
+            self::REGISTER_URL,
+            VirtualAuthenticator::create()->attestation($options, userVerified: false),
+            ['Content-Type' => self::CONTENT_TYPE_JSON],
+        )->assertUnprocessable();
+
+        Notification::assertNothingSent();
+    }
+
+    /**
+     * Die Mail geht erst raus, wenn der Passkey schon gespeichert ist. Ein 500
+     * meldete dann eine gescheiterte Registrierung, die stattgefunden hat.
+     */
+    public function testStoreEndpointSucceedsWhenTheNotificationCannotBeQueued(): void
+    {
+        Exceptions::fake();
+        config(['queue.default' => 'database']);
+
+        $user = User::factory()->create();
+        $options = $this->startCeremony($user);
+
+        Schema::drop('jobs');
+
+        $this->actingAsConfirmed($user)->postJson(
+            self::REGISTER_URL,
+            VirtualAuthenticator::create()->attestation($options),
+            ['Content-Type' => self::CONTENT_TYPE_JSON],
+        )->assertCreated();
+
+        Exceptions::assertReported(QueryException::class);
     }
 
     public function testStoreEndpointAcceptsEveryFormatTheAttestationManagerKnows(): void
