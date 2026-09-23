@@ -6,8 +6,10 @@ namespace App\Services\WebAuthn;
 
 use App\Config\WebauthnConfig;
 use App\DataTransferObjects\NewPasskeyCredentialData;
+use App\Enums\PasskeyChange;
 use App\Models\PasskeyCredential;
 use App\Models\User;
+use App\Notifications\PasskeyChangedNotification;
 use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use App\Services\WebAuthn\Contracts\PasskeyRegistrationContract;
 use App\Services\WebAuthn\Contracts\WebAuthnValidatorFactoryContract;
@@ -132,11 +134,26 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
         $validator = $this->validatorFactory->buildAttestationValidator(WebauthnConfig::appUrl());
         $credentialRecord = $validator->check($response, $storedOptions, $host);
 
-        return $this->repository->saveNewCredential(
+        $passkey = $this->repository->saveNewCredential(
             $user,
             $this->buildNewCredentialData($credentialRecord),
             $credentialName,
         );
+
+        // Der Passkey ist schon gespeichert: Ein durchgereichter Fehler beim
+        // Einreihen der Mail machte aus der vollzogenen Registrierung einen
+        // Fehlschlag.
+        try {
+            // Sprach-Snapshot: Die Mail rendert erst im Worker, der keine Session
+            // kennt und sonst auf `APP_LOCALE` zurückfiele.
+            $user->notify(
+                (new PasskeyChangedNotification(PasskeyChange::ADDED, $passkey->name))->locale(app()->getLocale()),
+            );
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return $passkey;
     }
 
     // ──────────────────────────────────────────────────────────────────────────

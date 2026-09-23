@@ -404,6 +404,17 @@ return [
     'email_change_requested_ttl' => 'Die Anfrage läuft nach 60 Minuten automatisch ab.',
     'email_change_requested_self_hint' => 'Wenn du die Änderung selbst angestoßen hast, ist nichts weiter zu tun.',
 
+    // Passkey-Bestand: Hinweis-Mail an den Kontoinhaber
+    'passkey_added_subject' => 'Sicherheitshinweis: Neuer Passkey in deinem Konto',
+    'passkey_removed_subject' => 'Sicherheitshinweis: Passkey aus deinem Konto entfernt',
+    'passkey_changed_greeting' => 'Hallo :name,',
+    'passkey_added_intro' => 'in deinem Konto wurde soeben der Passkey „:passkey" hinzugefügt.',
+    'passkey_removed_intro' => 'aus deinem Konto wurde soeben der Passkey „:passkey" entfernt.',
+    'passkey_changed_warning' => 'Falls du das NICHT selbst warst, prüfe umgehend die Passkeys in deinem Profil'
+        . ' und ändere dein Passwort.',
+    'passkey_changed_action' => 'Passkeys verwalten',
+    'passkey_changed_self_hint' => 'Wenn du die Änderung selbst vorgenommen hast, ist nichts weiter zu tun.',
+
     // E-Mail-Änderung: Landingpages (GET nebenwirkungsfrei, Aktion per POST)
     'email_change_confirm_prompt' => 'Hier bestätigst du die Änderung deiner E-Mail-Adresse. Erst mit dem Klick'
         . ' auf den Button wird die neue Adresse übernommen.',
