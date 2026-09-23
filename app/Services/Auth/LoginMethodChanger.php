@@ -6,8 +6,10 @@ namespace App\Services\Auth;
 
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
+use App\Enums\PasskeyChange;
 use App\Models\PasskeyCredential;
 use App\Models\User;
+use App\Notifications\PasskeyChangedNotification;
 use App\Repositories\Contracts\PasskeyCredentialRepositoryContract;
 use App\Services\Auth\Contracts\LoginMethodChangerContract;
 use App\Services\Auth\Contracts\OtherSessionRevokerContract;
@@ -132,21 +134,46 @@ final class LoginMethodChanger implements LoginMethodChangerContract
 
     public function deletePasskey(PasskeyCredential $passkey): bool
     {
-        return DB::transaction(function () use ($passkey): bool {
+        $account = DB::transaction(function () use ($passkey): ?User {
             $account = $this->lockAccount($passkey->user_id);
+
+            // Neu gelesen hinter dem Lock: Eine zweite Löschung, die den Passkey
+            // noch vor dem Commit der ersten fand, träfe sonst keine Zeile mehr,
+            // bekäme von Eloquent trotzdem Erfolg gemeldet und verschickte
+            // dieselbe Entfernung ein zweites Mal.
+            $passkey->refresh();
 
             // Gezählt wird hinter dem Lock: Zwei gleichzeitige Löschungen sähen
             // sonst beide den vorletzten Passkey und nähmen gemeinsam auch den
             // letzten mit. Ein Konto mit offenem Passwort-Login braucht die
             // Zählung nicht — ihm bleibt ohnehin ein Anmeldeweg.
             if ($account->isPasswordLoginDisabled() && $this->passkeys->countForUser($account) <= 1) {
-                return false;
+                return null;
             }
 
             $this->passkeys->delete($passkey);
 
-            return true;
+            return $account;
         });
+
+        if ($account === null) {
+            return false;
+        }
+
+        // Der Passkey ist schon gelöscht: Ein durchgereichter Fehler beim
+        // Einreihen der Mail machte aus der vollzogenen Löschung einen
+        // Fehlschlag.
+        try {
+            // Sprach-Snapshot: Die Mail rendert erst im Worker, der keine Session
+            // kennt und sonst auf `APP_LOCALE` zurückfiele.
+            $account->notify(
+                (new PasskeyChangedNotification(PasskeyChange::REMOVED, $passkey->name))->locale(app()->getLocale()),
+            );
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return true;
     }
 
     private function lockAccount(int $userId): User

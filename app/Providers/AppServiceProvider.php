@@ -52,6 +52,7 @@ use Illuminate\Console\Scheduling\Event as ScheduledEvent;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Markdown;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -108,6 +109,12 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         Gate::policy(PasskeyCredential::class, PasskeyCredentialPolicy::class);
+
+        // Markdown-Mails escapen `{{ }}`-Ausgaben nur für HTML, nicht für
+        // Markdown: Ein Passkey- oder Nutzername wie `[Text](https://…)` würde
+        // in der Sicherheitsmail zum klickbaren Link. Der Schalter maskiert `[`
+        // und `<` vor dem Markdown-Parser, für alle Markdown-Mails.
+        Markdown::withSecuredEncoding();
 
         // Zentrale Audit-Vorsorge für abgelehnte Autorisierungen: ein einziger
         // Hook schreibt den `authorization_denied`-Eintrag, statt das Muster pro
