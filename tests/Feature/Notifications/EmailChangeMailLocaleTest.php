@@ -6,7 +6,7 @@ namespace Tests\Feature\Notifications;
 
 use App\Models\User;
 use App\Services\User\Contracts\UserEmailChangerContract;
-use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Mail\Transport\ArrayTransport;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Mail;
@@ -23,9 +23,7 @@ use Tests\TestCase;
  */
 final class EmailChangeMailLocaleTest extends TestCase
 {
-    // Kein RefreshDatabase: dessen Wrapping-Transaktion committet nie, sodass
-    // der `afterCommit`-Queue-Push der Mails ausbliebe.
-    use DatabaseMigrations;
+    use RefreshDatabase;
 
     public function testQueuedMailsRenderInRequestLocaleInsteadOfWorkerDefault(): void
     {
