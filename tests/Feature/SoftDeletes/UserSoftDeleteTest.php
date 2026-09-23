@@ -10,6 +10,7 @@ use App\Enums\ActivityEvent;
 use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
+use App\Notifications\PasskeyChangedNotification;
 use App\Services\Auth\Contracts\LoginMethodChangerContract;
 use App\Services\User\Contracts\UserHardDeleterContract;
 use App\Services\User\Contracts\UserSoftDeleterContract;
@@ -19,6 +20,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -290,6 +292,22 @@ final class UserSoftDeleteTest extends TestCase
                 . 'Passkey-Namen des gelöschten Users tragen.',
             );
         }
+    }
+
+    /**
+     * Die Passkeys des Kontos fallen hier über Model-Events. Die Hinweismail über
+     * einen entfernten Passkey hängt bewusst nicht daran — sonst bekäme ein
+     * Konto, das gerade gelöscht wird, pro Passkey eine Mail.
+     */
+    public function testSoftDeleteSendsNoNoticeForTheRemovedPasskeys(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+        PasskeyCredential::factory()->for($user)->create();
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+
+        Notification::assertNotSentTo($user, PasskeyChangedNotification::class);
     }
 
     /**

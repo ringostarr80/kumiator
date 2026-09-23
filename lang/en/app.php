@@ -395,6 +395,17 @@ return [
     'email_change_requested_ttl' => 'The request expires automatically after 60 minutes.',
     'email_change_requested_self_hint' => 'If you initiated the change yourself, no further action is required.',
 
+    // Passkey inventory: notice email to the account owner
+    'passkey_added_subject' => 'Security notice: new passkey added to your account',
+    'passkey_removed_subject' => 'Security notice: passkey removed from your account',
+    'passkey_changed_greeting' => 'Hello :name,',
+    'passkey_added_intro' => 'The passkey ":passkey" has just been added to your account.',
+    'passkey_removed_intro' => 'The passkey ":passkey" has just been removed from your account.',
+    'passkey_changed_warning' => 'If this was NOT you, review the passkeys in your profile immediately'
+        . ' and change your password.',
+    'passkey_changed_action' => 'Manage passkeys',
+    'passkey_changed_self_hint' => 'If you made the change yourself, no further action is required.',
+
     // Email change: landing pages (GET side-effect free, action via POST)
     'email_change_confirm_prompt' => 'Confirm the change of your email address here. The new address only takes'
         . ' effect once you click the button.',
