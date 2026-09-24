@@ -69,6 +69,9 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
 
         // ES256 (ECDSA P-256) zuerst, das beherrschen alle modernen Passkey-
         // Anbieter; RS256 ist der Rückfall für Windows Hello / TPM-Schlüssel.
+        // Die TR-02102-1 empfiehlt stattdessen RSA-PSS und Brainpool-Kurven, doch
+        // die bietet praktisch kein Authenticator an: Ohne ES256 und RS256 ließe
+        // sich kaum ein Passkey anlegen.
         $pubKeyCredParams = [
             PublicKeyCredentialParameters::create('public-key', ES256::ID),
             PublicKeyCredentialParameters::create('public-key', RS256::ID),
