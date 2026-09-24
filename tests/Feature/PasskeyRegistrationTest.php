@@ -130,6 +130,19 @@ final class PasskeyRegistrationTest extends TestCase
         );
     }
 
+    /**
+     * WebAuthn empfiehlt fünf Minuten, wenn die Nutzerverifikation verlangt ist.
+     */
+    public function testOptionsEndpointGivesTheBrowserFiveMinutes(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAsConfirmed($user)->getJson(self::REGISTER_OPTIONS_URL);
+
+        $response->assertOk();
+        $response->assertJsonPath('timeout', 300_000);
+    }
+
     public function testOptionsEndpointStoresChallengeInSession(): void
     {
         $user = User::factory()->create();

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\Config\WebauthnConfig;
 use App\Services\WebAuthn\WebAuthnCeremonySession;
 use Cose\Algorithm\Signature\ECDSA\ES256;
 use Illuminate\Http\Request;
@@ -216,6 +217,27 @@ final class WebAuthnCeremonySessionTest extends TestCase
         $this->assertNull($result);
     }
 
+    /**
+     * Verfiele die Challenge vor dem Browser-Dialog, scheiterte eine rechtzeitig
+     * bestätigte Geste am Server.
+     */
+    public function testChallengeOutlastsTheBrowserTimeout(): void
+    {
+        $options = PublicKeyCredentialRequestOptions::create(random_bytes(32));
+        $request = $this->makeRequestWithSession();
+
+        $this->ceremonySession->storeOptions($options, self::SESSION_KEY, $request);
+        $this->travel(WebauthnConfig::timeoutMs())->milliseconds();
+
+        $result = $this->ceremonySession->pullOptions(
+            self::SESSION_KEY,
+            PublicKeyCredentialRequestOptions::class,
+            $request,
+        );
+
+        $this->assertNotNull($result);
+    }
+
     public function testPullOptionsConsumesSessionEntry(): void
     {
         $options = PublicKeyCredentialRequestOptions::create(random_bytes(32));
@@ -261,16 +283,16 @@ final class WebAuthnCeremonySessionTest extends TestCase
 
     public function testStoreOptionsFallsBackToDefaultTtlForNonIntegerConfig(): void
     {
-        // The runtime guard (`is_int($ttlRaw) ? $ttlRaw : 120`) protects against
+        // The runtime guard (`is_int($ttlRaw) ? $ttlRaw : 360`) protects against
         // a misconfigured non-integer value being passed to addSeconds().
         config(['webauthn.ceremony_session_ttl' => 'not-an-integer']);
 
         $options = PublicKeyCredentialRequestOptions::create(random_bytes(32));
         $request = $this->makeRequestWithSession();
 
-        $lowerBound = now()->addSeconds(119)->timestamp;
+        $lowerBound = now()->addSeconds(359)->timestamp;
         $this->ceremonySession->storeOptions($options, self::SESSION_KEY, $request);
-        $upperBound = now()->addSeconds(121)->timestamp;
+        $upperBound = now()->addSeconds(361)->timestamp;
 
         $stored = $request->session()->get(self::SESSION_KEY);
 

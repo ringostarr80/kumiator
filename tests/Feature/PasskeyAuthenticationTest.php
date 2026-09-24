@@ -68,6 +68,17 @@ final class PasskeyAuthenticationTest extends TestCase
     }
 
     /**
+     * WebAuthn empfiehlt fünf Minuten, wenn die Nutzerverifikation verlangt ist.
+     */
+    public function testOptionsEndpointGivesTheBrowserFiveMinutes(): void
+    {
+        $response = $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
+
+        $response->assertOk();
+        $response->assertJsonPath('timeout', 300_000);
+    }
+
+    /**
      * Die Antwort ist für jeden Aufrufer dieselbe; eine gefüllte
      * `allowCredentials`-Liste machte daraus eine Auskunft über registrierte
      * Konten.
