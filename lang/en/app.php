@@ -183,6 +183,9 @@ return [
     'passkeys_description' => 'Manage your passkeys for passwordless sign-in.'
         . ' Passkeys are more secure than passwords and much easier to use.',
     'passkeys_empty' => 'You have not registered any passkeys yet.',
+    'passkey_second_hint' => 'You have only one passkey. It is best to set up a second one,'
+        . ' for example on a security key or in another password manager,'
+        . ' so you can still get into your account if the first one is lost.',
     'add_passkey' => 'Add Passkey',
     'passkey_name' => 'Passkey Name',
     'passkey_name_placeholder' => 'e.g. iPhone, MacBook, YubiKey',
@@ -205,8 +208,7 @@ return [
         . ' Your previous password no longer counts for this account.',
     'password_login_disabled_hint' => 'From then on you confirm changes on this page with your passkey'
         . ' instead of your password, and the reset link is no longer sent.'
-        . ' Anyone who loses their last passkey needs help from an administrator.'
-        . ' So it is best to register a second passkey beforehand.',
+        . ' Anyone who loses their last passkey needs help from an administrator.',
     'password_login_enable_warning' => 'Your password from before the switch-off is discarded in the process,'
         . ' and your other devices are signed out.'
         . ' To sign in with a password again afterwards, set a new one under "Update Password" above first'

@@ -109,6 +109,47 @@ final class PasskeyManagerFormTest extends TestCase
             ->assertCount('passkeys', 1); // @phpstan-ignore method.nonObject
     }
 
+    public function testASinglePasskeyGetsTheAdviceToAddASecond(): void
+    {
+        $user = User::factory()->create();
+        PasskeyCredential::factory()->for($user)->create();
+
+        Livewire::actingAs($user)
+            ->test(PasskeyManagerForm::class)
+            ->assertSee(__('app.passkey_second_hint'));
+    }
+
+    /**
+     * Gerade ohne Passwort-Login führt der Verlust des einzigen Passkeys nur noch
+     * über die Administration zurück.
+     */
+    public function testTheAdviceStaysWhilePasswordLoginIsTurnedOff(): void
+    {
+        $user = User::factory()->create(['password_login_disabled_at' => now()]);
+        PasskeyCredential::factory()->for($user)->create();
+
+        Livewire::actingAs($user)
+            ->test(PasskeyManagerForm::class)
+            ->assertSee(__('app.passkey_second_hint'));
+    }
+
+    public function testNoAdviceWithoutAPasskey(): void
+    {
+        Livewire::actingAs(User::factory()->create())
+            ->test(PasskeyManagerForm::class)
+            ->assertDontSee(__('app.passkey_second_hint'));
+    }
+
+    public function testNoAdviceOnceASecondPasskeyExists(): void
+    {
+        $user = User::factory()->create();
+        PasskeyCredential::factory()->for($user)->count(2)->create();
+
+        Livewire::actingAs($user)
+            ->test(PasskeyManagerForm::class)
+            ->assertDontSee(__('app.passkey_second_hint'));
+    }
+
     public function testOtherUserCannotDeletePasskey(): void
     {
         $this->confirmPassword();
