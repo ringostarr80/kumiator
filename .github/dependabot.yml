@@ -60,5 +60,10 @@ updates:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
     groups:
+      # @vitest/coverage-v8 pins its vitest peer to the exact same version, so a major of either one
+      # alone fails npm ci — both only install as a pair
+      vitest-major:
+        patterns: ["vitest", "@vitest/*"]
+        update-types: [major]
       npm-minor-patch:
         update-types: [minor, patch]
