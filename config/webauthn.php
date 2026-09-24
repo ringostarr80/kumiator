@@ -26,11 +26,13 @@ return [
     |--------------------------------------------------------------------------
     |
     | Zeit in Millisekunden, die der Browser auf eine Nutzerinteraktion wartet,
-    | bevor er die WebAuthn-Zeremonie abbricht.
+    | bevor er die WebAuthn-Zeremonie abbricht. Fünf Minuten empfiehlt WebAuthn,
+    | wenn die Nutzerverifikation verlangt ist: PIN oder Biometrie am
+    | Sicherheitsschlüssel oder Handy brauchen Zeit.
     |
     */
 
-    'timeout' => (int) env('WEBAUTHN_TIMEOUT', 60_000),
+    'timeout' => (int) env('WEBAUTHN_TIMEOUT', 300_000),
 
     /*
     |--------------------------------------------------------------------------
@@ -45,6 +47,6 @@ return [
     |
     */
 
-    'ceremony_session_ttl' => (int) env('WEBAUTHN_CEREMONY_SESSION_TTL', 120),
+    'ceremony_session_ttl' => (int) env('WEBAUTHN_CEREMONY_SESSION_TTL', 360),
 
 ];

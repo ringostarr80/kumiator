@@ -44,17 +44,17 @@ final class WebauthnConfig
     }
 
     /**
-     * Mindestens 1 ms, im Zweifel 60 000 ms.
+     * Mindestens 1 ms, im Zweifel 300 000 ms.
      *
      * @return positive-int
      */
     public static function timeoutMs(): int
     {
-        $value = config('webauthn.timeout', 60_000);
+        $value = config('webauthn.timeout', 300_000);
 
         return is_int($value) && $value >= 1
             ? $value
-            : 60_000;
+            : 300_000;
     }
 
     public static function appUrl(): string

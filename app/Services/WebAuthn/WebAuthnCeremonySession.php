@@ -33,10 +33,10 @@ final class WebAuthnCeremonySession implements WebAuthnCeremonySessionContract
     {
         $json = $this->serializer->serialize($options, 'json');
 
-        $ttlRaw = config('webauthn.ceremony_session_ttl', 120);
+        $ttlRaw = config('webauthn.ceremony_session_ttl', 360);
         $ttl = is_int($ttlRaw)
             ? $ttlRaw
-            : 120;
+            : 360;
 
         $request->session()->put($sessionKey, [
             'data' => $json,
