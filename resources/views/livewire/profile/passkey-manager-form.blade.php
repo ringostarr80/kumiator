@@ -99,6 +99,12 @@
             </div>
         @endif
 
+        {{-- Unabhängig vom Schalter: Gerade ohne Passwort-Login führt der Verlust des
+             einzigen Passkeys nur noch über die Administration zurück. --}}
+        @if ($passkeys->count() === 1)
+            <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">{{ __('app.passkey_second_hint') }}</p>
+        @endif
+
         {{-- Button zum Hinzufügen eines Passkeys --}}
         <div class="mt-5">
             {{-- Antworten, die schon in der Middleware entstehen, tragen einen im Framework

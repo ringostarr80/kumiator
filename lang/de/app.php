@@ -189,6 +189,9 @@ return [
     'passkeys_description' => 'Verwalte deine Passkeys für eine passwortlose Anmeldung.'
         . ' Passkeys sind sicherer als Passwörter und deutlich einfacher zu verwenden.',
     'passkeys_empty' => 'Du hast noch keine Passkeys registriert.',
+    'passkey_second_hint' => 'Du hast erst einen Passkey. Richte am besten einen zweiten ein,'
+        . ' etwa auf einem Sicherheitsschlüssel oder in einem anderen Passwort-Manager,'
+        . ' damit du auch dann noch in dein Konto kommst, wenn der erste verloren geht.',
     'add_passkey' => 'Passkey hinzufügen',
     'passkey_name' => 'Passkey-Name',
     'passkey_name_placeholder' => 'z.B. iPhone, MacBook, YubiKey',
@@ -211,8 +214,7 @@ return [
         . ' Dein bisheriges Passwort zählt an diesem Konto nicht mehr.',
     'password_login_disabled_hint' => 'Danach bestätigst du Änderungen auf dieser Seite mit deinem Passkey'
         . ' statt mit dem Passwort, und der Link zum Zurücksetzen wird nicht mehr verschickt.'
-        . ' Wer seinen letzten Passkey verliert, braucht die Hilfe einer Administration.'
-        . ' Registriere deshalb am besten vorher einen zweiten Passkey.',
+        . ' Wer seinen letzten Passkey verliert, braucht die Hilfe einer Administration.',
     'password_login_enable_warning' => 'Dein Passwort aus der Zeit vor dem Abschalten wird dabei verworfen,'
         . ' und deine anderen Geräte werden abgemeldet.'
         . ' Willst du dich danach wieder mit Passwort anmelden, setze vorher oben unter „Passwort ändern" ein neues'
