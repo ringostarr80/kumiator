@@ -19,9 +19,8 @@ class DeleteUser implements DeletesUsers
      * Delete the given user.
      *
      * Self-Delete ist bewusst ein Hard-Delete: DSGVO-konformes „Recht auf Vergessen".
-     * Die eigentliche Mechanik (Tokens, Passkeys, Sessions, Rollen-Pivots, Activity-
-     * Log-Purge, anonymisierter Audit-Eintrag) liegt im `UserHardDeleter`-Service,
-     * den auch der administrative `user:force-delete`-Command nutzt. Hier wird der
+     * Die eigentliche Mechanik liegt im `UserHardDeleter`-Service, den auch
+     * der administrative `user:force-delete`-Command nutzt. Hier wird der
      * Self-Delete-spezifische Event übergeben, sodass der zurückbleibende
      * Audit-Eintrag den Vorgang fachlich von einem Admin-Force-Delete unterscheidet.
      */

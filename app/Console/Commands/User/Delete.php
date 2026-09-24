@@ -19,13 +19,14 @@ use Illuminate\Console\Command;
  * Historie — und insbesondere die Activity-Log-Verweise auf den gelöschten
  * User — zu erhalten.
  *
- * Sessions, Sanctum-API-Tokens und Passkey-Credentials werden trotzdem hart
- * entfernt: Alle drei sind aktive Zugriffsmittel, die dem soft-deleted User
- * sonst nach einem späteren `restore()` wieder Zugang verschaffen würden.
+ * Sessions, Passkey-Credentials und ein offener Link zum Zurücksetzen werden
+ * trotzdem hart entfernt: Sie alle sind aktive Zugriffsmittel, die dem
+ * soft-deleted User sonst nach einem späteren `restore()` wieder Zugang
+ * verschaffen würden.
  * Die eigentliche Mechanik liegt im `UserSoftDeleter`-Service — dort auch
- * die Audit-Symmetrie zum UI-Pfad (`api_token_revoked`-Eintrag pro Token,
- * Passkey-Removed via `LogsActivity`-Trait). Dieser Command ist reine
- * Presentation: Eingabe, Bestätigung, Service-Aufruf, Ergebnis.
+ * der Audit-Eintrag pro Passkey (Passkey-Removed via `LogsActivity`-Trait).
+ * Dieser Command ist reine Presentation: Eingabe, Bestätigung, Service-Aufruf,
+ * Ergebnis.
  *
  * Hinweis zum Session-Treiber: Die explizite Session-Löschung wirkt nur bei
  * `session.driver = database` (aktueller Projekt-Default). Bei Redis/File/Cookie

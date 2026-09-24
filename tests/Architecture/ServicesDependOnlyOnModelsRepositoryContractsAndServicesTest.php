@@ -31,7 +31,6 @@ final class ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
                 Selector::inNamespace('ParagonIE'),
                 Selector::inNamespace('Symfony'),
                 Selector::inNamespace('Spatie\\Activitylog'),
-                Selector::inNamespace('Laravel\\Sanctum'),
                 Selector::classname(\Throwable::class),
                 Selector::isThrowable(),
                 Selector::classname(\GdImage::class),
@@ -48,10 +47,7 @@ final class ServicesDependOnlyOnModelsRepositoryContractsAndServicesTest
                 . 'das Paket bereits nutzen. App\\Notifications ist aus demselben Grund '
                 . 'freigegeben: Notifications sind ausgehende Infrastruktur-Adapter '
                 . '(Mail-Versand) und keine Präsentationsschicht im engeren Sinn — '
-                . 'symmetrisch zur Activity-Log-Freigabe. Laravel\\Sanctum ist '
-                . 'freigegeben, weil das `PersonalAccessToken`-Model in DSGVO-Hard-'
-                . 'Delete-Pfaden direkt angesprochen werden muss (kein Repository-'
-                . 'Wrapper sinnvoll, da Sanctum sein Model selbst exponiert). Die '
+                . 'symmetrisch zur Activity-Log-Freigabe. Die '
                 . 'gesamte `\\Throwable`-Hierarchie ist freigegeben, damit Services '
                 . 'eigene Exception-Typen definieren können (z. B. fachliche Service-'
                 . 'Fehler unter `App\\Services\\*\\Exceptions\\`), ohne dass jede '

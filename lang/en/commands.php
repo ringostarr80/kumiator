@@ -32,7 +32,7 @@ return [
         'title' => 'Restore soft-deleted user',
         'not_trashed' => 'User ":email" is not soft-deleted.',
         'confirm_restore' => 'Do you really want to restore this user?',
-        'hint' => 'Note: API tokens, passkeys and sessions were removed on deletion'
+        'hint' => 'Note: Passkeys and sessions were removed on deletion'
             . ' and will not be restored. The user must log in again and re-register'
             . ' their passkeys if applicable.',
         'permissions_hint' => 'Warning: Roles and direct permissions (e.g. activity-log.view)'

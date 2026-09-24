@@ -16,7 +16,6 @@ return [
     'team_settings' => 'Team-Einstellungen',
     'create_new_team' => 'Neues Team erstellen',
     'switch_teams' => 'Team wechseln',
-    'api_tokens' => 'API-Tokens',
     'profile' => 'Profil',
 
     // Welcome page
@@ -39,13 +38,10 @@ return [
     'cancel' => 'Abbrechen',
     'confirm' => 'Bestätigen',
     'delete' => 'Löschen',
-    'close' => 'Schließen',
-    'create' => 'Erstellen',
     'enable' => 'Aktivieren',
     'disable' => 'Deaktivieren',
     'unknown' => 'Unbekannt',
     'done' => 'Erledigt.',
-    'created' => 'Erstellt.',
     'whoops' => 'Hoppla! Etwas ist schiefgelaufen.',
 
     // Auth - Login
@@ -174,21 +170,6 @@ return [
         . ' Bitte lade vor dem Löschen alle Daten herunter, die du behalten möchtest.',
     'delete_account_confirm' => 'Bist du sicher, dass du dein Konto löschen möchtest? Sobald dein Konto gelöscht wird,'
         . ' werden alle zugehörigen Daten unwiderruflich gelöscht.',
-
-    // API Tokens
-    'create_api_token' => 'API-Token erstellen',
-    'api_tokens_description' => 'API-Tokens ermöglichen es Drittanbieter-Diensten, sich in deinem Namen bei unserer'
-        . ' Anwendung zu authentifizieren.',
-    'token_name' => 'Token-Name',
-    'permissions' => 'Berechtigungen',
-    'manage_api_tokens' => 'API-Tokens verwalten',
-    'api_tokens_delete_info' => 'Du kannst vorhandene Tokens löschen, wenn sie nicht mehr benötigt werden.',
-    'last_used' => 'Zuletzt verwendet',
-    'api_token' => 'API-Token',
-    'api_token_copy' => 'Bitte kopiere deinen neuen API-Token. Aus Sicherheitsgründen wird er nicht erneut angezeigt.',
-    'api_token_permissions' => 'API-Token-Berechtigungen',
-    'delete_api_token' => 'API-Token löschen',
-    'delete_api_token_confirm' => 'Bist du sicher, dass du diesen API-Token löschen möchtest?',
 
     // Team Invitation Email
     'team_invitation' => 'Du wurdest eingeladen, dem Team :team beizutreten!',

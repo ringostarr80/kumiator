@@ -25,7 +25,6 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\PendingCommand;
-use Laravel\Sanctum\PersonalAccessToken;
 use RuntimeException;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -121,7 +120,7 @@ final class UserSoftDeleteTest extends TestCase
         $this->assertFalse($restored->trashed());
     }
 
-    public function testSelfDeleteHardDeletesUserIncludingTokensPasskeysAndSessions(): void
+    public function testSelfDeleteHardDeletesUserIncludingPasskeysAndSessions(): void
     {
         config(['session.driver' => 'database']);
 
@@ -129,7 +128,6 @@ final class UserSoftDeleteTest extends TestCase
         Role::findOrCreate('member');
         $user->assignRole('member');
         PasskeyCredential::factory()->create(['user_id' => $user->getKey()]);
-        $user->createToken('test');
         DB::table('sessions')->insert([
             'id' => 'test-session-id',
             'user_id' => $user->getKey(),
@@ -152,13 +150,6 @@ final class UserSoftDeleteTest extends TestCase
         $this->assertSame(0, User::query()->withTrashed()->where('id', $user->getKey())->count());
         $this->assertSame(0, PasskeyCredential::query()->where('user_id', $user->getKey())->count());
         $this->assertSame(0, DB::table('sessions')->where('user_id', $user->getKey())->count());
-        $this->assertSame(
-            0,
-            PersonalAccessToken::query()
-                ->where('tokenable_type', $user->getMorphClass())
-                ->where('tokenable_id', $user->getKey())
-                ->count(),
-        );
         // Spatie\Permission räumt Rollen-Pivots beim Hard-Delete via Eloquent-
         // `deleting`-Event auf. Sollte ein zukünftiges Spatie-Update dieses
         // Verhalten ändern oder der Listener ausgehängt werden, wäre der hart
@@ -174,7 +165,7 @@ final class UserSoftDeleteTest extends TestCase
     }
 
     /**
-     * Tokens und Passkeys fallen im Hard-Delete bewusst per Mass-`delete()` am
+     * Passkeys fallen im Hard-Delete bewusst per Mass-`delete()` am
      * Query-Builder — also an den Model-Events vorbei. Ein `each->deleteOrFail()`
      * (im Soft-Delete genau richtig) ließe den `LogsActivity`-Trait pro Credential
      * einen `passkey_removed`-Eintrag schreiben, dessen Subject die Credential ist
@@ -184,12 +175,11 @@ final class UserSoftDeleteTest extends TestCase
      * festgehalten, was am Ende in der Tabelle stehen darf: nichts außer dem
      * anonymen Audit-Eintrag des Vorgangs selbst.
      */
-    public function testHardDeleteWritesNoActivityEntriesForRemovedTokensAndPasskeys(): void
+    public function testHardDeleteWritesNoActivityEntriesForRemovedPasskeys(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
         PasskeyCredential::factory()->for($user)->create();
-        $user->createToken('test');
         Activity::query()->delete();
 
         app(DeleteUser::class)->delete($user);
@@ -200,7 +190,7 @@ final class UserSoftDeleteTest extends TestCase
             1,
             $entries,
             'Der Hard-Delete darf außer seinem eigenen Audit-Eintrag nichts hinterlassen — '
-            . 'Einträge über gelöschte Tokens/Passkeys überleben den Purge.',
+            . 'Einträge über gelöschte Passkeys überleben den Purge.',
         );
         $entry = $entries->first();
         $this->assertNotNull($entry);
@@ -311,7 +301,7 @@ final class UserSoftDeleteTest extends TestCase
     }
 
     /**
-     * DSGVO-Symmetrie zum Token-/Passkey-/Session-Bypass: Nach dem Self-Delete
+     * DSGVO-Symmetrie zum Passkey-/Session-Bypass: Nach dem Self-Delete
      * darf in `activity_log` kein Eintrag mehr existieren, der den gelöschten
      * User als Subject referenziert — weder durch Alt-Einträge (z. B. das
      * Profil-Update-Log einer früheren Namensänderung) noch durch finale
@@ -433,13 +423,12 @@ final class UserSoftDeleteTest extends TestCase
         );
     }
 
-    public function testConsoleDeleteCommandSoftDeletesUserAndPurgesSessionsPasskeysAndTokens(): void
+    public function testConsoleDeleteCommandSoftDeletesUserAndPurgesSessionsAndPasskeys(): void
     {
         config(['session.driver' => 'database']);
 
         $user = User::factory()->create(['email' => 'admin-delete@example.com']);
         PasskeyCredential::factory()->for($user)->count(2)->create();
-        $user->createToken('admin-delete-token');
         DB::table('sessions')->insert([
             'id' => 'admin-session-id',
             'user_id' => $user->getKey(),
@@ -462,13 +451,6 @@ final class UserSoftDeleteTest extends TestCase
         $this->assertNotNull(User::query()->withTrashed()->find($user->getKey()));
         $this->assertSame(0, DB::table('sessions')->where('user_id', $user->getKey())->count());
         $this->assertSame(0, PasskeyCredential::query()->where('user_id', $user->getKey())->count());
-        $this->assertSame(
-            0,
-            PersonalAccessToken::query()
-                ->where('tokenable_type', $user->getMorphClass())
-                ->where('tokenable_id', $user->getKey())
-                ->count(),
-        );
     }
 
     /**

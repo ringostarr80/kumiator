@@ -18,9 +18,8 @@ use Illuminate\Console\Attributes\Signature;
  * über das im Zweifel `user:restore` zurückrollen kann. Aktive User können
  * nicht direkt force-gelöscht werden.
  *
- * Die eigentliche Mechanik (Tokens, Passkeys, Sessions, Rollen-Pivots,
- * Activity-Log-Purge, anonymer Audit-Eintrag) liegt im `UserHardDeleter`-
- * Service, den auch der Self-Delete-Pfad (`App\Actions\Jetstream\DeleteUser`)
+ * Die eigentliche Mechanik liegt im `UserHardDeleter`-Service, den auch
+ * der Self-Delete-Pfad (`App\Actions\Jetstream\DeleteUser`)
  * nutzt — der Event-Name `account_admin_force_deleted` unterscheidet die
  * beiden Pfade im verbleibenden Audit-Trail.
  */

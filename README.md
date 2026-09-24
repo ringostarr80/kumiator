@@ -21,7 +21,7 @@ Produktivbetrieb wird ausdrücklich nicht empfohlen.**
 
 Fertiggestellt ist das technische Fundament: Registrierung mit Freischaltung durch
 Administratoren, Anmeldung per Passwort, Zwei-Faktor-Authentifizierung und Passkeys, Rollen- und
-Rechteverwaltung, geprüfter E-Mail-Wechsel, Sitzungsverwaltung, API-Token, ein Aktivitätsprotokoll
+Rechteverwaltung, geprüfter E-Mail-Wechsel, Sitzungsverwaltung, ein Aktivitätsprotokoll
 sowie CLI-Kommandos zur Benutzerverwaltung. Die Oberfläche liegt auf Deutsch und Englisch vor.
 
 Die fachliche Vereinsverwaltung — Mitglieder, Beiträge und weitere vereinsinterne Daten — ist

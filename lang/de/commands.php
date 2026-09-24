@@ -32,7 +32,7 @@ return [
         'title' => 'Soft-deleted Benutzer wiederherstellen',
         'not_trashed' => 'Benutzer ":email" ist nicht soft-deleted.',
         'confirm_restore' => 'Soll dieser Benutzer wirklich wiederhergestellt werden?',
-        'hint' => 'Hinweis: API-Tokens, Passkeys und Sessions wurden beim Löschen entfernt'
+        'hint' => 'Hinweis: Passkeys und Sessions wurden beim Löschen entfernt'
             . ' und werden nicht wiederhergestellt. Der Benutzer muss sich neu anmelden'
             . ' und ggf. seine Passkeys neu registrieren.',
         'permissions_hint' => 'Achtung: Rollen und Direkt-Berechtigungen (z. B. activity-log.view)'
