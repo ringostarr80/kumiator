@@ -16,7 +16,6 @@ return [
     'team_settings' => 'Team Settings',
     'create_new_team' => 'Create New Team',
     'switch_teams' => 'Switch Teams',
-    'api_tokens' => 'API Tokens',
     'profile' => 'Profile',
 
     // Welcome page
@@ -40,13 +39,10 @@ return [
     'cancel' => 'Cancel',
     'confirm' => 'Confirm',
     'delete' => 'Delete',
-    'close' => 'Close',
-    'create' => 'Create',
     'enable' => 'Enable',
     'disable' => 'Disable',
     'unknown' => 'Unknown',
     'done' => 'Done.',
-    'created' => 'Created.',
     'whoops' => 'Whoops! Something went wrong.',
 
     // Auth - Login
@@ -168,21 +164,6 @@ return [
         . ' Before deleting your account, please download any data or information that you wish to retain.',
     'delete_account_confirm' => 'Are you sure you want to delete your account? Once your account is deleted,'
         . ' all of its resources and data will be permanently deleted.',
-
-    // API Tokens
-    'create_api_token' => 'Create API Token',
-    'api_tokens_description' => 'API tokens allow third-party services to authenticate with our application on'
-        . ' your behalf.',
-    'token_name' => 'Token Name',
-    'permissions' => 'Permissions',
-    'manage_api_tokens' => 'Manage API Tokens',
-    'api_tokens_delete_info' => 'You may delete any of your existing tokens if they are no longer needed.',
-    'last_used' => 'Last used',
-    'api_token' => 'API Token',
-    'api_token_copy' => 'Please copy your new API token. For your security, it won\'t be shown again.',
-    'api_token_permissions' => 'API Token Permissions',
-    'delete_api_token' => 'Delete API Token',
-    'delete_api_token_confirm' => 'Are you sure you would like to delete this API token?',
 
     // Team Invitation Email
     'team_invitation' => 'You have been invited to join the :team team!',

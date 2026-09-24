@@ -54,12 +54,9 @@ final class UserHardDeleter implements UserHardDeleterContract
             // `LogsActivity`-Trait der Credential pro Passkey einen Entzugs-Eintrag,
             // dessen Subject die Credential ist — der Purge unten greift über den
             // User und ließe ihn als Verweis auf das gerade gelöschte Konto liegen
-            // (DSGVO Art. 17). Tokens tragen den Trait nicht; für sie ist der
-            // Mass-Delete schlicht der billigere Weg zum selben Ergebnis. Im
-            // admin-initiierten Soft-Delete (`user:delete`) ist der Entzugs-Beleg
-            // umgekehrt erwünscht und entsteht dort über die Model-Events bzw. den
-            // Token-Auditor.
-            $user->tokens()->delete();
+            // (DSGVO Art. 17). Im admin-initiierten Soft-Delete (`user:delete`) ist
+            // der Entzugs-Beleg umgekehrt erwünscht und entsteht dort über die
+            // Model-Events.
             $user->passkeyCredentials()->delete();
 
             // Die Token-Zeile hängt an der Adresse, nicht am Konto: Sie überstünde

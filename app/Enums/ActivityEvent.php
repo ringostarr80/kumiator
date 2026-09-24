@@ -68,6 +68,9 @@ enum ActivityEvent: string
     case ACCOUNT_ADMIN_FORCE_DELETED = 'account_admin_force_deleted';
     case PROFILE_PHOTO_UPDATED = 'profile_photo_updated';
     case PROFILE_PHOTO_REMOVED = 'profile_photo_removed';
+
+    // Nichts schreibt die drei API-Token-Codes noch; ohne ihre Cases zeigte das
+    // Log bestehende Einträge nur als Roh-Code statt übersetzt.
     case API_TOKEN_CREATED = 'api_token_created';
     case API_TOKEN_REVOKED = 'api_token_revoked';
     case API_TOKEN_PERMISSIONS_CHANGED = 'api_token_permissions_changed';

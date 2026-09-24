@@ -21,7 +21,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
-use Laravel\Sanctum\HasApiTokens;
 use Spatie\Activitylog\Models\Activity as ActivityModel;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -43,7 +42,6 @@ use Spatie\Permission\Traits\HasRoles;
  */
 class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
 {
-    use HasApiTokens;
     use HasRoles;
 
     /** @use HasFactory<\Database\Factories\UserFactory> */

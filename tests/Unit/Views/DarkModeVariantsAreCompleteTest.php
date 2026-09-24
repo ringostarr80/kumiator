@@ -28,9 +28,7 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
      * werden.
      *
      * `components/banner.blade.php` und `components/modal.blade.php` legen ihre Graufläche über eine
-     * eingefärbte bzw. abgedunkelte Ebene und sehen in beiden Modi gleich aus. Der Klartext-Token in
-     * `api/api-token-manager.blade.php` sitzt auf einem `<x-input>`, dessen Komponente die
-     * dark:-Varianten selbst mitbringt und per CSS-Reihenfolge gewinnt. Die weiße Fläche in
+     * eingefärbte bzw. abgedunkelte Ebene und sehen in beiden Modi gleich aus. Die weiße Fläche in
      * `profile/two-factor-authentication-form.blade.php` unterlegt den QR-Code: Ohne hellen Grund
      * scheitert das Einscannen. Die Icon-Striche in `components/welcome.blade.php` stehen dunkel
      * besser da als hell (5,6:1 gegen `gray-800`, 2,6:1 gegen Weiß) — eine dark:-Variante würde den
@@ -38,7 +36,6 @@ final class DarkModeVariantsAreCompleteTest extends TestCase
      * Kontrast-Schwächen und verschwinden hier, sobald die betroffene Datei nachgezogen ist.
      */
     private const ALLOWED_WITHOUT_DARK_VARIANT = [
-        'api/api-token-manager.blade.php' => ['bg-gray-100' => 1, 'text-gray-400' => 2, 'text-gray-500' => 1],
         'components/banner.blade.php' => ['bg-gray-500' => 1],
         'components/modal.blade.php' => ['bg-gray-500' => 1],
         'components/welcome.blade.php' => ['stroke-gray-400' => 4],

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Actions\Jetstream\DeleteUser;
-use App\Livewire\Profile\ApiTokenManager;
 use App\Livewire\Profile\DeleteUserForm;
 use App\Livewire\Profile\LogoutOtherBrowserSessionsForm;
 use App\Livewire\Profile\PasskeyManagerForm;
@@ -23,7 +22,6 @@ class JetstreamServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $this->configurePermissions();
         $this->configureFileUploadLimit();
 
         Jetstream::deleteUsersUsing(DeleteUser::class);
@@ -33,22 +31,6 @@ class JetstreamServiceProvider extends ServiceProvider
         Livewire::component('profile.delete-user-form', DeleteUserForm::class);
         Livewire::component('profile.update-password-form', UpdatePasswordForm::class);
         Livewire::component('profile.update-profile-information-form', UpdateProfileInformationForm::class);
-        Livewire::component('api.api-token-manager', ApiTokenManager::class);
-    }
-
-    /**
-     * Configure the permissions that are available within the application.
-     */
-    protected function configurePermissions(): void
-    {
-        Jetstream::defaultApiTokenPermissions(['read']);
-
-        Jetstream::permissions([
-            'create',
-            'read',
-            'update',
-            'delete',
-        ]);
     }
 
     /**

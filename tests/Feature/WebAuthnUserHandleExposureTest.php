@@ -27,20 +27,4 @@ final class WebAuthnUserHandleExposureTest extends TestCase
             ->assertOk()
             ->assertDontSee($user->getWebAuthnUserHandle());
     }
-
-    /**
-     * `/api/user` gibt das Model roh als JSON zurück und prüft keine Ability:
-     * Ohne `$hidden` bekäme jedes vom Nutzer ausgestellte Token den Handle,
-     * unabhängig davon, wofür es gedacht war.
-     */
-    public function testTheApiUserEndpointDoesNotCarryTheHandle(): void
-    {
-        $user = User::factory()->create();
-        $token = $user->createToken('exposure-test')->plainTextToken;
-
-        $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->getJson('/api/user')
-            ->assertOk()
-            ->assertJsonMissingPath('webauthn_user_handle');
-    }
 }
