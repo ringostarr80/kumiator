@@ -69,8 +69,8 @@ enum ActivityEvent: string
     case PROFILE_PHOTO_UPDATED = 'profile_photo_updated';
     case PROFILE_PHOTO_REMOVED = 'profile_photo_removed';
 
-    // Nichts schreibt die drei API-Token-Codes noch; ohne ihre Cases zeigte das
-    // Log bestehende Einträge nur als Roh-Code statt übersetzt.
+    // Kein Pfad schreibt diese Codes; die Cases halten bestehende Log-Einträge
+    // übersetzt, die sonst nur als Roh-Code erschienen.
     case API_TOKEN_CREATED = 'api_token_created';
     case API_TOKEN_REVOKED = 'api_token_revoked';
     case API_TOKEN_PERMISSIONS_CHANGED = 'api_token_permissions_changed';

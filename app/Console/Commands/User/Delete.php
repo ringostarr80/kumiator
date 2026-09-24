@@ -19,9 +19,10 @@ use Illuminate\Console\Command;
  * Historie — und insbesondere die Activity-Log-Verweise auf den gelöschten
  * User — zu erhalten.
  *
- * Sessions und Passkey-Credentials werden trotzdem hart entfernt: Beide sind
- * aktive Zugriffsmittel, die dem soft-deleted User sonst nach einem späteren
- * `restore()` wieder Zugang verschaffen würden.
+ * Sessions, Passkey-Credentials und ein offener Link zum Zurücksetzen werden
+ * trotzdem hart entfernt: Sie alle sind aktive Zugriffsmittel, die dem
+ * soft-deleted User sonst nach einem späteren `restore()` wieder Zugang
+ * verschaffen würden.
  * Die eigentliche Mechanik liegt im `UserSoftDeleter`-Service — dort auch
  * der Audit-Eintrag pro Passkey (Passkey-Removed via `LogsActivity`-Trait).
  * Dieser Command ist reine Presentation: Eingabe, Bestätigung, Service-Aufruf,

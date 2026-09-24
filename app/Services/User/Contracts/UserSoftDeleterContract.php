@@ -11,9 +11,10 @@ use App\Models\User;
  *
  * Im Gegensatz zum Hard-Delete bleibt die fachliche Historie
  * — insbesondere die Activity-Log-Verweise auf den Benutzer — erhalten;
- * gelöscht werden ausschließlich aktive Zugriffsmittel (Sessions, Passkeys),
- * damit ein späteres `restore()` keinen Wieder-Zugang über Alt-Cookies/Passkeys
- * eröffnet. Mit den Passkeys fällt auch ein abgeschalteter Passwort-Login —
+ * gelöscht werden ausschließlich aktive Zugriffsmittel (Sessions, Passkeys,
+ * ein offener Link zum Zurücksetzen), damit ein späteres `restore()` keinen
+ * Wieder-Zugang über Alt-Cookies, Passkeys oder den Link eröffnet.
+ * Mit den Passkeys fällt auch ein abgeschalteter Passwort-Login —
  * sonst stünde das wiederhergestellte Konto ohne jeden Anmeldeweg da — und mit
  * ihm das Passwort, dem die Abschaltung gerade das Vertrauen entzogen hatte.
  *

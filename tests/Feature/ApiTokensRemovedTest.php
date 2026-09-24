@@ -27,6 +27,16 @@ final class ApiTokensRemovedTest extends TestCase
     }
 
     /**
+     * `php artisan install:api` legt `/api/user` wieder an: eine Route, die jedem
+     * Token das User-Model roh als JSON ausliefert, ohne Ability-Prüfung.
+     */
+    public function testTheApiUserEndpointIsGone(): void
+    {
+        $this->getJson('/api/user')
+            ->assertNotFound();
+    }
+
+    /**
      * Eine Token-Zeile kann trotz Löschmigration auftauchen, etwa aus einem
      * älteren Backup. `auth:sanctum` schlägt jedes Bearer-Token nach; abgewiesen
      * wird es, weil der User `HasApiTokens` nicht trägt.

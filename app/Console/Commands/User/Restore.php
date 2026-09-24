@@ -11,7 +11,7 @@ use Illuminate\Console\Attributes\Signature;
 /**
  * Stellt einen administrativ soft-deleted Benutzer wieder her.
  *
- * Pendant zum admin-initiierten Soft-Delete (`user:delete`). Tokens, Passkeys
+ * Pendant zum admin-initiierten Soft-Delete (`user:delete`). Passkeys
  * und Sessions wurden dort hart gelöscht — sie kommen beim Restore NICHT
  * zurück; der User muss sich neu anmelden und ggf. seine Passkeys neu
  * registrieren. Der Passwort-Login steht dabei wieder offen, auch wenn das
