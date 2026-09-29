@@ -6,10 +6,11 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
 
 /**
- * Array-Input auf den Skalar-Feldern (email/password/current_password) erreicht
+ * Array-Input auf den Skalar-Feldern (email/password/token/current_password) erreicht
  * Fortifys Controller bzw. die `current_password:web`-Regel, bevor eine
  * String-Grenze greift, und schlägt dort mit einem TypeError zu HTTP 500 fehl.
  * Der vorgeschaltete Guard bzw. `bail` muss stattdessen 422 liefern — auch auf
@@ -20,6 +21,7 @@ final class FortifyScalarInputGuardTest extends TestCase
     use RefreshDatabase;
 
     private const string REGISTER_URL_PATH = '/register';
+    private const string RESET_PASSWORD_URL_PATH = '/reset-password';
     private const string CONFIRM_PASSWORD_URL_PATH = '/user/confirm-password';
     private const string PROFILE_INFORMATION_URL_PATH = '/user/profile-information';
     private const string PASSWORD_URL_PATH = '/user/password';
@@ -27,6 +29,33 @@ final class FortifyScalarInputGuardTest extends TestCase
     public function testRegisterRejectsArrayEmailInsteadOfCrashing(): void
     {
         $response = $this->postJson(self::REGISTER_URL_PATH, ['email' => ['case@example.com']]);
+
+        $response->assertStatus(422);
+    }
+
+    public function testResetPasswordRejectsArrayEmailInsteadOfCrashing(): void
+    {
+        $response = $this->postJson(self::RESET_PASSWORD_URL_PATH, [
+            'token' => 'invented-token',
+            'email' => ['case@example.com'],
+            'password' => 'password',
+        ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function testResetPasswordRejectsArrayTokenInsteadOfCrashing(): void
+    {
+        $user = User::factory()->create();
+        // Nur mit gültiger Token-Zeile erreicht der Token den Hash-Vergleich;
+        // ohne sie scheitert der Reset vorher, der 500 bliebe unentdeckt.
+        Password::createToken($user);
+
+        $response = $this->postJson(self::RESET_PASSWORD_URL_PATH, [
+            'token' => ['invented-token'],
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
 
         $response->assertStatus(422);
     }

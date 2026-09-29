@@ -74,8 +74,9 @@ manuelles `php artisan config:clear` löst das.
 ## Queue-Worker
 
 Die Anwendung stellt E-Mail-Versand asynchron über Laravels Queue zu (Default
-`QUEUE_CONNECTION=database`): So aufgeschobene Jobs — etwa die Bestätigungs- und
-Abbruch-Mails beim E-Mail-Adress-Wechsel — werden **nicht** sofort abgearbeitet,
+`QUEUE_CONNECTION=database`): So aufgeschobene Jobs — etwa die Mails zum
+Zurücksetzen des Passworts und beim E-Mail-Adress-Wechsel — werden **nicht**
+sofort abgearbeitet,
 sondern als Zeile in die `jobs`-Tabelle geschrieben und warten dort auf einen
 **dauerhaft laufenden Worker-Prozess**, der sie abholt.
 

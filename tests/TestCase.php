@@ -6,6 +6,7 @@ namespace Tests;
 
 use App\Services\Console\ConsoleActorContext;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Sleep;
 use Spatie\Permission\PermissionRegistrar;
 
 abstract class TestCase extends BaseTestCase
@@ -32,5 +33,10 @@ abstract class TestCase extends BaseTestCase
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         ConsoleActorContext::clearStatically();
+
+        // Die Abläufe hinter `auth.timebox_duration` warten eine Mindestdauer
+        // ab, damit die Antwortzeit kein Konto verrät; echt geschlafen kostete
+        // das je Aufruf bis zu 1 s.
+        Sleep::fake();
     }
 }

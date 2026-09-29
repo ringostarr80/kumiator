@@ -13,7 +13,9 @@ use App\Http\Controllers\LocaleController;
 use App\Http\Middleware\EnsureFortifyCredentialsAreScalar;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Http\Controllers\ConfirmedTwoFactorAuthenticationController;
+use Laravel\Fortify\Http\Controllers\NewPasswordController;
 use Laravel\Fortify\Http\Controllers\PasswordController;
+use Laravel\Fortify\Http\Controllers\PasswordResetLinkController;
 use Laravel\Fortify\Http\Controllers\ProfileInformationController;
 use Laravel\Fortify\Http\Controllers\RecoveryCodeController;
 use Laravel\Fortify\Http\Controllers\TwoFactorAuthenticationController;
@@ -45,6 +47,26 @@ Route::middleware('guest')->group(static function (): void {
         ->middleware(['throttle:passkey-authenticate', 'max.json.body'])
         ->name('passkeys.authenticate');
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Passwort-Reset (nur für Gäste)
+//
+// Die beiden Routen überschreiben Fortifys gleichnamige Einträge, die
+// ungedrosselt laufen. Der Reset-Link löst Mails an eine frei eingegebene
+// Adresse aus, und jeder gescheiterte Versuch auf beiden Wegen hält einen
+// Worker für die volle Timebox fest. Last-registered gewinnt (vgl.
+// `verification.send`); Fortifys Middleware erbt der Ersatz nicht.
+// ──────────────────────────────────────────────────────────────────────────────
+Route::middleware(['guest', EnsureFortifyCredentialsAreScalar::class . ':email,password,token'])
+    ->group(static function (): void {
+        Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
+            ->middleware('throttle:password-reset-link')
+            ->name('password.email');
+
+        Route::post('/reset-password', [NewPasswordController::class, 'store'])
+            ->middleware('throttle:password-reset')
+            ->name('password.update');
+    });
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Email verification action
