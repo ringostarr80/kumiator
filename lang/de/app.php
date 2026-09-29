@@ -368,9 +368,11 @@ return [
     'morph_passkey' => 'Passkey',
     'morph_role' => 'Rolle',
 
+    // Anrede der App-eigenen Mails
+    'mail_greeting' => 'Hallo :name,',
+
     // E-Mail-Änderung: Mail-Texte
     'email_change_verify_subject' => 'Bestätige deine neue E-Mail-Adresse',
-    'email_change_verify_greeting' => 'Hallo :name,',
     'email_change_verify_intro' => 'für dein Konto wurde eine Änderung der E-Mail-Adresse auf :email beantragt.'
         . ' Klicke auf den folgenden Button, um die neue Adresse zu bestätigen — erst dann wird sie übernommen.',
     'email_change_verify_action' => 'Neue E-Mail-Adresse bestätigen',
@@ -378,7 +380,6 @@ return [
     'email_change_verify_ignore' => 'Wenn du diese Änderung nicht angefragt hast, ignoriere diese E-Mail einfach.'
         . ' Eine zusätzliche Hinweis-Mail mit Abbruch-Link wurde an deine alte Adresse gesendet.',
     'email_change_requested_subject' => 'Sicherheitshinweis: Änderung deiner E-Mail-Adresse beantragt',
-    'email_change_requested_greeting' => 'Hallo :name,',
     'email_change_requested_intro' => 'für dein Konto wurde eine Änderung der E-Mail-Adresse auf :email beantragt.'
         . ' Diese Adresse erhält parallel eine Bestätigungs-Mail.',
     'email_change_requested_warning' => 'Falls du diese Änderung NICHT selbst veranlasst hast, brich sie umgehend ab.'
@@ -390,7 +391,6 @@ return [
     // Passkey-Bestand: Hinweis-Mail an den Kontoinhaber
     'passkey_added_subject' => 'Sicherheitshinweis: Neuer Passkey in deinem Konto',
     'passkey_removed_subject' => 'Sicherheitshinweis: Passkey aus deinem Konto entfernt',
-    'passkey_changed_greeting' => 'Hallo :name,',
     'passkey_added_intro' => 'in deinem Konto wurde soeben der Passkey „:passkey" hinzugefügt.',
     'passkey_removed_intro' => 'aus deinem Konto wurde soeben der Passkey „:passkey" entfernt.',
     'passkey_changed_warning' => 'Falls du das NICHT selbst warst, prüfe umgehend die Passkeys in deinem Profil'

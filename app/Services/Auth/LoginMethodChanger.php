@@ -164,11 +164,7 @@ final class LoginMethodChanger implements LoginMethodChangerContract
         // Einreihen der Mail machte aus der vollzogenen Löschung einen
         // Fehlschlag.
         try {
-            // Sprach-Snapshot: Die Mail rendert erst im Worker, der keine Session
-            // kennt und sonst auf `APP_LOCALE` zurückfiele.
-            $account->notify(
-                (new PasskeyChangedNotification(PasskeyChange::REMOVED, $passkey->name))->locale(app()->getLocale()),
-            );
+            $account->notify(new PasskeyChangedNotification(PasskeyChange::REMOVED, $passkey->name));
         } catch (\Throwable $e) {
             report($e);
         }

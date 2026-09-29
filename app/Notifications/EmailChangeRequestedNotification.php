@@ -54,7 +54,7 @@ final class EmailChangeRequestedNotification extends Notification implements Sho
 
         return (new MailMessage())
             ->subject(__('app.email_change_requested_subject'))
-            ->greeting(__('app.email_change_requested_greeting', ['name' => $this->user->name]))
+            ->greeting(__('app.mail_greeting', ['name' => $this->user->name]))
             ->line(__('app.email_change_requested_intro', ['email' => $this->pendingEmail]))
             ->line(__('app.email_change_requested_warning'))
             ->action(__('app.email_change_requested_cancel_action'), $cancelUrl)

@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Symfony\Component\HttpFoundation\Response;
 
 class SetLocale
@@ -23,6 +24,11 @@ class SetLocale
         if (in_array($locale, $supported, true)) {
             app()->setLocale($locale);
         }
+
+        // Gequeuete Mails rendern im Worker, der keine Session kennt und sonst
+        // auf `APP_LOCALE` zurückfiele. Beim Einreihen überschreibt Laravel
+        // damit auch ein an der Notification selbst gesetztes `->locale()`.
+        Notification::locale(app()->getLocale());
 
         return $next($request);
     }

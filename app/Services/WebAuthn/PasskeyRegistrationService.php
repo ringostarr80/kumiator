@@ -147,11 +147,7 @@ final class PasskeyRegistrationService implements PasskeyRegistrationContract
         // Einreihen der Mail machte aus der vollzogenen Registrierung einen
         // Fehlschlag.
         try {
-            // Sprach-Snapshot: Die Mail rendert erst im Worker, der keine Session
-            // kennt und sonst auf `APP_LOCALE` zurückfiele.
-            $user->notify(
-                (new PasskeyChangedNotification(PasskeyChange::ADDED, $passkey->name))->locale(app()->getLocale()),
-            );
+            $user->notify(new PasskeyChangedNotification(PasskeyChange::ADDED, $passkey->name));
         } catch (\Throwable $e) {
             report($e);
         }

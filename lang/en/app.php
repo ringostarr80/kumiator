@@ -359,9 +359,11 @@ return [
     'morph_passkey' => 'Passkey',
     'morph_role' => 'Role',
 
+    // Greeting of the app's own emails
+    'mail_greeting' => 'Hello :name,',
+
     // Email change: mail texts
     'email_change_verify_subject' => 'Confirm your new email address',
-    'email_change_verify_greeting' => 'Hello :name,',
     'email_change_verify_intro' => 'A change of the email address for your account to :email has been requested.'
         . ' Click the following button to confirm the new address — only then will it be applied.',
     'email_change_verify_action' => 'Confirm new email address',
@@ -369,7 +371,6 @@ return [
     'email_change_verify_ignore' => 'If you did not request this change, simply ignore this email.'
         . ' An additional notice email with a cancel link has been sent to your previous address.',
     'email_change_requested_subject' => 'Security notice: email address change requested',
-    'email_change_requested_greeting' => 'Hello :name,',
     'email_change_requested_intro' => 'A change of the email address for your account to :email has been requested.'
         . ' That address will receive a separate confirmation email.',
     'email_change_requested_warning' => 'If you did NOT initiate this change, cancel it immediately.'
@@ -381,7 +382,6 @@ return [
     // Passkey inventory: notice email to the account owner
     'passkey_added_subject' => 'Security notice: new passkey added to your account',
     'passkey_removed_subject' => 'Security notice: passkey removed from your account',
-    'passkey_changed_greeting' => 'Hello :name,',
     'passkey_added_intro' => 'The passkey ":passkey" has just been added to your account.',
     'passkey_removed_intro' => 'The passkey ":passkey" has just been removed from your account.',
     'passkey_changed_warning' => 'If this was NOT you, review the passkeys in your profile immediately'

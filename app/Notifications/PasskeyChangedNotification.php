@@ -56,7 +56,7 @@ final class PasskeyChangedNotification extends Notification implements ShouldQue
 
         return (new MailMessage())
             ->subject($subject)
-            ->greeting(__('app.passkey_changed_greeting', ['name' => $notifiable->name]))
+            ->greeting(__('app.mail_greeting', ['name' => $notifiable->name]))
             ->line($intro)
             ->line(__('app.passkey_changed_warning'))
             ->action(__('app.passkey_changed_action'), route('profile.show'))

@@ -54,7 +54,7 @@ final class VerifyEmailChangeNotification extends Notification implements Should
 
         return (new MailMessage())
             ->subject(__('app.email_change_verify_subject'))
-            ->greeting(__('app.email_change_verify_greeting', ['name' => $this->user->name]))
+            ->greeting(__('app.mail_greeting', ['name' => $this->user->name]))
             ->line(__('app.email_change_verify_intro', ['email' => $this->pendingEmail]))
             ->action(__('app.email_change_verify_action'), $url)
             ->line(__('app.email_change_verify_ttl'))
