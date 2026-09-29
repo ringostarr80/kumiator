@@ -6,6 +6,14 @@ Kumiator befindet sich in einer frühen Entwicklungsphase (Pre-Alpha). Es gibt k
 keine Wartungszweige — Korrekturen fließen ausschließlich in den `main`-Branch. Sicherheitsupdates
 für ältere Stände werden nicht bereitgestellt.
 
+## Umfang
+
+Diese Richtlinie gilt für die Software Kumiator, also den Code in diesem Repository. Jede
+Kumiator-Instanz betreibt ein Verein selbst oder ein Dienstleister für ihn. Probleme, die nur eine
+bestimmte Instanz betreffen — etwa Server, TLS-Zertifikat oder Konfiguration —, meldest du bitte
+deren Betreiber. Hat der Betreiber seinen Kontakt eingerichtet, nennt die Instanz ihn unter
+`/.well-known/security.txt`. Sonst wende dich an den Verein, der die Instanz nutzt.
+
 ## Eine Schwachstelle melden
 
 **Bitte keine öffentlichen Issues für Sicherheitslücken anlegen.** Meldungen laufen über die private
@@ -19,6 +27,12 @@ Hilfreich für die Einordnung sind:
 - eine Beschreibung, wie sich das Problem reproduzieren lässt,
 - die praktische Auswirkung — welche Daten oder Konten sind betroffen, welche Rechte werden
   vorausgesetzt.
+
+## Testen
+
+Bitte prüfe Kumiator nur auf einer eigenen, lokalen Installation. Laufende Instanzen enthalten echte
+Mitgliederdaten. Tests dagegen erlaubt diese Richtlinie nicht, denn das könnte nur der jeweilige
+Betreiber. Dass eine Instanz eine `security.txt` ausliefert, ist keine Einladung zum Testen.
 
 ## Was du erwarten kannst
 
