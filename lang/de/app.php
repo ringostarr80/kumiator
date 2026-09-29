@@ -391,6 +391,12 @@ return [
     'email_change_requested_cancel_action' => 'Änderung abbrechen',
     'email_change_requested_ttl' => 'Die Anfrage läuft nach 60 Minuten automatisch ab.',
     'email_change_requested_self_hint' => 'Wenn du die Änderung selbst angestoßen hast, ist nichts weiter zu tun.',
+    'email_change_target_taken_subject' => 'Deine E-Mail-Adresse wurde für ein anderes Konto angegeben',
+    'email_change_target_taken_intro' => 'in einem anderen Konto wurde soeben beantragt, die E-Mail-Adresse auf deine'
+        . ' zu ändern. Sie gehört bereits zu deinem Konto, deshalb wird die Änderung nicht übernommen.',
+    'email_change_target_taken_hint' => 'Wolltest du deine Adresse für ein weiteres Konto verwenden, wende dich an'
+        . ' die Administration. Andernfalls kannst du diese E-Mail ignorieren. An deinem Konto hat sich nichts'
+        . ' geändert.',
 
     // Passkey-Bestand: Hinweis-Mail an den Kontoinhaber
     'passkey_added_subject' => 'Sicherheitshinweis: Neuer Passkey in deinem Konto',
@@ -444,5 +450,7 @@ return [
         . ' aktuellen Passwort.',
     'email_change_current_password_required' => 'Für die Änderung der E-Mail-Adresse ist dein aktuelles'
         . ' Passwort erforderlich.',
+    'email_change_too_many_requests' => 'Du hast zu oft eine Änderung der E-Mail-Adresse beantragt.'
+        . ' Bitte versuche es später erneut.',
 
 ];

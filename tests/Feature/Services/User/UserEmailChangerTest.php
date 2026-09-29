@@ -8,6 +8,7 @@ use App\Enums\EmailChangeCancellationReason;
 use App\Models\Activity;
 use App\Models\User;
 use App\Notifications\EmailChangeRequestedNotification;
+use App\Notifications\EmailChangeTargetTakenNotification;
 use App\Notifications\VerifyEmailChangeNotification;
 use App\Services\Audit\AuditEmailHasher;
 use App\Services\User\Contracts\UserEmailChangerContract;
@@ -15,10 +16,15 @@ use App\Services\User\Exceptions\EmailChangeConflictException;
 use App\Services\User\Exceptions\EmailChangeTargetNotEligibleException;
 use App\Services\User\Exceptions\EmailChangeTokenExpiredException;
 use App\Services\User\Exceptions\EmailChangeTokenInvalidException;
+use Illuminate\Cache\RateLimiter as CacheRateLimiter;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\RateLimiter;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -111,6 +117,105 @@ final class UserEmailChangerTest extends TestCase
             static fn ($n, $c, AnonymousNotifiable $r): bool => ($r->routes['mail'] ?? null) === self::OLD_EMAIL,
         );
         Notification::assertNotSentTo($user, EmailChangeRequestedNotification::class);
+    }
+
+    public function testRequestChangeToTakenEmailNotifiesTheHolderInsteadOfSendingTheLink(): void
+    {
+        Notification::fake();
+        $holder = User::factory()->create(['email' => self::TAKEN_EMAIL]);
+        $user = User::factory()->create(['email' => self::OLD_EMAIL]);
+
+        $this->service->requestChange($user, self::TAKEN_EMAIL);
+
+        $this->assertSame(self::TAKEN_EMAIL, $user->fresh()?->pending_email);
+        Notification::assertSentTo($holder, EmailChangeTargetTakenNotification::class);
+        Notification::assertNotSentTo(new AnonymousNotifiable(), VerifyEmailChangeNotification::class);
+        $this->assertWarningMailSentToOldEmail();
+    }
+
+    public function testRequestChangeTellsTheHolderAtMostOncePerHour(): void
+    {
+        Notification::fake();
+        $holder = User::factory()->create(['email' => self::TAKEN_EMAIL]);
+        $user = User::factory()->create(['email' => self::OLD_EMAIL]);
+        $otherUser = User::factory()->create(['email' => self::SECOND_EMAIL]);
+
+        $this->service->requestChange($user, self::TAKEN_EMAIL);
+        $this->service->requestChange($otherUser, self::TAKEN_EMAIL);
+
+        $this->assertSame(self::TAKEN_EMAIL, $otherUser->fresh()?->pending_email);
+        Notification::assertSentToTimes($holder, EmailChangeTargetTakenNotification::class, 1);
+
+        $this->travel(1)->hours();
+        $this->service->requestChange($user, self::TAKEN_EMAIL);
+
+        Notification::assertSentToTimes($holder, EmailChangeTargetTakenNotification::class, 2);
+    }
+
+    public function testConcurrentRequestsTellTheHolderOnlyOnce(): void
+    {
+        Notification::fake();
+        // Der `array`-Store der Tests zählt nicht atomar hoch, der
+        // `database`-Store tut es wie im Betrieb.
+        RateLimiter::swap(new CacheRateLimiter(Cache::store('database')));
+        $holder = User::factory()->create(['email' => self::TAKEN_EMAIL]);
+        $user = User::factory()->create(['email' => self::OLD_EMAIL]);
+        $otherUser = User::factory()->create(['email' => self::SECOND_EMAIL]);
+        $service = $this->service;
+        $injected = false;
+
+        // Echter zweiter Antrag, kein Mock: Er läuft vollständig durch, sobald
+        // der erste zum ersten Mal auf seinen Drossel-Zähler zugreift.
+        DB::listen(static function (QueryExecuted $query) use (&$injected, $service, $otherUser): void {
+            $touchesThrottle = array_any(
+                $query->bindings,
+                static fn (mixed $binding): bool => is_string($binding)
+                    && str_contains($binding, 'email-change-target-notice:'),
+            );
+
+            if ($injected || !$touchesThrottle) {
+                return;
+            }
+
+            $injected = true;
+            $service->requestChange($otherUser, self::TAKEN_EMAIL);
+        });
+
+        $this->service->requestChange($user, self::TAKEN_EMAIL);
+
+        $this->assertTrue($injected);
+        Notification::assertSentToTimes($holder, EmailChangeTargetTakenNotification::class, 1);
+    }
+
+    public function testRequestChangeToEmailOfDepartedAccountSendsNothingThere(): void
+    {
+        Notification::fake();
+        $holder = User::factory()->create(['email' => self::TAKEN_EMAIL]);
+        $holder->deleteOrFail();
+        $user = User::factory()->create(['email' => self::OLD_EMAIL]);
+
+        $this->service->requestChange($user, self::TAKEN_EMAIL);
+
+        Notification::assertNotSentTo($holder, EmailChangeTargetTakenNotification::class);
+        Notification::assertNotSentTo(new AnonymousNotifiable(), VerifyEmailChangeNotification::class);
+        $this->assertWarningMailSentToOldEmail();
+    }
+
+    /**
+     * `NOCASE` faltet nur ASCII: Einen Großbuchstaben außerhalb davon findet
+     * die Suche nur über die Normalform, sonst ginge der Confirm-Link mit dem
+     * Namen des Antragstellers an den Inhaber.
+     */
+    public function testRequestChangeFindsTheHolderOfANonNormalizedAddress(): void
+    {
+        Notification::fake();
+        $holder = User::factory()->create(['email' => 'müller@example.com']);
+        $user = User::factory()->create(['email' => self::OLD_EMAIL]);
+
+        $this->service->requestChange($user, 'MÜLLER@example.com');
+
+        Notification::assertSentTo($holder, EmailChangeTargetTakenNotification::class);
+        Notification::assertNotSentTo(new AnonymousNotifiable(), VerifyEmailChangeNotification::class);
     }
 
     public function testRequestChangeWritesEmailChangeRequestedAuditWithPendingEmailHash(): void
@@ -766,6 +871,15 @@ final class UserEmailChangerTest extends TestCase
                 throw new RuntimeException('Audit-Insert abgebrochen');
             }
         });
+    }
+
+    private function assertWarningMailSentToOldEmail(): void
+    {
+        Notification::assertSentTo(
+            new AnonymousNotifiable(),
+            EmailChangeRequestedNotification::class,
+            static fn ($n, $c, AnonymousNotifiable $r): bool => ($r->routes['mail'] ?? null) === self::OLD_EMAIL,
+        );
     }
 
     private function tokenFromActionUrl(string $url): string

@@ -7,6 +7,7 @@ namespace Tests\Feature\Notifications;
 use App\Models\User;
 use App\Notifications\AccountAlreadyExistsNotification;
 use App\Notifications\CompleteRegistrationNotification;
+use App\Notifications\EmailChangeTargetTakenNotification;
 use App\Notifications\ResetPasswordNotification;
 use App\Notifications\VerifyEmailNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -82,6 +83,25 @@ final class QueuedAuthMailsTest extends TestCase
             SendQueuedNotifications::class,
             static fn (SendQueuedNotifications $job): bool => $job->notification
                 instanceof CompleteRegistrationNotification,
+        );
+    }
+
+    public function testEmailChangeTargetTakenMailIsQueued(): void
+    {
+        Queue::fake();
+        $holder = User::factory()->create();
+        $this->actingAs($user = User::factory()->create());
+
+        $this->put('/user/profile-information', [
+            'name' => $user->name,
+            'email' => $holder->email,
+            'current_password' => 'password',
+        ]);
+
+        Queue::assertPushed(
+            SendQueuedNotifications::class,
+            static fn (SendQueuedNotifications $job): bool => $job->notification
+                instanceof EmailChangeTargetTakenNotification,
         );
     }
 

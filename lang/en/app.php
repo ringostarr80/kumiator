@@ -382,6 +382,11 @@ return [
     'email_change_requested_cancel_action' => 'Cancel change',
     'email_change_requested_ttl' => 'The request expires automatically after 60 minutes.',
     'email_change_requested_self_hint' => 'If you initiated the change yourself, no further action is required.',
+    'email_change_target_taken_subject' => 'Your email address was entered for another account',
+    'email_change_target_taken_intro' => 'Someone just requested to change the email address of another account to'
+        . ' yours. It already belongs to your account, so the change will not be applied.',
+    'email_change_target_taken_hint' => 'If you wanted to use your address for another account, please contact an'
+        . ' administrator. Otherwise, you can ignore this email. Nothing about your account has changed.',
 
     // Passkey inventory: notice email to the account owner
     'passkey_added_subject' => 'Security notice: new passkey added to your account',
@@ -432,4 +437,5 @@ return [
         . ' Your password no longer counts for this account.',
     'email_change_current_password_hint' => 'Confirm the change of your email address with your current password.',
     'email_change_current_password_required' => 'Changing your email address requires your current password.',
+    'email_change_too_many_requests' => 'You have requested too many email address changes. Please try again later.',
 ];

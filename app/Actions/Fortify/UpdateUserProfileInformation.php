@@ -13,11 +13,13 @@ use App\Services\Upload\Exceptions\ProfilePhotoOptimizationException;
 use App\Services\Upload\Exceptions\ProfilePhotoStorageException;
 use App\Services\User\Contracts\UserEmailChangerContract;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Timebox;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
 use Spatie\Activitylog\Facades\Activity;
@@ -26,10 +28,14 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
 {
     use DetectsFailedCurrentPassword;
 
+    private const EMAIL_CHANGE_MAX_REQUESTS = 5;
+    private const EMAIL_CHANGE_DECAY_SECONDS = 3_600;
+
     public function __construct(
         private readonly UserEmailChangerContract $emailChanger,
         private readonly UploadLimitResolverContract $uploadLimitResolver,
         private readonly ProfilePhotoOptimizerContract $profilePhotoOptimizer,
+        private readonly Timebox $timebox,
     ) {
     }
 
@@ -49,10 +55,9 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
         $photoMaxKilobytes = $this->uploadLimitResolver->resolveProfilePhotoLimit()->kilobytes();
         $acceptedExtensions = $this->uploadLimitResolver->resolveProfilePhotoAcceptedExtensions();
 
-        // Auf die kanonische Form ziehen, bevor irgendetwas sie liest: die
-        // `unique`-Regel unten vergleicht den rohen Eingabewert gegen die
-        // Spalte, und der Änderungs-Vergleich muss dieselbe Normalform
-        // benutzen, die auch gespeichert wird.
+        // Auf die kanonische Form ziehen, bevor irgendetwas sie liest: Der
+        // Änderungs-Vergleich und der Abgleich mit bestehenden Konten müssen
+        // dieselbe Normalform benutzen, die auch gespeichert wird.
         if (isset($input['email']) && is_string($input['email'])) {
             $input['email'] = User::normalizeEmail($input['email']);
         }
@@ -65,7 +70,9 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
         try {
             Validator::make($input, [
                 'name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+                // Kein `unique`: Die Meldung verriete jedem Mitglied, ob eine
+                // Adresse vergeben ist. Den Konflikt fängt der Wechsel selbst ab.
+                'email' => ['required', 'email', 'max:255'],
                 'photo' => ['nullable', 'mimes:' . implode(',', $acceptedExtensions), 'max:' . $photoMaxKilobytes],
                 // Re-Auth nur beim E-Mail-Wechsel: Eine gekaperte Session darf
                 // den Deferred-Flow nicht anstoßen können — der Confirm-Link
@@ -81,6 +88,21 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             $this->recordFailedCurrentPasswordCheck($user, $input, $e);
 
             throw $e;
+        }
+
+        // Jeder Antrag verschickt Mails an eine frei eingegebene Adresse; ohne
+        // Deckel ließe sich so jedes Postfach fortlaufend anschreiben. Vor dem
+        // Foto-Upload, damit ein abgewiesener Antrag nichts speichert.
+        if ($emailChanged) {
+            $throttleKey = 'email-change-request:' . $user->id;
+
+            // Hochzählen und Prüfen in einem Schritt: Getrennt läsen
+            // gleichzeitige Anträge alle denselben Stand und kämen alle durch.
+            if (RateLimiter::hit($throttleKey, self::EMAIL_CHANGE_DECAY_SECONDS) > self::EMAIL_CHANGE_MAX_REQUESTS) {
+                throw ValidationException::withMessages([
+                    'email' => __('app.email_change_too_many_requests'),
+                ])->errorBag('updateProfileInformation');
+            }
         }
 
         // Validierung oben erzwingt `string` für beide Felder.
@@ -119,7 +141,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             // zurück. Die Confirm-/Cancel-Mails sind `ShouldQueueAfterCommit` und
             // gehen damit erst nach erfolgreichem Commit raus — ein Rollback
             // verschickt keine Mail für eine nicht persistierte Änderung.
-            DB::transaction(function () use (
+            $atomicUpdate = function () use (
                 $user,
                 $name,
                 $emailChangeRequest,
@@ -136,14 +158,18 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
                     $committed = true;
                 });
 
-                $this->persistProfileChanges(
-                    $user,
-                    $name,
-                    $emailChangeRequest,
-                    $newPhotoPath,
-                    $previousPhotoPath,
-                );
-            });
+                $this->persistProfileChanges($user, $name, $emailChangeRequest, $newPhotoPath, $previousPhotoPath);
+            };
+
+            // Die neue Adresse entscheidet, ob der Antrag einen Bestätigungslink,
+            // einen Hinweis an den Inhaber oder nichts an sie verschickt; ohne
+            // Mindestdauer verriete das die Antwortzeit. Um die Transaktion statt
+            // in ihr, damit das Warten keine Schreibsperre hält und die Mails nach
+            // dem Commit mitzählen. Ohne neue Adresse gibt es nichts zu verbergen.
+            $this->timebox->call(
+                static fn () => DB::transaction($atomicUpdate),
+                $emailChanged ? Config::integer('auth.timebox_duration') : 0,
+            );
         } catch (\Throwable $e) {
             // Nur bei echtem Rollback aufräumen: zeigt die DB nach dem Fehler
             // wieder auf das alte Foto, muss die neue Datei weg, sonst verwaist

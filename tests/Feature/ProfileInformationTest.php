@@ -8,16 +8,26 @@ use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Livewire\Profile\UpdateProfileInformationForm;
 use App\Models\Activity;
 use App\Models\User;
+use App\Notifications\VerifyEmailChangeNotification;
 use App\Services\Upload\Contracts\ProfilePhotoOptimizerContract;
 use App\Services\Upload\Exceptions\ProfilePhotoStorageException;
 use App\Services\Upload\ProfilePhotoOptimizer;
+use Closure;
 use GdImage;
+use Illuminate\Cache\RateLimiter as CacheRateLimiter;
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
+use Illuminate\Validation\ValidationException;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -193,6 +203,131 @@ final class ProfileInformationTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         $this->assertSame('neu@example.com', $user->fresh()?->pending_email);
+    }
+
+    /**
+     * Sonst erführe jedes Mitglied im Profil, ob eine Adresse zu einem Konto
+     * gehört.
+     */
+    public function testEmailOfAnotherAccountIsNotRevealed(): void
+    {
+        Notification::fake();
+        $holder = User::factory()->create();
+        $this->actingAs($user = User::factory()->create());
+
+        $component = Livewire::test(UpdateProfileInformationForm::class)
+            ->set('state', [
+                'name' => $user->name,
+                'email' => $holder->email,
+                'current_password' => 'password',
+            ])
+            ->call('updateProfileInformation');
+
+        $component->assertHasNoErrors();
+        $component->assertDispatched('saved');
+
+        $this->assertSame($holder->email, $user->fresh()?->pending_email);
+    }
+
+    /**
+     * Je nach Zustand der neuen Adresse schreibt der Antrag verschieden viel in
+     * die Datenbank; ohne Mindestdauer verriete das die Antwortzeit. Geprüft
+     * wird das Warten, nicht die Zeit: Die Dauer eines Laufs schwankt zu stark
+     * für eine Assertion.
+     *
+     * @param Closure(): string $address
+     */
+    #[DataProvider('targetAddressStateProvider')]
+    public function testEveryEmailChangeRequestWaitsOutTheTimebox(Closure $address, int $requests): void
+    {
+        Notification::fake();
+        $email = $address();
+        $this->actingAs($user = User::factory()->create());
+
+        for ($i = 0; $i < $requests; $i++) {
+            $this->requestEmailChange($user, $email)->assertHasNoErrors();
+        }
+
+        Sleep::assertSleptTimes($requests);
+    }
+
+    public function testNameChangeWithoutNewEmailDoesNotWait(): void
+    {
+        $this->actingAs($user = User::factory()->create());
+
+        Livewire::test(UpdateProfileInformationForm::class)
+            ->set('state', ['name' => 'Updated Name', 'email' => $user->email])
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
+
+        Sleep::assertNeverSlept();
+    }
+
+    public function testEmailChangeRequestsAreLimitedPerHour(): void
+    {
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create());
+
+        for ($i = 1; $i <= 5; $i++) {
+            $this->requestEmailChange($user, 'neu' . $i . '@example.com')->assertHasNoErrors();
+        }
+
+        $this->requestEmailChange($user, 'neu6@example.com')
+            ->assertHasErrors(['email' => __('app.email_change_too_many_requests')]);
+
+        $this->assertSame('neu5@example.com', $user->fresh()?->pending_email);
+        Notification::assertSentOnDemandTimes(VerifyEmailChangeNotification::class, 5);
+
+        $this->travel(1)->hours();
+
+        $this->requestEmailChange($user, 'neu6@example.com')->assertHasNoErrors();
+    }
+
+    public function testConcurrentEmailChangeRequestsStayWithinTheHourlyLimit(): void
+    {
+        Notification::fake();
+        // Der `array`-Store der Tests zählt nicht atomar hoch, der
+        // `database`-Store tut es wie im Betrieb.
+        RateLimiter::swap(new CacheRateLimiter(Cache::store('database')));
+        $this->actingAs($user = User::factory()->create());
+        $action = app(UpdateUserProfileInformation::class);
+        $input = static fn (string $email): array => [
+            'name' => $user->name,
+            'email' => $email,
+            'current_password' => 'password',
+        ];
+
+        for ($i = 1; $i <= 4; $i++) {
+            $action->update($user, $input('neu' . $i . '@example.com'));
+        }
+
+        $injected = false;
+
+        // Echter fünfter Antrag, kein Mock: Er läuft vollständig durch, sobald
+        // der sechste zum ersten Mal auf seinen Drossel-Zähler zugreift.
+        DB::listen(static function (QueryExecuted $query) use (&$injected, $action, $user, $input): void {
+            $touchesThrottle = array_any(
+                $query->bindings,
+                static fn (mixed $binding): bool => is_string($binding)
+                    && str_contains($binding, 'email-change-request:'),
+            );
+
+            if ($injected || !$touchesThrottle) {
+                return;
+            }
+
+            $injected = true;
+            $action->update($user, $input('neu5@example.com'));
+        });
+
+        $this->assertThrows(
+            static fn () => $action->update($user, $input('neu6@example.com')),
+            ValidationException::class,
+            __('app.email_change_too_many_requests'),
+        );
+
+        $this->assertTrue($injected);
+        Notification::assertSentOnDemandTimes(VerifyEmailChangeNotification::class, 5);
     }
 
     public function testProfileUpdateRollsBackAllWritesWhenEmailRequestFails(): void
@@ -722,6 +857,40 @@ final class ProfileInformationTest extends TestCase
         yield 'png' => ['photo.png'];
         yield 'webp' => ['photo.webp'];
         yield 'avif' => ['photo.avif'];
+    }
+
+    /**
+     * @return iterable<string, array{Closure(): string, int}>
+     */
+    public static function targetAddressStateProvider(): iterable
+    {
+        yield 'frei' => [static fn (): string => 'neu@example.com', 1];
+        yield 'vergeben' => [static fn (): string => User::factory()->create()->email, 1];
+        // Der zweite Antrag trifft das Stunden-Limit des Hinweises an den Inhaber.
+        yield 'vergeben, Inhaber schon angeschrieben' => [static fn (): string => User::factory()->create()->email, 2];
+        yield 'ausgetreten' => [
+            static function (): string {
+                $user = User::factory()->create();
+                $user->deleteOrFail();
+
+                return $user->email;
+            },
+            1,
+        ];
+    }
+
+    /**
+     * @return Testable<UpdateProfileInformationForm>
+     */
+    private function requestEmailChange(User $user, string $email): Testable
+    {
+        return Livewire::test(UpdateProfileInformationForm::class)
+            ->set('state', [
+                'name' => $user->name,
+                'email' => $email,
+                'current_password' => 'password',
+            ])
+            ->call('updateProfileInformation');
     }
 
     /**
