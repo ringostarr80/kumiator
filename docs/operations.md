@@ -4,8 +4,9 @@
 
 Dieses Dokument beschreibt den **laufenden Betrieb** der Anwendung nach dem
 Deployment ([docs/deployment.md](deployment.md)): die zeitgesteuerten
-Hintergrund-Aufgaben (Scheduler/Cron), den Queue-Worker für asynchrone Jobs und
-deren Ausfall-Überwachung (Schedule-Healthcheck).
+Hintergrund-Aufgaben (Scheduler/Cron), den Queue-Worker für asynchrone Jobs,
+deren Ausfall-Überwachung (Schedule-Healthcheck) und den Sicherheitskontakt der
+Instanz (security.txt).
 
 ## Inhaltsverzeichnis
 
@@ -21,6 +22,9 @@ deren Ausfall-Überwachung (Schedule-Healthcheck).
   - [Modell: Push / Dead-Man-Switch](#modell-push--dead-man-switch)
   - [Einrichtung](#einrichtung-1)
   - [DSGVO](#dsgvo)
+- [security.txt](#securitytxt)
+  - [Einrichtung](#einrichtung-2)
+  - [Pflege](#pflege)
 
 ---
 
@@ -279,3 +283,77 @@ wie bei jeder selbst betriebenen Komponente — ggf. eigener Auftragsverarbeiter
 
 > Keine Rechtsberatung — die finale Einordnung der Server-IP gehört zum
 > Datenschutzbeauftragten / zur Rechtsberatung.
+
+## security.txt
+
+Jede Instanz liefert unter `https://<instanz>/.well-known/security.txt` eine
+Datei nach [RFC 9116](https://www.rfc-editor.org/rfc/rfc9116) aus, über die
+Sicherheitsforschende Schwachstellen melden. Die Datei gilt nur für die Domain,
+unter der sie abgerufen wird — jede Instanz braucht deshalb **eigene** Angaben
+ihres Betreibers.
+
+Die Datei nennt zwei Kontakte:
+
+| Kontakt               | Zuständig für                                 | Quelle                                   |
+|-----------------------|-----------------------------------------------|------------------------------------------|
+| Betreiber der Instanz | Server, Hosting und Konfiguration der Instanz | `SECURITY_TXT_CONTACT`                   |
+| Kumiator-Projekt      | Schwachstellen in der Software selbst         | fest: GitHub „Report a vulnerability"    |
+
+Dazu kommen `Canonical` (aus `APP_URL`), `Policy` (die `SECURITY.md` im
+Repository) und `Preferred-Languages: de, en`. `Canonical` muss nach RFC 9116
+(Abschnitt 2.5.2) mit `https://` beginnen. Ein `APP_URL` ohne `https://` führt
+deshalb zu HTTP 500, statt eine ungültige Datei auszuliefern.
+
+### Einrichtung
+
+1. In der Produktions-`.env` setzen:
+
+   ```dotenv
+   SECURITY_TXT_CONTACT=mailto:security@verein.example.org
+   SECURITY_TXT_EXPIRES=2027-09-01T00:00:00Z
+   ```
+
+   - `SECURITY_TXT_CONTACT` ist eine URI: `mailto:`, `https://` oder `tel:`.
+     Ein anderer Wert führt zu HTTP 500, statt eine ungültige Datei
+     auszuliefern. Eine Rollenadresse wie `security@` statt eines
+     Personennamens hält die veröffentlichten personenbezogenen Daten klein.
+   - `SECURITY_TXT_EXPIRES` ist ein **fester** Zeitpunkt nach RFC 3339 mit
+     großem `T` und ohne Sekundenbruchteile. RFC 9116 empfiehlt, ihn weniger
+     als ein Jahr in die Zukunft zu legen (Abschnitt 2.5.5). Ein ungültiger
+     Wert führt zu HTTP 500, statt eine falsche Datei auszuliefern.
+   - Fehlt einer der beiden Werte, antwortet die Instanz mit 404: RFC 9116
+     verlangt beide Felder (Abschnitte 2.5.3 und 2.5.5), die Datei wäre
+     sonst ungültig.
+2. `composer deploy` baut den Config-Cache neu; ohne Deploy genügt
+   `php artisan config:cache`.
+3. Abruf prüfen mit `curl -i https://<instanz>/.well-known/security.txt`
+   (Status 200, `Content-Type: text/plain; charset=utf-8`).
+
+### Pflege
+
+- **`Expires` vor Ablauf erneuern.** Der Zeitpunkt bestätigt, bis wann der
+  Betreiber für die Angaben einsteht, und wird deshalb nicht automatisch
+  fortgeschrieben. Eine abgelaufene Datei wird weiter ausgeliefert; das Datum
+  zeigt Forschenden selbst, dass die Angaben veraltet sind. Nach dem Erneuern
+  den Abruf wie bei der Einrichtung prüfen; ein Tippfehler fällt sonst erst als
+  HTTP 500 im Log auf.
+- **Das Postfach hinter dem Kontakt muss gelesen werden.** Mit der Datei kommen
+  auch automatisierte Scanner-Meldungen und Spam (RFC 9116, Abschnitt 5.8).
+  Meldungen können personenbezogene Daten enthalten und gehören vertraulich
+  behandelt.
+- **Hinweise auf eine Datenschutzverletzung sofort prüfen.** Deutet eine Meldung
+  darauf hin, dass Unbefugte Zugang zu personenbezogenen Daten hatten oder diese
+  offengelegt, verändert, gelöscht wurden oder verloren gingen, liegt womöglich
+  eine Verletzung des Schutzes personenbezogener Daten vor (Art. 4 Nr. 12
+  DSGVO). Der Verantwortliche meldet sie unverzüglich und möglichst binnen
+  72 Stunden, nachdem sie ihm bekannt wurde, der zuständigen Aufsichtsbehörde,
+  außer sie führt voraussichtlich zu keinem Risiko (Art. 33 Abs. 1). Bei
+  voraussichtlich hohem Risiko benachrichtigt er auch die Betroffenen
+  (Art. 34). Jede Verletzung wird dokumentiert, auch ohne Meldung (Art. 33
+  Abs. 5). Wer die Instanz als Auftragsverarbeiter betreibt, meldet sie
+  unverzüglich dem Verantwortlichen (Art. 33 Abs. 2). Keine Rechtsberatung: Die
+  Einordnung im Einzelfall gehört zum Datenschutzbeauftragten oder zur
+  Rechtsberatung.
+- **Firewall und DDoS-Schutz** dürfen den Abruf durch Crawler nicht blockieren
+  (BSI-CS 149, Empfehlung 5).
+- Im Wartungsmodus (`php artisan down`) antwortet auch diese Route mit 503.
