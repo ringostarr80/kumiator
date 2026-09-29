@@ -8,6 +8,8 @@ use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Models\Concerns\RemapsActivityEvent;
 use App\Models\Contracts\MustBeApproved;
+use App\Notifications\ResetPasswordNotification;
+use App\Notifications\VerifyEmailNotification;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -212,7 +214,12 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
             return;
         }
 
-        parent::sendPasswordResetNotification($token);
+        $this->notify(new ResetPasswordNotification($token));
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyEmailNotification());
     }
 
     /**

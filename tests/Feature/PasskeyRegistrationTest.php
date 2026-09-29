@@ -298,10 +298,17 @@ final class PasskeyRegistrationTest extends TestCase
             ['Content-Type' => self::CONTENT_TYPE_JSON],
         )->assertCreated();
 
+        // Der Fake reicht die wirksame Sprache als viertes Argument; eine
+        // zentral gesetzte trägt er nicht in die Notification ein.
         Notification::assertSentTo(
             $user,
             PasskeyChangedNotification::class,
-            fn (PasskeyChangedNotification $notification): bool => $notification->locale === 'de',
+            fn (
+                PasskeyChangedNotification $notification,
+                array $channels,
+                User $notifiable,
+                ?string $locale,
+            ): bool => $locale === 'de',
         );
     }
 

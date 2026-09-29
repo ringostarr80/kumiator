@@ -10,6 +10,7 @@ use App\Enums\ActivityFailureReason;
 use App\Enums\EmailChangeCancellationReason;
 use App\Models\User;
 use App\Notifications\EmailChangeRequestedNotification;
+use App\Notifications\EmailChangeTargetTakenNotification;
 use App\Notifications\VerifyEmailChangeNotification;
 use App\Services\Audit\AuditEmailHasher;
 use App\Services\User\Contracts\UserEmailChangerContract;
@@ -21,6 +22,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\RateLimiter;
 use Spatie\Activitylog\Facades\Activity;
 
 /**
@@ -42,6 +44,7 @@ use Spatie\Activitylog\Facades\Activity;
 final class UserEmailChanger implements UserEmailChangerContract
 {
     private const TOKEN_TTL_MINUTES = 60;
+    private const HOLDER_NOTICE_DECAY_SECONDS = 3_600;
 
     public function requestChange(User $user, string $newEmail): void
     {
@@ -95,22 +98,41 @@ final class UserEmailChanger implements UserEmailChangerContract
                 ->log('');
         });
 
-        // Sprach-Snapshot zum Antragszeitpunkt: Beide Mails rendern erst im
-        // Worker, der keine Session kennt und darum auf `APP_LOCALE` zurückfiele.
-        // Ausgerechnet die Warnmail an die alte Adresse käme so womöglich in
-        // einer Sprache an, die ihr Empfänger nicht liest. Der Empfänger ist ein
-        // `AnonymousNotifiable`, weshalb `HasLocalePreference` hier nicht greift.
-        $locale = app()->getLocale();
+        // Gehört die Adresse schon einem anderen Konto, trüge der Confirm-Link
+        // den Namen des Antragstellers in ein fremdes Postfach und scheiterte
+        // beim Bestätigen ohnehin am Konflikt. Der Inhaber erfährt stattdessen
+        // nur, dass jemand seine Adresse eintragen wollte. Der Antrag selbst
+        // läuft wie bei einer freien Adresse, sonst verriete das Profil, ob
+        // eine Adresse vergeben ist. Ein ausgetretenes Konto schreibt der
+        // Verein nicht mehr an.
+        $holder = User::queryByEmail($newEmail)
+            ->withTrashed()
+            ->whereKeyNot($user->getKey())
+            ->first();
 
         // Mail-Versand erst nach dem Commit: ein nicht-rollbackbarer
         // Seiteneffekt. Rollt die Transaktion zurück, darf kein Confirm-/Cancel-
         // Link für einen nicht persistierten Pending-Wechsel rausgehen.
-        Notification::route('mail', $newEmail)->notify(
-            (new VerifyEmailChangeNotification($user, $plainConfirmToken, $newEmail))->locale($locale),
-        );
+        if ($holder === null) {
+            Notification::route('mail', $newEmail)->notify(
+                new VerifyEmailChangeNotification($user, $plainConfirmToken, $newEmail),
+            );
+        } elseif (!$holder->trashed()) {
+            // Mehrere Anträge, auch von verschiedenen Mitgliedern, sollen den
+            // Inhaber nicht fortlaufend anschreiben. Überzählige Hinweise
+            // entfallen still; der Antragsteller sieht ohnehin nicht, ob einer
+            // verschickt wurde.
+            $holderNoticeKey = 'email-change-target-notice:' . $holder->id;
+
+            // Hochzählen und Prüfen in einem Schritt: Getrennt läsen
+            // gleichzeitige Anträge alle denselben Stand und kämen alle durch.
+            if (RateLimiter::hit($holderNoticeKey, self::HOLDER_NOTICE_DECAY_SECONDS) <= 1) {
+                $holder->notify(new EmailChangeTargetTakenNotification());
+            }
+        }
 
         Notification::route('mail', $user->email)->notify(
-            (new EmailChangeRequestedNotification($user, $plainCancelToken, $newEmail))->locale($locale),
+            new EmailChangeRequestedNotification($user, $plainCancelToken, $newEmail),
         );
     }
 
@@ -170,10 +192,8 @@ final class UserEmailChanger implements UserEmailChangerContract
 
         // `withTrashed()`: auch ein soft-gelöschter Halter blockiert den
         // Tausch — er kann per Restore zurückkommen, und der DB-Unique-Index
-        // verbietet das Duplikat ohnehin. Konsistent zur Request-Validierung
-        // (`Rule::unique` zählt Trashed mit); ohne den Scope liefe der Save
-        // unten in eine unbehandelte Unique-Verletzung statt in den
-        // Conflict-Pfad.
+        // verbietet das Duplikat ohnehin. Ohne den Scope liefe der Save unten
+        // in eine unbehandelte Unique-Verletzung statt in den Conflict-Pfad.
         $taken = User::query()
             ->withTrashed()
             ->where('email', $pendingEmail)

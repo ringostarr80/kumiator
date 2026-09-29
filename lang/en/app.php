@@ -107,6 +107,8 @@ return [
         . ' will approve it shortly. You will be notified as soon as you can sign in.',
 
     // Auth - Registration
+    'registration_submitted' => 'Thank you! We have sent you an email with the next steps.'
+        . ' If it does not arrive, use "Forgot your password?" to request a link.',
     'agree_terms' => 'I agree to the :terms_of_service and :privacy_policy',
     'terms_of_service' => 'Terms of Service',
     'privacy_policy' => 'Privacy Policy',
@@ -318,6 +320,7 @@ return [
     'activity_password_reset_requested' => 'Password reset link requested',
     'activity_password_reset_failed' => 'Password reset denied',
     'activity_user_self_registered' => 'Account created via self-registration',
+    'activity_registration_email_taken' => 'Registration with an email address already in use',
     'activity_user_created' => 'Account created',
     'activity_user_approved' => 'Account approved',
     'activity_user_renamed' => 'Name changed',
@@ -359,9 +362,12 @@ return [
     'morph_passkey' => 'Passkey',
     'morph_role' => 'Role',
 
+    // Greeting of the app's own emails
+    'mail_greeting' => 'Hello :name,',
+    'mail_greeting_without_name' => 'Hello,',
+
     // Email change: mail texts
     'email_change_verify_subject' => 'Confirm your new email address',
-    'email_change_verify_greeting' => 'Hello :name,',
     'email_change_verify_intro' => 'A change of the email address for your account to :email has been requested.'
         . ' Click the following button to confirm the new address — only then will it be applied.',
     'email_change_verify_action' => 'Confirm new email address',
@@ -369,7 +375,6 @@ return [
     'email_change_verify_ignore' => 'If you did not request this change, simply ignore this email.'
         . ' An additional notice email with a cancel link has been sent to your previous address.',
     'email_change_requested_subject' => 'Security notice: email address change requested',
-    'email_change_requested_greeting' => 'Hello :name,',
     'email_change_requested_intro' => 'A change of the email address for your account to :email has been requested.'
         . ' That address will receive a separate confirmation email.',
     'email_change_requested_warning' => 'If you did NOT initiate this change, cancel it immediately.'
@@ -377,17 +382,37 @@ return [
     'email_change_requested_cancel_action' => 'Cancel change',
     'email_change_requested_ttl' => 'The request expires automatically after 60 minutes.',
     'email_change_requested_self_hint' => 'If you initiated the change yourself, no further action is required.',
+    'email_change_target_taken_subject' => 'Your email address was entered for another account',
+    'email_change_target_taken_intro' => 'Someone just requested to change the email address of another account to'
+        . ' yours. It already belongs to your account, so the change will not be applied.',
+    'email_change_target_taken_hint' => 'If you wanted to use your address for another account, please contact an'
+        . ' administrator. Otherwise, you can ignore this email. Nothing about your account has changed.',
 
     // Passkey inventory: notice email to the account owner
     'passkey_added_subject' => 'Security notice: new passkey added to your account',
     'passkey_removed_subject' => 'Security notice: passkey removed from your account',
-    'passkey_changed_greeting' => 'Hello :name,',
     'passkey_added_intro' => 'The passkey ":passkey" has just been added to your account.',
     'passkey_removed_intro' => 'The passkey ":passkey" has just been removed from your account.',
     'passkey_changed_warning' => 'If this was NOT you, review the passkeys in your profile immediately'
         . ' and change your password.',
     'passkey_changed_action' => 'Manage passkeys',
     'passkey_changed_self_hint' => 'If you made the change yourself, no further action is required.',
+
+    // Sign-up with a taken address: notice email to the account owner
+    'account_exists_subject' => 'Sign-up attempt with your email address',
+    'account_exists_intro' => 'Someone just tried to sign up with your email address. You already have an account,'
+        . ' so no new one was created.',
+    'account_exists_action' => 'Go to login',
+    'account_exists_ignore' => 'If this wasn\'t you, you can ignore this email. Nothing about your account'
+        . ' has changed.',
+
+    // Sign-up with a taken, unconfirmed address: reset link to the mailbox
+    'complete_registration_subject' => 'Complete your sign-up',
+    'complete_registration_intro' => 'A sign-up with your email address already exists but has not been confirmed'
+        . ' yet. No further account was created, and any password you just entered was not saved. Set your password'
+        . ' using the button below; this also confirms your email address.',
+    'complete_registration_action' => 'Set password',
+    'complete_registration_ignore' => 'If you did not sign up, you can ignore this email.',
 
     // Email change: landing pages (GET side-effect free, action via POST)
     'email_change_confirm_prompt' => 'Confirm the change of your email address here. The new address only takes'
@@ -412,4 +437,5 @@ return [
         . ' Your password no longer counts for this account.',
     'email_change_current_password_hint' => 'Confirm the change of your email address with your current password.',
     'email_change_current_password_required' => 'Changing your email address requires your current password.',
+    'email_change_too_many_requests' => 'You have requested too many email address changes. Please try again later.',
 ];

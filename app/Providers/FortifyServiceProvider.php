@@ -11,25 +11,34 @@ use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Enums\ActivityFailureReason;
 use App\Models\User;
 use App\Services\Auth\Contracts\DisabledPasswordLoginContextContract;
+use App\Services\Auth\Contracts\ExistingAccountNotifierContract;
+use App\Services\Auth\Contracts\SelfRegistrarContract;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
 use App\Services\Auth\Contracts\SessionConfirmationAuditContract;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\Auth\DisabledPasswordLoginContext;
+use App\Services\Auth\ExistingAccountNotifier;
 use App\Services\Auth\SelfRegistrationContext;
 use App\Services\Auth\SessionConfirmationAudit;
 use App\Services\Auth\UnapprovedLoginContext;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
+use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
+use Laravel\Fortify\Contracts\FailedPasswordResetResponse;
+use Laravel\Fortify\Contracts\SuccessfulPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Fortify;
+use Laravel\Fortify\Http\Responses\FailedPasswordResetResponse as FortifyFailedPasswordResetResponse;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -45,6 +54,28 @@ class FortifyServiceProvider extends ServiceProvider
         $this->app->scoped(SelfRegistrationContextContract::class, SelfRegistrationContext::class);
         $this->app->scoped(DisabledPasswordLoginContextContract::class, DisabledPasswordLoginContext::class);
         $this->app->bind(SessionConfirmationAuditContract::class, SessionConfirmationAudit::class);
+        $this->app->bind(SelfRegistrarContract::class, CreateNewUser::class);
+        $this->app->bind(ExistingAccountNotifierContract::class, ExistingAccountNotifier::class);
+
+        // Eine unbekannte Adresse und eine Wiederholung innerhalb der Sperrfrist
+        // des Brokers bekämen sonst eigene Meldungen, und beide verrieten, ob zur
+        // Adresse ein Konto besteht. Andere Fehlschläge kennt die Anforderung nicht.
+        $this->app->bind(
+            FailedPasswordResetLinkRequestResponse::class,
+            static fn (Application $app): SuccessfulPasswordResetLinkRequestResponse => $app->make(
+                SuccessfulPasswordResetLinkRequestResponse::class,
+                ['status' => Password::RESET_LINK_SENT],
+            ),
+        );
+
+        // Beim Einlösen gilt dasselbe für „kein Benutzer" neben „Token ungültig":
+        // Mit einem erfundenen Token zeigte die Meldung, ob die Adresse bekannt ist.
+        $this->app->bind(
+            FailedPasswordResetResponse::class,
+            static fn (): FortifyFailedPasswordResetResponse => new FortifyFailedPasswordResetResponse(
+                Password::INVALID_TOKEN,
+            ),
+        );
     }
 
     /**
@@ -52,7 +83,6 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
@@ -141,6 +171,25 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for(
             'two-factor',
             static fn (Request $request) => Limit::perMinute(5)->by($request->session()->get('login.id')),
+        );
+
+        // Pro IP statt pro Adresse: Beide Wege lösen Mails an eine frei
+        // eingegebene Adresse aus, und wer damit fremde Postfächer eindecken
+        // will, wechselt die Adresse, nicht den Anschluss.
+        RateLimiter::for(
+            'registration',
+            static fn (Request $request): Limit => Limit::perMinute(5)->by($request->ip()),
+        );
+        RateLimiter::for(
+            'password-reset-link',
+            static fn (Request $request): Limit => Limit::perMinute(5)->by($request->ip()),
+        );
+
+        // Die Tokens sind nicht zu erraten; die Drossel schützt die Worker,
+        // die jeder gescheiterte Versuch für die volle Timebox festhält.
+        RateLimiter::for(
+            'password-reset',
+            static fn (Request $request): Limit => Limit::perMinute(5)->by($request->ip()),
         );
     }
 

@@ -8,11 +8,8 @@ use Symfony\Component\HttpFoundation\IpUtils;
 
 /**
  * DSGVO Art. 5 Abs. 1 lit. c (Datenminimierung): IP-Adressen aus anonymen
- * Fehlversuchen (`login_failed`, `login_locked_out`) gehören potenziell zu
- * beliebigen Dritten und werden mit der globalen Activity-Log-Retention
- * (365 Tage) aufbewahrt. Statt der vollen Adresse wird daher nur das Netz
- * gespeichert — `/24` (IPv4) bzw. `/64` (IPv6). Die Kürzung IST hier der
- * Minimierungs-Hebel, der die lange Retention trägt.
+ * Anfragen gehören potenziell zu beliebigen Dritten. Statt der vollen Adresse
+ * wird daher nur das Netz gespeichert — `/24` (IPv4) bzw. `/64` (IPv6).
  *
  * `null`/ungültige Eingabe liefert `null` — dann wird gar keine IP-Property
  * geschrieben (z. B. CLI-Auth ohne Request-IP), statt einen wertlosen

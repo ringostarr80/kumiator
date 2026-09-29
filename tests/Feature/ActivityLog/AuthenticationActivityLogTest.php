@@ -381,8 +381,8 @@ final class AuthenticationActivityLogTest extends TestCase
      * ungültigem UTF-8 `false` liefert und eine `JsonEncodingException` wirft.
      * Im Login-Request wäre das HTTP 500 statt 422, und der `login_failed`-
      * Eintrag ginge verloren — ein Angreifer könnte Brute-Force aus dem
-     * Audit-Log heraushalten. Guard für die von allen drei anonymen Pfaden
-     * geteilte `forensicProperties()`-Bereinigung.
+     * Audit-Log heraushalten. Guard für die von allen anonymen Pfaden geteilte
+     * Bereinigung in `AuditForensicProperties`.
      */
     public function testFailedLoginSanitizesInvalidUtf8UserAgent(): void
     {

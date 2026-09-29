@@ -7,13 +7,16 @@ use App\Http\Controllers\Auth\ConfirmEmailChangeController;
 use App\Http\Controllers\Auth\PasskeyAuthenticationController;
 use App\Http\Controllers\Auth\PasskeyConfirmationController;
 use App\Http\Controllers\Auth\PasskeyRegistrationController;
+use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResendEmailVerificationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Middleware\EnsureFortifyCredentialsAreScalar;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Http\Controllers\ConfirmedTwoFactorAuthenticationController;
+use Laravel\Fortify\Http\Controllers\NewPasswordController;
 use Laravel\Fortify\Http\Controllers\PasswordController;
+use Laravel\Fortify\Http\Controllers\PasswordResetLinkController;
 use Laravel\Fortify\Http\Controllers\ProfileInformationController;
 use Laravel\Fortify\Http\Controllers\RecoveryCodeController;
 use Laravel\Fortify\Http\Controllers\TwoFactorAuthenticationController;
@@ -45,6 +48,34 @@ Route::middleware('guest')->group(static function (): void {
         ->middleware(['throttle:passkey-authenticate', 'max.json.body'])
         ->name('passkeys.authenticate');
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Registrierung und Passwort-Reset (nur für Gäste)
+//
+// Die Registrierung gibt es nur hier, Fortifys Feature ist aus. Die beiden
+// Reset-Routen überschreiben Fortifys gleichnamige Einträge, die ungedrosselt
+// laufen. Registrierung und Reset-Link lösen Mails an eine frei eingegebene
+// Adresse aus, und jeder gescheiterte Versuch auf allen drei Wegen hält einen
+// Worker für die volle Timebox fest. Last-registered gewinnt (vgl.
+// `verification.send`); Fortifys Middleware erbt der Ersatz nicht.
+// ──────────────────────────────────────────────────────────────────────────────
+Route::middleware(['guest', EnsureFortifyCredentialsAreScalar::class . ':email,password,token'])
+    ->group(static function (): void {
+        Route::get('/register', static fn () => view('auth.register'))
+            ->name('register');
+
+        Route::post('/register', RegisterController::class)
+            ->middleware('throttle:registration')
+            ->name('register.store');
+
+        Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
+            ->middleware('throttle:password-reset-link')
+            ->name('password.email');
+
+        Route::post('/reset-password', [NewPasswordController::class, 'store'])
+            ->middleware('throttle:password-reset')
+            ->name('password.update');
+    });
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Email verification action
@@ -96,8 +127,11 @@ Route::middleware('throttle:email-change-link')->group(static function (): void 
 // ──────────────────────────────────────────────────────────────────────────────
 // Registration-pending status page
 //
-// Eingeloggter, aber noch nicht freigeschalteter User bekommt hier den
-// Hinweis, dass er auf Admin-Freischaltung wartet.
+// Ziel der Umleitung aus der Middleware `approved`. Die Anmeldung weist ein
+// nicht freigeschaltetes Konto schon ab, im Normalbetrieb erreicht die Seite
+// also niemand. Sie bleibt als zweite Linie: Ein Anmeldeweg, der die
+// Freischaltung nicht prüft (etwa SSO oder ein Anmelde-Link per Mail), soll
+// auf eine Erklärung treffen statt auf einen Fehler.
 // ──────────────────────────────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', config('jetstream.auth_session')])
     ->get('/registration-pending', static fn () => view('auth.registration-pending'))

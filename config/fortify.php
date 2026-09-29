@@ -147,7 +147,8 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Ohne `Features::registration()`: Fortifys Registrierung meldet das neue
+        // Konto sofort an. Die Registrierung hat eigene Routen.
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::updateProfileInformation(),

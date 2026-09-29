@@ -14,6 +14,9 @@ use Symfony\Component\HttpFoundation\Response;
  * eingeloggte User, deren Konto noch nicht durch einen Admin freigeschaltet
  * wurde, und leitet sie auf die Statusseite `registration.pending` um.
  *
+ * Die Anmeldung lässt ein solches Konto gar nicht erst ein; die Middleware
+ * ist die zweite Linie für einen Anmeldeweg, der die Freischaltung nicht prüft.
+ *
  * `approved_at` ist der zweite, vom Email-Verify unabhängige Gate — nur in
  * Kombination mit `verified` decken beide Tore alle Compliance- und
  * Sicherheitsfälle ab (Email-Echtheit + manuelle Vereinsfreigabe).

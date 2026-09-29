@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
@@ -266,26 +265,6 @@ final class LoginMethodChangerTest extends TestCase
                 $notification->toMail($user)->introLines,
                 true,
             ),
-        );
-    }
-
-    /**
-     * Die Mail rendert erst im Worker, der keine Session kennt und ohne die
-     * mitgegebene Sprache auf `APP_LOCALE` zurückfiele.
-     */
-    public function testTheRemovalMailKeepsTheLanguageOfTheRequest(): void
-    {
-        Notification::fake();
-        App::setLocale('de');
-        $user = User::factory()->create();
-        $passkey = PasskeyCredential::factory()->for($user)->create();
-
-        $this->changer->deletePasskey($passkey);
-
-        Notification::assertSentTo(
-            $user,
-            PasskeyChangedNotification::class,
-            fn (PasskeyChangedNotification $notification): bool => $notification->locale === 'de',
         );
     }
 

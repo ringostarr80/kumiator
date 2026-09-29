@@ -7,9 +7,9 @@ namespace Tests\Feature\ActivityLog;
 use App\Actions\Fortify\CreateNewUser;
 use App\Models\Activity;
 use App\Models\User;
+use App\Services\Auth\Contracts\SelfRegistrarContract;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Fortify\Contracts\CreatesNewUsers;
 use Spatie\Activitylog\Facades\Activity as ActivityFacade;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -21,7 +21,7 @@ use Tests\TestCase;
  *   - Admin-/CLI-Pfad (direktes `User::create()`) → unverändert `created`
  *
  * Mechanik: Ein Request-scoped Marker (`SelfRegistrationContext`) wird in
- * `CreateNewUser::create()` um den `User::create()`-Aufruf gesetzt; ein
+ * `CreateNewUser::register()` um den `User::create()`-Aufruf gesetzt; ein
  * `Activity::saving`-Listener im `AppServiceProvider` labelt den Eintrag
  * dann auf den fachlichen Code um. Diese Tests sichern beide Seiten der
  * Mechanik (Marker greift / Marker greift nicht / Marker wird auch bei
@@ -57,11 +57,11 @@ final class SelfRegistrationActivityLogTest extends TestCase
     /**
      * Long-Running-Worker (Octane, Queue-Worker) leeren an der Request- bzw.
      * Job-Grenze die scoped Container-Instanzen, lassen echte Singletons aber
-     * stehen. Fortify bindet `CreatesNewUsers` als Singleton — eine dort im
-     * Konstruktor gecapturte Marker-Instanz wäre nach dem Reset eine andere als
-     * die, die der `Activity::saving`-Hook per `app()` liest. `markActive()`
-     * liefe ins Leere und die Self-Registration fiele ab dem zweiten Request
-     * still auf den generischen `user_created`-Eintrag zurück.
+     * stehen. `CreateNewUser` bekommt den Marker per Konstruktor — als Singleton
+     * gebunden, wäre die gecapturte Instanz nach dem Reset eine andere als die,
+     * die der `Activity::saving`-Hook per `app()` liest. `markActive()` liefe
+     * ins Leere und die Self-Registration fiele ab dem zweiten Request still
+     * auf den generischen `user_created`-Eintrag zurück.
      *
      * `forgetScopedInstances()` ist genau der Aufruf, den Octane an der
      * Request-Grenze macht — kein Stellvertreter. Geprüft wird der
@@ -69,9 +69,9 @@ final class SelfRegistrationActivityLogTest extends TestCase
      */
     public function testSelfRegistrationSurvivesScopedInstanceReset(): void
     {
-        // Singleton entstehen lassen, solange die Marker-Instanz des
-        // „vorherigen Requests" noch im Container liegt.
-        $this->app->make(CreatesNewUsers::class);
+        // Eine als Singleton gebundene Action entstünde hier, solange die
+        // Marker-Instanz des „vorherigen Requests" noch im Container liegt.
+        $this->app->make(SelfRegistrarContract::class);
 
         $this->app->forgetScopedInstances();
 
@@ -157,7 +157,7 @@ final class SelfRegistrationActivityLogTest extends TestCase
         $createNewUser = $this->app->make(CreateNewUser::class);
 
         try {
-            $createNewUser->create([
+            $createNewUser->register([
                 'name' => 'Erika',
                 'email' => self::REGISTRATION_EMAIL,
                 'password' => self::REGISTRATION_PASSWORD,

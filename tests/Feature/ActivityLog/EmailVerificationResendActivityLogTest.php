@@ -6,7 +6,7 @@ namespace Tests\Feature\ActivityLog;
 
 use App\Models\Activity;
 use App\Models\User;
-use Illuminate\Auth\Notifications\VerifyEmail;
+use App\Notifications\VerifyEmailNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
@@ -32,7 +32,7 @@ final class EmailVerificationResendActivityLogTest extends TestCase
         $response = $this->actingAs($user)->post(route('verification.send'));
 
         $response->assertSessionHas('status', 'verification-link-sent');
-        Notification::assertSentTo($user, VerifyEmail::class);
+        Notification::assertSentTo($user, VerifyEmailNotification::class);
 
         $activity = Activity::query()
             ->where('log_name', 'auth')

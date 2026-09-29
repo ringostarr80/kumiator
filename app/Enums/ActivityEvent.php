@@ -64,6 +64,7 @@ enum ActivityEvent: string
     case USER_DELETED = 'user_deleted';
     case USER_RESTORED = 'user_restored';
     case USER_SELF_REGISTERED = 'user_self_registered';
+    case REGISTRATION_EMAIL_TAKEN = 'registration_email_taken';
     case ACCOUNT_SELF_DELETED = 'account_self_deleted';
     case ACCOUNT_ADMIN_FORCE_DELETED = 'account_admin_force_deleted';
     case PROFILE_PHOTO_UPDATED = 'profile_photo_updated';

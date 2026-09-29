@@ -9,8 +9,7 @@ use App\Services\Concerns\MarksRequestScope;
 
 /**
  * Request-scoped Marker, der signalisiert, dass das gerade laufende
- * `User::create()` aus Fortifys Self-Registration-Pfad stammt
- * (`RegisteredUserController` → `CreateNewUser`).
+ * `User::create()` aus der Web-Self-Registration stammt.
  *
  * Hintergrund: `User` nutzt den `LogsActivity`-Trait und schreibt für jede
  * Anlage automatisch einen `user.created`-Eintrag. Web-Self-Registration und

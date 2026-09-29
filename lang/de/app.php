@@ -110,6 +110,8 @@ return [
         . ' und schaltet es zeitnah frei. Du erhältst eine Benachrichtigung, sobald du dich anmelden kannst.',
 
     // Auth - Registration
+    'registration_submitted' => 'Vielen Dank! Wir haben dir eine E-Mail mit den nächsten Schritten geschickt.'
+        . ' Kommt sie nicht an, fordere über „Passwort vergessen?" einen Link an.',
     'agree_terms' => 'Ich stimme den :terms_of_service und der :privacy_policy zu',
     'terms_of_service' => 'Nutzungsbedingungen',
     'privacy_policy' => 'Datenschutzrichtlinie',
@@ -327,6 +329,7 @@ return [
     'activity_password_reset_requested' => 'Passwort-Reset-Link angefordert',
     'activity_password_reset_failed' => 'Passwort-Reset abgelehnt',
     'activity_user_self_registered' => 'Konto durch Selbstregistrierung angelegt',
+    'activity_registration_email_taken' => 'Registrierung mit vergebener E-Mail-Adresse',
     'activity_user_created' => 'Konto angelegt',
     'activity_user_approved' => 'Konto freigeschaltet',
     'activity_user_renamed' => 'Name geändert',
@@ -368,9 +371,12 @@ return [
     'morph_passkey' => 'Passkey',
     'morph_role' => 'Rolle',
 
+    // Anrede der App-eigenen Mails
+    'mail_greeting' => 'Hallo :name,',
+    'mail_greeting_without_name' => 'Hallo,',
+
     // E-Mail-Änderung: Mail-Texte
     'email_change_verify_subject' => 'Bestätige deine neue E-Mail-Adresse',
-    'email_change_verify_greeting' => 'Hallo :name,',
     'email_change_verify_intro' => 'für dein Konto wurde eine Änderung der E-Mail-Adresse auf :email beantragt.'
         . ' Klicke auf den folgenden Button, um die neue Adresse zu bestätigen — erst dann wird sie übernommen.',
     'email_change_verify_action' => 'Neue E-Mail-Adresse bestätigen',
@@ -378,7 +384,6 @@ return [
     'email_change_verify_ignore' => 'Wenn du diese Änderung nicht angefragt hast, ignoriere diese E-Mail einfach.'
         . ' Eine zusätzliche Hinweis-Mail mit Abbruch-Link wurde an deine alte Adresse gesendet.',
     'email_change_requested_subject' => 'Sicherheitshinweis: Änderung deiner E-Mail-Adresse beantragt',
-    'email_change_requested_greeting' => 'Hallo :name,',
     'email_change_requested_intro' => 'für dein Konto wurde eine Änderung der E-Mail-Adresse auf :email beantragt.'
         . ' Diese Adresse erhält parallel eine Bestätigungs-Mail.',
     'email_change_requested_warning' => 'Falls du diese Änderung NICHT selbst veranlasst hast, brich sie umgehend ab.'
@@ -386,17 +391,38 @@ return [
     'email_change_requested_cancel_action' => 'Änderung abbrechen',
     'email_change_requested_ttl' => 'Die Anfrage läuft nach 60 Minuten automatisch ab.',
     'email_change_requested_self_hint' => 'Wenn du die Änderung selbst angestoßen hast, ist nichts weiter zu tun.',
+    'email_change_target_taken_subject' => 'Deine E-Mail-Adresse wurde für ein anderes Konto angegeben',
+    'email_change_target_taken_intro' => 'in einem anderen Konto wurde soeben beantragt, die E-Mail-Adresse auf deine'
+        . ' zu ändern. Sie gehört bereits zu deinem Konto, deshalb wird die Änderung nicht übernommen.',
+    'email_change_target_taken_hint' => 'Wolltest du deine Adresse für ein weiteres Konto verwenden, wende dich an'
+        . ' die Administration. Andernfalls kannst du diese E-Mail ignorieren. An deinem Konto hat sich nichts'
+        . ' geändert.',
 
     // Passkey-Bestand: Hinweis-Mail an den Kontoinhaber
     'passkey_added_subject' => 'Sicherheitshinweis: Neuer Passkey in deinem Konto',
     'passkey_removed_subject' => 'Sicherheitshinweis: Passkey aus deinem Konto entfernt',
-    'passkey_changed_greeting' => 'Hallo :name,',
     'passkey_added_intro' => 'in deinem Konto wurde soeben der Passkey „:passkey" hinzugefügt.',
     'passkey_removed_intro' => 'aus deinem Konto wurde soeben der Passkey „:passkey" entfernt.',
     'passkey_changed_warning' => 'Falls du das NICHT selbst warst, prüfe umgehend die Passkeys in deinem Profil'
         . ' und ändere dein Passwort.',
     'passkey_changed_action' => 'Passkeys verwalten',
     'passkey_changed_self_hint' => 'Wenn du die Änderung selbst vorgenommen hast, ist nichts weiter zu tun.',
+
+    // Registrierung mit vergebener Adresse: Hinweis-Mail an den Kontoinhaber
+    'account_exists_subject' => 'Registrierungsversuch mit deiner E-Mail-Adresse',
+    'account_exists_intro' => 'mit deiner E-Mail-Adresse wollte sich soeben jemand neu registrieren. Du hast bereits'
+        . ' ein Konto, deshalb wurde kein weiteres angelegt.',
+    'account_exists_action' => 'Zur Anmeldung',
+    'account_exists_ignore' => 'Wenn du das nicht warst, kannst du diese E-Mail ignorieren. An deinem Konto hat sich'
+        . ' nichts geändert.',
+
+    // Registrierung mit vergebener, unbestätigter Adresse: Reset-Link an das Postfach
+    'complete_registration_subject' => 'Registrierung abschließen',
+    'complete_registration_intro' => 'zu deiner E-Mail-Adresse gibt es bereits eine Registrierung, die noch nicht'
+        . ' bestätigt ist. Ein weiteres Konto wurde deshalb nicht angelegt, und ein eben eingegebenes Passwort wurde'
+        . ' nicht übernommen. Lege dein Passwort über den Button fest, damit ist auch deine E-Mail-Adresse bestätigt.',
+    'complete_registration_action' => 'Passwort festlegen',
+    'complete_registration_ignore' => 'Wenn du dich nicht registriert hast, kannst du diese E-Mail ignorieren.',
 
     // E-Mail-Änderung: Landingpages (GET nebenwirkungsfrei, Aktion per POST)
     'email_change_confirm_prompt' => 'Hier bestätigst du die Änderung deiner E-Mail-Adresse. Erst mit dem Klick'
@@ -424,5 +450,7 @@ return [
         . ' aktuellen Passwort.',
     'email_change_current_password_required' => 'Für die Änderung der E-Mail-Adresse ist dein aktuelles'
         . ' Passwort erforderlich.',
+    'email_change_too_many_requests' => 'Du hast zu oft eine Änderung der E-Mail-Adresse beantragt.'
+        . ' Bitte versuche es später erneut.',
 
 ];

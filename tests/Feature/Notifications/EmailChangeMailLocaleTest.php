@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Notifications;
 
 use App\Models\User;
-use App\Services\User\Contracts\UserEmailChangerContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Mail\Transport\ArrayTransport;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mime\Email;
 use Tests\TestCase;
@@ -28,13 +28,18 @@ final class EmailChangeMailLocaleTest extends TestCase
     public function testQueuedMailsRenderInRequestLocaleInsteadOfWorkerDefault(): void
     {
         config(['queue.default' => 'database', 'app.locale' => 'en']);
-        App::setLocale('de');
 
         $user = User::factory()->create(['email' => 'alt@example.com']);
-        app(UserEmailChangerContract::class)->requestChange($user, 'neu@example.com');
+        $this->actingAs($user)->withSession(['locale' => 'de'])->put('/user/profile-information', [
+            'name' => $user->name,
+            'email' => 'neu@example.com',
+            'current_password' => 'password',
+        ])->assertSessionHasNoErrors();
 
-        // Der Worker startet ohne Session und damit in der App-Default-Sprache.
+        // Der Worker startet ohne Session und ohne die Sprache des Requests,
+        // also in der App-Default-Sprache.
         App::setLocale('en');
+        Notification::locale('en');
         $this->artisan('queue:work', ['--stop-when-empty' => true, '--tries' => 1]);
 
         $subjects = $this->sentSubjects();

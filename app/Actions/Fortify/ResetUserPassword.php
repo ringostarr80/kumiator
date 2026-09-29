@@ -8,6 +8,8 @@ use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Enums\ActivityFailureReason;
 use App\Models\User;
+use Illuminate\Auth\Events\Verified;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
@@ -49,9 +51,20 @@ class ResetUserPassword implements ResetsUserPasswords
             'password' => $this->passwordRules(),
         ])->validate();
 
+        // Wer den Link einlöst, hat Zugriff auf das Postfach — derselbe Nachweis
+        // wie beim Bestätigungslink. Anders als dort gilt danach das eigene
+        // Passwort, nicht das einer fremden Registrierung mit dieser Adresse.
+        // `Verified` schreibt dasselbe Audit wie der Link.
+        $verifies = !$user->hasVerifiedEmail();
+
         $user->forceFill([
             'password' => Hash::make($input['password']),
-        ])->save();
+            'email_verified_at' => $user->email_verified_at ?? Carbon::now(),
+        ])->saveOrFail();
+
+        if ($verifies) {
+            event(new Verified($user));
+        }
     }
 
     /**

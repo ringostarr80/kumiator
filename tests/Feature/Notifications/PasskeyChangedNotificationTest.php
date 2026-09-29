@@ -18,7 +18,7 @@ final class PasskeyChangedNotificationTest extends TestCase
         $mail = (new PasskeyChangedNotification(PasskeyChange::ADDED, 'Mein iPhone'))->toMail($user);
 
         $this->assertSame(__('app.passkey_added_subject'), $mail->subject);
-        $this->assertSame(__('app.passkey_changed_greeting', ['name' => 'Erika']), $mail->greeting);
+        $this->assertSame(__('app.mail_greeting', ['name' => 'Erika']), $mail->greeting);
         $this->assertContains(__('app.passkey_added_intro', ['passkey' => 'Mein iPhone']), $mail->introLines);
         $this->assertSame(route('profile.show'), $mail->actionUrl);
     }

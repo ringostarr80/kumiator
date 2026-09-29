@@ -120,4 +120,21 @@ return [
 
     'password_timeout' => (int) env('AUTH_PASSWORD_TIMEOUT', 10_800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Timebox Duration
+    |--------------------------------------------------------------------------
+    |
+    | Mindestdauer (Mikrosekunden) der Anforderung und Einlösung eines
+    | Reset-Links, der Registrierung und eines E-Mail-Wechsels. Nur für bekannte
+    | Adressen hasht bzw. prüft der Broker einen Token mit bcrypt, und
+    | Registrierung und E-Mail-Wechsel schreiben je nach Adresse verschieden
+    | viel; die Timebox muss darüber liegen, sonst verrät die Antwortzeit das
+    | Konto. Laravels Vorgabe von 200 ms reicht bei den eingestellten
+    | bcrypt-Kosten nicht sicher; 1 s lässt Luft für langsamere Server.
+    |
+    */
+
+    'timebox_duration' => 1_000_000,
+
 ];
