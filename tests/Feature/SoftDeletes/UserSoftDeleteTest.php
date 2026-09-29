@@ -89,9 +89,14 @@ final class UserSoftDeleteTest extends TestCase
      * Wer dieses Verhalten ändern möchte, muss zuerst klären, wie Restore-Pfad
      * und Re-Registrierung sauber koexistieren (Pseudonymisierung der alten
      * Email beim Soft-Delete? Welche Email gilt nach Restore?).
+     *
+     * Die Registrierung antwortet trotzdem wie für eine freie Adresse, und die
+     * ausgetretene Person bekommt keine Mail.
      */
     public function testSoftDeletedEmailCannotBeReusedForNewRegistration(): void
     {
+        Notification::fake();
+
         $user = User::factory()->create(['email' => self::EMAIL_TAKEN]);
         $user->deleteOrFail();
 
@@ -103,8 +108,9 @@ final class UserSoftDeleteTest extends TestCase
             'terms' => true,
         ]);
 
-        $response->assertSessionHasErrors('email');
+        $response->assertSessionHasNoErrors();
         $this->assertSame(1, User::query()->withTrashed()->where('email', self::EMAIL_TAKEN)->count());
+        Notification::assertNothingSent();
     }
 
     public function testSoftDeletedUserCanBeRestored(): void

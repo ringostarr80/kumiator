@@ -110,6 +110,8 @@ return [
         . ' und schaltet es zeitnah frei. Du erhältst eine Benachrichtigung, sobald du dich anmelden kannst.',
 
     // Auth - Registration
+    'registration_submitted' => 'Vielen Dank! Wir haben dir eine E-Mail mit den nächsten Schritten geschickt.'
+        . ' Kommt sie nicht an, fordere über „Passwort vergessen?" einen Link an.',
     'agree_terms' => 'Ich stimme den :terms_of_service und der :privacy_policy zu',
     'terms_of_service' => 'Nutzungsbedingungen',
     'privacy_policy' => 'Datenschutzrichtlinie',
@@ -327,6 +329,7 @@ return [
     'activity_password_reset_requested' => 'Passwort-Reset-Link angefordert',
     'activity_password_reset_failed' => 'Passwort-Reset abgelehnt',
     'activity_user_self_registered' => 'Konto durch Selbstregistrierung angelegt',
+    'activity_registration_email_taken' => 'Registrierung mit vergebener E-Mail-Adresse',
     'activity_user_created' => 'Konto angelegt',
     'activity_user_approved' => 'Konto freigeschaltet',
     'activity_user_renamed' => 'Name geändert',
@@ -370,6 +373,7 @@ return [
 
     // Anrede der App-eigenen Mails
     'mail_greeting' => 'Hallo :name,',
+    'mail_greeting_without_name' => 'Hallo,',
 
     // E-Mail-Änderung: Mail-Texte
     'email_change_verify_subject' => 'Bestätige deine neue E-Mail-Adresse',
@@ -397,6 +401,22 @@ return [
         . ' und ändere dein Passwort.',
     'passkey_changed_action' => 'Passkeys verwalten',
     'passkey_changed_self_hint' => 'Wenn du die Änderung selbst vorgenommen hast, ist nichts weiter zu tun.',
+
+    // Registrierung mit vergebener Adresse: Hinweis-Mail an den Kontoinhaber
+    'account_exists_subject' => 'Registrierungsversuch mit deiner E-Mail-Adresse',
+    'account_exists_intro' => 'mit deiner E-Mail-Adresse wollte sich soeben jemand neu registrieren. Du hast bereits'
+        . ' ein Konto, deshalb wurde kein weiteres angelegt.',
+    'account_exists_action' => 'Zur Anmeldung',
+    'account_exists_ignore' => 'Wenn du das nicht warst, kannst du diese E-Mail ignorieren. An deinem Konto hat sich'
+        . ' nichts geändert.',
+
+    // Registrierung mit vergebener, unbestätigter Adresse: Reset-Link an das Postfach
+    'complete_registration_subject' => 'Registrierung abschließen',
+    'complete_registration_intro' => 'zu deiner E-Mail-Adresse gibt es bereits eine Registrierung, die noch nicht'
+        . ' bestätigt ist. Ein weiteres Konto wurde deshalb nicht angelegt, und ein eben eingegebenes Passwort wurde'
+        . ' nicht übernommen. Lege dein Passwort über den Button fest, damit ist auch deine E-Mail-Adresse bestätigt.',
+    'complete_registration_action' => 'Passwort festlegen',
+    'complete_registration_ignore' => 'Wenn du dich nicht registriert hast, kannst du diese E-Mail ignorieren.',
 
     // E-Mail-Änderung: Landingpages (GET nebenwirkungsfrei, Aktion per POST)
     'email_change_confirm_prompt' => 'Hier bestätigst du die Änderung deiner E-Mail-Adresse. Erst mit dem Klick'

@@ -11,10 +11,13 @@ use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Enums\ActivityFailureReason;
 use App\Models\User;
 use App\Services\Auth\Contracts\DisabledPasswordLoginContextContract;
+use App\Services\Auth\Contracts\ExistingAccountNotifierContract;
+use App\Services\Auth\Contracts\SelfRegistrarContract;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
 use App\Services\Auth\Contracts\SessionConfirmationAuditContract;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\Auth\DisabledPasswordLoginContext;
+use App\Services\Auth\ExistingAccountNotifier;
 use App\Services\Auth\SelfRegistrationContext;
 use App\Services\Auth\SessionConfirmationAudit;
 use App\Services\Auth\UnapprovedLoginContext;
@@ -51,6 +54,8 @@ class FortifyServiceProvider extends ServiceProvider
         $this->app->scoped(SelfRegistrationContextContract::class, SelfRegistrationContext::class);
         $this->app->scoped(DisabledPasswordLoginContextContract::class, DisabledPasswordLoginContext::class);
         $this->app->bind(SessionConfirmationAuditContract::class, SessionConfirmationAudit::class);
+        $this->app->bind(SelfRegistrarContract::class, CreateNewUser::class);
+        $this->app->bind(ExistingAccountNotifierContract::class, ExistingAccountNotifier::class);
 
         // Eine unbekannte Adresse und eine Wiederholung innerhalb der Sperrfrist
         // des Brokers bekämen sonst eigene Meldungen, und beide verrieten, ob zur
@@ -78,7 +83,6 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
@@ -169,9 +173,13 @@ class FortifyServiceProvider extends ServiceProvider
             static fn (Request $request) => Limit::perMinute(5)->by($request->session()->get('login.id')),
         );
 
-        // Pro IP statt pro Adresse: Der Link geht an eine frei eingegebene
-        // Adresse, und wer damit fremde Postfächer eindecken will, wechselt die
-        // Adresse, nicht den Anschluss.
+        // Pro IP statt pro Adresse: Beide Wege lösen Mails an eine frei
+        // eingegebene Adresse aus, und wer damit fremde Postfächer eindecken
+        // will, wechselt die Adresse, nicht den Anschluss.
+        RateLimiter::for(
+            'registration',
+            static fn (Request $request): Limit => Limit::perMinute(5)->by($request->ip()),
+        );
         RateLimiter::for(
             'password-reset-link',
             static fn (Request $request): Limit => Limit::perMinute(5)->by($request->ip()),

@@ -14,6 +14,7 @@ deren Ausfall-Überwachung (Schedule-Healthcheck).
   - [Verifikation](#verifikation)
   - [Aktuell registrierte Schedule-Einträge](#aktuell-registrierte-schedule-einträge)
 - [Queue-Worker](#queue-worker)
+  - [Links in den Mails](#links-in-den-mails)
   - [Worker als systemd-Service](#worker-als-systemd-service)
   - [Neustart nach jedem Deploy](#neustart-nach-jedem-deploy)
 - [Schedule-Healthcheck (Healthchecks.io)](#schedule-healthcheck-healthchecksio)
@@ -75,8 +76,8 @@ manuelles `php artisan config:clear` löst das.
 
 Die Anwendung stellt E-Mail-Versand asynchron über Laravels Queue zu (Default
 `QUEUE_CONNECTION=database`): So aufgeschobene Jobs — etwa die Mails zum
-Zurücksetzen des Passworts und beim E-Mail-Adress-Wechsel — werden **nicht**
-sofort abgearbeitet,
+Zurücksetzen des Passworts, zur Bestätigung einer Registrierung und beim
+E-Mail-Adress-Wechsel — werden **nicht** sofort abgearbeitet,
 sondern als Zeile in die `jobs`-Tabelle geschrieben und warten dort auf einen
 **dauerhaft laufenden Worker-Prozess**, der sie abholt.
 
@@ -89,6 +90,21 @@ Anders als der Scheduler, den der Minuten-Cron nur kurz **anstößt**, ist der
 Worker ein **langlebiger Daemon**. Er muss von einem Prozess-Manager überwacht,
 bei Absturz neu gestartet und beim Boot automatisch hochgefahren werden. Cron
 allein genügt dafür nicht.
+
+### Links in den Mails
+
+Der Worker rendert die Mails ohne eingehende Anfrage und baut ihre Links deshalb
+aus `APP_URL`. Der Wert muss die öffentliche Adresse der Instanz sein, samt
+Schema und gegebenenfalls Port (z. B. `https://verein.example.org`) — dieselbe,
+die auch die Passkey-Anmeldung als Origin erwartet.
+
+Der Link zur Bestätigung der E-Mail-Adresse ist signiert, und die Signatur deckt
+Schema und Host mit ab. Beim Klick vergleicht die App sie mit der Adresse, unter
+der sie die Anfrage empfängt. Beendet ein vorgeschalteter Proxy TLS und reicht
+per HTTP weiter, sieht die App `http://` statt `https://` und lehnt jeden
+Bestätigungslink mit 403 ab. In diesem Aufbau muss die App dem Proxy vertrauen
+(`$middleware->trustProxies(...)` in `bootstrap/app.php`), damit sie Schema und
+Host aus dessen `X-Forwarded-*`-Headern übernimmt.
 
 ### Worker als systemd-Service
 

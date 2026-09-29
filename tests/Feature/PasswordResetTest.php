@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\Activity;
 use App\Models\User;
 use App\Notifications\ResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
 
@@ -148,6 +150,33 @@ final class PasswordResetTest extends TestCase
 
         $unknownResponse->assertSessionHasErrors(['email' => __('passwords.token')]);
         $knownResponse->assertSessionHasErrors(['email' => __('passwords.token')]);
+    }
+
+    /**
+     * Für eine Registrierung, die jemand anderes angelegt haben kann, ist der
+     * Reset der Weg, auf dem der Inhaber des Postfachs die Adresse mit dem
+     * eigenen Passwort bestätigt.
+     */
+    public function testResetConfirmsAnUnverifiedAddress(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        $this->post(self::RESET_PASSWORD_URL_PATH, [
+            'token' => Password::createToken($user),
+            'email' => $user->email,
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertTrue($user->refresh()->hasVerifiedEmail());
+        $this->assertSame(
+            1,
+            Activity::query()
+                ->where('event', 'email_verified')
+                ->where('causer_id', $user->getKey())
+                ->where('subject_id', $user->getKey())
+                ->count(),
+        );
     }
 
     public function testResetLinkRequestIsRateLimited(): void

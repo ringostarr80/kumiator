@@ -24,10 +24,10 @@ use Spatie\Activitylog\Actions\LogActivityAction;
  *
  * **Verkürzte Frist für anonyme Dritt-Forensik** (`clean_after_days_forensic`)
  * Der `forensic`-Kanal (siehe {@see App\Enums\ActivityChannel::FORENSIC})
- * sammelt Fehlversuche/Anforderungen ohne authentifizierten Causer
- * (`login_failed`, `login_locked_out`, `password_reset_requested`,
- * `passkey_login_failed`) mit gekürzter IP, User-Agent, E-Mail-Hash bzw.
- * Credential-ID-Hash potenziell fremder Personen. Diese
+ * sammelt Fehlversuche/Anforderungen ohne authentifizierten Causer mit
+ * gekürzter IP, User-Agent, E-Mail-Hash bzw. Credential-ID-Hash potenziell
+ * fremder Personen. Welche Events dazugehören, entscheiden die Stellen, die in
+ * diesen Kanal schreiben. Diese
  * Dritt-Daten dürfen nicht so lange wie der Mitglieder-Audit vorgehalten werden;
  * ein eigener Schedule löscht den Kanal nach 90 Tagen
  * (`activitylog:clean forensic --days=...`). Der globale 365-Tage-Clean bleibt

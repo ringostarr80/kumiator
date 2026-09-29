@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Architecture;
 
 use App\Notifications\ResetPasswordNotification;
+use App\Notifications\VerifyEmailNotification;
 use PHPat\Selector\Selector;
 use PHPat\Test\Builder\Rule;
 use PHPat\Test\PHPat;
@@ -25,11 +26,12 @@ final class ModelsDependOnlyOnModelsTest
                 Selector::inNamespace('Laravel'),
                 Selector::inNamespace('Spatie\\Activitylog'),
                 Selector::inNamespace('Spatie\\Permission'),
-                // Laravel verschickt die Reset-Mail über eine Methode am Model;
-                // die eigene Unterklasse läuft über die Queue und hängt selbst nur
-                // von Illuminate ab. Einzeln freigegeben, nicht der Namespace:
-                // Jede weitere Notification bleibt eine eigene Entscheidung.
+                // Laravel verschickt Reset- und Bestätigungsmail über Methoden am
+                // Model; die eigenen Unterklassen laufen über die Queue und hängen
+                // selbst nur von Illuminate ab. Einzeln freigegeben, nicht der
+                // Namespace: Jede weitere Notification bleibt eine eigene Entscheidung.
                 Selector::classname(ResetPasswordNotification::class),
+                Selector::classname(VerifyEmailNotification::class),
                 // Sprachprimitive im Root-Namespace sind keine Vendor-Abhängigkeiten,
                 // sondern Bausteine von PHP selbst — analog zu den anderen Schicht-
                 // Allowlists (Controllers/Services/Actions). Ohne diese Einträge
@@ -43,9 +45,9 @@ final class ModelsDependOnlyOnModelsTest
             ->because(
                 'Models bilden die unterste Schicht der Anwendung und dürfen nur von anderen Models, '
                 . 'Illuminate, Laravel, explizit freigegebenen Vendor-Paketen (aktuell '
-                . 'Spatie\\Activitylog und Spatie\\Permission), der Queue-Variante von Laravels Reset-Mail '
-                . 'sowie PHP-Sprachprimitiven (Throwable, Stringable, DateTimeInterface, JsonSerializable) '
-                . 'abhängen.',
+                . 'Spatie\\Activitylog und Spatie\\Permission), den Queue-Varianten von Laravels Reset- und '
+                . 'Bestätigungsmail sowie PHP-Sprachprimitiven (Throwable, Stringable, DateTimeInterface, '
+                . 'JsonSerializable) abhängen.',
                 'Abhängigkeiten zu höheren Schichten (Http, Livewire, Console, Services, Repositories, '
                 . 'Actions, ...) sind nicht erlaubt — wenn ein Model fachliche Logik braucht, gehört '
                 . 'diese in einen Service oder ein Repository, das das Model nutzt (nicht umgekehrt).',

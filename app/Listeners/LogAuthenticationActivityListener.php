@@ -8,7 +8,7 @@ use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Models\User;
 use App\Services\Audit\AuditEmailHasher;
-use App\Services\Audit\AuditIpTruncator;
+use App\Services\Audit\AuditForensicProperties;
 use App\Services\Auth\Contracts\DisabledPasswordLoginContextContract;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\WebAuthn\PasskeyLoginContext;
@@ -22,9 +22,7 @@ use Illuminate\Auth\Events\PasswordResetLinkSent;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\SessionGuard;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Laravel\Fortify\Events\PasswordUpdatedViaController;
 use Spatie\Activitylog\Facades\Activity;
 
@@ -59,17 +57,6 @@ final class LogAuthenticationActivityListener
     ) {
     }
 
-    /**
-     * Fortifys Auto-Login nach `/register` erzeugt hier bewusst einen zweiten
-     * Eintrag neben `user_self_registered`: Der Controller loggt den frisch
-     * angelegten User per `guard->login()` ein, nachdem `CreateNewUser` seinen
-     * Marker im `finally` bereits geräumt hat. Der Eintrag ist redundant, aber
-     * inhaltlich nicht falsch — das Passwort wurde soeben gesetzt und
-     * eingegeben — und über den identischen Zeitstempel neben dem
-     * Registrierungs-Eintrag als solcher erkennbar. Ein weiterer
-     * request-scoped Suppress-Marker allein dafür wäre teurer als der
-     * Doppeleintrag.
-     */
     public function handleLogin(Login $event): void
     {
         // Die Passkey-Anmeldung löst über `Auth::login()` ebenfalls ein `Login`-
@@ -183,7 +170,7 @@ final class LogAuthenticationActivityListener
         $properties += $this->emailHashProperty(is_string($email) ? $email : null);
 
         // `Failed` trägt keinen Request — IP/UA daher aus dem aktuellen HTTP-Request.
-        $properties += $this->forensicProperties(request());
+        $properties += AuditForensicProperties::fromRequest(request());
 
         Activity::useLog(ActivityChannel::FORENSIC->value)
             ->event(ActivityEvent::LOGIN_FAILED->value)
@@ -236,7 +223,7 @@ final class LogAuthenticationActivityListener
             return;
         }
 
-        $properties = $this->forensicProperties(request());
+        $properties = AuditForensicProperties::fromRequest(request());
 
         // Der Broker feuert dieses Event auch, wenn `User::sendPasswordResetNotification()`
         // den Versand verweigert. Ohne die Notiz läse sich der Eintrag als „Link ging
@@ -301,7 +288,7 @@ final class LogAuthenticationActivityListener
         $email = $event->request->input('email');
         $properties = $this->emailHashProperty(is_string($email) ? $email : null);
 
-        $properties += $this->forensicProperties($event->request);
+        $properties += AuditForensicProperties::fromRequest($event->request);
 
         Activity::useLog(ActivityChannel::FORENSIC->value)
             ->event(ActivityEvent::LOGIN_LOCKED_OUT->value)
@@ -324,41 +311,5 @@ final class LogAuthenticationActivityListener
         return $emailHash !== null
             ? ['email_hash' => $emailHash]
             : [];
-    }
-
-    /**
-     * Forensische Properties für anonyme Fehlversuche: gekürzte IP (Netz statt
-     * Host — DSGVO-Datenminimierung) und der auf 255 Zeichen begrenzte
-     * User-Agent, jeweils nur wenn vorhanden. Der User-Agent ist auf den
-     * anonymen Pfaden angreiferkontrolliert; der Längen-Cap verhindert, dass
-     * beliebig lange Header die langlebig aufbewahrte Forensik-Tabelle aufblähen.
-     * Ohne Request-IP (z. B. CLI-Auth) bleibt das Array leer.
-     *
-     * @return array<string, string>
-     */
-    private function forensicProperties(Request $request): array
-    {
-        $properties = [];
-
-        $ip = AuditIpTruncator::truncate($request->ip());
-
-        if ($ip !== null) {
-            $properties['ip'] = $ip;
-        }
-
-        $userAgent = $request->userAgent();
-
-        if ($userAgent !== null) {
-            // Ungültiges UTF-8 im angreiferkontrollierten Header verwerfen (die
-            // Gleich-Charset-Konvertierung ersetzt Malformed-Bytes): Spaties
-            // `collection`-Cast serialisiert die Properties per `json_encode`,
-            // das an solchen Bytes mit einer `JsonEncodingException` bräche und
-            // den synchronen Forensik-Insert sprengte (HTTP 500, verlorener
-            // Audit-Eintrag).
-            $userAgent = mb_convert_encoding($userAgent, 'UTF-8', 'UTF-8');
-            $properties['user_agent'] = Str::limit($userAgent, 255, '');
-        }
-
-        return $properties;
     }
 }
