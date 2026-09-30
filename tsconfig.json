@@ -10,8 +10,9 @@
         "strict": true,
         "skipLibCheck": true,
         "noEmit": true,
+        "allowImportingTsExtensions": true,
         "allowJs": true,
         "checkJs": true
     },
-    "include": ["tests/css", "vite", "vite.config.ts", "vitest.config.ts"]
+    "include": ["playwright.config.ts", "tests/css", "tests/e2e", "vite", "vite.config.ts", "vitest.config.ts"]
 }

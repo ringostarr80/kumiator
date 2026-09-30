@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
-import { verifySourcePaths } from './vite/verify-source-paths';
+import { verifySourcePaths } from './vite/verify-source-paths.ts';
 
 export default defineConfig({
     plugins: [

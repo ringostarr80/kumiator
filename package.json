@@ -7,9 +7,11 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "test:frontend": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.browser.json && vitest run --coverage"
+        "test:frontend": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.browser.json && vitest run --coverage",
+        "test:e2e": "vite build && playwright test"
     },
     "devDependencies": {
+        "@playwright/test": "^1.63.0",
         "@tailwindcss/forms": "^0.5.11",
         "@tailwindcss/typography": "^0.5.20",
         "@tailwindcss/vite": "^4.3.3",
