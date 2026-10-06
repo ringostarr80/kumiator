@@ -7,6 +7,7 @@
 [![PHP CI](https://github.com/ringostarr80/kumiator/actions/workflows/php.yml/badge.svg)](https://github.com/ringostarr80/kumiator/actions/workflows/php.yml)
 [![Frontend CI](https://github.com/ringostarr80/kumiator/actions/workflows/frontend.yml/badge.svg)](https://github.com/ringostarr80/kumiator/actions/workflows/frontend.yml)
 [![codecov](https://codecov.io/gh/ringostarr80/kumiator/graph/badge.svg?token=nWqL6zWbgz)](https://codecov.io/gh/ringostarr80/kumiator)
+[![Mutation score](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Fbadge-api.stryker-mutator.io%2Fgithub.com%2Fringostarr80%2Fkumiator%2Fmain)](https://dashboard.stryker-mutator.io/reports/github.com/ringostarr80/kumiator/main)
 [![Quality gate status](https://sonarcloud.io/api/project_badges/measure?project=ringostarr80_kumiator&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ringostarr80_kumiator)
 
 Kumiator ist eine webbasierte Applikation zur zentralen Verwaltung eines Vereins.
