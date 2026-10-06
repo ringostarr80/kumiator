@@ -89,9 +89,13 @@ jobs:
       - name: Build assets
         run: npm run build
 
-      # Infection would log every escaped mutant as a warning, while the uploaded report already lists them all
+      # Infection would log every escaped mutant as a warning, while the uploaded report already lists them all.
+      # Only the full run enforces a minimum, the few mutants of a pull request make the score too volatile
       - name: Run mutation tests
-        run: composer test:mutation -- --logger-github=false
+        run: composer test:mutation -- --logger-github=false --min-msi=80
+        env:
+          # Publishes the report behind the mutation badge in the README
+          STRYKER_DASHBOARD_API_KEY: ${{ secrets.STRYKER_DASHBOARD_API_KEY }}
 
       - name: Upload mutation report
         if: ${{ !cancelled() }}

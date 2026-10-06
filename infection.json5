@@ -13,7 +13,12 @@
     "timeout": 600,
     "threads": "max",
     "logs": {
-        "html": "build/infection/infection.html"
+        "html": "build/infection/infection.html",
+        // Gesendet wird nur aus CI-Läufen auf `main`; lokal und in Pull Requests meldet Infection
+        // stattdessen „Dashboard report has not been sent“.
+        "stryker": {
+            "report": "main"
+        }
     },
     "staticAnalysisTool": "phpstan",
     "staticAnalysisToolOptions": "--memory-limit=512M"
