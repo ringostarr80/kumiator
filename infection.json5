@@ -1,0 +1,20 @@
+{
+    "$schema": "vendor/infection/infection/resources/schema.json",
+    "source": {
+        "directories": [
+            "app"
+        ]
+    },
+    // Infection überspringt jede Mutante, deren abdeckende Testklassen zusammen länger laufen als
+    // das Timeout. Solche Mutanten fehlen im MSI und tauchen nur in der Zusammenfassung auf („mutants
+    // required more time than configured“). Die Feature-Tests decken dieselben Klassen vielfach ab,
+    // deshalb muss das Limit über der Summe aller Testzeiten liegen, die das JUnit-Log am äußersten
+    // testsuite ausweist, nicht nur über der Dauer des parallelen Testlaufs.
+    "timeout": 600,
+    "threads": "max",
+    "logs": {
+        "html": "build/infection/infection.html"
+    },
+    "staticAnalysisTool": "phpstan",
+    "staticAnalysisToolOptions": "--memory-limit=512M"
+}

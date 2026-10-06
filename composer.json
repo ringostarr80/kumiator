@@ -26,6 +26,7 @@
     "require-dev": {
         "brianium/paratest": "^7.23",
         "fakerphp/faker": "^1.24",
+        "infection/infection": "^0.35.4",
         "larastan/larastan": "^3.10",
         "laravel/pail": "^1.2",
         "laravel/pint": "^1.29",
@@ -94,17 +95,34 @@
         ],
         "test": [
             "@php artisan config:clear --ansi",
-            "@php artisan test --coverage --parallel --min=90 --coverage-clover=coverage.xml --log-junit=junit.xml"
+            "@php artisan test --coverage --parallel --min=90 --coverage-clover=build/phpunit/coverage.xml --coverage-xml=build/phpunit/coverage-xml --exclude-source-from-xml-coverage --log-junit=build/phpunit/junit.xml"
         ],
         "test:coverage-html": [
             "@php artisan config:clear --ansi",
-            "@php artisan test --coverage --parallel --coverage-html=coverage"
+            "@php artisan test --coverage --parallel --coverage-html=build/phpunit/coverage-html"
         ],
         "test:debug": [
             "@putenv XDEBUG_MODE=debug",
             "@putenv XDEBUG_TRIGGER=1",
             "@putenv PCOV_ENABLED=0",
             "@php artisan test"
+        ],
+        "test:mutation": [
+            "Composer\\Config::disableProcessTimeout",
+            "@test @no_additional_args",
+            "@test:mutation:run"
+        ],
+        "test:mutation:diff": [
+            "Composer\\Config::disableProcessTimeout",
+            "@test @no_additional_args",
+            "@putenv GIT_CONFIG_COUNT=1",
+            "@putenv GIT_CONFIG_KEY_0=diff.renames",
+            "@putenv GIT_CONFIG_VALUE_0=false",
+            "@test:mutation:run --git-diff-lines --git-diff-base=origin/main"
+        ],
+        "test:mutation:run": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php vendor/bin/infection --coverage=build/phpunit --skip-initial-tests"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
@@ -133,7 +151,7 @@
     "config": {
         "allow-plugins": {
             "dealerdirect/phpcodesniffer-composer-installer": true,
-            "pestphp/pest-plugin": true,
+            "infection/extension-installer": false,
             "php-http/discovery": true,
             "phpstan/extension-installer": true
         },

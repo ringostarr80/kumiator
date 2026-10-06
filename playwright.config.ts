@@ -21,8 +21,13 @@ const baseURL = 'http://127.0.0.1:8123';
 
 export default defineConfig({
     testDir: 'tests/e2e',
+    // Playwright leert Ausgabe- und Berichtsverzeichnis bei jedem Lauf, deshalb liegen beide
+    // getrennt unter build/
+    outputDir: 'build/playwright/results',
     forbidOnly: !!process.env.CI,
-    reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+    reporter: process.env.CI
+        ? [['github'], ['html', { open: 'never', outputFolder: 'build/playwright/report' }]]
+        : 'list',
     use: {
         baseURL,
         trace: 'retain-on-failure',

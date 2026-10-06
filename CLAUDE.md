@@ -11,8 +11,8 @@ Jeder Verein hat dabei seine eigene unabhängige Instanz (URL) zur Verfügung.
     - `vendor/bin/phpcs`
     - `vendor/bin/phpstan analyse --configuration=phpstan-8.4.neon --memory-limit=512M`
     - `vendor/bin/phpstan analyse --configuration=phpstan-arch.neon --memory-limit=512M`
-    - `php artisan config:clear --ansi && php artisan test --coverage --parallel --min=90`
-    - `npm run test:frontend` – prüft die TypeScript-Typen, baut die Assets und lässt die Frontend-Tests laufen
+    - `composer test:mutation:diff` – lässt die Tests mit Coverage laufen (Minimum 90 %) und mutiert danach die gegenüber `origin/main` geänderten Zeilen unter `app/`. Noch nicht versionierte Dateien (`git ls-files --others --exclude-standard -- app`) sieht der Diff nicht; sie zusätzlich per Pfad prüfen: `composer test:mutation:run -- <Pfade>`. Überlebende Mutanten nicht übergehen: Test ergänzen oder begründen, warum die Mutation das Verhalten nicht ändert.
+    - `npm run test:frontend` – prüft die TypeScript-Typen und lässt die Frontend-Tests laufen
 
    Schlägt `dev:analyze:phpat` fehl, darfst du überlegen, ob eine Architekturregel angepasst werden sollte – **vorher nachfragen**, nie eigenmächtig ändern.
 

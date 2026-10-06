@@ -57,11 +57,11 @@ jobs:
       # tsc runs before vitest, so a type error leaves no report behind; uploading anyway would end the job
       # on a missing file instead of on the type error
       - name: Upload coverage to Codecov
-        if: ${{ !cancelled() && hashFiles('coverage/lcov.info') != '' }}
+        if: ${{ !cancelled() && hashFiles('build/vitest/lcov.info') != '' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
+          files: ./build/vitest/lcov.info
           disable_search: true
           flags: frontend
           # Without a report Codecov reads the changed lines as uncovered, so the patch status would

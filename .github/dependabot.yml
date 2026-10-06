@@ -46,6 +46,9 @@ updates:
     groups:
       composer-minor-patch:
         update-types: [minor, patch]
+        # Below 1.0 a minor release may break the API, yet Dependabot counts it as minor,
+        # so these packages stay on their own like a major
+        exclude-patterns: ["infection/infection", "phpat/phpat"]
 
   - package-ecosystem: npm
     directory: /
