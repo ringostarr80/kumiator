@@ -3,3 +3,5 @@ includes:
 
 parameters:
     phpVersion: 80400
+    # Eigene Datei, weil PHPStan einen Ergebnis-Cache verwirft, der von einer anderen Konfiguration stammt.
+    resultCachePath: %tmpDir%/resultCache-8.4.php

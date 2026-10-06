@@ -156,7 +156,7 @@ jobs:
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml
+          files: ./build/phpunit/coverage.xml
           disable_search: true
           # codecov.yml scopes the coverage targets to this flag
           flags: php
@@ -168,7 +168,7 @@ jobs:
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./junit.xml
+          files: ./build/phpunit/junit.xml
           disable_search: true
           report_type: test_results
           flags: php

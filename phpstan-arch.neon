@@ -5,3 +5,5 @@ includes:
 parameters:
     paths!:
         - app
+    # Eigene Datei, weil PHPStan einen Ergebnis-Cache verwirft, der von einer anderen Konfiguration stammt.
+    resultCachePath: %tmpDir%/resultCache-arch.php

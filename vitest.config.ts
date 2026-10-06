@@ -7,6 +7,8 @@ export default defineConfig({
         coverage: {
             provider: 'v8',
             reporter: ['text', 'lcovonly'],
+            // Vitest leert das Verzeichnis vor jedem Lauf, deshalb ein eigenes unter build/
+            reportsDirectory: 'build/vitest',
             include: ['vite/**', 'resources/js/**'],
             /**
              * Nur das Plugin steht vollständig unter Test; von resources/js/ ist erst ein Teil

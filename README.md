@@ -53,7 +53,8 @@ keine Zeile, die nicht ein Mensch verantwortet.
 
 Abgesichert wird das durch eine Verifikations-Pipeline, die nach jeder Änderung läuft: statische
 Analyse (PHPStan auf maximaler Stufe), Coding-Standards (PHP_CodeSniffer), Architekturregeln
-(PHPat) und die vollständige Testsuite inklusive Coverage.
+(PHPat), die vollständige Testsuite inklusive Coverage und Mutationstests (Infection) für die
+geänderten Zeilen.
 
 ## Schnellstart (lokale Entwicklung)
 
