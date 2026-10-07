@@ -8,13 +8,18 @@ use App\Config\WebauthnConfig;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
+use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
 use App\Services\WebAuthn\Exceptions\CredentialOwnerMismatchException;
 use App\Services\WebAuthn\PasskeyAuthenticationService;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use App\Services\WebAuthn\WebAuthnValidatorFactory;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Exceptions;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
+use Tests\Support\FailingValidatorFactory;
 use Tests\Support\RecordingValidatorFactory;
 use Tests\Support\VirtualAuthenticator;
 use Tests\TestCase;
@@ -360,6 +365,71 @@ final class PasskeyAuthenticationServiceTest extends TestCase
         $optionsB = $this->service->createOptions();
 
         $this->assertNotSame($optionsA->challenge, $optionsB->challenge);
+    }
+
+    /**
+     * Ein unerwarteter Fehler im Fake-Pfad darf die unbekannte Credential-ID nicht
+     * in einen Serverfehler verwandeln: Die Antwort unterschiede sich dann von der
+     * auf eine falsche Signatur.
+     */
+    public function testAnUnexpectedErrorInTheFakeVerificationIsReportedNotThrown(): void
+    {
+        Exceptions::fake();
+        $service = new PasskeyAuthenticationService(
+            new FailingValidatorFactory(),
+            new PasskeyCredentialRepository(),
+            app(SerializerInterface::class),
+            new PasskeyLoginContext(),
+        );
+
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor(User::factory()->create());
+        $options = $service->createOptions();
+        $rawResponse = $authenticator->signAssertion($credential, $options);
+        $credential->deleteOrFail();
+
+        try {
+            $service->verify($rawResponse, $options, WebauthnConfig::effectiveHost());
+            $this->fail('Eine unbekannte Credential-ID hätte abgelehnt werden müssen.');
+        } catch (AuthenticatorResponseVerificationException $e) {
+            $this->assertSame('credential_not_found', $e->getMessage());
+        }
+
+        Exceptions::assertReported(\RuntimeException::class);
+    }
+
+    public function testTheLoginMarkerIsOnlyActiveDuringTheLogin(): void
+    {
+        $context = app(PasskeyLoginContext::class);
+        $activeDuringLogin = null;
+        Event::listen(Login::class, static function () use ($context, &$activeDuringLogin): void {
+            $activeDuringLogin = $context->isActive();
+        });
+
+        app(PasskeyAuthenticationContract::class)->loginAuthenticatedUser(User::factory()->create());
+
+        $this->assertTrue($activeDuringLogin);
+        $this->assertFalse($context->isActive());
+    }
+
+    /**
+     * Bliebe der Marker nach einem gescheiterten Login stehen, fehlte die nächste
+     * Passwort-Anmeldung derselben Instanz im Activity-Log.
+     */
+    public function testTheLoginMarkerIsClearedWhenTheLoginFails(): void
+    {
+        Event::listen(Login::class, static function (): void {
+            throw new \RuntimeException('Listener failed.');
+        });
+
+        try {
+            app(PasskeyAuthenticationContract::class)->loginAuthenticatedUser(User::factory()->create());
+            $this->fail('Der Fehler des Listeners hätte durchschlagen müssen.');
+        } catch (\RuntimeException) {
+            // erwartet
+        }
+
+        $this->assertFalse(app(PasskeyLoginContext::class)->isActive());
     }
 
     protected function setUp(): void
