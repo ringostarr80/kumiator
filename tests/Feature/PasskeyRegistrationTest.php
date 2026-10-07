@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Config\WebauthnConfig;
 use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
@@ -11,10 +12,12 @@ use App\Notifications\PasskeyChangedNotification;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Session;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
 use Tests\Support\ConfirmsPassword;
@@ -40,6 +43,8 @@ final class PasskeyRegistrationTest extends TestCase
 
     /** Wortlaut aus PublicKeyCredentialDenormalizer der webauthn-lib. */
     private const string LIBRARY_ID_MISMATCH = 'Invalid ID';
+
+    private const string FOREIGN_PORT = '9443';
 
     /**
      * Zugesagt sind fünf Registrierungsversuche. Im Browser besteht jeder davon
@@ -207,6 +212,7 @@ final class PasskeyRegistrationTest extends TestCase
             ->postJson(self::REGISTER_URL, [], ['Content-Type' => self::CONTENT_TYPE_JSON]);
 
         $response->assertUnprocessable();
+        $response->assertJsonPath('message', __('app.passkey_registration_session_expired'));
     }
 
     public function testStoreEndpointReturns422WhenSessionHasExpired(): void
@@ -257,6 +263,57 @@ final class PasskeyRegistrationTest extends TestCase
         $credential = PasskeyCredential::query()->where('user_id', $user->getKey())->sole();
 
         $this->assertSame('Test Passkey', $credential->name);
+    }
+
+    /**
+     * Die RP-ID bindet einen Passkey nur an die Domain. Erst der Abgleich mit der
+     * Adresse der App hindert einen anderen Dienst auf demselben Host daran, die
+     * Zeremonie für sie abzuwickeln.
+     */
+    public function testStoreEndpointRejectsAnAttestationFromAnotherOrigin(): void
+    {
+        $user = User::factory()->create();
+        $options = $this->startCeremony($user);
+
+        // Derselbe Host, nur ein anderer Port: Die RP-ID passt, die Adresse nicht.
+        $foreignOrigin = 'https://' . WebauthnConfig::effectiveHost() . ':' . self::FOREIGN_PORT;
+
+        $this->actingAsConfirmed($user)->postJson(
+            self::REGISTER_URL,
+            VirtualAuthenticator::create()->attestation($options, origin: $foreignOrigin),
+            ['Content-Type' => self::CONTENT_TYPE_JSON],
+        )->assertUnprocessable();
+
+        $this->assertFalse(PasskeyCredential::query()->where('user_id', $user->getKey())->exists());
+    }
+
+    /**
+     * Ein neuer Passkey ist ein Wechsel der Zugangsdaten. Wer die bisherige
+     * Sitzungs-ID mitgeschnitten hat, soll danach nicht in ihr weiterarbeiten.
+     */
+    public function testStoreEndpointDiscardsTheOldSession(): void
+    {
+        $user = User::factory()->create();
+        $options = $this->startCeremony($user);
+
+        $oldSessionId = Session::getId();
+
+        // Prüft mit, dass die alte Session gespeichert ist; sonst bewiese ihr
+        // Fehlen danach nichts.
+        $this->assertNotSame('', Session::getHandler()->read($oldSessionId));
+
+        // Ohne Cookie vergibt der Test-Client jedem Request eine neue Sitzungs-ID.
+        $this->actingAsConfirmed($user)
+            ->withCredentials()
+            ->withCookie(Config::string('session.cookie'), $oldSessionId)
+            ->postJson(
+                self::REGISTER_URL,
+                VirtualAuthenticator::create()->attestation($options),
+                ['Content-Type' => self::CONTENT_TYPE_JSON],
+            )->assertCreated();
+
+        $this->assertNotSame($oldSessionId, Session::getId());
+        $this->assertSame('', Session::getHandler()->read($oldSessionId));
     }
 
     public function testStoreEndpointNotifiesTheAccountOwnerAboutTheNewPasskey(): void
@@ -391,6 +448,7 @@ final class PasskeyRegistrationTest extends TestCase
         );
 
         $response->assertBadRequest();
+        $response->assertJsonPath('message', __('app.passkey_empty_request'));
     }
 
     public function testStoreEndpointReturns422WhenVerificationFails(): void

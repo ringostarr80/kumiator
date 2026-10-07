@@ -30,6 +30,22 @@ final class WebAuthnConfigTest extends TestCase
         $this->assertNull(WebauthnConfig::rpId());
     }
 
+    /**
+     * Ein Tippfehler in `WEBAUTHN_TIMEOUT` wird durch den Cast zu 0 und soll dem
+     * Nutzer nicht die Zeit für PIN oder Biometrie nehmen. Jeder positive Wert
+     * bleibt dagegen stehen, auch der kleinste.
+     */
+    public function testTimeoutFallsBackToTheDefaultBelowOneMillisecond(): void
+    {
+        config(['webauthn.timeout' => 1]);
+
+        $this->assertSame(1, WebauthnConfig::timeoutMs());
+
+        config(['webauthn.timeout' => 0]);
+
+        $this->assertSame(300_000, WebauthnConfig::timeoutMs());
+    }
+
     public function testAppUrlReturnsConfiguredString(): void
     {
         config(['app.url' => 'https://example.com']);
