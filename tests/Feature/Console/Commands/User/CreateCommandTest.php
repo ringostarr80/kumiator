@@ -89,4 +89,23 @@ final class CreateCommandTest extends TestCase
             ->assertFailed()
             ->run();
     }
+
+    public function testTitleIsUnderlined(): void
+    {
+        // Unter `de`, weil deutsche Titel Umlaute tragen können: An ihnen zählte
+        // `strlen` Bytes statt Zeichen, und die Linie geriete zu lang.
+        $this->app->setLocale('de');
+        $title = __('commands.create_user.title');
+
+        $command = $this->artisan('user:create');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            ->expectsOutput($title)
+            ->expectsOutput(str_repeat('-', mb_strlen($title)))
+            // Ohne Rollen bricht der Command direkt nach der Überschrift ab, der kürzeste
+            // Weg bis zu seinem Ende.
+            ->assertFailed()
+            ->run();
+    }
 }

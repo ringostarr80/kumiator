@@ -97,6 +97,25 @@ final class DisableTwoFactorCommandTest extends TestCase
             ->run();
     }
 
+    public function testTitleIsUnderlined(): void
+    {
+        // Unter `de`, weil deutsche Titel Umlaute tragen können: An ihnen zählte
+        // `strlen` Bytes statt Zeichen, und die Linie geriete zu lang.
+        $this->app->setLocale('de');
+        $title = __('commands.disable_two_factor.title');
+
+        $command = $this->artisan('user:disable-2fa');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            ->expectsOutput($title)
+            ->expectsOutput(str_repeat('-', mb_strlen($title)))
+            // Die unbekannte E-Mail ist nur der kürzeste Weg bis zum Ende des Commands.
+            ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')
+            ->assertFailed()
+            ->run();
+    }
+
     private function createUserWithTwoFactor(): User
     {
         $user = User::factory()->create([
