@@ -40,7 +40,11 @@ final class EmailChangeMailLocaleTest extends TestCase
         // also in der App-Default-Sprache.
         App::setLocale('en');
         Notification::locale('en');
-        $this->artisan('queue:work', ['--stop-when-empty' => true, '--tries' => 1]);
+
+        // Der Worker misst den Speicher des ganzen Prozesses. Läuft die Suite in
+        // einem einzigen Prozess, liegt der schon über dem Default von 128 MB,
+        // und der Worker hört nach der ersten Mail auf.
+        $this->artisan('queue:work', ['--stop-when-empty' => true, '--tries' => 1, '--memory' => 0]);
 
         $subjects = $this->sentSubjects();
 

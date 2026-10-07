@@ -8,6 +8,7 @@ use App\Models\Activity;
 use App\Models\User;
 use App\Notifications\ResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Laravel\Fortify\Features;
@@ -179,10 +180,30 @@ final class PasswordResetTest extends TestCase
         );
     }
 
+    /**
+     * Fortify verlangt beim Einlösen nur, dass überhaupt ein Passwort kommt.
+     * Länge und Bestätigung prüft allein die Action.
+     */
+    public function testResetRejectsAPasswordThatBreaksThePasswordRules(): void
+    {
+        $user = User::factory()->create();
+
+        $this->post(self::RESET_PASSWORD_URL_PATH, [
+            'token' => Password::createToken($user),
+            'email' => $user->email,
+            'password' => 'short',
+            'password_confirmation' => 'short',
+        ])->assertSessionHasErrors('password');
+
+        $this->assertTrue(Hash::check('password', $user->refresh()->password));
+    }
+
     public function testResetLinkRequestIsRateLimited(): void
     {
         for ($i = 0; $i < 5; $i++) {
-            $this->post(self::FORGOT_PASSWORD_URL_PATH, ['email' => self::UNKNOWN_EMAIL])->assertSessionHasNoErrors();
+            $this->post(self::FORGOT_PASSWORD_URL_PATH, ['email' => self::UNKNOWN_EMAIL])
+                ->assertSessionHasNoErrors()
+                ->assertSessionHas('status', __('passwords.sent'));
         }
 
         $this->post(self::FORGOT_PASSWORD_URL_PATH, ['email' => self::UNKNOWN_EMAIL])->assertTooManyRequests();

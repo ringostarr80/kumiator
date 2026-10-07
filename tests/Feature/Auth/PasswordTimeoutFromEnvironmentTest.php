@@ -41,6 +41,17 @@ final class PasswordTimeoutFromEnvironmentTest extends TestCase
     }
 
     /**
+     * Die Grenze liegt wie in Jetstreams Dialog: Eine Bestätigung, die so alt
+     * ist wie die Frist, gilt dort schon nicht mehr.
+     */
+    public function testAConfirmationAsOldAsTheWindowNoLongerCounts(): void
+    {
+        $this->confirmPassword(self::WINDOW_SECONDS);
+
+        $this->assertFalse($this->recentlyConfirmedPasses());
+    }
+
+    /**
      * Die Variable steht vor `parent::setUp()`, weil die Anwendung ihre Config
      * beim Booten einmal liest — danach gesetzt bliebe sie wirkungslos.
      */

@@ -97,6 +97,30 @@ final class ResetPasswordCommandTest extends TestCase
     }
 
     /**
+     * Ein versehentliches Enter soll als fehlendes Passwort gemeldet werden,
+     * nicht als falscher Typ oder zu kurz.
+     */
+    public function testResetPasswordReportsAnEmptyPasswordAsMissing(): void
+    {
+        User::factory()->create([
+            'email' => self::TEST_EMAIL,
+        ]);
+
+        $command = $this->artisan('user:reset-password');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        // Die Konsole liefert die leere Eingabe als `null`, `expectsQuestion()`
+        // nimmt nur Strings. Für die Validierung sind beide leer.
+        $command
+            ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
+            ->expectsQuestion(__('commands.reset_password.ask_password'), '')
+            ->expectsQuestion(__('commands.reset_password.ask_password_confirm'), '')
+            ->expectsOutput(__('validation.required', ['attribute' => 'password']))
+            ->assertFailed()
+            ->run();
+    }
+
+    /**
      * Der einzige Weg zurück, wenn jemand sein Passwort vergisst, nachdem er die
      * Passwort-Anmeldung abgeschaltet hat: Der Reset-Link erreicht solche Konten
      * nicht mehr.
