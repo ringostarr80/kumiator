@@ -46,7 +46,16 @@ final class PasskeyAuthenticationServiceTest extends TestCase
         $options = $this->service->createOptions();
 
         $this->assertNotEmpty($options->challenge);
-        $this->assertGreaterThanOrEqual(16, strlen($options->challenge));
+        // Genau 32 statt der 16 Byte, die TR-03188 NRM-3 mindestens vorsieht: Die
+        // Reserve darüber soll nicht unbemerkt schrumpfen.
+        $this->assertSame(32, strlen($options->challenge));
+    }
+
+    public function testCreateConfirmationOptionsGeneratesA32ByteChallenge(): void
+    {
+        $options = $this->service->createConfirmationOptions(User::factory()->create());
+
+        $this->assertSame(32, strlen($options->challenge));
     }
 
     public function testCreateOptionsRequiresUserVerification(): void

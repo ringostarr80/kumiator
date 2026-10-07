@@ -70,7 +70,9 @@ final class OtherSessionRevokerTest extends TestCase
 
         app(OtherSessionRevokerContract::class)->revokeFor($user);
 
-        $this->assertNotSame($stolen, $user->fresh()?->getRememberToken());
+        $token = $user->fresh()?->getRememberToken();
+        $this->assertNotSame($stolen, $token);
+        $this->assertSame(60, strlen((string)$token));
     }
 
     /**
