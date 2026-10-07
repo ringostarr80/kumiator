@@ -268,6 +268,7 @@ final class UserEmailChangerTest extends TestCase
             },
         );
         $this->assertSame(hash('sha256', $this->capturedToken), $refreshed->pending_email_confirm_token_hash);
+        $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $this->capturedToken);
 
         $plainConfirmToken = $this->capturedToken;
 
@@ -282,6 +283,7 @@ final class UserEmailChangerTest extends TestCase
             },
         );
         $this->assertSame(hash('sha256', $this->capturedToken), $refreshed->pending_email_cancel_token_hash);
+        $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $this->capturedToken);
         $this->assertNotSame($plainConfirmToken, $this->capturedToken);
     }
 
