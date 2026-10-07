@@ -111,7 +111,9 @@ final class PasskeyRegistrationController extends Controller
             );
         }
 
-        $request->session()->regenerate();
+        // `true` verwirft die alte Session: Wer ihre ID kennt, soll nach dem
+        // Wechsel der Zugangsdaten nicht in ihr weiterarbeiten.
+        $request->session()->regenerate(true);
 
         return response()->json([
             'id' => $passkeyCredential->id,

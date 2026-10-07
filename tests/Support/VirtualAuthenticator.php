@@ -109,17 +109,20 @@ final class VirtualAuthenticator
      * `$format` bildet einen Authenticator ab, der ein anderes Attestation-
      * Format als `none` meldet; das Statement selbst bleibt leer.
      *
+     * `$origin` bildet eine Seite ab, die nicht unter der Adresse der App läuft.
+     *
      * @return array<string, mixed>
      */
     public function attestation(
         PublicKeyCredentialCreationOptions $options,
         bool $userVerified = true,
         string $format = 'none',
+        ?string $origin = null,
     ): array {
         $clientDataJson = (string) json_encode([
             'type' => 'webauthn.create',
             'challenge' => Base64UrlSafe::encodeUnpadded($options->challenge),
-            'origin' => WebauthnConfig::appUrl(),
+            'origin' => $origin ?? WebauthnConfig::appUrl(),
             'crossOrigin' => false,
         ]);
 

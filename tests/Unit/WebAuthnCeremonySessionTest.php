@@ -286,20 +286,41 @@ final class WebAuthnCeremonySessionTest extends TestCase
         // The runtime guard (`is_int($ttlRaw) ? $ttlRaw : 360`) protects against
         // a misconfigured non-integer value being passed to addSeconds().
         config(['webauthn.ceremony_session_ttl' => 'not-an-integer']);
+        $this->freezeTime();
 
         $options = PublicKeyCredentialRequestOptions::create(random_bytes(32));
         $request = $this->makeRequestWithSession();
 
-        $lowerBound = now()->addSeconds(359)->timestamp;
         $this->ceremonySession->storeOptions($options, self::SESSION_KEY, $request);
-        $upperBound = now()->addSeconds(361)->timestamp;
 
         $stored = $request->session()->get(self::SESSION_KEY);
 
         $this->assertIsArray($stored);
-        $this->assertIsInt($stored['expires_at']);
-        $this->assertGreaterThanOrEqual($lowerBound, $stored['expires_at']);
-        $this->assertLessThanOrEqual($upperBound, $stored['expires_at']);
+        $this->assertSame(now()->addSeconds(360)->timestamp, $stored['expires_at']);
+    }
+
+    /**
+     * Die TTL steht voll zur Verfügung: Auch in der Sekunde, die `expires_at`
+     * nennt, gilt die Challenge noch.
+     */
+    public function testChallengeIsStillValidInItsLastSecond(): void
+    {
+        config(['webauthn.ceremony_session_ttl' => 30]);
+        $this->freezeTime();
+
+        $options = PublicKeyCredentialRequestOptions::create(random_bytes(32));
+        $request = $this->makeRequestWithSession();
+
+        $this->ceremonySession->storeOptions($options, self::SESSION_KEY, $request);
+        $this->travel(30)->seconds();
+
+        $result = $this->ceremonySession->pullOptions(
+            self::SESSION_KEY,
+            PublicKeyCredentialRequestOptions::class,
+            $request,
+        );
+
+        $this->assertNotNull($result);
     }
 
     protected function setUp(): void
