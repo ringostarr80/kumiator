@@ -90,4 +90,27 @@ final class DeleteCommandTest extends TestCase
 
         $this->assertNotNull(Role::where('name', 'admin')->first());
     }
+
+    public function testTitleIsUnderlined(): void
+    {
+        // Unter `de`, weil deutsche Titel Umlaute tragen können: An ihnen zählte
+        // `strlen` Bytes statt Zeichen, und die Linie geriete zu lang.
+        $this->app->setLocale('de');
+        $title = __('commands.delete_role.title');
+
+        Role::findOrCreate('admin');
+
+        $command = $this->artisan('role:delete');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            ->expectsOutput($title)
+            ->expectsOutput(str_repeat('-', mb_strlen($title)))
+            // Der Abbruch ist der kürzeste Weg bis zum Ende des Commands; eine unbekannte
+            // Rolle endete in einer Exception statt im Fehlerpfad.
+            ->expectsQuestion(__('commands.delete_role.ask_name'), 'admin')
+            ->expectsConfirmation(__('commands.delete_role.confirm_delete'), 'no')
+            ->assertSuccessful()
+            ->run();
+    }
 }

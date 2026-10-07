@@ -87,4 +87,23 @@ final class AssignCommandTest extends TestCase
         $this->assertTrue($freshUser->hasRole('admin'));
         $this->assertFalse($freshUser->hasRole('member'));
     }
+
+    public function testTitleIsUnderlined(): void
+    {
+        // Unter `de`, weil deutsche Titel Umlaute tragen können: An ihnen zählte
+        // `strlen` Bytes statt Zeichen, und die Linie geriete zu lang.
+        $this->app->setLocale('de');
+        $title = __('commands.assign_role.title');
+
+        $command = $this->artisan('role:assign');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            ->expectsOutput($title)
+            ->expectsOutput(str_repeat('-', mb_strlen($title)))
+            // Die unbekannte E-Mail ist nur der kürzeste Weg bis zum Ende des Commands.
+            ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')
+            ->assertFailed()
+            ->run();
+    }
 }
