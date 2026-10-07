@@ -31,6 +31,7 @@ final class FortifyScalarInputGuardTest extends TestCase
         $response = $this->postJson(self::REGISTER_URL_PATH, ['email' => ['case@example.com']]);
 
         $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['email' => __('validation.string', ['attribute' => 'email'])]);
     }
 
     public function testResetPasswordRejectsArrayEmailInsteadOfCrashing(): void
@@ -83,6 +84,23 @@ final class FortifyScalarInputGuardTest extends TestCase
     public function testPasswordUpdateRejectsArrayCurrentPasswordInsteadOfCrashing(): void
     {
         $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->putJson(self::PASSWORD_URL_PATH, [
+            'current_password' => ['password'],
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ]);
+
+        $response->assertStatus(422);
+    }
+
+    /**
+     * Ohne Passwort-Login prüft eine eigene Regelkette das Feld. Auch dort muss
+     * `bail` das Array vor dem Hash-Vergleich abfangen.
+     */
+    public function testPasswordUpdateRejectsArrayCurrentPasswordWithoutPasswordLogin(): void
+    {
+        $user = User::factory()->create(['password_login_disabled_at' => now()]);
 
         $response = $this->actingAs($user)->putJson(self::PASSWORD_URL_PATH, [
             'current_password' => ['password'],

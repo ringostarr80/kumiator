@@ -10,10 +10,12 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
+use Tests\Support\ConfirmsPassword;
 use Tests\TestCase;
 
 final class UpdatePasswordTest extends TestCase
 {
+    use ConfirmsPassword;
     use RefreshDatabase;
 
     public function testPasswordCanBeUpdated(): void
@@ -82,6 +84,51 @@ final class UpdatePasswordTest extends TestCase
             ])
             ->call('updatePassword')
             ->assertHasErrors(['current_password']);
+
+        $refreshedUser = $user->fresh();
+        $this->assertNotNull($refreshedUser);
+        $this->assertTrue(Hash::check('password', $refreshedUser->password));
+    }
+
+    /**
+     * Ein leeres Feld prüft Laravel nur gegen implizite Regeln. Ohne `required`
+     * liefe es an Länge und Bestätigung vorbei.
+     */
+    public function testNewPasswordIsRequired(): void
+    {
+        $this->actingAs($user = User::factory()->create());
+
+        Livewire::test(UpdatePasswordForm::class)
+            ->set('state', [
+                'current_password' => 'password',
+                'password' => '',
+                'password_confirmation' => '',
+            ])
+            ->call('updatePassword')
+            ->assertHasErrors(['password' => 'required']);
+
+        $refreshedUser = $user->fresh();
+        $this->assertNotNull($refreshedUser);
+        $this->assertTrue(Hash::check('password', $refreshedUser->password));
+    }
+
+    /**
+     * Die bestätigte Sitzung tritt nur an Konten ohne Passwort-Login an die
+     * Stelle des Passworts. Solange es gilt, bleibt es selbst der Nachweis.
+     */
+    public function testAConfirmedSessionDoesNotReplaceAValidCurrentPassword(): void
+    {
+        $this->confirmPassword();
+        $this->actingAs($user = User::factory()->create());
+
+        Livewire::test(UpdatePasswordForm::class)
+            ->set('state', [
+                'current_password' => '',
+                'password' => 'new-password',
+                'password_confirmation' => 'new-password',
+            ])
+            ->call('updatePassword')
+            ->assertHasErrors(['current_password' => 'required']);
 
         $refreshedUser = $user->fresh();
         $this->assertNotNull($refreshedUser);

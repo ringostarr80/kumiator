@@ -218,7 +218,7 @@ final class PasswordLoginDisabledTest extends TestCase
             'email' => $user->email,
             'password' => 'brand-new-password',
             'password_confirmation' => 'brand-new-password',
-        ]);
+        ])->assertSessionHasErrors(['email' => __('passwords.disabled')]);
 
         $user->refresh();
 

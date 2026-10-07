@@ -242,6 +242,29 @@ final class PasskeyManagerFormTest extends TestCase
         $this->assertSame('Alt', $passkey->fresh()?->name);
     }
 
+    /**
+     * Der Fehler aus dem letzten Versuch soll nicht unter dem Feld stehen
+     * bleiben, während der nächste Klick die Bestätigung abfragt.
+     */
+    public function testStartingAConfirmationClearsEarlierErrors(): void
+    {
+        $user = User::factory()->create();
+        $passkey = PasskeyCredential::factory()->for($user)->create(['name' => 'Alt']);
+
+        $component = Livewire::actingAs($user)
+            ->test(PasskeyManagerForm::class)
+            ->call('startRenaming', $passkey->id)
+            ->set('editingPasskeyName', '')
+            ->call('renamePasskey');
+
+        $component->assertHasErrors('editingPasskeyName');
+
+        $component
+            ->call('startConfirmingPassword', md5('renamePasskey'))
+            ->assertSet('confirmingPassword', true)
+            ->assertHasNoErrors();
+    }
+
     public function testRenamePasskeyRejectsTooLongName(): void
     {
         $this->confirmPassword();
