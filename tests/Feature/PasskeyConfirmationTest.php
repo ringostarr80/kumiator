@@ -86,7 +86,9 @@ final class PasskeyConfirmationTest extends TestCase
         $user = User::factory()->create();
         PasskeyCredential::factory()->for(User::factory()->create())->create();
 
-        $this->actingAs($user)->getJson(self::CONFIRM_OPTIONS_URL)->assertUnprocessable();
+        $this->actingAs($user)->getJson(self::CONFIRM_OPTIONS_URL)
+            ->assertUnprocessable()
+            ->assertJsonPath('message', __('app.passkey_confirmation_no_passkey'));
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -102,7 +104,9 @@ final class PasskeyConfirmationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->postJson(self::CONFIRM_URL, ['data' => 'test'])->assertUnprocessable();
+        $this->actingAs($user)->postJson(self::CONFIRM_URL, ['data' => 'test'])
+            ->assertUnprocessable()
+            ->assertJsonPath('message', __('app.passkey_session_expired'));
     }
 
     public function testConfirmReturns400WhenRequestBodyIsEmpty(): void
@@ -117,7 +121,7 @@ final class PasskeyConfirmationTest extends TestCase
             self::CONFIRM_URL,
             server: ['HTTP_ACCEPT' => 'application/json', 'CONTENT_TYPE' => 'application/json'],
             content: '',
-        )->assertBadRequest();
+        )->assertBadRequest()->assertJsonPath('message', __('app.passkey_empty_request'));
     }
 
     /**
@@ -314,7 +318,8 @@ final class PasskeyConfirmationTest extends TestCase
 
         // Ein fremder Authenticator signiert für einen Passkey, der ihm nicht gehört.
         $this->postAssertion(VirtualAuthenticator::create()->signAssertion($credential, $options))
-            ->assertUnprocessable();
+            ->assertUnprocessable()
+            ->assertJsonPath('message', __('app.passkey_confirmation_failed'));
 
         $this->assertSame(
             1,
@@ -414,6 +419,7 @@ final class PasskeyConfirmationTest extends TestCase
 
     public function testConfirmReturns500WhenUnexpectedExceptionOccurs(): void
     {
+        Exceptions::fake();
         $user = User::factory()->create();
         PasskeyCredential::factory()->for($user)->create();
 
@@ -424,7 +430,10 @@ final class PasskeyConfirmationTest extends TestCase
             $mock->shouldReceive('verify')->andThrow(new \RuntimeException('Unexpected error.'));
         });
 
-        $this->postJson(self::CONFIRM_URL, ['data' => 'test'])->assertInternalServerError();
+        $this->postJson(self::CONFIRM_URL, ['data' => 'test'])
+            ->assertInternalServerError()
+            ->assertJsonPath('message', __('app.passkey_confirmation_server_error'));
+        Exceptions::assertReported(\RuntimeException::class);
 
         $activity = Activity::query()
             ->where('log_name', 'auth')

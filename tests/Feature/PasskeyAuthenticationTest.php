@@ -11,9 +11,11 @@ use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Testing\TestResponse;
 use Mockery\MockInterface;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -113,6 +115,7 @@ final class PasskeyAuthenticationTest extends TestCase
             ->postJson(self::AUTHENTICATE_URL, []);
 
         $response->assertUnprocessable();
+        $response->assertJsonPath('message', __('app.passkey_session_expired'));
     }
 
     public function testAuthenticateReturns422WhenSessionHasExpired(): void
@@ -150,6 +153,7 @@ final class PasskeyAuthenticationTest extends TestCase
         );
 
         $response->assertBadRequest();
+        $response->assertJsonPath('message', __('app.passkey_empty_request'));
     }
 
     public function testAuthenticateReturns422WhenVerificationFails(): void
@@ -282,6 +286,7 @@ final class PasskeyAuthenticationTest extends TestCase
      */
     public function testAuthenticateReturns500WhenUnexpectedExceptionOccurs(): void
     {
+        Exceptions::fake();
         $this->getJson(self::AUTHENTICATE_OPTIONS_URL);
 
         $this->partialMock(PasskeyAuthenticationContract::class, function (MockInterface $mock): void {
@@ -291,6 +296,16 @@ final class PasskeyAuthenticationTest extends TestCase
         $response = $this->postJson(self::AUTHENTICATE_URL, ['data' => 'test']);
 
         $response->assertInternalServerError();
+        $response->assertJsonPath('message', __('app.passkey_authentication_failed'));
+        Exceptions::assertReported(\RuntimeException::class);
+
+        $activity = Activity::query()
+            ->where('event', 'passkey_login_failed')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame('internal_error', $activity->properties?->get('failure_reason'));
     }
 
     public function testSuccessfulAuthenticationLogsInUser(): void
@@ -315,6 +330,33 @@ final class PasskeyAuthenticationTest extends TestCase
                 ->where('subject_id', $credential->getKey())
                 ->count(),
         );
+
+        // Auch der Passkey-Login löst `Login` aus; als Passwort-Anmeldung darf er
+        // nicht zusätzlich im Log stehen.
+        $this->assertSame(0, Activity::query()->where('event', 'password_login_succeeded')->count());
+    }
+
+    /**
+     * Eine vor der Anmeldung untergeschobene Sitzungs-ID oder ein bekanntes
+     * CSRF-Token gälten sonst für das angemeldete Konto weiter.
+     */
+    public function testSuccessfulAuthenticationStartsAFreshSession(): void
+    {
+        $user = User::factory()->create();
+        $authenticator = VirtualAuthenticator::create();
+        $credential = $authenticator->registerFor($user);
+        $assertion = $authenticator->signAssertion($credential, $this->requestOptions());
+
+        $sessionId = Session::getId();
+        $csrfToken = Session::token();
+
+        // Ohne Cookie vergibt der Test-Client jedem Request eine neue Sitzungs-ID.
+        $this->withCookie(Config::string('session.cookie'), $sessionId)
+            ->postAssertion($assertion)
+            ->assertOk();
+
+        $this->assertNotSame($sessionId, Session::getId());
+        $this->assertNotSame($csrfToken, Session::token());
     }
 
     /**
@@ -353,6 +395,7 @@ final class PasskeyAuthenticationTest extends TestCase
         $response = $this->postAssertion($authenticator->signAssertion($credential, $options));
 
         $response->assertUnauthorized();
+        $response->assertJsonPath('message', __('auth.failed'));
         $this->assertGuest();
 
         // Kern des Fixes: Ein vom Freischaltungs-Gate abgewiesener Passkey-Login
@@ -399,7 +442,7 @@ final class PasskeyAuthenticationTest extends TestCase
             'POST',
             self::AUTHENTICATE_URL,
             [],
-            [],
+            $this->prepareCookiesForRequest(),
             [],
             ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'],
             $rawResponse,
