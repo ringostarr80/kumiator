@@ -188,7 +188,7 @@ final class UserEmailChanger implements UserEmailChangerContract
             throw new EmailChangeTargetNotEligibleException();
         }
 
-        $pendingEmail = (string)$user->pending_email;
+        $pendingEmail = $user->pending_email;
 
         // `withTrashed()`: auch ein soft-gelöschter Halter blockiert den
         // Tausch — er kann per Restore zurückkommen, und der DB-Unique-Index
@@ -282,7 +282,7 @@ final class UserEmailChanger implements UserEmailChangerContract
 
     private function cancelChangeForUser(User $user, EmailChangeCancellationReason $cancelledVia): void
     {
-        $pendingEmail = (string)$user->pending_email;
+        $pendingEmail = $user->pending_email;
 
         // Feld-Bereinigung und ihr Audit-Eintrag gemeinsam klammern: wirft der
         // Insert, darf der Pending-State nicht halb geräumt zurückbleiben.

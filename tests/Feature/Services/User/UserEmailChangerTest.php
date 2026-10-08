@@ -152,6 +152,24 @@ final class UserEmailChangerTest extends TestCase
         Notification::assertSentToTimes($holder, EmailChangeTargetTakenNotification::class, 2);
     }
 
+    /**
+     * Sonst schaltete ein Hinweis an einen Inhaber die Hinweise an alle anderen
+     * eine Stunde lang stumm.
+     */
+    public function testHolderNoticeLimitAppliesPerHolder(): void
+    {
+        Notification::fake();
+        $holder = User::factory()->create(['email' => self::TAKEN_EMAIL]);
+        $otherHolder = User::factory()->create(['email' => self::SECOND_EMAIL]);
+        $user = User::factory()->create(['email' => self::OLD_EMAIL]);
+
+        $this->service->requestChange($user, self::TAKEN_EMAIL);
+        $this->service->requestChange($user, self::SECOND_EMAIL);
+
+        Notification::assertSentTo($holder, EmailChangeTargetTakenNotification::class);
+        Notification::assertSentTo($otherHolder, EmailChangeTargetTakenNotification::class);
+    }
+
     public function testConcurrentRequestsTellTheHolderOnlyOnce(): void
     {
         Notification::fake();
