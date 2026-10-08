@@ -76,11 +76,17 @@ final class PasskeyManagerFormTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('deletePasskey', $passkey->id);
+            ->call('deletePasskey', $passkey->id)
+            ->assertSee(__('app.passkey_deleted'));
 
         $this->assertModelMissing($passkey);
     }
 
+    /**
+     * Gelöschte Passkeys fielen auch ohne Neuladen aus der Liste: Livewire fragt
+     * die gemerkten Einträge bei jedem Request neu ab. Einen Passkey, den ein
+     * anderer Tab inzwischen angelegt hat, bringt erst das Neuladen.
+     */
     public function testDeletePasskeyRefreshesPasskeyList(): void
     {
         $this->confirmPassword();
@@ -88,11 +94,16 @@ final class PasskeyManagerFormTest extends TestCase
         $user = User::factory()->create();
         $passkey = PasskeyCredential::factory()->for($user)->create();
 
-        Livewire::actingAs($user)
+        $component = Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->assertCount('passkeys', 1)
+            ->assertCount('passkeys', 1);
+
+        $added = PasskeyCredential::factory()->for($user)->create();
+
+        $component
             ->call('deletePasskey', $passkey->id)
-            ->assertCount('passkeys', 0);
+            ->assertCount('passkeys', 1)
+            ->assertSet('passkeys.0.id', $added->id);
     }
 
     public function testPasskeyRegisteredEventRefreshesPasskeyList(): void
@@ -204,9 +215,34 @@ final class PasskeyManagerFormTest extends TestCase
             ->set('editingPasskeyName', 'Neu')
             ->call('renamePasskey')
             ->assertSet('editingPasskeyId', null)
-            ->assertSet('editingPasskeyName', '');
+            ->assertSet('editingPasskeyName', '')
+            ->assertSee(__('app.passkey_renamed'));
 
         $this->assertSame('Neu', $passkey->fresh()?->name);
+    }
+
+    /**
+     * Wie beim Löschen: Den neuen Namen zeigte die Liste auch ohne Neuladen, einen
+     * inzwischen anderswo angelegten Passkey nicht.
+     */
+    public function testRenamePasskeyRefreshesPasskeyList(): void
+    {
+        $this->confirmPassword();
+
+        $user = User::factory()->create();
+        $passkey = PasskeyCredential::factory()->for($user)->create(['created_at' => now()->subDay()]);
+
+        $component = Livewire::actingAs($user)
+            ->test(PasskeyManagerForm::class)
+            ->call('startRenaming', $passkey->id);
+
+        $added = PasskeyCredential::factory()->for($user)->create();
+
+        $component
+            ->set('editingPasskeyName', 'Neu')
+            ->call('renamePasskey')
+            ->assertCount('passkeys', 2)
+            ->assertSet('passkeys.0.id', $added->id);
     }
 
     public function testRenamePasskeyTrimsWhitespace(): void
@@ -262,6 +298,30 @@ final class PasskeyManagerFormTest extends TestCase
         $component
             ->call('startConfirmingPassword', md5('renamePasskey'))
             ->assertSet('confirmingPassword', true)
+            ->assertHasNoErrors();
+    }
+
+    /**
+     * `startRenaming()` verlangt keine eigene Bestätigung und kann sich deshalb
+     * nicht auf den Reset des Passwortdialogs verlassen. Der Fehler zum einen
+     * Passkey soll nicht unter dem Feld des nächsten stehen.
+     */
+    public function testSwitchingToAnotherPasskeyClearsTheEarlierError(): void
+    {
+        $user = User::factory()->create();
+        $first = PasskeyCredential::factory()->for($user)->create();
+        $second = PasskeyCredential::factory()->for($user)->create();
+
+        $component = Livewire::actingAs($user)
+            ->test(PasskeyManagerForm::class)
+            ->call('startRenaming', $first->id)
+            ->set('editingPasskeyName', '')
+            ->call('renamePasskey');
+
+        $component->assertHasErrors('editingPasskeyName');
+
+        $component
+            ->call('startRenaming', $second->id)
             ->assertHasNoErrors();
     }
 
