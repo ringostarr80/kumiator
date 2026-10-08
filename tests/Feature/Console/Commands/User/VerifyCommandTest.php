@@ -123,12 +123,18 @@ final class VerifyCommandTest extends TestCase
         );
     }
 
+    /**
+     * Eine zweite Verifizierung überschriebe den Zeitpunkt der ersten und
+     * behauptete im Audit-Log, die Konsole habe die Adresse bestätigt.
+     */
     public function testAlreadyVerifiedUserShowsWarning(): void
     {
-        User::factory()->create([
+        $user = User::factory()->create([
             'name' => self::TEST_NAME,
             'email' => self::TEST_EMAIL,
         ]);
+        $verifiedAt = $user->email_verified_at;
+        $this->travel(1)->days();
 
         $command = $this->artisan('user:verify');
         $this->assertInstanceOf(PendingCommand::class, $command);
@@ -143,6 +149,8 @@ final class VerifyCommandTest extends TestCase
             )
             ->assertSuccessful()
             ->run();
+
+        $this->assertEquals($verifiedAt, $user->fresh()?->email_verified_at);
     }
 
     public function testVerifyNonExistentUserFails(): void

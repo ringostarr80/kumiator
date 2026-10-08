@@ -7,12 +7,20 @@ namespace Tests\Feature\Console\Commands\User;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\PendingCommand;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 final class CreateCommandTest extends TestCase
 {
     use RefreshDatabase;
+
+    private const array VALID_ANSWERS = [
+        'name' => 'John Doe',
+        'email' => 'john@example.com',
+        'password' => 'password123',
+        'password_confirmation' => 'password123',
+    ];
 
     public function testUserCanBeCreatedWithRole(): void
     {
@@ -47,23 +55,6 @@ final class CreateCommandTest extends TestCase
             ->run();
     }
 
-    public function testUserCreationFailsWithInvalidData(): void
-    {
-        Role::findOrCreate('member');
-
-        $command = $this->artisan('user:create');
-        $this->assertInstanceOf(PendingCommand::class, $command);
-
-        $command
-            ->expectsQuestion(__('commands.create_user.ask_name'), '')
-            ->expectsQuestion(__('commands.common.ask_email'), 'invalid-email')
-            ->expectsQuestion(__('commands.create_user.ask_password'), 'short')
-            ->expectsQuestion(__('commands.create_user.ask_password_confirm'), 'different')
-            ->expectsChoice(__('commands.create_user.ask_role'), 'member', ['member'])
-            ->assertFailed()
-            ->run();
-    }
-
     /**
      * Regression: Leere Eingabe am E-Mail-Prompt lässt `ask()` `null` liefern.
      * Ungeguardet lief das in `User::normalizeEmail(string)` und brach mit einem
@@ -90,6 +81,42 @@ final class CreateCommandTest extends TestCase
             ->run();
     }
 
+    /**
+     * Je Fall ist nur eine Antwort ungültig, sonst fiele eine fehlende Regel
+     * nicht auf: Der Command scheiterte an den anderen trotzdem. Erwartet wird
+     * die Meldung, weil eine leere Antwort ohne `required` noch an `string`
+     * scheitert, nur mit einer Meldung, die nicht sagt, was fehlt.
+     *
+     * @param array<string, string|null> $invalidAnswers
+     */
+    #[DataProvider('invalidAnswerProvider')]
+    public function testInvalidAnswerIsRejected(array $invalidAnswers, string $field, string $rule): void
+    {
+        Role::findOrCreate('member');
+        $answers = [...self::VALID_ANSWERS, ...$invalidAnswers];
+
+        $command = $this->artisan('user:create');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            // Eine leere Antwort ist `null`, der Vendor-Docblock ist mit
+            // string|bool zu eng.
+            // @phpstan-ignore argument.type
+            ->expectsQuestion(__('commands.create_user.ask_name'), $answers['name'])
+            // @phpstan-ignore argument.type
+            ->expectsQuestion(__('commands.common.ask_email'), $answers['email'])
+            // @phpstan-ignore argument.type
+            ->expectsQuestion(__('commands.create_user.ask_password'), $answers['password'])
+            // @phpstan-ignore argument.type
+            ->expectsQuestion(__('commands.create_user.ask_password_confirm'), $answers['password_confirmation'])
+            ->expectsChoice(__('commands.create_user.ask_role'), 'member', ['member'])
+            ->expectsOutput(__('validation.' . $rule, ['attribute' => $field, 'min' => 8, 'max' => 255]))
+            ->assertFailed()
+            ->run();
+
+        $this->assertDatabaseEmpty('users');
+    }
+
     public function testTitleIsUnderlined(): void
     {
         // Unter `de`, weil deutsche Titel Umlaute tragen können: An ihnen zählte
@@ -107,5 +134,22 @@ final class CreateCommandTest extends TestCase
             // Weg bis zu seinem Ende.
             ->assertFailed()
             ->run();
+    }
+
+    /**
+     * @return iterable<string, array{array<string, string|null>, string, string}>
+     */
+    public static function invalidAnswerProvider(): iterable
+    {
+        yield 'Name leer' => [['name' => null], 'name', 'required'];
+        yield 'Name zu lang' => [['name' => str_repeat('a', 256)], 'name', 'max.string'];
+        yield 'E-Mail ungültig' => [['email' => 'keine-adresse'], 'email', 'email'];
+        yield 'Passwort leer' => [['password' => null, 'password_confirmation' => null], 'password', 'required'];
+        yield 'Passwort zu kurz' => [
+            ['password' => 'kurz', 'password_confirmation' => 'kurz'],
+            'password',
+            'min.string',
+        ];
+        yield 'Bestätigung abweichend' => [['password_confirmation' => 'anderes-passwort'], 'password', 'confirmed'];
     }
 }
