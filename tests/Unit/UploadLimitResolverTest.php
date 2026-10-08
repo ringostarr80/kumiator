@@ -45,6 +45,21 @@ final class UploadLimitResolverTest extends TestCase
         $this->assertTrue($limit->constrainedByServer);
     }
 
+    /**
+     * Mit `max:0` lehnt Livewire jeden Upload ab. Das Formular soll dann kein Limit versprechen,
+     * das nicht gilt.
+     */
+    public function testLivewireLimitOfZeroIsPassedOn(): void
+    {
+        config(['jetstream.profile_photo_max_kilobytes' => 1_048_576]); // 1 GB
+        config(['livewire.temporary_file_upload.rules' => ['required', 'file', 'max:0']]);
+
+        $limit = (new UploadLimitResolver())->resolveProfilePhotoLimit();
+
+        $this->assertSame(0, $limit->bytes);
+        $this->assertTrue($limit->constrainedByServer);
+    }
+
     public function testLivewireDefaultLimitAppliesWhenRulesAreNotConfigured(): void
     {
         config(['jetstream.profile_photo_max_kilobytes' => 1_048_576]); // 1 GB
@@ -71,15 +86,17 @@ final class UploadLimitResolverTest extends TestCase
     public function testAcceptedExtensionsAreNormalisedAndDeduplicated(): void
     {
         // Mischmasch aus Whitespace, führendem Punkt, Großschreibung, Duplikat
-        // und Müll-Einträgen — alles soll defensiv bereinigt werden.
+        // und Müll-Einträgen — alles soll defensiv bereinigt werden. Die Müll-
+        // Einträge stehen vor gültigen: Die Bereinigung soll sie überspringen,
+        // nicht an ihnen enden.
         config(['jetstream.profile_photo_accepted_extensions' => [
+            42,
             '  .JPG ',
+            '',
             'jpg',
             '.png',
-            'WEBP',
-            '',
-            42,
             null,
+            'WEBP',
         ]]);
 
         $this->assertSame(

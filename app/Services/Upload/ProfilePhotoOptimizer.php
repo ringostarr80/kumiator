@@ -195,8 +195,9 @@ final class ProfilePhotoOptimizer implements ProfilePhotoOptimizerContract
         }
 
         // Transparenz erhalten — relevant für PNG-Quellen, AVIF unterstützt Alpha.
+        // Den Alpha-Kanal schreibt der AVIF-Encoder immer mit, `imagesavealpha()`
+        // braucht es dafür nicht.
         imagealphablending($thumbnail, false);
-        imagesavealpha($thumbnail, true);
 
         imagecopyresampled(
             $thumbnail,

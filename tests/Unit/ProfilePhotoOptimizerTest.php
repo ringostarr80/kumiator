@@ -23,6 +23,9 @@ final class ProfilePhotoOptimizerTest extends TestCase
         $result = (new ProfilePhotoOptimizer($this->temporaryDirectory))->optimize($photo);
 
         $this->assertStringEndsWith('.avif', $result->getClientOriginalName());
+        // Die Datei kam nicht per HTTP. Gälte sie nicht trotzdem als gültiger Upload, lehnte etwa
+        // Laravels `max`-Regel sie ab.
+        $this->assertTrue($result->isValid());
 
         $info = getimagesize($result->getRealPath());
         $this->assertNotFalse($info);
@@ -31,9 +34,12 @@ final class ProfilePhotoOptimizerTest extends TestCase
         $this->assertSame(IMAGETYPE_AVIF, $info[2]);
     }
 
+    /**
+     * EXIF liest der Optimizer nur aus JPEGs, ein PNG bleibt ungedreht.
+     */
     public function testOptimizeAcceptsPngInput(): void
     {
-        $photo = UploadedFile::fake()->image('photo.png', 400, 400);
+        $photo = $this->pngFile($this->fourQuadrantImage());
 
         $result = (new ProfilePhotoOptimizer($this->temporaryDirectory))->optimize($photo);
 
@@ -42,6 +48,49 @@ final class ProfilePhotoOptimizerTest extends TestCase
         $this->assertSame(256, $info[0]);
         $this->assertSame(256, $info[1]);
         $this->assertSame(IMAGETYPE_AVIF, $info[2]);
+        $this->assertQuadrants($this->readAvif($result->getRealPath()), ['red', 'green', 'blue', 'yellow']);
+    }
+
+    /**
+     * Die Anzeige ist rund und schneidet ohnehin die Ränder ab. Das Motiv steht meist in der Mitte.
+     *
+     * @param positive-int $width
+     * @param positive-int $height
+     */
+    #[DataProvider('nonSquareProvider')]
+    public function testNonSquarePhotoIsCroppedToItsCentre(int $width, int $height): void
+    {
+        $photo = $this->pngFile($this->threeStripeImage($width, $height));
+
+        $result = (new ProfilePhotoOptimizer($this->temporaryDirectory))->optimize($photo);
+
+        $this->assertQuadrants($this->readAvif($result->getRealPath()), ['green', 'green', 'green', 'green']);
+    }
+
+    /**
+     * Ein freigestelltes Foto soll nicht vor schwarzem Hintergrund im Profil stehen.
+     */
+    public function testTransparencyIsPreserved(): void
+    {
+        $image = imagecreatetruecolor(200, 200);
+        $this->assertInstanceOf(GdImage::class, $image);
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+
+        $transparent = imagecolorallocatealpha($image, 0, 0, 0, 127);
+        $red = imagecolorallocatealpha($image, 220, 30, 30, 0);
+        $this->assertNotFalse($transparent);
+        $this->assertNotFalse($red);
+
+        imagefilledrectangle($image, 0, 0, 99, 199, $transparent);
+        imagefilledrectangle($image, 100, 0, 199, 199, $red);
+
+        $result = (new ProfilePhotoOptimizer($this->temporaryDirectory))->optimize($this->pngFile($image));
+        $thumbnail = $this->readAvif($result->getRealPath());
+
+        $this->assertGreaterThan(120, $this->alphaAt($thumbnail, 64, 128), 'links durchsichtig');
+        $this->assertLessThan(7, $this->alphaAt($thumbnail, 192, 128), 'rechts deckend');
+        $this->assertSame('red', $this->dominantColorAt($thumbnail, 192, 128));
     }
 
     public function testOptimizeRejectsAFileThatIsNotAnImage(): void
@@ -58,11 +107,12 @@ final class ProfilePhotoOptimizerTest extends TestCase
      * im Header Riesen-Dimensionen deklarieren, deren Decode
      * `Breite × Höhe × 4` Bytes erzwingt. Solche Bilder müssen am
      * Header-Check scheitern, bevor `imagecreatefromstring()` den Speicher
-     * tatsächlich anfordert.
+     * tatsächlich anfordert. Beide Kanten liegen über einem Pixel, denn es
+     * zählt die Fläche, nicht eine einzelne Kante.
      */
     public function testOptimizeRejectsImagesDeclaringMoreThanTheMaximumPixels(): void
     {
-        $photo = $this->pngDeclaringDimensions(25_000_001, 1);
+        $photo = $this->pngDeclaringDimensions(5_000, 5_001);
 
         $this->expectException(ProfilePhotoOptimizationException::class);
         $this->expectExceptionMessageIs(
@@ -121,6 +171,7 @@ final class ProfilePhotoOptimizerTest extends TestCase
         $this->assertSame(256, $info[0]);
         $this->assertSame(256, $info[1]);
         $this->assertSame(IMAGETYPE_AVIF, $info[2]);
+        $this->assertQuadrants($this->readAvif($result->getRealPath()), ['red', 'green', 'blue', 'yellow']);
     }
 
     /**
@@ -141,12 +192,8 @@ final class ProfilePhotoOptimizerTest extends TestCase
         $photo = $this->fourQuadrantJpeg($orientation);
 
         $result = (new ProfilePhotoOptimizer($this->temporaryDirectory))->optimize($photo);
-        $thumbnail = $this->readAvif($result->getRealPath());
 
-        $this->assertSame($expectedQuadrants[0], $this->dominantColorAt($thumbnail, 64, 64), 'oben-links');
-        $this->assertSame($expectedQuadrants[1], $this->dominantColorAt($thumbnail, 192, 64), 'oben-rechts');
-        $this->assertSame($expectedQuadrants[2], $this->dominantColorAt($thumbnail, 64, 192), 'unten-links');
-        $this->assertSame($expectedQuadrants[3], $this->dominantColorAt($thumbnail, 192, 192), 'unten-rechts');
+        $this->assertQuadrants($this->readAvif($result->getRealPath()), $expectedQuadrants);
     }
 
     /**
@@ -164,6 +211,17 @@ final class ProfilePhotoOptimizerTest extends TestCase
             'um 90° im Uhrzeigersinn' => [6, ['blue', 'red', 'yellow', 'green']],
             'antitransponiert' => [7, ['yellow', 'green', 'blue', 'red']],
             'um 90° gegen den Uhrzeigersinn' => [8, ['green', 'yellow', 'red', 'blue']],
+        ];
+    }
+
+    /**
+     * @return array<string, array{positive-int, positive-int}>
+     */
+    public static function nonSquareProvider(): array
+    {
+        return [
+            'quer' => [300, 100],
+            'hoch' => [100, 300],
         ];
     }
 
@@ -195,24 +253,7 @@ final class ProfilePhotoOptimizerTest extends TestCase
      */
     private function fourQuadrantJpeg(?int $orientation): UploadedFile
     {
-        $size = 200;
-        $half = intdiv($size, 2);
-        $image = imagecreatetruecolor($size, $size);
-        $this->assertInstanceOf(GdImage::class, $image);
-
-        $red = imagecolorallocate($image, 220, 30, 30);
-        $green = imagecolorallocate($image, 30, 220, 30);
-        $blue = imagecolorallocate($image, 30, 30, 220);
-        $yellow = imagecolorallocate($image, 220, 220, 30);
-        $this->assertNotFalse($red);
-        $this->assertNotFalse($green);
-        $this->assertNotFalse($blue);
-        $this->assertNotFalse($yellow);
-
-        imagefilledrectangle($image, 0, 0, $half - 1, $half - 1, $red);
-        imagefilledrectangle($image, $half, 0, $size - 1, $half - 1, $green);
-        imagefilledrectangle($image, 0, $half, $half - 1, $size - 1, $blue);
-        imagefilledrectangle($image, $half, $half, $size - 1, $size - 1, $yellow);
+        $image = $this->fourQuadrantImage();
 
         ob_start();
         imagejpeg($image, null, 95);
@@ -243,8 +284,7 @@ final class ProfilePhotoOptimizerTest extends TestCase
      */
     private function corruptExifJpeg(): UploadedFile
     {
-        $image = imagecreatetruecolor(120, 120);
-        $this->assertInstanceOf(GdImage::class, $image);
+        $image = $this->fourQuadrantImage();
 
         ob_start();
         imagejpeg($image, null, 90);
@@ -287,6 +327,106 @@ final class ProfilePhotoOptimizerTest extends TestCase
         file_put_contents($path, $png);
 
         return new UploadedFile($path, 'photo.png', 'image/png', test: true);
+    }
+
+    /**
+     * Quadratisches Bild: oben-links rot, oben-rechts grün, unten-links blau, unten-rechts gelb.
+     */
+    private function fourQuadrantImage(): GdImage
+    {
+        $size = 200;
+        $half = intdiv($size, 2);
+        $image = imagecreatetruecolor($size, $size);
+        $this->assertInstanceOf(GdImage::class, $image);
+
+        $red = imagecolorallocate($image, 220, 30, 30);
+        $green = imagecolorallocate($image, 30, 220, 30);
+        $blue = imagecolorallocate($image, 30, 30, 220);
+        $yellow = imagecolorallocate($image, 220, 220, 30);
+        $this->assertNotFalse($red);
+        $this->assertNotFalse($green);
+        $this->assertNotFalse($blue);
+        $this->assertNotFalse($yellow);
+
+        imagefilledrectangle($image, 0, 0, $half - 1, $half - 1, $red);
+        imagefilledrectangle($image, $half, 0, $size - 1, $half - 1, $green);
+        imagefilledrectangle($image, 0, $half, $half - 1, $size - 1, $blue);
+        imagefilledrectangle($image, $half, $half, $size - 1, $size - 1, $yellow);
+
+        return $image;
+    }
+
+    /**
+     * Drei gleich breite Streifen rot, grün, blau entlang der langen Seite. Die kurze Seite
+     * entspricht genau einem Streifen, der mittige Zuschnitt zeigt also nur Grün.
+     *
+     * @param positive-int $width
+     * @param positive-int $height
+     */
+    private function threeStripeImage(int $width, int $height): GdImage
+    {
+        $image = imagecreatetruecolor($width, $height);
+        $this->assertInstanceOf(GdImage::class, $image);
+
+        $stripe = min($width, $height);
+
+        foreach ([[220, 30, 30], [30, 220, 30], [30, 30, 220]] as $index => [$red, $green, $blue]) {
+            $color = imagecolorallocate($image, $red, $green, $blue);
+            $this->assertNotFalse($color);
+
+            $start = $index * $stripe;
+            $end = $start + $stripe - 1;
+
+            if ($width > $height) {
+                imagefilledrectangle($image, $start, 0, $end, $height - 1, $color);
+            } else {
+                imagefilledrectangle($image, 0, $start, $width - 1, $end, $color);
+            }
+        }
+
+        return $image;
+    }
+
+    private function pngFile(GdImage $image): UploadedFile
+    {
+        $path = tempnam($this->temporaryDirectory, 'png_test_');
+        $this->assertIsString($path);
+        imagepng($image, $path);
+
+        return new UploadedFile($path, 'photo.png', 'image/png', test: true);
+    }
+
+    /**
+     * Prüft je Quadrant die Mitte und das äußerste Eckpixel. Die Ecken zeigen, dass das Bild exakt
+     * sitzt: Schon 1° Drehung ließe dort schwarze Keile stehen, 1 Pixel Versatz einen dunklen Rand.
+     *
+     * @param array{0: string, 1: string, 2: string, 3: string} $expected
+     *        Erwartete Farben: [oben-links, oben-rechts, unten-links, unten-rechts].
+     */
+    private function assertQuadrants(GdImage $thumbnail, array $expected): void
+    {
+        $samples = [
+            [$expected[0], 64, 64, 0, 0, 'oben-links'],
+            [$expected[1], 192, 64, 255, 0, 'oben-rechts'],
+            [$expected[2], 64, 192, 0, 255, 'unten-links'],
+            [$expected[3], 192, 192, 255, 255, 'unten-rechts'],
+        ];
+
+        foreach ($samples as [$color, $centerX, $centerY, $cornerX, $cornerY, $quadrant]) {
+            $this->assertSame($color, $this->dominantColorAt($thumbnail, $centerX, $centerY), $quadrant);
+            $this->assertSame($color, $this->dominantColorAt($thumbnail, $cornerX, $cornerY), $quadrant . ', Ecke');
+        }
+    }
+
+    /**
+     * GD-Alpha: 0 deckend, 127 durchsichtig.
+     */
+    private function alphaAt(GdImage $image, int $x, int $y): int
+    {
+        $rgba = imagecolorat($image, $x, $y);
+        $this->assertNotFalse($rgba);
+
+        return ($rgba >> 24) & 0x7F;
     }
 
     private function readAvif(string $path): GdImage
