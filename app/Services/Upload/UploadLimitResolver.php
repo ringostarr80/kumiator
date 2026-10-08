@@ -101,11 +101,9 @@ final class UploadLimitResolver implements UploadLimitResolverContract
                 continue;
             }
 
-            $kilobytes = (int) substr($rule, 4);
-
-            if ($kilobytes > 0) {
-                return $kilobytes * self::BYTES_PER_KILOBYTE;
-            }
+            // Auch `max:0` gilt: Laravels `max`-Regel lehnt damit jeden Upload ab, also
+            // auch das Limit hier.
+            return (int) substr($rule, 4) * self::BYTES_PER_KILOBYTE;
         }
 
         return PHP_INT_MAX;
