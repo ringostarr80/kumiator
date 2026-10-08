@@ -114,6 +114,33 @@ final class ProfileInformationTest extends TestCase
         Notification::assertNothingSent();
     }
 
+    /**
+     * Die Datenbank fängt nichts davon ab: SQLite begrenzt `VARCHAR(255)` nicht,
+     * und eine leere Adresse würde zum Ziel eines Wechsels.
+     */
+    #[DataProvider('invalidProfileInputProvider')]
+    public function testInvalidProfileInputIsRejected(string $field, string $value): void
+    {
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create());
+
+        // Mit dem richtigen Passwort kann nur die Regel des Felds die Änderung aufhalten.
+        $state = ['name' => $user->name, 'email' => $user->email, 'current_password' => 'password'];
+        $state[$field] = $value;
+
+        Livewire::test(UpdateProfileInformationForm::class)
+            ->set('state', $state)
+            ->call('updateProfileInformation')
+            ->assertHasErrors($field);
+
+        $refreshedUser = $user->fresh();
+
+        $this->assertNotNull($refreshedUser);
+        $this->assertSame($user->name, $refreshedUser->name);
+        $this->assertNull($refreshedUser->pending_email);
+        Notification::assertNothingSent();
+    }
+
     public function testEmailChangeWithoutCurrentPasswordIsRejected(): void
     {
         Notification::fake();
@@ -122,7 +149,7 @@ final class ProfileInformationTest extends TestCase
         Livewire::test(UpdateProfileInformationForm::class)
             ->set('state', ['name' => $user->name, 'email' => 'neu@example.com'])
             ->call('updateProfileInformation')
-            ->assertHasErrors('current_password');
+            ->assertHasErrors(['current_password' => __('app.email_change_current_password_required')]);
 
         $refreshedUser = $user->fresh();
 
@@ -206,6 +233,26 @@ final class ProfileInformationTest extends TestCase
     }
 
     /**
+     * Leere Felder kommen als `null` an: das leere Passwortfeld eines
+     * HTML-Formulars über `ConvertEmptyStringsToNull`, das Foto eines
+     * JSON-Clients, der es nicht ändern will, direkt. Eine bloße Namensänderung
+     * darf daran nicht scheitern.
+     */
+    public function testHttpRouteAcceptsNameChangeWithEmptyPasswordAndPhoto(): void
+    {
+        $this->actingAs($user = User::factory()->create());
+
+        $this->putJson('/user/profile-information', [
+            'name' => 'Neuer Name',
+            'email' => $user->email,
+            'current_password' => null,
+            'photo' => null,
+        ])->assertOk();
+
+        $this->assertSame('Neuer Name', $user->fresh()?->name);
+    }
+
+    /**
      * Sonst erführe jedes Mitglied im Profil, ob eine Adresse zu einem Konto
      * gehört.
      */
@@ -281,6 +328,24 @@ final class ProfileInformationTest extends TestCase
         $this->travel(1)->hours();
 
         $this->requestEmailChange($user, 'neu6@example.com')->assertHasNoErrors();
+    }
+
+    /**
+     * Sonst sperrten die Anträge eines Mitglieds den E-Mail-Wechsel für den
+     * ganzen Verein.
+     */
+    public function testEmailChangeLimitAppliesPerAccount(): void
+    {
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create());
+
+        for ($i = 1; $i <= 5; $i++) {
+            $this->requestEmailChange($user, 'neu' . $i . '@example.com')->assertHasNoErrors();
+        }
+
+        $this->actingAs($otherUser = User::factory()->create());
+
+        $this->requestEmailChange($otherUser, 'anders@example.com')->assertHasNoErrors();
     }
 
     public function testConcurrentEmailChangeRequestsStayWithinTheHourlyLimit(): void
@@ -857,6 +922,24 @@ final class ProfileInformationTest extends TestCase
         yield 'png' => ['photo.png'];
         yield 'webp' => ['photo.webp'];
         yield 'avif' => ['photo.avif'];
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function invalidProfileInputProvider(): iterable
+    {
+        yield 'Name leer' => ['name', ''];
+        yield 'Name zu lang' => ['name', str_repeat('a', 256)];
+        yield 'E-Mail leer' => ['email', ''];
+        yield 'E-Mail ohne @' => ['email', 'keine-adresse'];
+        // Besteht die Format-Prüfung, damit nur `max:255` greift: Über 254 Zeichen
+        // meldet die RFC-Prüfung bloß eine Warnung, und Teile und Labels bleiben
+        // in ihren Grenzen.
+        yield 'E-Mail zu lang' => [
+            'email',
+            str_repeat('a', 64) . '@' . implode('.', array_fill(0, 4, str_repeat('b', 60))) . '.de',
+        ];
     }
 
     /**
