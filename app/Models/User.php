@@ -320,7 +320,6 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     protected function casts(): array
     {
         return [
-            'id' => 'integer',
             'email_verified_at' => 'datetime',
             'pending_email_sent_at' => 'datetime',
             'approved_at' => 'datetime',

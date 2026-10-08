@@ -91,7 +91,6 @@ class PasskeyManagerForm extends Component
     {
         $this->editingPasskeyId = null;
         $this->editingPasskeyName = '';
-        $this->resetValidation();
     }
 
     public function renamePasskey(): void

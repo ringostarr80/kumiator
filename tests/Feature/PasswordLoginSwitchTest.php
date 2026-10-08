@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Session;
@@ -60,6 +61,8 @@ final class PasswordLoginSwitchTest extends TestCase
             ->test(PasskeyManagerForm::class)
             ->call('disablePasswordLogin')
             ->assertSee(__('app.password_login_state_off'))
+            ->assertSee(__('app.password_login_disabled_flash'))
+            ->assertDontSee(__('app.password_login_enabled_flash'))
             ->assertHasNoErrors();
 
         $this->assertNotNull($user->fresh()?->password_login_disabled_at);
@@ -75,7 +78,9 @@ final class PasswordLoginSwitchTest extends TestCase
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
             ->call('enablePasswordLogin')
-            ->assertSee(__('app.password_login_state_on'));
+            ->assertSee(__('app.password_login_state_on'))
+            ->assertSee(__('app.password_login_enabled_flash'))
+            ->assertDontSee(__('app.password_login_disabled_flash'));
 
         $this->assertNull($user->fresh()?->password_login_disabled_at);
     }
@@ -727,10 +732,13 @@ final class PasswordLoginSwitchTest extends TestCase
 
     /**
      * Das Ende der fremden Sitzungen ist die Schutzwirkung des Abschaltens. Ein
-     * Audit-Sink, der gerade nicht schreibt, darf sie nicht aufhalten.
+     * Audit-Sink, der gerade nicht schreibt, darf sie nicht aufhalten. Gemeldet
+     * werden muss der Fehler trotzdem, sonst bliebe die Lücke im Audit-Log
+     * unbemerkt.
      */
     public function testTheOtherSessionsEndEvenWhenTheAuditWriteFails(): void
     {
+        Exceptions::fake();
         Config::set('session.driver', 'database');
 
         $this->confirmPassword();
@@ -752,6 +760,7 @@ final class PasswordLoginSwitchTest extends TestCase
 
         $this->assertSame(0, DB::table('sessions')->where('id', 'other-device')->count());
         $this->assertNotNull($user->fresh()?->password_login_disabled_at);
+        Exceptions::assertReported(\RuntimeException::class);
     }
 
     /**
