@@ -165,7 +165,7 @@ Zwei-Faktor-Authentifizierung aktivieren
 -----------------------------------------
  E-Mail: max@example.com
 
-TOTP-URL (zum Einrichten in einer Authenticator-App):
+QR-Code (zum Einrichten in einer Authenticator-App):
 █████████████████████████████
 █ ▄▄▄▄▄ █▀█ █▄█▀▀▄ █ ▄▄▄▄▄ █
 █ █   █ █▀▀▀█▀▄▄   █ █   █ █
