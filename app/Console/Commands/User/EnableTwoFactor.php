@@ -49,8 +49,9 @@ class EnableTwoFactor extends Command
             return self::SUCCESS;
         }
 
+        // Auch ein im Profil begonnenes, nie bestätigtes Setup bekommt ein neues Secret:
+        // Das alte hat der Browser schon angezeigt.
         $enableAction($user, force: true);
-        $user->refresh();
 
         $this->displaySetupInformation($this->getDecryptedSecret($user), $user);
 
@@ -92,14 +93,12 @@ class EnableTwoFactor extends Command
 
     private function displaySetupInformation(string $decryptedSecret, User $user): void
     {
-        $this->newLine();
         $this->info(__('commands.enable_two_factor.qr_code_label'));
         $this->displayQrCode($user->twoFactorQrCodeUrl());
         $this->newLine();
 
         $this->info(__('commands.enable_two_factor.secret_label'));
         $this->line($decryptedSecret);
-        $this->newLine();
     }
 
     private function displayQrCode(string $url): void

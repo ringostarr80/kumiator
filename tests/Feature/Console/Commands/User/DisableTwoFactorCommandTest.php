@@ -42,6 +42,28 @@ final class DisableTwoFactorCommandTest extends TestCase
         $this->assertNull($user->two_factor_confirmed_at);
     }
 
+    /**
+     * Am Namen merkt der Admin vor der Rückfrage, ob die getippte Adresse zum gemeinten Konto
+     * gehört.
+     */
+    public function testUserIsNamedBeforeTheConfirmation(): void
+    {
+        $this->createUserWithTwoFactor();
+
+        $command = $this->artisan('user:disable-2fa');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
+            ->expectsOutput(__('commands.common.user_found', [
+                'name' => self::TEST_NAME,
+                'email' => self::TEST_EMAIL,
+            ]))
+            ->expectsConfirmation(__('commands.disable_two_factor.confirm_disable'), 'no')
+            ->assertSuccessful()
+            ->run();
+    }
+
     public function testDisableCanBeCancelled(): void
     {
         $user = $this->createUserWithTwoFactor();

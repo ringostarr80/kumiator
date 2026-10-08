@@ -123,7 +123,7 @@ return [
         'title' => 'Enable two-factor authentication',
         'already_enabled' => 'User ":name" (:email) already has two-factor authentication enabled.',
         'secret_label' => 'TOTP secret:',
-        'qr_code_label' => 'TOTP URL (for setting up in an authenticator app):',
+        'qr_code_label' => 'QR code (for setting up in an authenticator app):',
         'ask_code' => 'Please enter the 6-digit code from your authenticator app',
         'invalid_code' => 'Invalid code. Two-factor authentication was not enabled.',
         'success' => 'Two-factor authentication for user ":name" (:email) was successfully enabled.',

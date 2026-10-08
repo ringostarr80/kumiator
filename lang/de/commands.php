@@ -125,7 +125,7 @@ return [
         'title' => 'Zwei-Faktor-Authentifizierung aktivieren',
         'already_enabled' => 'Benutzer ":name" (:email) hat die Zwei-Faktor-Authentifizierung bereits aktiviert.',
         'secret_label' => 'TOTP-Secret:',
-        'qr_code_label' => 'TOTP-URL (zum Einrichten in einer Authenticator-App):',
+        'qr_code_label' => 'QR-Code (zum Einrichten in einer Authenticator-App):',
         'ask_code' => 'Bitte den 6-stelligen Code aus der Authenticator-App eingeben',
         'invalid_code' => 'Ungültiger Code. Die Zwei-Faktor-Authentifizierung wurde nicht aktiviert.',
         'success' => 'Zwei-Faktor-Authentifizierung für Benutzer ":name" (:email) wurde erfolgreich aktiviert.',
