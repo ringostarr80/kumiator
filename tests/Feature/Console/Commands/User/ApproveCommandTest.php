@@ -36,11 +36,17 @@ final class ApproveCommandTest extends TestCase
         $this->assertNotNull($user->fresh()?->approved_at);
     }
 
+    /**
+     * Eine zweite Freischaltung überschriebe den Zeitpunkt der ersten und
+     * hinterließe dafür einen Eintrag im Audit-Log.
+     */
     public function testAlreadyApprovedUserShowsWarning(): void
     {
         $user = User::factory()->create([
             'email' => self::TEST_EMAIL,
         ]);
+        $approvedAt = $user->approved_at;
+        $this->travel(1)->days();
 
         $command = $this->artisan('user:approve');
         $this->assertInstanceOf(PendingCommand::class, $command);
@@ -53,6 +59,8 @@ final class ApproveCommandTest extends TestCase
             ]))
             ->assertSuccessful()
             ->run();
+
+        $this->assertEquals($approvedAt, $user->fresh()?->approved_at);
     }
 
     public function testApproveNonExistentUserFails(): void

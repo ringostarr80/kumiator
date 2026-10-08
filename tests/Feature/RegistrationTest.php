@@ -144,6 +144,25 @@ final class RegistrationTest extends TestCase
         Sleep::assertSleptTimes($signUps);
     }
 
+    /**
+     * Reicht die Timebox nicht, etwa unter Last, verriete ein fehlender oder ein
+     * zweiter Hash-Lauf die vergebene Adresse an der Antwortzeit: Die Anlage
+     * einer freien kostet genau einen. Messbar ist die Zeit hier nicht
+     * (`BCRYPT_ROUNDS=4`), der Spy pinnt die Zahl der Läufe. Bewusste Ausnahme
+     * von der Mocks-vermeiden-Regel.
+     */
+    public function testTakenAddressCostsOneHashLikeAFreeOne(): void
+    {
+        Notification::fake();
+        $owner = User::factory()->create();
+        $hash = Hash::spy();
+
+        $this->post(self::REGISTER_URL_PATH, $this->registrationInput($owner->email))
+            ->assertRedirect(route('login', absolute: false));
+
+        $hash->shouldHaveReceived('make')->once();
+    }
+
     public function testTakenAddressTellsTheOwner(): void
     {
         Notification::fake();
@@ -286,6 +305,29 @@ final class RegistrationTest extends TestCase
         Notification::assertNothingSent();
     }
 
+    /**
+     * Die Datenbank fängt das nicht ab: SQLite begrenzt `VARCHAR(255)` nicht,
+     * und ohne Namen endete die Anlage an der NOT-NULL-Spalte mit einem 500.
+     */
+    #[DataProvider('invalidRegistrationInputProvider')]
+    public function testInvalidRegistrationInputIsRejected(string $field, string $value, string $rule): void
+    {
+        Notification::fake();
+        Role::findOrCreate('member');
+
+        $response = $this->post(self::REGISTER_URL_PATH, [
+            ...$this->registrationInput(self::TEST_EMAIL),
+            $field => $value,
+        ]);
+
+        // Die Meldung statt nur des Felds: Ein leeres Feld kommt als `null` an
+        // und scheitert dann auch an `string`.
+        $response->assertSessionHasErrors([
+            $field => __('validation.' . $rule, ['attribute' => $field, 'max' => 255]),
+        ]);
+        $this->assertDatabaseEmpty('users');
+    }
+
     public function testRegistrationIsRateLimited(): void
     {
         for ($i = 0; $i < 5; $i++) {
@@ -312,6 +354,24 @@ final class RegistrationTest extends TestCase
                 return $user->email;
             },
             1,
+        ];
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function invalidRegistrationInputProvider(): iterable
+    {
+        yield 'Name leer' => ['name', '', 'required'];
+        yield 'Name zu lang' => ['name', str_repeat('a', 256), 'max.string'];
+        yield 'E-Mail ohne @' => ['email', 'keine-adresse', 'email'];
+        // Besteht die Format-Prüfung, damit nur `max:255` greift: Über 254 Zeichen
+        // meldet die RFC-Prüfung bloß eine Warnung, und Teile und Labels bleiben
+        // in ihren Grenzen.
+        yield 'E-Mail zu lang' => [
+            'email',
+            str_repeat('a', 64) . '@' . implode('.', array_fill(0, 4, str_repeat('b', 60))) . '.de',
+            'max.string',
         ];
     }
 
