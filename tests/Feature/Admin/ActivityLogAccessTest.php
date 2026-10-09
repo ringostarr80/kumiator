@@ -839,6 +839,17 @@ final class ActivityLogAccessTest extends TestCase
     }
 
     /**
+     * Leere Datumsfelder sind der Normalzustand. Gälten sie als ungültig, stünde
+     * bei jedem Aufruf unter beiden Feldern eine Fehlermeldung.
+     */
+    public function testEmptyDateFiltersAreNotRejected(): void
+    {
+        $component = Livewire::actingAs($this->makeAuditor())->test(ActivityLogTable::class);
+
+        $component->assertHasNoErrors();
+    }
+
+    /**
      * Regression: Datumsfilter kommen via `#[Url]` auch als roher Query-String
      * (`?from=garbage`) und umgehen den `type="date"`-Constraint. Ein ungültiger
      * Wert wird als Fehler gemeldet und der Filter übersprungen — die Zeile
@@ -854,7 +865,7 @@ final class ActivityLogAccessTest extends TestCase
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.dateFrom', 'garbage');
 
-        $component->assertHasErrors('filters.dateFrom');
+        $component->assertHasErrors(['filters.dateFrom' => __('app.activity_log_filter_date_invalid')]);
         $component->assertSee('treffer_from_invalid');
     }
 
@@ -872,7 +883,7 @@ final class ActivityLogAccessTest extends TestCase
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.dateTo', '2026-13-40');
 
-        $component->assertHasErrors('filters.dateTo');
+        $component->assertHasErrors(['filters.dateTo' => __('app.activity_log_filter_date_invalid')]);
         $component->assertSee('treffer_to_invalid');
     }
 
@@ -893,7 +904,7 @@ final class ActivityLogAccessTest extends TestCase
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.dateFrom', '0');
 
-        $component->assertHasErrors('filters.dateFrom');
+        $component->assertHasErrors(['filters.dateFrom' => __('app.activity_log_filter_date_invalid')]);
         $component->assertSee('treffer_from_zero');
     }
 
@@ -911,7 +922,7 @@ final class ActivityLogAccessTest extends TestCase
         $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
         $component->set('filters.dateTo', '0');
 
-        $component->assertHasErrors('filters.dateTo');
+        $component->assertHasErrors(['filters.dateTo' => __('app.activity_log_filter_date_invalid')]);
         $component->assertSee('treffer_to_zero');
     }
 
@@ -933,6 +944,54 @@ final class ActivityLogAccessTest extends TestCase
         $component->assertHasErrors('filters.dateTo');
         $component->assertHasNoErrors('filters.dateFrom');
         $component->assertSee('treffer_range');
+    }
+
+    /**
+     * Jede Grenze wird für sich geprüft und angewandt. Ein ungültiges Von darf
+     * kein „Bis vor Von“ auslösen und das gültige Bis nicht aushebeln.
+     */
+    public function testInvalidDateFromLeavesValidDateToApplied(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $user = User::factory()->create();
+        ActivityFacade::useLog('test')->event('treffer_to_only')->causedBy($user)->log('');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
+        $component->set('filters.dateFrom', 'garbage');
+        $component->set('filters.dateTo', '2000-01-01');
+
+        $component->assertHasErrors('filters.dateFrom');
+        $component->assertHasNoErrors('filters.dateTo');
+        $component->assertDontSee('treffer_to_only');
+    }
+
+    /**
+     * Von = Bis ist der Weg, einen einzelnen Tag anzusehen, und kein
+     * widersprüchlicher Bereich.
+     */
+    public function testSameDayRangeShowsExactlyThatDay(): void
+    {
+        $admin = $this->makeAuditor();
+
+        $this->travelTo(Carbon::parse('2026-03-14 09:00:00'), function (): void {
+            ActivityFacade::useLog('test')->event('tag_davor')->log('');
+        });
+        $this->travelTo(Carbon::parse('2026-03-15 09:00:00'), function (): void {
+            ActivityFacade::useLog('test')->event('tag_selbst')->log('');
+        });
+        $this->travelTo(Carbon::parse('2026-03-16 09:00:00'), function (): void {
+            ActivityFacade::useLog('test')->event('tag_danach')->log('');
+        });
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
+        $component->set('filters.dateFrom', '2026-03-15');
+        $component->set('filters.dateTo', '2026-03-15');
+
+        $component->assertHasNoErrors();
+        $component->assertSee('tag_selbst');
+        $component->assertDontSee('tag_davor');
+        $component->assertDontSee('tag_danach');
     }
 
     /**
@@ -988,6 +1047,8 @@ final class ActivityLogAccessTest extends TestCase
         $component->set('filters.subject', 'irgendwas');
         $component->set('filters.dateFrom', '2026-01-01');
         $component->set('filters.dateTo', '2026-12-31');
+        $component->call('gotoPage', 2);
+        $component->assertSet('paginators.page', 2);
 
         $component->call('resetFilters');
 
@@ -997,6 +1058,7 @@ final class ActivityLogAccessTest extends TestCase
         $component->assertSet('filters.subject', '');
         $component->assertSet('filters.dateFrom', '');
         $component->assertSet('filters.dateTo', '');
+        $component->assertSet('paginators.page', 1);
     }
 
     /**

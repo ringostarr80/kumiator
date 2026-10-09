@@ -98,7 +98,7 @@ final class LogAuthenticationActivityListener
                 ->performedOn($user)
                 ->withProperties([
                     'guard' => $event->guard,
-                    'remember' => (bool) $event->remember,
+                    'remember' => $event->remember,
                 ])
                 ->log('');
         } catch (\Throwable $e) {

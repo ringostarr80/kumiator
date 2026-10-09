@@ -656,8 +656,7 @@ final class ConsoleActivityLogTest extends TestCase
         $actor = $properties['cli_actor'];
         $this->assertIsString($actor['os_user']);
         $this->assertNotSame('', $actor['os_user']);
-        $this->assertIsString($actor['hostname']);
-        $this->assertNotSame('', $actor['hostname']);
+        $this->assertSame(gethostname(), $actor['hostname']);
         $this->assertSame('user:approve', $actor['command']);
     }
 
