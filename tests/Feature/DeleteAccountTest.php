@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Livewire\Profile\DeleteUserForm;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Jetstream\Features;
 use Livewire\Livewire;
@@ -33,9 +34,31 @@ final class DeleteAccountTest extends TestCase
         Livewire::test(DeleteUserForm::class)
             ->set('confirmablePassword', 'password')
             ->call('confirmPassword')
-            ->call('deleteUser');
+            ->call('deleteUser')
+            ->assertRedirect('/');
 
         $this->assertNull($user->fresh());
+        // Am Ende des Requests schreibt der Session-Handler die ID aus dem Guard in
+        // die neue Sitzungszeile, ohne Abmeldung also die des gelöschten Kontos.
+        $this->assertGuest();
+    }
+
+    /**
+     * Fortifys Logout folgt `fortify.redirects.logout`. Die Löschung endet
+     * ebenfalls mit der Abmeldung und nimmt dasselbe Ziel.
+     */
+    public function testDeletionRedirectsToTheConfiguredLogoutTarget(): void
+    {
+        $this->skipWithoutAccountDeletion();
+
+        Config::set('fortify.redirects.logout', '/abgemeldet');
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test(DeleteUserForm::class)
+            ->set('confirmablePassword', 'password')
+            ->call('confirmPassword')
+            ->call('deleteUser')
+            ->assertRedirect('/abgemeldet');
     }
 
     public function testCorrectPasswordMustBeProvidedBeforeAccountCanBeDeleted(): void

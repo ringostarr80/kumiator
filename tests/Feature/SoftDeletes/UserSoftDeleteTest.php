@@ -429,6 +429,24 @@ final class UserSoftDeleteTest extends TestCase
         );
     }
 
+    /**
+     * Das Foto ist personenbezogen (DSGVO Art. 17) und liegt außerhalb der
+     * Datenbank: Weder Fremdschlüssel noch Transaktion räumen es mit ab.
+     */
+    public function testSelfDeleteRemovesTheProfilePhoto(): void
+    {
+        Config::set('jetstream.profile_photo_disk', $disk = 'public');
+        Storage::fake($disk);
+
+        $user = User::factory()->create();
+        Storage::disk($disk)->put($photoPath = 'profile-photos/avatar.jpg', 'binary');
+        $user->forceFill(['profile_photo_path' => $photoPath])->saveQuietly();
+
+        app(DeleteUser::class)->delete($user);
+
+        Storage::disk($disk)->assertMissing($photoPath);
+    }
+
     public function testConsoleDeleteCommandSoftDeletesUserAndPurgesSessionsAndPasskeys(): void
     {
         config(['session.driver' => 'database']);
