@@ -198,8 +198,8 @@ final class RoleChangeActivityLogTest extends TestCase
     /**
      * Spatie liefert `$rolesOrIds` heterogen — Mischformen aus `RoleContract`-
      * Instanzen und IDs sind dokumentierter Bestandteil des Vertrags. Der
-     * Listener muss beide Pfade in `resolveRoleNames()` zusammenführen und
-     * im Activity-Log einen einzigen Eintrag mit allen Rollen-Namen erzeugen.
+     * Listener muss beide Pfade zusammenführen und im Activity-Log einen
+     * einzigen Eintrag mit allen Rollen-Namen erzeugen.
      */
     public function testListenerHandlesMixedRoleObjectsAndIds(): void
     {
@@ -222,6 +222,56 @@ final class RoleChangeActivityLogTest extends TestCase
         $this->assertNotNull($activity);
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertEqualsCanonicalizing(['admin', 'member'], $properties['roles'] ?? []);
+    }
+
+    /**
+     * Objekte kommen in der Reihenfolge der Übergabe an, IDs in der der
+     * Datenbank. Sortiert steht dieselbe Rollenmenge in jedem Eintrag gleich
+     * da, egal über welchen Weg sie kam.
+     */
+    public function testRoleNamesAreLoggedInSortedOrder(): void
+    {
+        $user = User::factory()->create();
+        Activity::query()->delete();
+
+        (new LogRoleChangeListener())->handleAttached(
+            new RoleAttachedEvent($user, [Role::findByName('member'), Role::findByName('admin')]),
+        );
+
+        $activity = Activity::query()
+            ->where('log_name', 'role')
+            ->where('event', 'role_attached')
+            ->where('subject_id', $user->getKey())
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(['admin', 'member'], $activity->properties?->toArray()['roles'] ?? null);
+    }
+
+    /**
+     * Dieselbe Rolle kann doppelt ankommen, etwa als Objekt und als ID. Stünde
+     * ihr Name zweimal im Eintrag, sähe das nach zwei Zuweisungen aus.
+     */
+    public function testRoleArrivingTwiceIsLoggedOnce(): void
+    {
+        $user = User::factory()->create();
+        $admin = Role::findByName('admin');
+        Activity::query()->delete();
+
+        (new LogRoleChangeListener())->handleAttached(
+            new RoleAttachedEvent($user, [$admin, $admin->id]),
+        );
+
+        $activity = Activity::query()
+            ->where('log_name', 'role')
+            ->where('event', 'role_attached')
+            ->where('subject_id', $user->getKey())
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(['admin'], $activity->properties?->toArray()['roles'] ?? null);
     }
 
     /**

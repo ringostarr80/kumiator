@@ -34,6 +34,7 @@ final class CreateCommandTest extends TestCase
 
         $command
             ->expectsQuestion(__('commands.create_role.ask_name'), '')
+            ->expectsOutput(__('validation.required', ['attribute' => 'name']))
             ->assertFailed()
             ->run();
     }
@@ -47,6 +48,7 @@ final class CreateCommandTest extends TestCase
 
         $command
             ->expectsQuestion(__('commands.create_role.ask_name'), 'admin')
+            ->expectsOutput(__('validation.unique', ['attribute' => 'name']))
             ->assertFailed()
             ->run();
     }
