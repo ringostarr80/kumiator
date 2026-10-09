@@ -104,7 +104,7 @@ abstract class LogAuthorizationChangeListener
             }
         }
 
-        $names = array_values(array_unique($names));
+        $names = array_unique($names);
         sort($names);
 
         return $names;

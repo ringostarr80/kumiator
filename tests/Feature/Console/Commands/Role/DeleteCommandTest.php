@@ -23,8 +23,9 @@ final class DeleteCommandTest extends TestCase
 
         $command
             ->expectsQuestion(__('commands.delete_role.ask_name'), 'admin')
-            ->expectsOutputToContain('admin')
+            ->expectsOutputToContain(__('commands.delete_role.role_found', ['name' => 'admin', 'users_count' => 0]))
             ->expectsConfirmation(__('commands.delete_role.confirm_delete'), 'yes')
+            ->expectsOutputToContain(__('commands.delete_role.success', ['name' => 'admin']))
             ->assertSuccessful()
             ->run();
 
@@ -43,6 +44,7 @@ final class DeleteCommandTest extends TestCase
 
         $command
             ->expectsQuestion(__('commands.delete_role.ask_name'), 'member')
+            ->expectsOutputToContain(__('commands.delete_role.has_sole_users', ['name' => 'member', 'count' => 1]))
             ->assertFailed()
             ->run();
 
@@ -62,8 +64,9 @@ final class DeleteCommandTest extends TestCase
 
         $command
             ->expectsQuestion(__('commands.delete_role.ask_name'), 'member')
-            ->expectsOutputToContain('member')
+            ->expectsOutputToContain(__('commands.delete_role.role_found', ['name' => 'member', 'users_count' => 1]))
             ->expectsConfirmation(__('commands.delete_role.confirm_delete'), 'yes')
+            ->expectsOutputToContain(__('commands.delete_role.success', ['name' => 'member']))
             ->assertSuccessful()
             ->run();
 
@@ -83,8 +86,9 @@ final class DeleteCommandTest extends TestCase
 
         $command
             ->expectsQuestion(__('commands.delete_role.ask_name'), 'admin')
-            ->expectsOutputToContain('admin')
+            ->expectsOutputToContain(__('commands.delete_role.role_found', ['name' => 'admin', 'users_count' => 0]))
             ->expectsConfirmation(__('commands.delete_role.confirm_delete'), 'no')
+            ->expectsOutputToContain(__('commands.common.aborted'))
             ->assertSuccessful()
             ->run();
 
