@@ -159,6 +159,7 @@ final class ListingCommandTest extends TestCase
 
         $command
             ->expectsOutputToContain(__('commands.list_users.no_users'))
+            ->doesntExpectOutputToContain(__('commands.list_users.total', ['count' => 0]))
             ->assertSuccessful()
             ->run();
     }

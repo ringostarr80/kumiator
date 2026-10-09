@@ -64,15 +64,12 @@ final class UserHardDeleter implements UserHardDeleterContract
             // damit neu registriert, erbte den noch offenen Link.
             Password::deleteToken($user);
 
-            // Sonst schriebe `forceDelete()` unten einen `deleted`-Eintrag
-            // mit `subject_id = $user->getKey()`.
-            $user->disableLogging();
-
             $user->forceDelete();
 
             // Einträge, in denen der User Subject ist, tragen seine
             // personenbezogenen Daten (ID, ggf. Name in `properties`) → löschen
-            // (DSGVO Art. 17).
+            // (DSGVO Art. 17). Erst nach `forceDelete()`, damit auch der Eintrag
+            // mitgeht, den es selbst schreibt.
             ActivityModel::query()
                 ->where('subject_type', $user->getMorphClass())
                 ->where('subject_id', $user->getKey())

@@ -22,8 +22,8 @@ class Listing extends Command
      */
     public function handle(): int
     {
-        $onlyTrashed = (bool) $this->option('only-trashed');
-        $withTrashed = $onlyTrashed || (bool) $this->option('with-trashed');
+        $onlyTrashed = $this->option('only-trashed');
+        $withTrashed = $onlyTrashed || $this->option('with-trashed');
 
         $columns = ['id', 'name', 'email', 'email_verified_at', 'approved_at', 'created_at'];
 
