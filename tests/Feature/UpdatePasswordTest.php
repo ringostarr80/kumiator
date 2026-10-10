@@ -9,6 +9,7 @@ use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Session;
 use Livewire\Livewire;
 use Tests\Support\ConfirmsPassword;
 use Tests\TestCase;
@@ -33,6 +34,32 @@ final class UpdatePasswordTest extends TestCase
         $refreshedUser = $user->fresh();
         $this->assertNotNull($refreshedUser);
         $this->assertTrue(Hash::check('new-password', $refreshedUser->password));
+    }
+
+    /**
+     * Fremde Sitzungen beendet `AuthenticateSession` über den neuen Hash. Eine
+     * Kopie des Cookies dieses Geräts trüge ihn mit und liefe weiter.
+     */
+    public function testPasswordChangeDiscardsTheOldSession(): void
+    {
+        $this->actingAs(User::factory()->create())->get('/user/profile')->assertOk();
+        $oldSessionId = Session::getId();
+
+        // Prüft mit, dass die alte Session gespeichert ist; sonst bewiese ihr
+        // Fehlen danach nichts.
+        $this->assertNotSame('', Session::getHandler()->read($oldSessionId));
+
+        Livewire::test(UpdatePasswordForm::class)
+            ->set('state', [
+                'current_password' => 'password',
+                'password' => 'new-password',
+                'password_confirmation' => 'new-password',
+            ])
+            ->call('updatePassword')
+            ->assertHasNoErrors();
+
+        $this->assertNotSame($oldSessionId, Session::getId());
+        $this->assertSame('', Session::getHandler()->read($oldSessionId));
     }
 
     public function testHttpPasswordUpdateLogsExactlyOnePasswordUpdatedEntry(): void

@@ -591,9 +591,14 @@ final class PasswordLoginSwitchTest extends TestCase
             'Die Sitzung des anderen Geräts muss mit dem Abschalten enden.',
         );
         $this->assertSame(
-            1,
+            0,
             DB::table('sessions')->where('id', $ownSessionId)->count(),
-            'Die eigene Sitzung muss bleiben, sonst wirft das Abschalten den Nutzer selbst hinaus.',
+            'Eine Kopie des eigenen Cookies muss mit dem Abschalten enden.',
+        );
+        $this->assertSame(
+            1,
+            DB::table('sessions')->where('id', Session::getId())->count(),
+            'Die eigene Sitzung muss unter neuer ID bleiben, sonst wirft das Abschalten den Nutzer selbst hinaus.',
         );
     }
 

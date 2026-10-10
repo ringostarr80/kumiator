@@ -122,4 +122,20 @@ final class UserSessionTerminatorTest extends TestCase
         $this->assertSame(0, $deleted);
         $this->assertSame(2, DB::table('sessions')->where('user_id', $user->id)->count());
     }
+
+    public function testMoveSessionHandsOnlyThatRowToTheNewId(): void
+    {
+        Config::set('session.driver', 'database');
+
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $this->insertSession('previous', $user->id);
+        $this->insertSession('unrelated', $other->id);
+
+        app(UserSessionTerminatorContract::class)->moveSession('previous', 'next');
+
+        $this->assertSame(0, DB::table('sessions')->where('id', 'previous')->count());
+        $this->assertSame(1, DB::table('sessions')->where('id', 'next')->where('user_id', $user->id)->count());
+        $this->assertSame(1, DB::table('sessions')->where('id', 'unrelated')->count());
+    }
 }

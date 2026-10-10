@@ -29,20 +29,50 @@ final class OtherSessionRevokerTest extends TestCase
     use InsertsSessions;
     use RefreshDatabase;
 
-    public function testItRemovesEveryOtherSessionAndKeepsTheCurrentOne(): void
+    /**
+     * Eine Kopie des Cookies dieses Geräts sitzt in derselben Sitzung und
+     * entginge dem Widerruf sonst. Die Zeile zieht auf die neue ID um, damit die
+     * Sitzungsliste sie noch im selben Request zeigt.
+     */
+    public function testItRemovesEveryOtherSessionAndMovesTheCurrentOneToANewId(): void
     {
         Config::set('session.driver', 'database');
 
         $user = User::factory()->create();
-        $this->insertSession(Session::getId(), $user->id);
+        $this->insertSession($previousSessionId = Session::getId(), $user->id);
         $this->insertSession('other-device', $user->id);
         $this->insertSession('third-device', $user->id);
 
         $revoked = app(OtherSessionRevokerContract::class)->revokeFor($user);
 
         $this->assertSame(2, $revoked);
+        $this->assertNotSame($previousSessionId, Session::getId());
+        $this->assertSame(0, DB::table('sessions')->where('id', $previousSessionId)->count());
         $this->assertSame(1, DB::table('sessions')->where('user_id', $user->id)->count());
         $this->assertSame(1, DB::table('sessions')->where('id', Session::getId())->count());
+    }
+
+    /**
+     * Ohne Datenbank-Sitzungen gibt es die Tabelle womöglich gar nicht; der
+     * Widerruf darf sie dann nicht anfassen.
+     */
+    public function testItDiscardsTheCurrentSessionIdWithoutDatabaseSessions(): void
+    {
+        Config::set('session.driver', 'array');
+        Config::set('session.table', 'no_such_table');
+
+        $user = User::factory()->create();
+        Session::save();
+        $previousSessionId = Session::getId();
+
+        // Prüft mit, dass die alte Session gespeichert ist; sonst bewiese ihr
+        // Fehlen danach nichts.
+        $this->assertNotSame('', Session::getHandler()->read($previousSessionId));
+
+        app(OtherSessionRevokerContract::class)->revokeFor($user);
+
+        $this->assertNotSame($previousSessionId, Session::getId());
+        $this->assertSame('', Session::getHandler()->read($previousSessionId));
     }
 
     public function testItLeavesTheSessionsOfOtherAccountsAlone(): void

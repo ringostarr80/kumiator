@@ -8,6 +8,7 @@ use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
@@ -40,6 +41,10 @@ class UpdateUserPassword implements UpdatesUserPasswords
         $user->forceFill([
             'password' => Hash::make($input['password']),
         ])->saveOrFail();
+
+        // Fremde Sitzungen beendet `AuthenticateSession` über den neuen Hash. Eine
+        // Kopie des Cookies dieses Geräts trüge ihn mit und liefe weiter.
+        Session::regenerate(true);
     }
 
     /**
