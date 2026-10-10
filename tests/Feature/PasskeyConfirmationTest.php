@@ -91,6 +91,19 @@ final class PasskeyConfirmationTest extends TestCase
             ->assertJsonPath('message', __('app.passkey_confirmation_no_passkey'));
     }
 
+    public function testOptionsEndpointIsRateLimited(): void
+    {
+        $user = User::factory()->create();
+        PasskeyCredential::factory()->for($user)->create();
+        $this->actingAs($user);
+
+        for ($i = 0; $i < 20; $i++) {
+            $this->getJson(self::CONFIRM_OPTIONS_URL)->assertOk();
+        }
+
+        $this->getJson(self::CONFIRM_OPTIONS_URL)->assertTooManyRequests();
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     // Confirm endpoint
     // ──────────────────────────────────────────────────────────────────────────

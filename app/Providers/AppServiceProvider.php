@@ -10,7 +10,6 @@ use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Observers\RoleLifecycleObserver;
-use App\Policies\PasskeyCredentialPolicy;
 use App\Services\Audit\AuthorizationAuditor;
 use App\Services\Audit\Contracts\AuthorizationAuditorContract;
 use App\Services\Auth\Contracts\LoginMethodChangerContract;
@@ -104,8 +103,6 @@ class AppServiceProvider extends ServiceProvider
             // und braucht darum ebenfalls einen Alias.
             'role' => Role::class,
         ]);
-
-        Gate::policy(PasskeyCredential::class, PasskeyCredentialPolicy::class);
 
         // Markdown-Mails escapen `{{ }}`-Ausgaben nur für HTML, nicht für
         // Markdown: Ein Passkey- oder Nutzername wie `[Text](https://…)` würde
