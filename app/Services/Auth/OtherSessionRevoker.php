@@ -40,6 +40,8 @@ final class OtherSessionRevoker implements OtherSessionRevokerContract
         $user->setRememberToken(Str::random(60));
         $user->saveOrFail();
 
+        $this->moveCurrentSessionToNewId();
+
         $revoked = $this->sessions->deleteOtherSessionsForUser($user, Session::getId());
 
         // Das handelnde Gerät hat gerade bestätigt — sein Cookie kommt mit dem
@@ -53,6 +55,28 @@ final class OtherSessionRevoker implements OtherSessionRevokerContract
         }
 
         return $revoked;
+    }
+
+    /**
+     * Wer eine Kopie des Cookies dieses Geräts hat, sitzt in derselben Sitzung
+     * und entginge dem Widerruf. Unter der neuen ID arbeitet nur weiter, wer die
+     * Antwort dieses Requests bekommt.
+     *
+     * In der Datenbank zieht die Zeile um, statt zu enden: Die neue schriebe
+     * Laravel erst nach dem Rendern, und die Sitzungsliste im Profil stünde bis
+     * zum nächsten Laden leer da.
+     */
+    private function moveCurrentSessionToNewId(): void
+    {
+        if (!$this->sessions->usesDatabaseDriver()) {
+            Session::regenerate(true);
+
+            return;
+        }
+
+        $previousId = Session::getId();
+        Session::regenerate();
+        $this->sessions->moveSession($previousId, Session::getId());
     }
 
     /**

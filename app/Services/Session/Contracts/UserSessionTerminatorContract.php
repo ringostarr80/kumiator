@@ -23,6 +23,12 @@ interface UserSessionTerminatorContract
     public function deleteOtherSessionsForUser(User $user, string $currentSessionId): int;
 
     /**
+     * Hängt die DB-Session-Zeile an eine neue ID; unter der alten gibt es danach
+     * keine Sitzung mehr. Nur für den Treiber `database`.
+     */
+    public function moveSession(string $fromId, string $toId): void;
+
+    /**
      * Ob die Session-Persistenz über die Datenbank läuft. Aufrufer, die selbst
      * an den Session-Zeilen hängen (z. B. ein eigener Activity-Log-Eintrag),
      * fragen hier, statt den `session.driver`-Vergleich zu duplizieren.

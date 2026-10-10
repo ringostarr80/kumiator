@@ -10,7 +10,8 @@ interface OtherSessionRevokerContract
 {
     /**
      * Beendet jede Anmeldung des Kontos ausser der laufenden und meldet, wie
-     * viele Sitzungen das waren.
+     * viele Sitzungen das waren. Die laufende bekommt eine neue ID, damit auch
+     * eine Kopie ihres Cookies endet.
      *
      * Zwei Wege führen zurück ins Konto, und beide müssen zugleich enden: die
      * gespeicherte Sitzung und der Recaller-Cookie. Bliebe der Cookie gültig,

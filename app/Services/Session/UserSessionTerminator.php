@@ -47,6 +47,13 @@ final class UserSessionTerminator implements UserSessionTerminatorContract
             ->delete();
     }
 
+    public function moveSession(string $fromId, string $toId): void
+    {
+        $this->sessions()
+            ->where('id', $fromId)
+            ->update(['id' => $toId]);
+    }
+
     public function usesDatabaseDriver(): bool
     {
         return Config::string('session.driver') === 'database';
