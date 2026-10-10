@@ -110,8 +110,8 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'throttle:6
 // Cancel-Link aus der Hinweis-Mail an die ALTE Adresse → Hijack-Schutz.
 // GET liefert nur eine nebenwirkungsfreie Landingpage — Mail-Scanner-Prefetch
 // darf weder bestätigen noch abbrechen. Die Aktion läuft über den POST des
-// Formular-Buttons. IP-basiertes Rate-Limit gegen Token-Probieren (siehe
-// `AppServiceProvider`).
+// Formular-Buttons. IP-basiertes Rate-Limit, Begründung im
+// `AppServiceProvider`.
 // ──────────────────────────────────────────────────────────────────────────────
 Route::middleware('throttle:email-change-link')->group(static function (): void {
     Route::get('/email/change/confirm/{token}', [ConfirmEmailChangeController::class, 'show'])

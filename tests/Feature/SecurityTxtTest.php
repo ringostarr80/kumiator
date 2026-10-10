@@ -42,6 +42,15 @@ final class SecurityTxtTest extends TestCase
             ->assertSee('Canonical: https://verein.example.org/.well-known/security.txt', false);
     }
 
+    public function testCanonicalIgnoresATrailingSlashOnTheAppUrl(): void
+    {
+        config(['app.url' => 'https://verein.example.org/']);
+
+        $this->get(self::URL)
+            ->assertOk()
+            ->assertSee('Canonical: https://verein.example.org/.well-known/security.txt', false);
+    }
+
     /**
      * Crawler rufen die Datei massenhaft ab; jeder Abruf legte sonst eine Session an.
      */
@@ -103,6 +112,7 @@ final class SecurityTxtTest extends TestCase
 
         $this->withoutExceptionHandling();
         $this->expectException(InvalidFormatException::class);
+        $this->expectExceptionMessageIs('SECURITY_TXT_EXPIRES is not a valid RFC 3339 date-time: ' . $expires);
 
         $this->get(self::URL);
     }
@@ -113,6 +123,9 @@ final class SecurityTxtTest extends TestCase
 
         $this->withoutExceptionHandling();
         $this->expectException(UnexpectedValueException::class);
+        $this->expectExceptionMessageIs(
+            'APP_URL must start with https:// for the security.txt Canonical field: http://verein.example.org',
+        );
 
         $this->get(self::URL);
     }

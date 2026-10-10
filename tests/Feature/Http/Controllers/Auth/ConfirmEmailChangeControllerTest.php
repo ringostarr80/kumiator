@@ -72,6 +72,17 @@ final class ConfirmEmailChangeControllerTest extends TestCase
         $response->assertSeeText(__('app.email_change_invalid_message'));
     }
 
+    public function testConfirmEndpointIsRateLimited(): void
+    {
+        $url = route('email.change.confirm.perform', ['token' => str_repeat('0', 64)]);
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->post($url)->assertOk();
+        }
+
+        $this->post($url)->assertTooManyRequests();
+    }
+
     public function testConflictShowsConflictViewAndClearsPending(): void
     {
         User::factory()->create(['email' => 'belegt@example.com']);

@@ -61,11 +61,13 @@ final class ScheduleHealthcheckPinger
                 ]);
             }
         } catch (Throwable $exception) {
+            // Verbindungsfehler nennen die URL samt Pfad, und mit dem Ping-Key
+            // darin ließe sich jeder Check des Projekts pingen.
             Log::warning('Healthcheck-Ping fehlgeschlagen', [
                 'slug' => $slug,
                 'phase' => $phase->value,
                 'exception' => $exception::class,
-                'message' => $exception->getMessage(),
+                'message' => str_replace($pingKey, '***', $exception->getMessage()),
             ]);
         }
     }

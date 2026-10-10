@@ -43,6 +43,15 @@ final class PasskeyAuthenticationTest extends TestCase
     // Options endpoint
     // ──────────────────────────────────────────────────────────────────────────
 
+    public function testOptionsEndpointIsRateLimited(): void
+    {
+        for ($i = 0; $i < 20; $i++) {
+            $this->getJson(self::AUTHENTICATE_OPTIONS_URL)->assertOk();
+        }
+
+        $this->getJson(self::AUTHENTICATE_OPTIONS_URL)->assertTooManyRequests();
+    }
+
     public function testOptionsEndpointRedirectsAuthenticatedUsers(): void
     {
         $user = User::factory()->create();

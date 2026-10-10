@@ -6,6 +6,7 @@ namespace Tests\Feature\Services\Schedule;
 
 use App\Services\Schedule\HealthcheckPingPhase;
 use App\Services\Schedule\ScheduleHealthcheckPinger;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
@@ -68,8 +69,22 @@ final class ScheduleHealthcheckPingerTest extends TestCase
         );
     }
 
+    public function testWhitespaceAroundBaseUrlIsStripped(): void
+    {
+        Http::fake();
+        Config::set('healthchecks.base_url', '  https://hc-ping.example/  ');
+        Config::set('healthchecks.ping_key', 'key');
+
+        app(ScheduleHealthcheckPinger::class)->ping('slug', HealthcheckPingPhase::Success);
+
+        Http::assertSent(
+            static fn (HttpRequest $request): bool => $request->url() === 'https://hc-ping.example/key/slug?create=1',
+        );
+    }
+
     public function testHttpExceptionIsSwallowedSoCronJobNeverFails(): void
     {
+        $log = Log::spy();
         Http::fake(static function (): void {
             throw new \RuntimeException('Healthchecks.io unreachable');
         });
@@ -79,7 +94,48 @@ final class ScheduleHealthcheckPingerTest extends TestCase
         // den ganzen Test killen. Stattdessen still loggen → kein Re-Throw.
         app(ScheduleHealthcheckPinger::class)->ping('slug', HealthcheckPingPhase::Success);
 
-        $this->expectNotToPerformAssertions();
+        $log->shouldHaveReceived('warning')
+            ->once()
+            ->with(
+                'Healthcheck-Ping fehlgeschlagen',
+                [
+                    'slug' => 'slug',
+                    'phase' => 'success',
+                    'exception' => \RuntimeException::class,
+                    'message' => 'Healthchecks.io unreachable',
+                ],
+            );
+    }
+
+    /**
+     * Mit dem Ping-Key lässt sich jeder Check des Projekts pingen. Ein
+     * Erfolgs-Ping von jemandem, der das Log liest, verdeckte einen
+     * ausgefallenen Job.
+     */
+    public function testPingKeyIsRedactedFromLoggedExceptionMessage(): void
+    {
+        $log = Log::spy();
+        Http::fake(static function (): void {
+            throw new ConnectionException(
+                'cURL error 28: Operation timed out for https://hc-ping.example/project-key-123/slug/start',
+            );
+        });
+        Config::set('healthchecks.base_url', 'https://hc-ping.example');
+        Config::set('healthchecks.ping_key', 'project-key-123');
+
+        app(ScheduleHealthcheckPinger::class)->ping('slug', HealthcheckPingPhase::Start);
+
+        $log->shouldHaveReceived('warning')
+            ->once()
+            ->with(
+                'Healthcheck-Ping fehlgeschlagen',
+                [
+                    'slug' => 'slug',
+                    'phase' => 'start',
+                    'exception' => ConnectionException::class,
+                    'message' => 'cURL error 28: Operation timed out for https://hc-ping.example/***/slug/start',
+                ],
+            );
     }
 
     public function testLogsWarningWhenEndpointRespondsWithErrorStatus(): void
