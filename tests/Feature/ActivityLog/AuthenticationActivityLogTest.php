@@ -8,6 +8,7 @@ use App\Actions\Jetstream\DeleteUser;
 use App\Livewire\Profile\LogoutOtherBrowserSessionsForm;
 use App\Models\Activity;
 use App\Models\User;
+use App\Services\Auth\Contracts\DisabledPasswordLoginContextContract;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use Illuminate\Auth\Events\Failed;
@@ -658,6 +659,28 @@ final class AuthenticationActivityLogTest extends TestCase
         );
     }
 
+    /**
+     * Derselbe Consume-once für den Marker des abgeschalteten Passwort-Logins:
+     * Bliebe er stehen, verschluckte er den nächsten echten `login_failed`.
+     */
+    public function testDisabledPasswordLoginMarkerIsConsumedSoTheNextFailedStillLogs(): void
+    {
+        Activity::query()->delete();
+
+        app(DisabledPasswordLoginContextContract::class)->markActive();
+
+        Event::dispatch(new Failed('web', null, ['email' => 'erst@example.com']));
+        Event::dispatch(new Failed('web', null, ['email' => 'dann@example.com']));
+
+        $this->assertSame(
+            1,
+            Activity::query()
+                ->where('log_name', 'forensic')
+                ->where('event', 'login_failed')
+                ->count(),
+        );
+    }
+
     public function testLockoutIsLogged(): void
     {
         Activity::query()->delete();
@@ -805,6 +828,7 @@ final class AuthenticationActivityLogTest extends TestCase
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertSame('203.0.113.0/24', $properties['ip'] ?? null);
         $this->assertSame(self::USER_AGENT, $properties['user_agent'] ?? null);
+        $this->assertArrayNotHasKey('notification_suppressed', $properties);
 
         // Volle Host-IP darf nirgends im Eintrag landen (DSGVO-Datenminimierung).
         $this->assertStringNotContainsString(

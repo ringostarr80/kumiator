@@ -44,7 +44,7 @@ final class Activity extends SpatieActivity
     {
         return Attribute::make(
             get: fn (): string => ActivityEvent::tryFrom((string) $this->event)?->description()
-                ?? (string) ($this->event ?? ''),
+                ?? $this->event ?? '',
             set: fn (): array => [],
         );
     }
