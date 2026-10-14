@@ -20,6 +20,9 @@ Release-Stands auf den Zielserver einfach:
 composer deploy
 ```
 
+Auf dem Server muss Node.js in der Version aus `.nvmrc` laufen. Mit einer anderen
+Version bricht `npm ci` ab, nachdem `composer install` bereits gelaufen ist.
+
 Composer bricht bei Fehler in einem Schritt automatisch ab, sodass **nachfolgende**
 Schritte nicht mehr laufen. Das ist **kein** Atomic Deploy: Bereits ausgeführte
 Schritte (teilweise überschriebene Assets unter `public/build/`, teilweise
