@@ -20,6 +20,7 @@ use App\Services\User\Exceptions\EmailChangeTokenExpiredException;
 use App\Services\User\Exceptions\EmailChangeTokenInvalidException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
@@ -110,12 +111,17 @@ final class UserEmailChanger implements UserEmailChangerContract
             ->whereKeyNot($user->getKey())
             ->first();
 
+        // `Notification::locale()` aus `SetLocale` gilt nur für den nächsten
+        // Versand. Ohne eigene Sprache rendert der Worker jede weitere Mail
+        // dieses Antrags in `APP_LOCALE` — auch die Warnung an die alte Adresse.
+        $locale = App::getLocale();
+
         // Mail-Versand erst nach dem Commit: ein nicht-rollbackbarer
         // Seiteneffekt. Rollt die Transaktion zurück, darf kein Confirm-/Cancel-
         // Link für einen nicht persistierten Pending-Wechsel rausgehen.
         if ($holder === null) {
             Notification::route('mail', $newEmail)->notify(
-                new VerifyEmailChangeNotification($user, $plainConfirmToken, $newEmail),
+                (new VerifyEmailChangeNotification($user, $plainConfirmToken, $newEmail))->locale($locale),
             );
         } elseif (!$holder->trashed()) {
             // Mehrere Anträge, auch von verschiedenen Mitgliedern, sollen den
@@ -127,12 +133,12 @@ final class UserEmailChanger implements UserEmailChangerContract
             // Hochzählen und Prüfen in einem Schritt: Getrennt läsen
             // gleichzeitige Anträge alle denselben Stand und kämen alle durch.
             if (RateLimiter::hit($holderNoticeKey, self::HOLDER_NOTICE_DECAY_SECONDS) <= 1) {
-                $holder->notify(new EmailChangeTargetTakenNotification());
+                $holder->notify((new EmailChangeTargetTakenNotification())->locale($locale));
             }
         }
 
         Notification::route('mail', $user->email)->notify(
-            new EmailChangeRequestedNotification($user, $plainCancelToken, $newEmail),
+            (new EmailChangeRequestedNotification($user, $plainCancelToken, $newEmail))->locale($locale),
         );
     }
 

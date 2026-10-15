@@ -38,7 +38,7 @@ final class PasskeyChangedNotificationTest extends TestCase
         $user = User::factory()->make();
         $name = '[Jetzt widerrufen](https://evil.example)';
 
-        $html = (new PasskeyChangedNotification(PasskeyChange::ADDED, $name))->toMail($user)->render()->toHtml();
+        $html = (string)(new PasskeyChangedNotification(PasskeyChange::ADDED, $name))->toMail($user)->render();
 
         $this->assertStringNotContainsString('href="https://evil.example"', $html);
         $this->assertStringContainsString($name, $html);

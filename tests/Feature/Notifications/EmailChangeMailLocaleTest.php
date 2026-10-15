@@ -10,6 +10,7 @@ use Illuminate\Mail\Transport\ArrayTransport;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mime\Email;
 use Tests\TestCase;
@@ -25,11 +26,19 @@ final class EmailChangeMailLocaleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function testQueuedMailsRenderInRequestLocaleInsteadOfWorkerDefault(): void
-    {
+    #[DataProvider('targetAddressProvider')]
+    public function testQueuedMailsRenderInRequestLocaleInsteadOfWorkerDefault(
+        bool $targetTaken,
+        string $firstSubjectKey,
+    ): void {
         config(['queue.default' => 'database', 'app.locale' => 'en']);
 
         $user = User::factory()->create(['email' => 'alt@example.com']);
+
+        if ($targetTaken) {
+            User::factory()->create(['email' => 'neu@example.com']);
+        }
+
         $this->actingAs($user)->withSession(['locale' => 'de'])->put('/user/profile-information', [
             'name' => $user->name,
             'email' => 'neu@example.com',
@@ -49,8 +58,22 @@ final class EmailChangeMailLocaleTest extends TestCase
         $subjects = $this->sentSubjects();
 
         $this->assertCount(2, $subjects);
-        $this->assertContains(__('app.email_change_verify_subject', [], 'de'), $subjects);
+        $this->assertContains(__($firstSubjectKey, [], 'de'), $subjects);
         $this->assertContains(__('app.email_change_requested_subject', [], 'de'), $subjects);
+    }
+
+    /**
+     * @return array<string, array{bool, string}>
+     */
+    public static function targetAddressProvider(): array
+    {
+        // Ist die Zieladresse vergeben, geht statt der Bestätigung ein Hinweis
+        // an deren Inhaber. Die Warnmail an die alte Adresse ist in beiden
+        // Fällen nicht der erste Versand im Request.
+        return [
+            'freie Zieladresse' => [false, 'app.email_change_verify_subject'],
+            'vergebene Zieladresse' => [true, 'app.email_change_target_taken_subject'],
+        ];
     }
 
     /**

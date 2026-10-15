@@ -26,8 +26,9 @@ class SetLocale
         }
 
         // Gequeuete Mails rendern im Worker, der keine Session kennt und sonst
-        // auf `APP_LOCALE` zurückfiele. Beim Einreihen überschreibt Laravel
-        // damit auch ein an der Notification selbst gesetztes `->locale()`.
+        // auf `APP_LOCALE` zurückfiele. Laravel wendet das nur auf den nächsten
+        // Versand an; wer mehrere Notifications pro Request verschickt, setzt
+        // die Sprache an jeder selbst.
         Notification::locale(app()->getLocale());
 
         return $next($request);
