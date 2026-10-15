@@ -59,7 +59,8 @@ geänderten Zeilen.
 
 ## Schnellstart (lokale Entwicklung)
 
-Vorausgesetzt werden PHP 8.4 und Node.js — oder alternativ Docker, dann genügt Docker allein.
+Vorausgesetzt werden PHP 8.4 und Node.js in der Version aus `.nvmrc` — oder alternativ Docker,
+dann genügt Docker allein.
 Als Datenbank dient standardmäßig SQLite, ein eigener Datenbankserver ist also nicht nötig.
 
 ### Mit Docker
