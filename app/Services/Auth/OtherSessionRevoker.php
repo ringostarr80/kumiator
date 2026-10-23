@@ -36,9 +36,11 @@ final class OtherSessionRevoker implements OtherSessionRevokerContract
         // Sitzung hinaus hält und keinen Treiber braucht: Bricht die Löschung ab,
         // ist er schon entwertet. Umgekehrt sähe eine gelöschte Sitzung bei
         // lebendem Cookie aus wie Erfolg und wäre keiner — der Cookie meldete
-        // beim nächsten Request neu an.
+        // beim nächsten Request neu an. Ohne Zeitstempel: Der Token ist keine
+        // Bearbeitung des Kontos, auch Laravels eigene Rotation beim Logout
+        // lässt `updated_at` stehen.
         $user->setRememberToken(Str::random(60));
-        $user->saveOrFail();
+        User::withoutTimestamps(static fn () => $user->saveOrFail());
 
         $this->moveCurrentSessionToNewId();
 

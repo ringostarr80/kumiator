@@ -122,6 +122,8 @@ return [
     ],
     'recently_confirmed' => 'Bestätige die Änderung zuerst mit deinem Passkey.',
     'password_login_enabled' => 'Für dieses Konto ist die Anmeldung mit Passwort abgeschaltet.',
+    'password_attempts_left' => 'Zu viele Versuche. Zu deiner Sicherheit wurdest du abgemeldet. Warte einen Moment,'
+        . ' bevor du dich neu anmeldest.',
     'present' => 'Das Feld :attribute muss vorhanden sein.',
     'present_if' => 'Das Feld :attribute muss vorhanden sein, wenn :other :value ist.',
     'present_unless' => 'Das Feld :attribute muss vorhanden sein, außer wenn :other :value ist.',
