@@ -96,6 +96,28 @@ final class PasswordConfirmationFailedActivityLogTest extends TestCase
         );
     }
 
+    /**
+     * `TrimStrings` lässt das Passwortfeld aus, Leerzeichen kommen also
+     * unverändert an.
+     */
+    public function testWebFormPathDoesNotLogWhenThePasswordIsOnlyWhitespace(): void
+    {
+        $user = User::factory()->create();
+        Activity::query()->delete();
+
+        $response = $this->actingAs($user)->post(self::CONFIRM_PASSWORD_URL_PATH, ['password' => '   ']);
+
+        $response->assertSessionHasErrors();
+
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('log_name', 'auth')
+                ->where('event', 'password_confirmation_failed')
+                ->count(),
+        );
+    }
+
     public function testLivewirePathLogsOnWrongPassword(): void
     {
         $user = User::factory()->create();
@@ -117,6 +139,30 @@ final class PasswordConfirmationFailedActivityLogTest extends TestCase
         $this->assertSame(__('app.activity_password_confirmation_failed'), $activity->description);
         $this->assertSame($user->getKey(), $activity->causer_id);
         $this->assertSame($user->getMorphClass(), $activity->causer_type);
+    }
+
+    /**
+     * Der Dialog startet mit leerem Feld, und Livewire macht daraus kein `null`:
+     * Ein Druck auf „Bestätigen“ ohne Eingabe vergleicht so wenig wie der
+     * direkte POST ohne Passwort.
+     */
+    public function testLivewirePathDoesNotLogWhenTheFieldIsEmpty(): void
+    {
+        $this->actingAs(User::factory()->create());
+        Activity::query()->delete();
+
+        Livewire::test(TwoFactorAuthenticationForm::class)
+            ->call('startConfirmingPassword', 'enable')
+            ->call('confirmPassword')
+            ->assertHasErrors('confirmable_password');
+
+        $this->assertSame(
+            0,
+            Activity::query()
+                ->where('log_name', 'auth')
+                ->where('event', 'password_confirmation_failed')
+                ->count(),
+        );
     }
 
     public function testLivewirePathDoesNotLogOnCorrectPassword(): void
