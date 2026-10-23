@@ -106,6 +106,20 @@ final class OtherSessionRevokerTest extends TestCase
     }
 
     /**
+     * Der neue Token ist keine Bearbeitung des Kontos, Laravels eigene Rotation
+     * beim Logout lässt den Zeitstempel ebenso stehen.
+     */
+    public function testItLeavesTheLastChangeOfTheAccountAlone(): void
+    {
+        $lastChange = '2026-01-01 12:00:00';
+        $user = User::factory()->create(['updated_at' => $lastChange]);
+
+        app(OtherSessionRevokerContract::class)->revokeFor($user);
+
+        $this->assertSame($lastChange, $user->fresh()?->updated_at?->toDateTimeString());
+    }
+
+    /**
      * Liegen die Sitzungen ausserhalb der Datenbank, bleibt der Recaller-Cookie
      * als Angriffsfläche — den entwertet der Dienst trotzdem.
      */

@@ -132,6 +132,8 @@ return [
     ],
     'recently_confirmed' => 'Confirm the change with your passkey first.',
     'password_login_enabled' => 'Password login is turned off for this account.',
+    'password_attempts_left' => 'Too many attempts. For your security, you have been logged out. Wait a moment'
+        . ' before you log in again.',
     'present' => 'The :attribute field must be present.',
     'present_if' => 'The :attribute field must be present when :other is :value.',
     'present_unless' => 'The :attribute field must be present unless :other is :value.',

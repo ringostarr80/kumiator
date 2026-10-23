@@ -12,19 +12,24 @@ use App\Enums\ActivityFailureReason;
 use App\Models\User;
 use App\Services\Auth\Contracts\DisabledPasswordLoginContextContract;
 use App\Services\Auth\Contracts\ExistingAccountNotifierContract;
+use App\Services\Auth\Contracts\PasswordAttemptLimiterContract;
 use App\Services\Auth\Contracts\SelfRegistrarContract;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
 use App\Services\Auth\Contracts\SessionConfirmationAuditContract;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\Auth\DisabledPasswordLoginContext;
 use App\Services\Auth\ExistingAccountNotifier;
+use App\Services\Auth\PasswordAttemptLimiter;
 use App\Services\Auth\SelfRegistrationContext;
 use App\Services\Auth\SessionConfirmationAudit;
 use App\Services\Auth\UnapprovedLoginContext;
+use Illuminate\Auth\Events\Lockout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -33,12 +38,14 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Contracts\FailedPasswordResetResponse;
 use Laravel\Fortify\Contracts\SuccessfulPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Fortify;
 use Laravel\Fortify\Http\Responses\FailedPasswordResetResponse as FortifyFailedPasswordResetResponse;
+use Symfony\Component\HttpFoundation\IpUtils;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -54,6 +61,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->app->scoped(SelfRegistrationContextContract::class, SelfRegistrationContext::class);
         $this->app->scoped(DisabledPasswordLoginContextContract::class, DisabledPasswordLoginContext::class);
         $this->app->bind(SessionConfirmationAuditContract::class, SessionConfirmationAudit::class);
+        $this->app->bind(PasswordAttemptLimiterContract::class, PasswordAttemptLimiter::class);
         $this->app->bind(SelfRegistrarContract::class, CreateNewUser::class);
         $this->app->bind(ExistingAccountNotifierContract::class, ExistingAccountNotifier::class);
 
@@ -113,6 +121,29 @@ class FortifyServiceProvider extends ServiceProvider
                 && (time() - (int) $confirmedAt) < Config::integer('auth.password_timeout');
         });
 
+        // Aus einer fremden Sitzung soll sich das Passwort nicht erraten lassen,
+        // denn ein Treffer überdauert sie. Gehört direkt vor `current_password` in
+        // eine Kette mit `bail`: Nur so zählt sie, was sonst verglichen würde, und
+        // ein gesperrter Versuch erreicht den Vergleich nicht mehr. Jede Auswertung
+        // zählt, die Kette darf also nur einmal laufen.
+        Validator::extend('password_attempts_left', static function (): bool {
+            $user = Auth::guard('web')->user();
+
+            return $user instanceof User && app(PasswordAttemptLimiterContract::class)->attempt($user);
+        });
+
+        // Gehört direkt hinter `current_password` in eine Kette mit `bail`: Nur
+        // so kommt sie allein nach einem Treffer zum Zug. Sie besteht immer.
+        Validator::extend('password_attempt_succeeded', static function (): bool {
+            $user = Auth::guard('web')->user();
+
+            if ($user instanceof User) {
+                app(PasswordAttemptLimiterContract::class)->succeeded($user);
+            }
+
+            return true;
+        });
+
         // Re-Auth-Failures vor 2FA-Endpoints sichtbar machen. Beide vendor-
         // seitigen Pfade — der Web-Form-Pfad über `ConfirmablePasswordController`
         // und der Livewire-Pfad über Jetstreams `ConfirmsPasswords::confirmPassword()`
@@ -124,12 +155,26 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::confirmPasswordsUsing(static function (User $user, ?string $password): bool {
             // Ohne Passwort kein Vergleich und damit kein Mismatch: Der
             // Fortify-Controller reicht das Feld ungeprüft durch, ein direkter
-            // POST ohne Passwort landet also als `null` hier. Das zu auditieren
-            // hieße, den Hijack-Indikator ohne einen einzigen Rateversuch
-            // auslösbar zu machen. Dieselbe Trennung wie in
+            // POST ohne Passwort landet also als `null` hier, Jetstreams
+            // `ConfirmsPasswords` ohne Eingabe als `''` — Livewire macht daraus
+            // kein `null`. Leerzeichen allein gelten ebenfalls als leer, denn
+            // kein Passwort kann so lauten: `required` weist sie beim Setzen ab.
+            // Das zu auditieren hieße, den Hijack-Indikator ohne einen einzigen
+            // Rateversuch auslösbar zu machen. Dieselbe Trennung wie in
             // `DetectsFailedCurrentPassword`.
-            if (!is_string($password)) {
+            if (blank($password)) {
                 return false;
+            }
+
+            // Ein schlichtes `false` meldete ein falsches Passwort, auch für das
+            // richtige. Gemeldet wird unter dem Schlüssel, unter dem Jetstreams
+            // `ConfirmsPasswords` ein falsches Passwort meldet, damit die Sperre im
+            // Dialog an derselben Stelle steht. Nach der Sperre liegt die
+            // Bestätigungsseite hinter dem Login, die Meldung muss also dort ankommen.
+            if (!app(PasswordAttemptLimiterContract::class)->attempt($user)) {
+                throw ValidationException::withMessages([
+                    'confirmable_password' => __('validation.password_attempts_left'),
+                ])->redirectTo(route('login'));
             }
 
             // Der Hash-Vergleich zuerst, wie in den Regelketten der Fortify-Actions
@@ -143,6 +188,8 @@ class FortifyServiceProvider extends ServiceProvider
 
                 return false;
             }
+
+            app(PasswordAttemptLimiterContract::class)->succeeded($user);
 
             // Der abgeschaltete Passwort-Login nimmt dem Passwort auch hier die
             // Wirkung. Ohne diese Zeile bliebe es der Schlüssel zur Passkey-
@@ -161,11 +208,50 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::authenticateUsing(self::authenticateWithPassword(...));
 
         RateLimiter::for('login', static function (Request $request) {
-            /** @var string $username */
-            $username = $request->input(Fortify::username()) ?? '';
-            $throttleKey = Str::transliterate(Str::lower($username) . '|' . $request->ip());
+            // Die Drossel läuft vor `EnsureFortifyCredentialsAreScalar`, ein Array
+            // kommt hier also noch an. Es zählt wie ein fehlendes Feld, abgewiesen
+            // wird es danach.
+            $username = $request->input(Fortify::username());
+            $username = is_string($username)
+                ? $username
+                : '';
 
-            return Limit::perMinute(5)->by($throttleKey);
+            // Bei IPv6 zählt das /64-Netz statt der Adresse: Schon ein einzelner
+            // Anschluss verfügt in der Regel darüber, und jede Adresse darin
+            // zählte sonst neu. Was keine IP ist, geht unverändert ein, denn
+            // `anonymize()` bräche daran mit einem `TypeError`.
+            $ip = filter_var($request->ip(), FILTER_VALIDATE_IP);
+            $network = $ip === false
+                ? $request->ip()
+                : IpUtils::anonymize($ip, 0, 8);
+            $throttleKey = Str::transliterate(Str::lower($username) . '|' . $network);
+            $limit = Limit::perMinute(5)->by($throttleKey);
+
+            // Fortify meldet die Sperre nicht, sobald es diese Drossel statt seiner
+            // eigenen nutzt. Gemeldet wird nur der erste gedrosselte Versuch je
+            // Fenster: Gedrosselte Versuche kosten keinen Hash-Vergleich, einzeln
+            // gemeldet füllten sie die Forensik-Tabelle im Takt der Requests.
+            // Ein Eintrag statt eines Zählers: Gefragt ist nur, ob schon gemeldet
+            // wurde, und das Hochzählen unter Lock zahlte jeder gedrosselte Request.
+            // Der Marker läuft mit dem Fenster ab statt eine Minute ab der Sperre,
+            // sonst verschluckte eine späte Sperre die des nächsten Fensters.
+            // Gehasht, weil die Adresse ungeprüft und beliebig lang in den
+            // Schlüssel geht.
+            return $limit->response(
+                /** @param array<string, mixed> $headers */
+                static function (Request $request, array $headers) use ($throttleKey): never {
+                    $marker = 'login-lockout:' . hash('sha256', $throttleKey);
+                    /** @var int $retryAfter */
+                    $retryAfter = $headers['Retry-After'];
+
+                    if (Cache::add($marker, true, $retryAfter)) {
+                        event(new Lockout($request));
+                    }
+
+                    // Dieselbe Ausnahme wie ohne Callback, die Antwort bleibt gleich.
+                    throw new ThrottleRequestsException('Too Many Attempts.', null, $headers);
+                },
+            );
         });
 
         RateLimiter::for(
