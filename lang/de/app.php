@@ -323,6 +323,7 @@ return [
     'activity_password_updated' => 'Passwort geändert',
     'activity_password_update_failed' => 'Passwortänderung fehlgeschlagen',
     'activity_password_confirmation_failed' => 'Passwort-Bestätigung fehlgeschlagen',
+    'activity_password_attempts_locked_out' => 'Abgemeldet (zu viele Passwortversuche)',
     'activity_password_login_disabled' => 'Passwort-Anmeldung abgeschaltet',
     'activity_password_login_enabled' => 'Passwort-Anmeldung wieder zugelassen',
     'activity_password_reset' => 'Passwort zurückgesetzt',

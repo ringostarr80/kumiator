@@ -28,14 +28,30 @@ trait DetectsFailedCurrentPassword
     protected function currentPasswordRules(User $user, array $input): array
     {
         if (!$user->isPasswordLoginDisabled()) {
-            return ['bail', 'required', 'string', 'current_password:web'];
+            return [
+                'bail',
+                'required',
+                'string',
+                'password_attempts_left',
+                'current_password:web',
+                'password_attempt_succeeded',
+            ];
         }
 
-        if (($input['current_password'] ?? '') === '' || $this->sessionWasRecentlyConfirmed()) {
+        // Leer heißt, was Laravel leer nennt: Einen Wert nur aus Leerzeichen sähe
+        // keine Regel der Kette unten an, keine davon ist implicit.
+        if (blank($input['current_password'] ?? null) || $this->sessionWasRecentlyConfirmed()) {
             return ['recently_confirmed'];
         }
 
-        return ['bail', 'string', 'current_password:web', 'password_login_enabled'];
+        return [
+            'bail',
+            'string',
+            'password_attempts_left',
+            'current_password:web',
+            'password_attempt_succeeded',
+            'password_login_enabled',
+        ];
     }
 
     /**

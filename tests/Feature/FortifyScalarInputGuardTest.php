@@ -21,6 +21,7 @@ final class FortifyScalarInputGuardTest extends TestCase
     use RefreshDatabase;
 
     private const string REGISTER_URL_PATH = '/register';
+    private const string LOGIN_URL_PATH = '/login';
     private const string RESET_PASSWORD_URL_PATH = '/reset-password';
     private const string CONFIRM_PASSWORD_URL_PATH = '/user/confirm-password';
     private const string PROFILE_INFORMATION_URL_PATH = '/user/profile-information';
@@ -29,6 +30,15 @@ final class FortifyScalarInputGuardTest extends TestCase
     public function testRegisterRejectsArrayEmailInsteadOfCrashing(): void
     {
         $response = $this->postJson(self::REGISTER_URL_PATH, ['email' => ['case@example.com']]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['email' => __('validation.string', ['attribute' => 'email'])]);
+    }
+
+    /** Die Drossel des Logins liest die Adresse noch vor dem Guard. */
+    public function testLoginRejectsArrayEmailInsteadOfCrashing(): void
+    {
+        $response = $this->postJson(self::LOGIN_URL_PATH, ['email' => ['case@example.com'], 'password' => 'password']);
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['email' => __('validation.string', ['attribute' => 'email'])]);

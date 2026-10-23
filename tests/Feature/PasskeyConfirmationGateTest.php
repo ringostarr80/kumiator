@@ -261,6 +261,45 @@ final class PasskeyConfirmationGateTest extends TestCase
     }
 
     /**
+     * Einen Wert nur aus Leerzeichen sieht keine Regel an, die nicht implicit
+     * ist. Gälte er nicht als leer, bestünde er die Kette ungeprüft.
+     */
+    public function testWhitespaceDoesNotOpenTheEmailChangeWithoutAConfirmation(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create([
+            'email' => 'original@example.com',
+            'password_login_disabled_at' => now(),
+        ]);
+
+        $this->actingAs($user)->put(self::PROFILE_INFORMATION_URL, [
+            'name' => $user->name,
+            'email' => 'neu@example.com',
+            'current_password' => ' ',
+        ])->assertSessionHasErrorsIn('updateProfileInformation', 'current_password');
+
+        $this->assertNull($user->fresh()?->pending_email);
+        Notification::assertNothingSent();
+    }
+
+    public function testWhitespaceDoesNotOpenThePasswordChangeWithoutAConfirmation(): void
+    {
+        $user = User::factory()->create(['password_login_disabled_at' => now()]);
+
+        $this->actingAs($user)->put(self::PASSWORD_URL, [
+            'current_password' => ' ',
+            'password' => 'brand-new-password',
+            'password_confirmation' => 'brand-new-password',
+        ])->assertSessionHasErrorsIn('updatePassword', 'current_password');
+
+        $refreshedUser = $user->fresh();
+
+        $this->assertNotNull($refreshedUser);
+        $this->assertFalse(Hash::check('brand-new-password', $refreshedUser->password));
+    }
+
+    /**
      * Getragen wird die Änderung von der Bestätigung; ein daneben gesendetes
      * Passwort fügt ihr nichts hinzu und nimmt ihr nichts. Bliebe sie daran
      * hängen, träfe das den Eigentümer: Sein Passwortfeld steht nach dem
