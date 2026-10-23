@@ -36,6 +36,7 @@ enum ActivityEvent: string
     case PASSWORD_RESET_FAILED = 'password_reset_failed';
     case PASSWORD_UPDATE_FAILED = 'password_update_failed';
     case PASSWORD_CONFIRMATION_FAILED = 'password_confirmation_failed';
+    case PASSWORD_ATTEMPTS_LOCKED_OUT = 'password_attempts_locked_out';
     case PASSWORD_LOGIN_DISABLED = 'password_login_disabled';
     case PASSWORD_LOGIN_ENABLED = 'password_login_enabled';
     case EMAIL_VERIFIED = 'email_verified';

@@ -314,6 +314,7 @@ return [
     'activity_password_updated' => 'Password changed',
     'activity_password_update_failed' => 'Password change failed',
     'activity_password_confirmation_failed' => 'Password confirmation failed',
+    'activity_password_attempts_locked_out' => 'Logged out (too many password attempts)',
     'activity_password_login_disabled' => 'Password login turned off',
     'activity_password_login_enabled' => 'Password login turned back on',
     'activity_password_reset' => 'Password reset',
