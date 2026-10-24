@@ -408,26 +408,29 @@ final class PasswordLoginSwitchTest extends TestCase
     }
 
     /**
-     * Die kurze Frist gilt nur dem Abschalten. Die Registrierung hängt bewusst
-     * an derselben Frist wie die JSON-Endpunkte dahinter — ein strengerer
-     * Dialog davor schützte sie nicht, er kostete nur Klicks.
+     * Umbenennen ändert keinen Zugang und kommt deshalb mit der Frist der übrigen
+     * Profilbereiche aus.
      */
     public function testTheOtherActionsOfTheFormKeepTheLongerConfirmation(): void
     {
         $this->confirmPassword(600);
 
         $user = User::factory()->create();
-        PasskeyCredential::factory()->for($user)->create();
+        $passkey = PasskeyCredential::factory()->for($user)->create();
 
         $form = Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('startConfirmingPassword', md5('startPasskeyRegistration'))
+            ->call('startConfirmingPassword', md5("startRenaming('{$passkey->id}')"))
             ->assertSet('confirmingPassword', false);
 
         $form->assertDispatched('password-confirmed');
 
-        $form->call('startPasskeyRegistration')
-            ->assertDispatched('passkey-registration-confirmed');
+        $form->call('startRenaming', $passkey->id)
+            ->set('editingPasskeyName', 'Laptop')
+            ->call('renamePasskey')
+            ->assertHasNoErrors();
+
+        $this->assertSame('Laptop', $passkey->fresh()?->name);
     }
 
     /**

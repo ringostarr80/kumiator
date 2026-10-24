@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Livewire\Profile\Concerns;
 
+use App\Enums\PasswordConfirmationTimeout;
 use Laravel\Jetstream\ConfirmsPasswords;
 
 /**
  * Verkürzt die Bestätigungsfrist für Aktionen, deren Folgen sich nicht
- * zurücknehmen lassen. Die drei Stunden aus `auth.password_timeout` tragen die
- * Profilbereiche, in denen ein Fehlgriff korrigierbar bleibt — eine Löschung
- * ist es nicht, und ein Zwangs-Logout sperrt fremde Geräte aus.
+ * zurücknehmen lassen oder die Sitzung überdauern. Die drei Stunden aus
+ * `auth.password_timeout` tragen die Profilbereiche, in denen ein Fehlgriff
+ * korrigierbar bleibt — eine Löschung ist es nicht, ein Zwangs-Logout sperrt
+ * fremde Geräte aus, und einen Passkey oder ein 2FA-Geheimnis, das eine
+ * gekaperte Sitzung anlegt oder abliest, behält der Angreifer über ihr Ende
+ * hinaus.
  *
  * Beide Enden des Wegs brauchen dieselbe Frist: Prüfte sie nur die Aktion,
  * winkte `startConfirmingPassword()` den Klick mit der alten Bestätigung durch
@@ -21,7 +25,7 @@ trait RequiresFreshPasswordConfirmation
 {
     use ConfirmsPasswords;
 
-    private const int FRESH_CONFIRMATION_SECONDS = 300;
+    private const int FRESH_CONFIRMATION_SECONDS = PasswordConfirmationTimeout::FRESH->value;
 
     /**
      * Deckt sich mit Jetstreams Original bis auf die Frist — der Trait nimmt

@@ -66,7 +66,7 @@ class PasskeyManagerForm extends Component
      */
     public function startPasskeyRegistration(): void
     {
-        $this->ensurePasswordIsConfirmed();
+        $this->ensurePasswordIsConfirmed(self::FRESH_CONFIRMATION_SECONDS);
 
         $this->dispatch('passkey-registration-confirmed');
     }
@@ -208,18 +208,18 @@ class PasskeyManagerForm extends Component
     }
 
     /**
-     * Nur das Abschalten sperrt fremde Geräte aus; das Einschalten meldet sie
-     * bei verworfenem Passwort zwar ab, doch der Passkey, ohne den es kein
-     * Abschalten gab, bringt sie wieder hinein. Die Registrierung bleibt an der
-     * Frist der JSON-Endpunkte dahinter — ein strengerer Dialog davor schützte
-     * sie nicht —, und Umbenennen wie Löschen tragen keine Folge, die den
-     * kürzeren Nachweis rechtfertigte.
+     * Das Abschalten sperrt fremde Geräte aus, und ein neuer Passkey meldet ohne
+     * Passwort und 2FA an, auch wenn die Sitzung, aus der er kam, längst beendet
+     * ist. Das Einschalten meldet andere Geräte bei verworfenem Passwort zwar ab,
+     * doch der Passkey, ohne den es kein Abschalten gab, bringt sie wieder
+     * hinein; Umbenennen wie Löschen tragen keine Folge, die den kürzeren
+     * Nachweis rechtfertigte.
      *
      * @return list<string>
      */
     protected function freshlyConfirmedActions(): array
     {
-        return ['disablePasswordLogin'];
+        return ['disablePasswordLogin', 'startPasskeyRegistration'];
     }
 
     private function flashPasswordLoginState(bool $disabled): void

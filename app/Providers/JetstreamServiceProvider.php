@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Actions\Jetstream\DeleteUser;
 use App\Livewire\Profile\DeleteUserForm;
 use App\Livewire\Profile\LogoutOtherBrowserSessionsForm;
+use App\Livewire\Profile\TwoFactorAuthenticationForm;
 use App\Livewire\Profile\UpdatePasswordForm;
 use App\Livewire\Profile\UpdateProfileInformationForm;
 use Illuminate\Support\Facades\Config;
@@ -29,6 +30,7 @@ class JetstreamServiceProvider extends ServiceProvider
         Livewire::component('profile.delete-user-form', DeleteUserForm::class);
         Livewire::component('profile.update-password-form', UpdatePasswordForm::class);
         Livewire::component('profile.update-profile-information-form', UpdateProfileInformationForm::class);
+        Livewire::component('profile.two-factor-authentication-form', TwoFactorAuthenticationForm::class);
     }
 
     /**

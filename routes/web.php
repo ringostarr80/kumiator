@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\PasswordConfirmationTimeout;
 use App\Http\Controllers\Auth\CancelEmailChangeController;
 use App\Http\Controllers\Auth\ConfirmEmailChangeController;
 use App\Http\Controllers\Auth\PasskeyAuthenticationController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Auth\ResendEmailVerificationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Middleware\EnsureFortifyCredentialsAreScalar;
+use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Http\Controllers\ConfirmedTwoFactorAuthenticationController;
 use Laravel\Fortify\Http\Controllers\NewPasswordController;
@@ -168,7 +170,11 @@ Route::middleware([
     Route::put('/user/password', [PasswordController::class, 'update'])
         ->name('user-password.update');
 
-    Route::middleware('password.confirm')->group(static function (): void {
+    $freshPasswordConfirmation = RequirePassword::using(null, PasswordConfirmationTimeout::FRESH->value);
+
+    // Was diese Routen anlegen oder ausgeben, behält eine gekaperte Sitzung über
+    // ihr Ende hinaus.
+    Route::middleware($freshPasswordConfirmation)->group(static function (): void {
         Route::post('/user/two-factor-authentication', [TwoFactorAuthenticationController::class, 'store'])
             ->name('two-factor.enable');
         Route::post(
@@ -207,10 +213,15 @@ Route::middleware([
     // ──────────────────────────────────────────────────────────────────────────
     // Returns PublicKeyCredentialCreationOptions JSON for the browser
     Route::get('/user/passkeys/register/options', [PasskeyRegistrationController::class, 'options'])
-        ->middleware(['throttle:passkey-register-options', 'password.confirm'])
+        ->middleware(['throttle:passkey-register-options', $freshPasswordConfirmation])
         ->name('passkeys.register.options');
 
     // Verifies the attestation and stores the new passkey
+    //
+    // Die lange Frist genügt hier: Ohne die Challenge, die nur die Optionen bei
+    // frischer Bestätigung ausgeben, scheitert der Aufruf ohnehin. Die kurze
+    // Frist auch hier ließe eine Zeremonie, die über sie hinausläuft, erst nach
+    // der Geste scheitern, und der Passkey bliebe verwaist auf dem Gerät.
     Route::post('/user/passkeys/register', [PasskeyRegistrationController::class, 'store'])
         ->middleware(['throttle:passkey-register', 'password.confirm', 'max.json.body'])
         ->name('passkeys.register');
