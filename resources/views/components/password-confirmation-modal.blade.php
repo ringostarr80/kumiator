@@ -7,9 +7,9 @@
 
 @php
     $user = auth()->user();
-    // Beide Fragen stellt das Modal an den Nutzer, nicht an die einbettende
-    // Komponente: Jetstreams 2FA-Formular bindet es genauso ein wie unsere
-    // Passkey-Verwaltung und wüsste von einem Prop nichts.
+    // Beide Fragen betreffen nur den Nutzer, nicht die einbettende Komponente.
+    // Das Modal stellt sie deshalb selbst, statt dass jede Komponente, die es
+    // einbindet, dieselben Antworten als Prop durchreicht.
     $passwordLoginDisabled = $user?->isPasswordLoginDisabled() ?? false;
     $hasPasskey = $user?->hasPasskey() ?? false;
     // Ohne beides bleibt im Dialog nur der Abbrechen-Knopf; der Text nennt dann

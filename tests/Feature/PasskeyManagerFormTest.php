@@ -423,6 +423,37 @@ final class PasskeyManagerFormTest extends TestCase
     }
 
     /**
+     * Ein neuer Passkey meldet ohne Passwort und 2FA an, auch nachdem die
+     * Sitzung, aus der er kam, beendet ist. Die Bestätigung von vor Stunden, mit
+     * der Umbenennen und Löschen auskommen, reicht dafür nicht.
+     */
+    public function testAnAgedConfirmationNoLongerStartsTheRegistration(): void
+    {
+        $user = User::factory()->create();
+
+        $this->confirmPassword(600);
+
+        Livewire::actingAs($user)
+            ->test(PasskeyManagerForm::class)
+            ->call('startPasskeyRegistration')
+            ->assertForbidden();
+    }
+
+    /** Sonst liefe der Klick ohne Dialog in das 403 der Aktion. */
+    public function testAnAgedConfirmationReopensTheDialogBeforeTheRegistration(): void
+    {
+        $user = User::factory()->create();
+
+        $this->confirmPassword(600);
+
+        Livewire::actingAs($user)
+            ->test(PasskeyManagerForm::class)
+            ->call('startConfirmingPassword', md5('startPasskeyRegistration'))
+            ->assertSet('confirmingPassword', true)
+            ->assertDispatched('confirming-password');
+    }
+
+    /**
      * Beide Aktionen verlangen in der Komponente eine frische Bestätigung; ein
      * roher `wire:click` überspränge den Dialog und liefe in ihr 403.
      */

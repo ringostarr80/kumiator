@@ -108,6 +108,16 @@ final class PasskeyRegistrationTest extends TestCase
         $response->assertStatus(Response::HTTP_LOCKED);
     }
 
+    /** Ohne die Challenge aus den Optionen gelingt keine Registrierung. */
+    public function testOptionsEndpointRejectsAnAgedConfirmation(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->confirmPassword(600)->getJson(self::REGISTER_OPTIONS_URL);
+
+        $response->assertStatus(Response::HTTP_LOCKED);
+    }
+
     public function testOptionsEndpointAbortsWhenNobodyIsAuthenticated(): void
     {
         // withoutMiddleware() lets the request reach the controller, so its own
@@ -263,6 +273,25 @@ final class PasskeyRegistrationTest extends TestCase
         $credential = PasskeyCredential::query()->where('user_id', $user->getKey())->sole();
 
         $this->assertSame('Test Passkey', $credential->name);
+    }
+
+    /**
+     * Die Geste am Authenticator darf über die kurze Frist hinauslaufen: Der
+     * Passkey liegt dann schon auf dem Gerät, und eine Abweisung hier ließe ihn
+     * dort verwaist zurück.
+     */
+    public function testStoreEndpointAcceptsAConfirmationThatAgedDuringTheCeremony(): void
+    {
+        $user = User::factory()->create();
+        $options = $this->startCeremony($user);
+
+        $response = $this->actingAs($user)->confirmPassword(600)->postJson(
+            self::REGISTER_URL,
+            [...VirtualAuthenticator::create()->attestation($options), 'name' => 'Test Passkey'],
+            ['Content-Type' => self::CONTENT_TYPE_JSON],
+        );
+
+        $response->assertCreated();
     }
 
     /**

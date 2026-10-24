@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Livewire\Profile\TwoFactorAuthenticationForm;
 use App\Livewire\Profile\UpdatePasswordForm;
 use App\Models\Activity;
 use App\Models\User;
@@ -16,7 +17,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
-use Laravel\Jetstream\Http\Livewire\TwoFactorAuthenticationForm;
 use Livewire\Livewire;
 use Tests\Support\InsertsSessions;
 use Tests\TestCase;
@@ -37,7 +37,7 @@ final class PasswordAttemptThrottleTest extends TestCase
     private const string WRONG_PASSWORD = 'wrong-password';
     private const int ALLOWED_ATTEMPTS = 5;
 
-    /** Am Dialog einer Komponente, die das Projekt nicht überschreibt. */
+    /** Die Bestätigung im Dialog bleibt Jetstreams; das Projekt ändert nur, wann er aufgeht. */
     public function testTheConfirmationDialogRejectsEvenTheCorrectPasswordAfterTheLimit(): void
     {
         $this->actingAs(User::factory()->create());
