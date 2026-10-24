@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   composer-integrity:
-    name: Composer manifest & advisories
+    name: Composer manifest
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -33,6 +33,24 @@ jobs:
       # Catches the lock hash drifting away from composer.json after a manual edit
       - name: Validate composer.json against composer.lock
         run: composer validate --strict
+
+  # Kept apart from the manifest check: a newly published advisory turns this job red on pull requests
+  # that touch no dependency, so it must stay out of the required checks
+  composer-advisories:
+    name: Composer advisories
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read  # Required by actions/checkout to read the repository
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.4'
+          coverage: none
 
       # --locked audits the pinned versions, so no vendor install is needed
       # An upstream abandon marker is no vulnerability, so it must not block unrelated pull requests
