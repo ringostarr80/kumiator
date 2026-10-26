@@ -8,6 +8,7 @@ use App\Actions\Jetstream\DeleteUser;
 use App\Livewire\Profile\LogoutOtherBrowserSessionsForm;
 use App\Models\Activity;
 use App\Models\User;
+use App\Services\Audit\AuditEmailHasher;
 use App\Services\Auth\Contracts\DisabledPasswordLoginContextContract;
 use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\WebAuthn\PasskeyLoginContext;
@@ -282,7 +283,7 @@ final class AuthenticationActivityLogTest extends TestCase
         $this->assertSame('web', $properties['guard'] ?? null);
         $this->assertArrayHasKey('email_hash', $properties);
         $this->assertSame(
-            hash_hmac('sha256', mb_strtolower(trim($email)), Config::string('app.key')),
+            AuditEmailHasher::hash($email),
             $properties['email_hash'],
         );
         $this->assertArrayNotHasKey('email', $properties);
@@ -491,7 +492,7 @@ final class AuthenticationActivityLogTest extends TestCase
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertSame('web', $properties['guard'] ?? null);
         $this->assertSame(
-            hash_hmac('sha256', self::UNAPPROVED_EMAIL, Config::string('app.key')),
+            AuditEmailHasher::hash(self::UNAPPROVED_EMAIL),
             $properties['email_hash'] ?? null,
         );
         $this->assertArrayNotHasKey('email', $properties);
@@ -578,7 +579,7 @@ final class AuthenticationActivityLogTest extends TestCase
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertSame('web', $properties['guard'] ?? null);
         $this->assertSame(
-            hash_hmac('sha256', 'passkey-unapproved@example.com', Config::string('app.key')),
+            AuditEmailHasher::hash('passkey-unapproved@example.com'),
             $properties['email_hash'] ?? null,
         );
     }
@@ -701,7 +702,7 @@ final class AuthenticationActivityLogTest extends TestCase
         $properties = $activity->properties?->toArray() ?? [];
         $this->assertArrayHasKey('email_hash', $properties);
         $this->assertSame(
-            hash_hmac('sha256', self::BOT_EMAIL, Config::string('app.key')),
+            AuditEmailHasher::hash(self::BOT_EMAIL),
             $properties['email_hash'],
         );
         $this->assertArrayNotHasKey('email', $properties);
