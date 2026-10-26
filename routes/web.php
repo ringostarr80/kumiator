@@ -85,8 +85,9 @@ Route::middleware(['guest', EnsureFortifyCredentialsAreScalar::class . ':email,p
 // Bewusst NICHT hinter `auth`: typische Realfälle (User registriert sich am
 // Desktop, klickt den Link auf dem Smartphone) würden sonst in eine Sackgasse
 // laufen, weil `approved_at = null` den Login blockt. Sicherheit gewährleisten
-// die signierte URL (HMAC + APP_KEY + Ablauffrist) und der Hash-Vergleich
-// gegen die aktuelle E-Mail-Adresse.
+// die signierte URL (HMAC + APP_KEY) und der Hash-Vergleich gegen die aktuelle
+// E-Mail-Adresse. Die Ablauffrist steckt mitsigniert im ausgestellten Link;
+// `signed` selbst verlangt keine.
 // ──────────────────────────────────────────────────────────────────────────────
 Route::middleware(['signed', 'throttle:6,1'])
     ->get('/email/verify/{id}/{hash}', VerifyEmailController::class)

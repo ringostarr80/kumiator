@@ -5,31 +5,61 @@ declare(strict_types=1);
 namespace Tests\Unit\Services\Audit;
 
 use App\Services\Audit\AuditIdHasher;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\URL;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * Sichert, dass Audit-Ziel-IDs als HMAC mit dem APP_KEY gehasht werden, nicht
- * als ungesalzener SHA-256 — niedrig-entropische Integer-Primärschlüssel wären
- * sonst per Vorabtabelle offline reversibel. Nicht-skalare/fehlende Keys → `null`.
+ * Sichert, dass Audit-Ziel-IDs als HMAC mit einem Schlüssel aus dem APP_KEY
+ * gehasht werden, nicht als ungesalzener SHA-256 — niedrig-entropische
+ * Integer-Primärschlüssel wären sonst per Vorabtabelle offline reversibel.
+ * Nicht-skalare/fehlende Keys → `null`.
  */
 final class AuditIdHasherTest extends TestCase
 {
-    public function testHashesScalarKeyAsHmacWithAppKey(): void
+    /**
+     * Jede Änderung der Ableitung bricht die Korrelation zu bestehenden
+     * Einträgen. Der feste Wert zwingt dazu, das bewusst zu entscheiden.
+     */
+    public function testHashMatchesTheKnownValue(): void
     {
-        $expected = hash_hmac('sha256', '42', Config::string('app.key'));
+        Config::set('app.key', 'base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=');
 
-        // Integer- und String-Repräsentation desselben Schlüssels sind gleich.
-        $this->assertSame($expected, AuditIdHasher::hash(42));
-        $this->assertSame($expected, AuditIdHasher::hash('42'));
+        $this->assertSame(
+            '6db34bb61247605ce6f7d39d2dceae5b84970e26654335723329e55d5d499efa',
+            AuditIdHasher::hash(42),
+        );
     }
 
-    public function testHmacDiffersFromUnsaltedSha256(): void
+    public function testHashesScalarKeyWithTheAppKey(): void
     {
-        // ohne Salt wäre eine fortlaufende ID trivial rückrechenbar —
-        // das HMAC darf nie dem plain-SHA-256 gleichen.
-        $this->assertNotSame(hash('sha256', '42'), AuditIdHasher::hash(42));
+        $hash = AuditIdHasher::hash(42);
+
+        // Integer- und String-Repräsentation desselben Schlüssels sind gleich.
+        $this->assertSame($hash, AuditIdHasher::hash('42'));
+
+        Config::set('app.key', 'base64:' . base64_encode(random_bytes(32)));
+
+        $this->assertNotSame($hash, AuditIdHasher::hash(42));
+    }
+
+    /**
+     * Wer den Audit-Trail liest, darf damit nicht im Namen der App signieren.
+     */
+    public function testTheHashOfAUrlIsNoSignatureForIt(): void
+    {
+        $url = url('/beliebig');
+
+        $request = Request::create($url . '?signature=' . AuditIdHasher::hash($url));
+
+        $this->assertFalse(URL::hasCorrectSignature($request));
+    }
+
+    public function testDifferentIdsYieldDifferentHashes(): void
+    {
+        $this->assertNotSame(AuditIdHasher::hash(42), AuditIdHasher::hash(43));
     }
 
     #[DataProvider('nonScalarProvider')]
