@@ -19,9 +19,10 @@ use Illuminate\Http\Request;
  * das Registrier-Gerät) sonst in einer Sackgasse enden — der User kommt
  * mit `approved_at = null` ohnehin nicht durch den Login.
  *
- * Sicherheitsbasis: signierte URL (HMAC-SHA256 + APP_KEY, Ablauffrist) plus
+ * Sicherheitsbasis: signierte URL (HMAC-SHA256 + APP_KEY) plus
  * Hash-Vergleich des aktuellen E-Mail-Strings (alte Links werden nach einem
- * Email-Wechsel automatisch ungültig).
+ * Email-Wechsel automatisch ungültig). Die Ablauffrist steckt mitsigniert im
+ * ausgestellten Link; `signed` selbst verlangt keine.
  *
  * Verify- und Audit-Logik im {@see SelfEmailVerifierContract}: Controller
  * dürfen `Spatie\Activitylog` nicht direkt aufrufen (siehe
