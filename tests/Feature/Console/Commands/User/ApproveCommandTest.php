@@ -37,6 +37,31 @@ final class ApproveCommandTest extends TestCase
     }
 
     /**
+     * Der Name stammt aus der Selbstregistrierung. Steuersequenzen oder
+     * Formatter-Tags darin verfälschten die Meldung, an der der Admin die
+     * Freigabe abliest.
+     */
+    public function testTheNameCannotControlTheTerminal(): void
+    {
+        User::factory()->unapproved()->create([
+            'name' => "<href=https://evil.test>Opfer</>\e[2K",
+            'email' => self::TEST_EMAIL,
+        ]);
+
+        $command = $this->artisan('user:approve');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
+            ->expectsOutputToContain(__('commands.approve_user.success', [
+                'name' => '<href=https://evil.test>Opfer</>[2K',
+                'email' => self::TEST_EMAIL,
+            ]))
+            ->assertSuccessful()
+            ->run();
+    }
+
+    /**
      * Eine zweite Freischaltung überschriebe den Zeitpunkt der ersten und
      * hinterließe dafür einen Eintrag im Audit-Log.
      */

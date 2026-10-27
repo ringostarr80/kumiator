@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\User;
 
+use App\Console\Commands\Command;
 use App\Models\User;
 use App\Services\User\Contracts\UserPasswordResetterContract;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
-use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password;
 
 /**
  * Admin-initiierter Passwort-Reset über die Konsole.
@@ -58,7 +59,7 @@ class ResetPassword extends Command
                 'password_confirmation' => $passwordConfirm,
             ],
             [
-                'password' => ['required', 'string', 'min:8', 'confirmed'],
+                'password' => ['required', 'string', Password::default(), 'confirmed'],
             ],
         );
 

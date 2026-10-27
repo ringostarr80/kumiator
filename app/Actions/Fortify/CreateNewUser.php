@@ -47,7 +47,7 @@ class CreateNewUser implements SelfRegistrarContract
         }
 
         Validator::make($input, [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', User::NAME_CHARACTERS_RULE],
             'email' => ['required', 'string', 'email', 'max:255'],
             'password' => $this->passwordRules(),
             'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature() ? ['accepted', 'required'] : '',

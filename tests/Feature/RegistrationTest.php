@@ -364,6 +364,12 @@ final class RegistrationTest extends TestCase
     {
         yield 'Name leer' => ['name', '', 'required'];
         yield 'Name zu lang' => ['name', str_repeat('a', 256), 'max.string'];
+        yield 'Name mit Steuerzeichen' => ['name', "Opfer\e[2K", 'regex'];
+        yield 'Name mit Bidi-Override' => ['name', "Mallory\u{202E}", 'regex'];
+        yield 'Name mit Bidi-Isolate' => ['name', "Mallory\u{2066}", 'regex'];
+        // An ungültigem UTF-8 bricht PCRE ab. Ein Ausschluss per `not_regex`
+        // wertete das als „kein Treffer“ und ließe das Steuerzeichen durch.
+        yield 'Name mit ungültigem UTF-8' => ['name', "Opfer\xFF\e[2K", 'regex'];
         yield 'E-Mail ohne @' => ['email', 'keine-adresse', 'email'];
         // Besteht die Format-Prüfung, damit nur `max:255` greift: Über 254 Zeichen
         // meldet die RFC-Prüfung bloß eine Warnung, und Teile und Labels bleiben

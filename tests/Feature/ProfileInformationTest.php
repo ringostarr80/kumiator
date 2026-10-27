@@ -141,6 +141,24 @@ final class ProfileInformationTest extends TestCase
         Notification::assertNothingSent();
     }
 
+    public function testStoredNameRejectedByTheNameRuleDoesNotBlockOtherChanges(): void
+    {
+        Notification::fake();
+        $this->actingAs($user = User::factory()->create(['name' => "Max\tMuster"]));
+
+        Livewire::test(UpdateProfileInformationForm::class)
+            ->set('state.email', 'neu@example.com')
+            ->set('state.current_password', 'password')
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
+
+        $refreshedUser = $user->fresh();
+
+        $this->assertNotNull($refreshedUser);
+        $this->assertSame("Max\tMuster", $refreshedUser->name);
+        $this->assertSame('neu@example.com', $refreshedUser->pending_email);
+    }
+
     public function testEmailChangeWithoutCurrentPasswordIsRejected(): void
     {
         Notification::fake();
@@ -931,6 +949,11 @@ final class ProfileInformationTest extends TestCase
     {
         yield 'Name leer' => ['name', ''];
         yield 'Name zu lang' => ['name', str_repeat('a', 256)];
+        yield 'Name mit Steuerzeichen' => ['name', "Opfer\e[2K"];
+        yield 'Name mit Bidi-Override' => ['name', "Mallory\u{202E}"];
+        yield 'Name mit Bidi-Isolate' => ['name', "Mallory\u{2066}"];
+        // Am Ende, weil ein Muster mit `$` statt `\z` den Umbruch dort übersähe.
+        yield 'Name mit Zeilenumbruch am Ende' => ['name', "Opfer\n"];
         yield 'E-Mail leer' => ['email', ''];
         yield 'E-Mail ohne @' => ['email', 'keine-adresse'];
         // Besteht die Format-Prüfung, damit nur `max:255` greift: Über 254 Zeichen

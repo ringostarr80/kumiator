@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\User;
 
+use App\Console\Commands\Command;
 use App\Models\User;
 use App\Services\User\Contracts\UserApproverContract;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
-use Illuminate\Console\Command;
 
 #[Signature('user:approve')]
 #[Description('Schaltet einen Benutzer frei')]

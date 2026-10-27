@@ -13,6 +13,7 @@ use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Testing\PendingCommand;
+use Illuminate\Validation\Rules\Password;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 use Tests\TestCase;
@@ -92,6 +93,30 @@ final class ResetPasswordCommandTest extends TestCase
             ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
             ->expectsQuestion(__('commands.reset_password.ask_password'), 'short')
             ->expectsQuestion(__('commands.reset_password.ask_password_confirm'), 'short')
+            ->assertFailed()
+            ->run();
+    }
+
+    /**
+     * Die Konsole vergibt Passwörter für andere und darf nicht schwächer prüfen
+     * als der Reset im Web. Elf Zeichen genügen Laravels Vorgabe, nicht aber
+     * der hier gesetzten.
+     */
+    public function testResetPasswordFollowsTheDefaultPasswordRule(): void
+    {
+        Password::defaults(static fn (): Password => Password::min(12));
+        User::factory()->create([
+            'email' => self::TEST_EMAIL,
+        ]);
+
+        $command = $this->artisan('user:reset-password');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
+            ->expectsQuestion(__('commands.reset_password.ask_password'), 'password123')
+            ->expectsQuestion(__('commands.reset_password.ask_password_confirm'), 'password123')
+            ->expectsOutput(__('validation.min.string', ['attribute' => 'password', 'min' => 12]))
             ->assertFailed()
             ->run();
     }
@@ -288,5 +313,13 @@ final class ResetPasswordCommandTest extends TestCase
             ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')
             ->assertFailed()
             ->run();
+    }
+
+    protected function tearDown(): void
+    {
+        // Laravel setzt die Vorgabe zwischen den Tests nicht zurück.
+        Password::$defaultCallback = null;
+
+        parent::tearDown();
     }
 }
