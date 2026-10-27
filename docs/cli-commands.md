@@ -110,8 +110,9 @@ erfolgreich ohne eine erneute Änderung vorzunehmen.
 
 ## Passwort zurücksetzen (`user:reset-password`)
 
-Setzt das Passwort eines Benutzers direkt über die Kommandozeile zurück. Das neue
-Passwort muss mindestens 8 Zeichen lang sein und wird zur Bestätigung zweimal abgefragt:
+Setzt das Passwort eines Benutzers direkt über die Kommandozeile zurück. Für das neue
+Passwort gelten dieselben Regeln wie bei der Registrierung, zur Bestätigung wird es
+zweimal abgefragt:
 
 ```bash
 php artisan user:reset-password

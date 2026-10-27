@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\User;
 
+use App\Console\Commands\Command;
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
-use Illuminate\Console\Command;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
 
 #[Signature('user:disable-2fa')]

@@ -6,6 +6,7 @@ namespace Tests\Feature\Console\Commands\User;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Testing\PendingCommand;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -264,5 +265,27 @@ final class ListingCommandTest extends TestCase
             ->doesntExpectOutputToContain(self::ACTIVE_USER_NAME)
             ->assertSuccessful()
             ->run();
+    }
+
+    /**
+     * Name und Adresse stammen aus der Selbstregistrierung. Steuersequenzen
+     * oder Formatter-Tags darin verfälschten die Liste, nach der der Admin
+     * Konten freigibt.
+     */
+    public function testUserDataCannotControlTheTerminal(): void
+    {
+        User::factory()->create([
+            'name' => "\u{2066}<href=https://evil.test>Opfer</>\e[2K\u{202E}",
+            'email' => '"<fg=red>x</>"@example.com',
+        ]);
+
+        Artisan::call('user:list');
+        $output = Artisan::output();
+
+        $this->assertStringContainsString('<href=https://evil.test>Opfer</>[2K', $output);
+        $this->assertStringContainsString('"<fg=red>x</>"@example.com', $output);
+        $this->assertStringNotContainsString("\e", $output);
+        $this->assertStringNotContainsString("\u{202E}", $output);
+        $this->assertStringNotContainsString("\u{2066}", $output);
     }
 }

@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\User;
 
+use App\Console\Commands\Command;
 use App\Models\User;
 use BaconQrCode\Common\ErrorCorrectionLevel;
 use BaconQrCode\Encoder\Encoder;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
-use Illuminate\Console\Command;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;

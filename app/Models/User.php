@@ -57,6 +57,18 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
     use TwoFactorAuthenticatable;
 
     /**
+     * Steuerzeichen wirkten im Terminal des Admins, Bidi-Embeddings, -Overrides
+     * und -Isolates ordneten dort den Rest der Zeile um. Marken wie LRM wirken
+     * nur wie ein Buchstabe und bleiben erlaubt.
+     */
+    public const string DISPLAY_CONTROL_CHARACTERS = '\p{Cc}\x{202A}-\x{202E}\x{2066}-\x{2069}';
+
+    /**
+     * Positiv formuliert, weil `not_regex` ungültiges UTF-8 durchließe.
+     */
+    public const string NAME_CHARACTERS_RULE = 'regex:/\A[^' . self::DISPLAY_CONTROL_CHARACTERS . ']*\z/u';
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>

@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\User;
 
+use App\Console\Commands\Command;
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
-use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
 
 #[Description('Legt einen neuen Benutzer an')]
@@ -58,9 +59,14 @@ class Create extends Command
                 'password_confirmation' => $passwordConfirm,
             ],
             [
-                'name' => ['required', 'string', 'max:255'],
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    User::NAME_CHARACTERS_RULE,
+                ],
                 'email' => ['required', 'email', 'unique:users,email'],
-                'password' => ['required', 'string', 'min:8', 'confirmed'],
+                'password' => ['required', 'string', Password::default(), 'confirmed'],
             ],
         );
 

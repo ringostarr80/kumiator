@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Role;
 
+use App\Console\Commands\Command;
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
-use Illuminate\Console\Command;
 use Spatie\Permission\Models\Role;
 
 #[Signature('role:delete')]

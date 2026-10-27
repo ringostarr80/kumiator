@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\User;
 
+use App\Console\Commands\Command;
 use App\Models\User;
-use Illuminate\Console\Command;
 
 /**
  * Gemeinsamer Ablauf der `user:restore`/`user:force-delete`-Commands, die

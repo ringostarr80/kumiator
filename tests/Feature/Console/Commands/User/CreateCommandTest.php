@@ -7,6 +7,7 @@ namespace Tests\Feature\Console\Commands\User;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\PendingCommand;
+use Illuminate\Validation\Rules\Password;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -137,12 +138,44 @@ final class CreateCommandTest extends TestCase
     }
 
     /**
+     * Die Konsole vergibt Passwörter für andere und darf nicht schwächer prüfen
+     * als die Registrierung. Elf Zeichen genügen Laravels Vorgabe, nicht aber
+     * der hier gesetzten.
+     */
+    public function testPasswordFollowsTheDefaultPasswordRule(): void
+    {
+        Password::defaults(static fn (): Password => Password::min(12));
+        Role::findOrCreate('member');
+
+        $command = $this->artisan('user:create');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            ->expectsQuestion(__('commands.create_user.ask_name'), 'John Doe')
+            ->expectsQuestion(__('commands.common.ask_email'), 'john@example.com')
+            ->expectsQuestion(__('commands.create_user.ask_password'), 'password123')
+            ->expectsQuestion(__('commands.create_user.ask_password_confirm'), 'password123')
+            ->expectsChoice(__('commands.create_user.ask_role'), 'member', ['member'])
+            ->expectsOutput(__('validation.min.string', ['attribute' => 'password', 'min' => 12]))
+            ->assertFailed()
+            ->run();
+
+        $this->assertDatabaseEmpty('users');
+    }
+
+    /**
      * @return iterable<string, array{array<string, string|null>, string, string}>
      */
     public static function invalidAnswerProvider(): iterable
     {
         yield 'Name leer' => [['name' => null], 'name', 'required'];
         yield 'Name zu lang' => [['name' => str_repeat('a', 256)], 'name', 'max.string'];
+        yield 'Name mit Steuerzeichen' => [['name' => "John\tDoe"], 'name', 'regex'];
+        yield 'Name mit Bidi-Override' => [['name' => "Mallory\u{202E}"], 'name', 'regex'];
+        yield 'Name mit Bidi-Isolate' => [['name' => "Mallory\u{2066}"], 'name', 'regex'];
+        // An ungültigem UTF-8 bricht PCRE ab. Ein Ausschluss per `not_regex`
+        // wertete das als „kein Treffer“ und ließe das Steuerzeichen durch.
+        yield 'Name mit ungültigem UTF-8' => [['name' => "John\xFF\tDoe"], 'name', 'regex'];
         yield 'E-Mail ungültig' => [['email' => 'keine-adresse'], 'email', 'email'];
         yield 'Passwort leer' => [['password' => null, 'password_confirmation' => null], 'password', 'required'];
         yield 'Passwort zu kurz' => [
@@ -151,5 +184,13 @@ final class CreateCommandTest extends TestCase
             'min.string',
         ];
         yield 'Bestätigung abweichend' => [['password_confirmation' => 'anderes-passwort'], 'password', 'confirmed'];
+    }
+
+    protected function tearDown(): void
+    {
+        // Laravel setzt die Vorgabe zwischen den Tests nicht zurück.
+        Password::$defaultCallback = null;
+
+        parent::tearDown();
     }
 }

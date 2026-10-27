@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\User;
 
+use App\Console\Commands\Command;
 use App\Services\User\Contracts\UserEmailChangerContract;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
-use Illuminate\Console\Command;
 
 /**
  * Räumt abgelaufene `pending_email*`-Datensätze (TTL 60 Min). Wird vom

@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Timebox;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
 use Spatie\Activitylog\Facades\Activity;
@@ -69,7 +70,17 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
 
         try {
             Validator::make($input, [
-                'name' => ['required', 'string', 'max:255'],
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    // Nur ein geänderter Name: Ein gespeicherter, den die Regel ablehnt,
+                    // sperrte sonst jedes Speichern des Profils, auch von Foto und Adresse.
+                    Rule::when(
+                        ($input['name'] ?? null) !== $user->name,
+                        [User::NAME_CHARACTERS_RULE],
+                    ),
+                ],
                 // Kein `unique`: Die Meldung verriete jedem Mitglied, ob eine
                 // Adresse vergeben ist. Den Konflikt fängt der Wechsel selbst ab.
                 'email' => ['required', 'email', 'max:255'],

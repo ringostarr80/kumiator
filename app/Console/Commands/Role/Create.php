@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Role;
 
+use App\Console\Commands\Command;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
-use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 

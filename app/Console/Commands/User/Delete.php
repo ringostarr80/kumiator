@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\User;
 
+use App\Console\Commands\Command;
 use App\Models\User;
 use App\Services\User\Contracts\UserSoftDeleterContract;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
-use Illuminate\Console\Command;
 
 /**
  * Administrativer Lösch-Pfad für Benutzer.
