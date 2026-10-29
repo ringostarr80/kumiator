@@ -19,7 +19,7 @@ final class CompleteRegistrationNotificationTest extends TestCase
         $user = User::factory()->unverified()->create(['name' => 'Erika']);
 
         $mail = (new CompleteRegistrationNotification())->toMail($user);
-        $token = basename((string) parse_url($mail->actionUrl, PHP_URL_PATH));
+        $token = basename((string) parse_url((string) $mail->actionUrl, PHP_URL_PATH));
 
         $this->assertSame(__('app.complete_registration_subject'), $mail->subject);
         $this->assertSame(__('app.mail_greeting_without_name'), $mail->greeting);

@@ -222,7 +222,7 @@ final class RegistrationTest extends TestCase
             $user,
             CompleteRegistrationNotification::class,
             function (CompleteRegistrationNotification $notification) use ($user): bool {
-                $actionUrl = $notification->toMail($user)->actionUrl;
+                $actionUrl = (string) $notification->toMail($user)->actionUrl;
 
                 $this->post('/reset-password', [
                     'token' => basename((string) parse_url($actionUrl, PHP_URL_PATH)),
