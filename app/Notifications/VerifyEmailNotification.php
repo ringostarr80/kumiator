@@ -9,9 +9,8 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
- * Über die Queue, damit die Registrierung in ihrer Timebox bleibt: Ein
- * synchroner Versand dauerte so lange, wie der Mailserver braucht, und ein
- * ausgetretenes Konto bekommt gar keine Mail.
+ * Über die Queue, damit das Anfordern des Links nicht davon abhängt, ob der
+ * Mailserver gerade antwortet.
  */
 final class VerifyEmailNotification extends VerifyEmail implements ShouldQueue
 {

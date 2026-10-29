@@ -6,6 +6,7 @@ namespace Tests\Feature\Console\Commands\User;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\PendingCommand;
 use Tests\TestCase;
 
@@ -62,11 +63,13 @@ final class ApproveCommandTest extends TestCase
     }
 
     /**
-     * Eine zweite Freischaltung überschriebe den Zeitpunkt der ersten und
-     * hinterließe dafür einen Eintrag im Audit-Log.
+     * Eine zweite Freischaltung überschriebe den Zeitpunkt der ersten,
+     * hinterließe dafür einen Eintrag im Audit-Log und schickte die Mail
+     * zur Freischaltung ein zweites Mal.
      */
     public function testAlreadyApprovedUserShowsWarning(): void
     {
+        Notification::fake();
         $user = User::factory()->create([
             'email' => self::TEST_EMAIL,
         ]);
@@ -86,6 +89,7 @@ final class ApproveCommandTest extends TestCase
             ->run();
 
         $this->assertEquals($approvedAt, $user->fresh()?->approved_at);
+        Notification::assertNothingSent();
     }
 
     public function testApproveNonExistentUserFails(): void

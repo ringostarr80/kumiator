@@ -14,10 +14,9 @@ use Illuminate\Http\Request;
 /**
  * Bestätigt die E-Mail-Adresse eines Users über eine signierte URL.
  *
- * Im Gegensatz zum Fortify-Default ist hier KEIN `auth`-Middleware zwingend,
- * weil typische Realfälle (Mail wird auf einem anderen Gerät geöffnet als
- * das Registrier-Gerät) sonst in einer Sackgasse enden — der User kommt
- * mit `approved_at = null` ohnehin nicht durch den Login.
+ * Im Gegensatz zum Fortify-Default ist hier KEIN `auth`-Middleware zwingend:
+ * Wer die Mail auf einem anderen Gerät öffnet als dem, auf dem er angemeldet
+ * ist, müsste sich sonst erst dort anmelden, nur um die Adresse zu bestätigen.
  *
  * Sicherheitsbasis: signierte URL (HMAC-SHA256 + APP_KEY) plus
  * Hash-Vergleich des aktuellen E-Mail-Strings (alte Links werden nach einem
@@ -32,6 +31,20 @@ use Illuminate\Http\Request;
  */
 final class VerifyEmailController extends Controller
 {
+    /**
+     * Angemeldete schickt `guest` von `login` gleich zum Dashboard weiter, und
+     * dieser Zwischenschritt verbraucht den Flash. Ein anderes angemeldetes Konto
+     * bekommt das Banner nicht, weil die Meldung nicht von ihm handelt.
+     */
+    private function redirectWithMessage(Request $request, ?User $user, string $message): RedirectResponse
+    {
+        if ($request->user()?->is($user) === true) {
+            return redirect()->route('dashboard')->banner($message);
+        }
+
+        return redirect()->route('login')->with('status', $message);
+    }
+
     public function __invoke(
         Request $request,
         int $id,
@@ -41,8 +54,7 @@ final class VerifyEmailController extends Controller
         $user = User::find($id);
 
         if ($user !== null && $user->hasVerifiedEmail()) {
-            return redirect()->route('login')
-                ->with('status', __('app.email_already_verified_message'));
+            return $this->redirectWithMessage($request, $user, __('app.email_already_verified_message'));
         }
 
         try {
@@ -51,7 +63,6 @@ final class VerifyEmailController extends Controller
             abort(403);
         }
 
-        return redirect()->route('login')
-            ->with('status', __('app.email_verified_pending_approval_message'));
+        return $this->redirectWithMessage($request, $user, __('app.email_verified_message'));
     }
 }

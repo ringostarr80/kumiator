@@ -50,7 +50,7 @@ return [
     'forgot_password_description' => 'Passwort vergessen? Kein Problem. Gib einfach deine E-Mail-Adresse ein und'
         . ' wir senden dir einen Link zum Zurücksetzen deines Passworts.',
     'email_password_reset_link' => 'Link zum Zurücksetzen senden',
-    'reset_password' => 'Passwort zurücksetzen',
+    'save_password' => 'Passwort speichern',
     'confirm_password' => 'Passwort bestätigen',
     'already_registered' => 'Bereits registriert?',
 
@@ -93,16 +93,19 @@ return [
         . ' kein Passkey hinterlegt. Eine Bestätigung ist hier nicht möglich — bitte wende dich an die Administration.',
 
     // Auth - Email Verification
-    'verify_email_description' => 'Bevor du fortfährst, bestätige bitte deine E-Mail-Adresse, indem du auf den'
-        . ' Link klickst, den wir dir gerade per E-Mail geschickt haben. Falls du die E-Mail nicht erhalten hast,'
-        . ' senden wir dir gerne eine neue.',
+    'verify_email_description' => 'Bevor du fortfährst, bestätige bitte deine E-Mail-Adresse über einen Link, den'
+        . ' wir dir per E-Mail schicken. Hast du keinen erhalten oder ist er abgelaufen, fordere unten einen neuen'
+        . ' an.',
     'verification_link_sent_profile' => 'Ein neuer Bestätigungslink wurde an die in deinen Profileinstellungen'
         . ' angegebene E-Mail-Adresse gesendet.',
-    'resend_verification_email' => 'Bestätigungs-E-Mail erneut senden',
+    'resend_verification_email' => 'Bestätigungs-E-Mail senden',
     'edit_profile' => 'Profil bearbeiten',
     'email_already_verified_message' => 'Deine E-Mail-Adresse war bereits bestätigt.',
-    'email_verified_pending_approval_message' => 'E-Mail-Adresse bestätigt. Wir benachrichtigen dich, sobald'
+    'email_verified_message' => 'Deine E-Mail-Adresse ist bestätigt.',
+    'password_set_pending_approval_message' => 'Dein Passwort wurde gespeichert. Wir benachrichtigen dich, sobald'
         . ' ein Administrator dein Konto freigeschaltet hat.',
+    'login_pending_approval_message' => 'Dein Konto wartet noch auf die Freischaltung. Wir benachrichtigen dich,'
+        . ' sobald ein Administrator es freigeschaltet hat.',
 
     // Auth - Registration Pending
     'registration_pending_title' => 'Konto wartet auf Freischaltung',
@@ -417,11 +420,18 @@ return [
     'account_exists_ignore' => 'Wenn du das nicht warst, kannst du diese E-Mail ignorieren. An deinem Konto hat sich'
         . ' nichts geändert.',
 
-    // Registrierung mit vergebener, unbestätigter Adresse: Reset-Link an das Postfach
+    // Freischaltung durch einen Administrator
+    'account_approved_subject' => 'Dein Konto ist freigeschaltet',
+    'account_approved_intro' => 'ein Administrator hat dein Konto freigeschaltet. Du kannst dich jetzt anmelden.',
+    'account_approved_action' => 'Zur Anmeldung',
+    'account_approved_password_hint' => 'Hast du noch kein Passwort festgelegt, fordere auf der Anmeldeseite über'
+        . ' „Passwort vergessen?“ einen Link an.',
+    'account_approved_ignore' => 'Wenn du dich nicht registriert hast, kannst du diese E-Mail ignorieren.',
+
+    // Registrierung mit freier oder unbestätigter Adresse: Reset-Link an das Postfach
     'complete_registration_subject' => 'Registrierung abschließen',
-    'complete_registration_intro' => 'zu deiner E-Mail-Adresse gibt es bereits eine Registrierung, die noch nicht'
-        . ' bestätigt ist. Ein weiteres Konto wurde deshalb nicht angelegt, und ein eben eingegebenes Passwort wurde'
-        . ' nicht übernommen. Lege dein Passwort über den Button fest, damit ist auch deine E-Mail-Adresse bestätigt.',
+    'complete_registration_intro' => 'zu deiner E-Mail-Adresse liegt eine Registrierung vor, die noch nicht'
+        . ' bestätigt ist. Lege dein Passwort über den Button fest, damit ist auch deine E-Mail-Adresse bestätigt.',
     'complete_registration_action' => 'Passwort festlegen',
     'complete_registration_ignore' => 'Wenn du dich nicht registriert hast, kannst du diese E-Mail ignorieren.',
 

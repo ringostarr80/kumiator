@@ -108,7 +108,10 @@ der sie die Anfrage empfängt. Beendet ein vorgeschalteter Proxy TLS und reicht
 per HTTP weiter, sieht die App `http://` statt `https://` und lehnt jeden
 Bestätigungslink mit 403 ab. In diesem Aufbau muss die App dem Proxy vertrauen
 (`$middleware->trustProxies(...)` in `bootstrap/app.php`), damit sie Schema und
-Host aus dessen `X-Forwarded-*`-Headern übernimmt.
+Host aus dessen `X-Forwarded-*`-Headern übernimmt. Diesen Link bekommen nur
+angemeldete Konten mit noch unbestätigter Adresse, etwa aus `user:create`. Wer
+sich neu registriert, bestätigt seine Adresse über den unsignierten Link zum
+Festlegen des Passworts.
 
 ### Worker als systemd-Service
 

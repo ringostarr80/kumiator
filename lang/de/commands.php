@@ -15,6 +15,7 @@ return [
     'create_user' => [
         'title' => 'Neuen Benutzer anlegen',
         'ask_name' => 'Name',
+        'ask_email_confirm' => 'E-Mail bestätigen',
         'ask_password' => 'Passwort',
         'ask_password_confirm' => 'Passwort bestätigen',
         'ask_role' => 'Rolle',

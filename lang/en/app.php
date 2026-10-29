@@ -51,7 +51,7 @@ return [
     'forgot_password_description' => 'Forgot your password? No problem. Just let us know your email address'
         . ' and we will email you a password reset link that will allow you to choose a new one.',
     'email_password_reset_link' => 'Email Password Reset Link',
-    'reset_password' => 'Reset Password',
+    'save_password' => 'Save Password',
     'confirm_password' => 'Confirm Password',
     'already_registered' => 'Already registered?',
 
@@ -91,15 +91,18 @@ return [
         . ' registered. Confirmation is not possible here — please contact an administrator.',
 
     // Auth - Email Verification
-    'verify_email_description' => 'Before continuing, could you verify your email address by clicking on the link'
-        . ' we just emailed to you? If you didn\'t receive the email, we will gladly send you another.',
+    'verify_email_description' => 'Before continuing, please verify your email address via a link we send you by'
+        . ' email. If you haven\'t received one or it has expired, request a new one below.',
     'verification_link_sent_profile' => 'A new verification link has been sent to the email address you provided'
         . ' in your profile settings.',
-    'resend_verification_email' => 'Resend Verification Email',
+    'resend_verification_email' => 'Send Verification Email',
     'edit_profile' => 'Edit Profile',
     'email_already_verified_message' => 'Your email address was already verified.',
-    'email_verified_pending_approval_message' => 'Email address verified. We will notify you once an administrator'
-        . ' has approved your account.',
+    'email_verified_message' => 'Your email address has been verified.',
+    'password_set_pending_approval_message' => 'Your password has been saved. We will notify you once an'
+        . ' administrator has approved your account.',
+    'login_pending_approval_message' => 'Your account is still awaiting approval. We will notify you once an'
+        . ' administrator has approved it.',
 
     // Auth - Registration Pending
     'registration_pending_title' => 'Account awaiting approval',
@@ -407,11 +410,18 @@ return [
     'account_exists_ignore' => 'If this wasn\'t you, you can ignore this email. Nothing about your account'
         . ' has changed.',
 
-    // Sign-up with a taken, unconfirmed address: reset link to the mailbox
+    // Approval by an administrator
+    'account_approved_subject' => 'Your account has been approved',
+    'account_approved_intro' => 'An administrator has approved your account. You can sign in now.',
+    'account_approved_action' => 'Go to login',
+    'account_approved_password_hint' => 'If you have not set a password yet, use "Forgot your password?" on the'
+        . ' login page to request a link.',
+    'account_approved_ignore' => 'If you did not sign up, you can ignore this email.',
+
+    // Sign-up with a free or unconfirmed address: reset link to the mailbox
     'complete_registration_subject' => 'Complete your sign-up',
-    'complete_registration_intro' => 'A sign-up with your email address already exists but has not been confirmed'
-        . ' yet. No further account was created, and any password you just entered was not saved. Set your password'
-        . ' using the button below; this also confirms your email address.',
+    'complete_registration_intro' => 'A sign-up with your email address has not been confirmed yet. Set your'
+        . ' password using the button below; this also confirms your email address.',
     'complete_registration_action' => 'Set password',
     'complete_registration_ignore' => 'If you did not sign up, you can ignore this email.',
 
