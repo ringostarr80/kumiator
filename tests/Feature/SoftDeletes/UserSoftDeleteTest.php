@@ -103,8 +103,6 @@ final class UserSoftDeleteTest extends TestCase
         $response = $this->post('/register', [
             'name' => 'Neu',
             'email' => self::EMAIL_TAKEN,
-            'password' => 'Password!1234',
-            'password_confirmation' => 'Password!1234',
             'terms' => true,
         ]);
 

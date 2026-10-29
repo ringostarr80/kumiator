@@ -29,6 +29,7 @@ final class RegistrationTest extends TestCase
 
     private const string REGISTER_URL_PATH = '/register';
     private const string TEST_EMAIL = 'john@example.com';
+    private const string FOREIGN_PASSWORD = 'fremdes-passwort';
 
     public function testRegistrationScreenCanBeRendered(): void
     {
@@ -59,8 +60,6 @@ final class RegistrationTest extends TestCase
         $response = $this->post(self::REGISTER_URL_PATH, [
             'name' => 'Test User',
             'email' => self::TEST_EMAIL,
-            'password' => 'password',
-            'password_confirmation' => 'password',
             'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature(),
         ]);
 
@@ -80,8 +79,6 @@ final class RegistrationTest extends TestCase
         $this->post(self::REGISTER_URL_PATH, [
             'name' => 'Test User',
             'email' => self::TEST_EMAIL,
-            'password' => 'password',
-            'password_confirmation' => 'password',
             'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature(),
         ]);
 
@@ -90,7 +87,7 @@ final class RegistrationTest extends TestCase
         $this->assertNull($user->approved_at);
     }
 
-    public function testNewUsersReceiveTheVerificationLink(): void
+    public function testNewUsersReceiveALinkToSetThePassword(): void
     {
         Notification::fake();
         Role::findOrCreate('member');
@@ -98,7 +95,23 @@ final class RegistrationTest extends TestCase
         $this->post(self::REGISTER_URL_PATH, $this->registrationInput(self::TEST_EMAIL));
 
         $user = User::where('email', self::TEST_EMAIL)->firstOrFail();
-        Notification::assertSentTo($user, VerifyEmailNotification::class);
+        Notification::assertSentTo($user, CompleteRegistrationNotification::class);
+        Notification::assertNotSentTo($user, VerifyEmailNotification::class);
+    }
+
+    public function testPasswordSentWithTheSignUpIsIgnored(): void
+    {
+        Notification::fake();
+        Role::findOrCreate('member');
+
+        $this->post(self::REGISTER_URL_PATH, [
+            ...$this->registrationInput(self::TEST_EMAIL),
+            'password' => self::FOREIGN_PASSWORD,
+            'password_confirmation' => self::FOREIGN_PASSWORD,
+        ])->assertSessionHasNoErrors();
+
+        $user = User::query()->where('email', self::TEST_EMAIL)->firstOrFail();
+        $this->assertFalse(Hash::check(self::FOREIGN_PASSWORD, $user->password));
     }
 
     /**
@@ -156,6 +169,9 @@ final class RegistrationTest extends TestCase
         Notification::fake();
         $owner = User::factory()->create();
         $hash = Hash::spy();
+        // Der Spy lieferte sonst `null`, der Passwort-Hash ist aber als `string`
+        // typisiert.
+        $hash->allows('make')->andReturn('');
 
         $this->post(self::REGISTER_URL_PATH, $this->registrationInput($owner->email))
             ->assertRedirect(route('login', absolute: false));
@@ -186,9 +202,8 @@ final class RegistrationTest extends TestCase
     }
 
     /**
-     * Hat jemand anderes die Adresse mit eigenem Passwort registriert, darf der
-     * Klick des Postfach-Inhabers dieses Konto nicht mit dem fremden Passwort
-     * bestätigen.
+     * Wer die Adresse registriert, muss nicht ihr Inhaber sein. Bestätigt ist
+     * sie erst mit dem Passwort, das der Inhaber über den Link festlegt.
      */
     public function testOwnerConfirmsAForeignSignUpOnlyWithTheirOwnPassword(): void
     {
@@ -197,10 +212,9 @@ final class RegistrationTest extends TestCase
 
         $this->post(self::REGISTER_URL_PATH, [
             ...$this->registrationInput(self::TEST_EMAIL),
-            'password' => 'fremdes-passwort',
-            'password_confirmation' => 'fremdes-passwort',
+            'password' => self::FOREIGN_PASSWORD,
+            'password_confirmation' => self::FOREIGN_PASSWORD,
         ]);
-        $this->post(self::REGISTER_URL_PATH, $this->registrationInput(self::TEST_EMAIL));
 
         $user = User::query()->where('email', self::TEST_EMAIL)->firstOrFail();
 
@@ -298,10 +312,10 @@ final class RegistrationTest extends TestCase
 
         $response = $this->post(self::REGISTER_URL_PATH, [
             ...$this->registrationInput($owner->email),
-            'password_confirmation' => 'something-else',
+            'name' => '',
         ]);
 
-        $response->assertSessionHasErrors('password');
+        $response->assertSessionHasErrors('name');
         Notification::assertNothingSent();
     }
 
@@ -389,8 +403,6 @@ final class RegistrationTest extends TestCase
         return [
             'name' => 'Test User',
             'email' => $email,
-            'password' => 'password',
-            'password_confirmation' => 'password',
             'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature(),
         ];
     }

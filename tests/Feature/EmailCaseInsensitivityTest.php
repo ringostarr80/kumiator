@@ -235,6 +235,7 @@ final class EmailCaseInsensitivityTest extends TestCase
         return $command
             ->expectsQuestion(__('commands.create_user.ask_name'), 'Erika Mustermann')
             ->expectsQuestion(__('commands.common.ask_email'), $email)
+            ->expectsQuestion(__('commands.create_user.ask_email_confirm'), $email)
             ->expectsQuestion(__('commands.create_user.ask_password'), 'password123')
             ->expectsQuestion(__('commands.create_user.ask_password_confirm'), 'password123')
             ->expectsChoice(__('commands.create_user.ask_role'), 'member', ['member']);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\User;
 
 use App\Models\User;
+use App\Notifications\AccountApprovedNotification;
 use App\Services\User\Contracts\UserApproverContract;
 use Illuminate\Support\Carbon;
 
@@ -22,5 +23,7 @@ final class UserApprover implements UserApproverContract
     {
         $user->approved_at = Carbon::now();
         $user->saveOrFail();
+
+        $user->notify(new AccountApprovedNotification());
     }
 }

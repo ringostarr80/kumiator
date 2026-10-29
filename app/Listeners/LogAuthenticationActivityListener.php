@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Services\Audit\AuditEmailHasher;
 use App\Services\Audit\AuditForensicProperties;
 use App\Services\Auth\Contracts\DisabledPasswordLoginContextContract;
-use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
@@ -51,10 +50,8 @@ use Spatie\Activitylog\Facades\Activity;
  */
 final class LogAuthenticationActivityListener
 {
-    public function __construct(
-        private readonly UnapprovedLoginContextContract $unapprovedLoginContext,
-        private readonly DisabledPasswordLoginContextContract $disabledPasswordLoginContext,
-    ) {
+    public function __construct(private readonly DisabledPasswordLoginContextContract $disabledPasswordLoginContext)
+    {
     }
 
     public function handleLogin(Login $event): void
@@ -139,26 +136,17 @@ final class LogAuthenticationActivityListener
 
     public function handleFailed(Failed $event): void
     {
-        // Wenn `FortifyServiceProvider::authenticateUsing()` den Login wegen
-        // fehlender Freischaltung verworfen hat, ist bereits ein dedizierter
-        // `login_unapproved`-Eintrag geschrieben worden. Fortify feuert
-        // anschließend zusätzlich `Failed` — den blenden wir hier aus, damit
-        // pro unapproved-Versuch nur ein einziger, fachlich präziser Eintrag
-        // entsteht (sonst würden Reports doppelt zählen).
-        if ($this->unapprovedLoginContext->isActive()) {
+        // Wurde der Login wegen abgeschalteten Passwort-Logins verworfen, ist
+        // bereits ein dedizierter `login_password_disabled`-Eintrag geschrieben
+        // worden. Fortify feuert anschließend zusätzlich `Failed` — den blenden
+        // wir hier aus, damit pro Versuch nur ein einziger, fachlich präziser
+        // Eintrag entsteht (sonst würden Reports doppelt zählen).
+        if ($this->disabledPasswordLoginContext->isActive()) {
             // Consume-once: den Marker direkt nach dem Unterdrücken räumen.
             // Setz- (Fortify-Closure) und Lesestelle liegen in getrennten
             // Frames, es gibt also kein umschließendes `finally` — bliebe der
             // Marker stehen, verschluckte er in einem wiederverwendeten
             // Container den nächsten echten `login_failed`-Eintrag.
-            $this->unapprovedLoginContext->clear();
-
-            return;
-        }
-
-        // Gleiches Consume-once für den abgeschalteten Passwort-Login: Der
-        // dedizierte `login_password_disabled`-Eintrag steht bereits.
-        if ($this->disabledPasswordLoginContext->isActive()) {
             $this->disabledPasswordLoginContext->clear();
 
             return;

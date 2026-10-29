@@ -95,8 +95,6 @@ final class RegistrationEmailTakenActivityLogTest extends TestCase
         return [
             'name' => 'Test User',
             'email' => $email,
-            'password' => 'password',
-            'password_confirmation' => 'password',
             'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature(),
         ];
     }

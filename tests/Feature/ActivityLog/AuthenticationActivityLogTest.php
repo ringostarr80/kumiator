@@ -10,7 +10,7 @@ use App\Models\Activity;
 use App\Models\User;
 use App\Services\Audit\AuditEmailHasher;
 use App\Services\Auth\Contracts\DisabledPasswordLoginContextContract;
-use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
+use App\Services\Auth\Contracts\UnapprovedLoginAuditContract;
 use App\Services\WebAuthn\PasskeyLoginContext;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
@@ -456,9 +456,9 @@ final class AuthenticationActivityLogTest extends TestCase
      * Passwort-Login eines nicht freigeschalteten Users:
      *   - genau ein `login_unapproved`-Eintrag mit Causer/Subject auf den User
      *     und `email_hash` für Korrelations-Reports
-     *   - KEIN paralleler `login_failed`-Eintrag (Marker greift, sonst wäre der
-     *     Versuch unter zwei verschiedenen fachlichen Events doppelt gezählt)
-     *   - User bleibt ausgeloggt (Fortify-Closure liefert weiter `null`)
+     *   - KEIN paralleler `login_failed`-Eintrag, sonst wäre der Versuch unter
+     *     zwei verschiedenen fachlichen Events doppelt gezählt
+     *   - User bleibt ausgeloggt
      */
     public function testUnapprovedPasswordLoginIsLoggedAsUnapprovedAndSuppressesLoginFailed(): void
     {
@@ -504,8 +504,8 @@ final class AuthenticationActivityLogTest extends TestCase
                 ->where('log_name', 'forensic')
                 ->where('event', 'login_failed')
                 ->count(),
-            'Bei `login_unapproved` darf der Marker den parallelen `login_failed`-Eintrag '
-            . 'unterdrücken — sonst zählen Reports denselben Versuch unter zwei Events.',
+            'Neben `login_unapproved` darf kein paralleler `login_failed`-Eintrag entstehen '
+            . '— sonst zählen Reports denselben Versuch unter zwei Events.',
         );
     }
 
@@ -561,7 +561,7 @@ final class AuthenticationActivityLogTest extends TestCase
 
         Activity::query()->delete();
 
-        app(UnapprovedLoginContextContract::class)->record($user, 'web', $user->email);
+        app(UnapprovedLoginAuditContract::class)->record($user, 'web', $user->email);
 
         $activity = Activity::query()
             ->where('log_name', 'auth')
@@ -585,84 +585,9 @@ final class AuthenticationActivityLogTest extends TestCase
     }
 
     /**
-     * Direktnachweis der Marker-Wirkung: ein nach `markActive()` gefeuertes
-     * `Failed`-Event darf KEINEN `login_failed`-Eintrag erzeugen.
-     */
-    public function testFailedEventIsSuppressedWhenUnapprovedMarkerActive(): void
-    {
-        Activity::query()->delete();
-
-        app(UnapprovedLoginContextContract::class)->markActive();
-
-        Event::dispatch(new Failed('web', null, ['email' => self::VICTIM_EMAIL]));
-
-        $this->assertSame(
-            0,
-            Activity::query()
-                ->where('log_name', 'forensic')
-                ->where('event', 'login_failed')
-                ->count(),
-        );
-    }
-
-    /**
-     * Octane-Sicherheit: Der Marker lebt im scoped Container-State statt in
-     * einem statischen Feld. Long-Running-Worker rufen zwischen zwei Requests
-     * `forgetScopedInstances()` auf — ein im Vorgänger-Request gesetzter
-     * Marker darf den Folge-Request nicht erreichen, sonst unterdrückte er
-     * dort prozessweit echte `login_failed`-Audits.
-     */
-    public function testUnapprovedMarkerDoesNotSurviveScopeFlush(): void
-    {
-        app(UnapprovedLoginContextContract::class)->markActive();
-
-        $this->app->forgetScopedInstances();
-
-        $this->assertFalse(app(UnapprovedLoginContextContract::class)->isActive());
-    }
-
-    /**
-     * `record()` ist reiner Audit-Schreiber: nur der Passwort-Pfad setzt den
-     * Marker selbst. Würde `record()` ihn setzen, bliebe er im Passkey-Pfad
-     * (dem kein `Failed`-Event folgt) ungeräumt hängen.
-     */
-    public function testRecordDoesNotSetTheMarker(): void
-    {
-        $user = User::factory()->unapproved()->create([
-            'email' => self::UNAPPROVED_EMAIL,
-        ]);
-
-        app(UnapprovedLoginContextContract::class)->record($user, 'web', $user->email);
-
-        $this->assertFalse(app(UnapprovedLoginContextContract::class)->isActive());
-    }
-
-    /**
      * Consume-once: nach dem unterdrückten `Failed` muss der Marker geräumt
      * sein, sonst verschluckte er in einem wiederverwendeten Container (z. B.
      * zwei Login-Versuche in einer Methode) den nächsten echten `login_failed`.
-     */
-    public function testActiveMarkerIsConsumedSoTheNextFailedStillLogs(): void
-    {
-        Activity::query()->delete();
-
-        app(UnapprovedLoginContextContract::class)->markActive();
-
-        Event::dispatch(new Failed('web', null, ['email' => 'erst@example.com']));
-        Event::dispatch(new Failed('web', null, ['email' => 'dann@example.com']));
-
-        $this->assertSame(
-            1,
-            Activity::query()
-                ->where('log_name', 'forensic')
-                ->where('event', 'login_failed')
-                ->count(),
-        );
-    }
-
-    /**
-     * Derselbe Consume-once für den Marker des abgeschalteten Passwort-Logins:
-     * Bliebe er stehen, verschluckte er den nächsten echten `login_failed`.
      */
     public function testDisabledPasswordLoginMarkerIsConsumedSoTheNextFailedStillLogs(): void
     {
@@ -680,6 +605,22 @@ final class AuthenticationActivityLogTest extends TestCase
                 ->where('event', 'login_failed')
                 ->count(),
         );
+    }
+
+    /**
+     * Long-Running-Worker rufen zwischen zwei Requests `forgetScopedInstances()`
+     * auf. Ein im Vorgänger-Request liegengebliebener Marker darf den
+     * Folge-Request nicht erreichen, sonst unterdrückte er dort prozessweit
+     * echte `login_failed`-Einträge. Als Singleton gebunden überlebte er den
+     * Reset.
+     */
+    public function testDisabledPasswordLoginMarkerDoesNotSurviveScopeFlush(): void
+    {
+        app(DisabledPasswordLoginContextContract::class)->markActive();
+
+        $this->app->forgetScopedInstances();
+
+        $this->assertFalse(app(DisabledPasswordLoginContextContract::class)->isActive());
     }
 
     public function testLockoutIsLogged(): void
@@ -1107,9 +1048,9 @@ final class AuthenticationActivityLogTest extends TestCase
 
     /**
      * Der `login_unapproved`-Eintrag entsteht in der Fortify-Auth-Closure, bevor
-     * die Anmeldung mit `null` abgewiesen wird. Fällt das Log aus, muss der
-     * Nutzer dieselbe reguläre Fehlermeldung sehen wie sonst — ein 500er würde
-     * die Verfügbarkeit des Audit-Logs nach außen sichtbar machen.
+     * die Anmeldung abgewiesen wird. Fällt das Log aus, muss der Nutzer dieselbe
+     * Meldung sehen wie sonst — ein 500er würde die Verfügbarkeit des
+     * Audit-Logs nach außen sichtbar machen.
      */
     public function testUnapprovedLoginRejectionSurvivesFailingAuditWrite(): void
     {
@@ -1126,7 +1067,7 @@ final class AuthenticationActivityLogTest extends TestCase
 
         $this->assertGuest();
         $response->assertRedirect();
-        $response->assertSessionHasErrors();
+        $response->assertSessionHasErrors(['email' => __('app.login_pending_approval_message')]);
         Exceptions::assertReported(QueryException::class);
     }
 
