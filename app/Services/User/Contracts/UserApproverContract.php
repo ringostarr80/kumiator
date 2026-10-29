@@ -7,7 +7,8 @@ namespace App\Services\User\Contracts;
 use App\Models\User;
 
 /**
- * Schaltet einen Benutzer frei (setzt `approved_at`).
+ * Schaltet einen Benutzer frei (setzt `approved_at`) und sagt ihm per Mail,
+ * dass er sich anmelden kann.
  *
  * Aktuell genutzt vom CLI-Pfad (`user:approve`); ein künftiges Admin-UI kann
  * denselben Vertrag nutzen, ohne den Audit-Pfad zu duplizieren.

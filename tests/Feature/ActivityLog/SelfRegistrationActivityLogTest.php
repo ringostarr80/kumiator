@@ -32,7 +32,6 @@ final class SelfRegistrationActivityLogTest extends TestCase
     use RefreshDatabase;
 
     private const REGISTRATION_EMAIL = 'erika@example.com';
-    private const REGISTRATION_PASSWORD = 'Password!1234';
 
     /**
      * Web-Self-Registration: der `LogsActivity`-Trait erzeugt automatisch
@@ -160,8 +159,6 @@ final class SelfRegistrationActivityLogTest extends TestCase
             $createNewUser->register([
                 'name' => 'Erika',
                 'email' => self::REGISTRATION_EMAIL,
-                'password' => self::REGISTRATION_PASSWORD,
-                'password_confirmation' => self::REGISTRATION_PASSWORD,
             ]);
             $this->fail('Erwartete Exception bei fehlender member-Rolle blieb aus.');
         } catch (\Throwable) {
@@ -215,8 +212,6 @@ final class SelfRegistrationActivityLogTest extends TestCase
         $response = $this->post('/register', [
             'name' => 'Erika Mustermann',
             'email' => self::REGISTRATION_EMAIL,
-            'password' => self::REGISTRATION_PASSWORD,
-            'password_confirmation' => self::REGISTRATION_PASSWORD,
             'terms' => true,
         ]);
 

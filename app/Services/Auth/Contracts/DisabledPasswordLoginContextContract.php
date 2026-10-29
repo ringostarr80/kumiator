@@ -9,10 +9,8 @@ use App\Models\User;
 /**
  * Contract für den Marker und Audit-Helfer des abgeschalteten Passwort-Logins.
  *
- * Getrennt vom `UnapprovedLoginContextContract`, weil beide Marker im selben
- * Request unabhängig voneinander stehen können und ein gemeinsamer Zustand den
- * jeweils anderen Fall verschluckte. Die Begründung für die Trennung in ein
- * Interface trägt der Nachbar-Contract.
+ * Die Begründung für die Trennung in ein Interface trägt der
+ * `UnapprovedLoginAuditContract`.
  */
 interface DisabledPasswordLoginContextContract
 {

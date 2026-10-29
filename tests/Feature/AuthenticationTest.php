@@ -78,7 +78,7 @@ final class AuthenticationTest extends TestCase
         $this->post(self::LOGIN_URL_PATH, [
             'email' => $user->email,
             'password' => 'password',
-        ]);
+        ])->assertSessionHasErrors(['email' => __('app.login_pending_approval_message')]);
 
         $this->assertGuest();
     }
