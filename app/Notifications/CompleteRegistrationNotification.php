@@ -12,14 +12,17 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Password;
 
 /**
- * Ein unbestätigtes Konto kann jemand anderes mit fremdem Passwort angelegt
- * haben. Statt eines Bestätigungslinks, der es samt diesem Passwort bestätigte,
- * bekommt das Postfach einen Reset-Link; der Reset bestätigt die Adresse mit.
+ * Wer eine Registrierung abschickt, muss nicht der Inhaber der Adresse sein.
+ * Das Postfach bekommt deshalb einen Reset-Link, und der Reset bestätigt die
+ * Adresse mit. Ein Bestätigungslink ließe ein neues Konto ohne Passwort, das
+ * jemand kennt. Und ein bestehendes, unbestätigtes Konto kann eines tragen,
+ * das ein anderer festgelegt hat, etwa auf der Konsole; ein Bestätigungslink
+ * bestätigte die Adresse samt diesem Passwort.
  *
  * Über die Queue wie die übrigen Mails der Registrierung, und den Token erst
  * im Worker: Der Broker hasht ihn mit bcrypt, diesen Lauf bezahlte die
- * Registrierung sonst nur für unbestätigte Adressen. Aus demselben Grund
- * trägt der Job keinen Token und braucht keine Verschlüsselung.
+ * Registrierung sonst nur für freie und unbestätigte Adressen. Aus demselben
+ * Grund trägt der Job keinen Token und braucht keine Verschlüsselung.
  *
  * Wie jede Reset-Anforderung entwertet der Token offene Links, auch die eines
  * früheren Versuchs dieses Jobs. Das nimmt dem Inhaber nichts: Der neue Link

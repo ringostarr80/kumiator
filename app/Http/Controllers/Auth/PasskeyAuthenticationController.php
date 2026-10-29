@@ -8,7 +8,7 @@ use App\Config\WebauthnConfig;
 use App\Enums\ActivityFailureReason;
 use App\Http\Controllers\Controller;
 use App\Models\PasskeyCredential;
-use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
+use App\Services\Auth\Contracts\UnapprovedLoginAuditContract;
 use App\Services\WebAuthn\Contracts\PasskeyAuthenticationContract;
 use App\Services\WebAuthn\Contracts\WebAuthnCeremonySessionContract;
 use Illuminate\Http\JsonResponse;
@@ -33,7 +33,7 @@ final class PasskeyAuthenticationController extends Controller
     public function __construct(
         private readonly PasskeyAuthenticationContract $authenticationService,
         private readonly WebAuthnCeremonySessionContract $ceremonySession,
-        private readonly UnapprovedLoginContextContract $unapprovedLoginContext,
+        private readonly UnapprovedLoginAuditContract $unapprovedLoginAudit,
     ) {
     }
 
@@ -133,7 +133,7 @@ final class PasskeyAuthenticationController extends Controller
         // dem User zugeordnet) — der Eintrag ist daher mit Causer/Subject
         // belastbar, anders als bei `passkey_login_failed`.
         if ($user->approved_at === null) {
-            $this->unapprovedLoginContext->record($user, 'web', $user->email);
+            $this->unapprovedLoginAudit->record($user, 'web', $user->email);
 
             return response()->json(
                 ['message' => __('auth.failed')],

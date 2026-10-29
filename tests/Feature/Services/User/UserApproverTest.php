@@ -6,8 +6,12 @@ namespace Tests\Feature\Services\User;
 
 use App\Models\Activity;
 use App\Models\User;
+use App\Notifications\AccountApprovedNotification;
 use App\Services\User\Contracts\UserApproverContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\SendQueuedNotifications;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
@@ -65,6 +69,38 @@ final class UserApproverTest extends TestCase
         $this->assertSame(
             1,
             Activity::query()->where('log_name', 'user')->where('event', 'user_approved')->count(),
+        );
+    }
+
+    /**
+     * Ohne Mail erführe das Mitglied erst bei einem eigenen Anmeldeversuch,
+     * dass es freigeschaltet ist.
+     */
+    public function testApproveTellsTheMemberByMail(): void
+    {
+        Notification::fake();
+        $user = User::factory()->unapproved()->create();
+
+        app(UserApproverContract::class)->approve($user);
+
+        Notification::assertSentTo($user, AccountApprovedNotification::class);
+    }
+
+    /**
+     * Die Freischaltung soll nicht davon abhängen, ob der Mailserver gerade
+     * antwortet.
+     */
+    public function testApprovalMailIsQueued(): void
+    {
+        Queue::fake();
+        $user = User::factory()->unapproved()->create();
+
+        app(UserApproverContract::class)->approve($user);
+
+        Queue::assertPushed(
+            SendQueuedNotifications::class,
+            static fn (SendQueuedNotifications $job): bool => $job->notification
+                instanceof AccountApprovedNotification,
         );
     }
 }

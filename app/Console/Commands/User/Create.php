@@ -8,6 +8,7 @@ use App\Console\Commands\Command;
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -40,10 +41,16 @@ class Create extends Command
         $name = $this->ask(__('commands.create_user.ask_name'));
         /** @var string $email */
         $email = $this->ask(__('commands.common.ask_email')) ?? '';
+        // Zweimal, weil das Konto schon freigeschaltet ist: Bei einem Tippfehler
+        // übernähme es der Inhaber dieser Adresse per Reset samt Rolle.
+        /** @var string $emailConfirm */
+        $emailConfirm = $this->ask(__('commands.create_user.ask_email_confirm')) ?? '';
         // Vor der `unique`-Regel: sie vergleicht den rohen Eingabewert gegen die
         // Spalte, sähe den Mutator also nie und ließe ein Nicht-ASCII-Duplikat
-        // erst am Unique-Index auflaufen.
+        // erst am Unique-Index auflaufen. Die Wiederholung ebenso, sonst wiese
+        // `confirmed` eine Abweichung in der Schreibweise ab.
         $email = User::normalizeEmail($email);
+        $emailConfirm = User::normalizeEmail($emailConfirm);
         /** @var string $password */
         $password = $this->secret(__('commands.create_user.ask_password'));
         $passwordConfirm = $this->secret(__('commands.create_user.ask_password_confirm'));
@@ -55,6 +62,7 @@ class Create extends Command
             [
                 'name' => $name,
                 'email' => $email,
+                'email_confirmation' => $emailConfirm,
                 'password' => $password,
                 'password_confirmation' => $passwordConfirm,
             ],
@@ -65,7 +73,7 @@ class Create extends Command
                     'max:255',
                     User::NAME_CHARACTERS_RULE,
                 ],
-                'email' => ['required', 'email', 'unique:users,email'],
+                'email' => ['required', 'email', 'unique:users,email', 'confirmed'],
                 'password' => ['required', 'string', Password::default(), 'confirmed'],
             ],
         );
@@ -79,11 +87,20 @@ class Create extends Command
         }
 
         DB::transaction(static function () use ($name, $email, $password, $roleName): void {
-            $user = User::create([
+            $user = new User([
                 'name' => $name,
                 'email' => $email,
                 'password' => Hash::make($password),
             ]);
+            $user->saveOrFail();
+
+            // Wer auf der Konsole anlegt, hat über die Freischaltung schon
+            // entschieden. Die Adresse bleibt unbestätigt: Eingetippt ist sie
+            // noch nicht belegt. Erst nach dem Anlegen gespeichert, damit die
+            // Freischaltung wie nach `user:approve` als `user_approved` im
+            // Audit steht.
+            $user->approved_at = Carbon::now();
+            $user->saveOrFail();
 
             $user->assignRole($roleName);
         });

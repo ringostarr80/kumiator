@@ -14,10 +14,9 @@ use App\Services\Concerns\RecordsRejectedLoginActivity;
  * Audit-Schreiber für Anmeldeversuche an Konten, die den Passwort-Login
  * abgeschaltet haben, plus der Marker gegen den sonst folgenden Doppel-Eintrag.
  *
- * Der Marker wirkt wie beim `UnapprovedLoginContext` daneben: Fortify feuert
- * nach jeder abgewiesenen Passwort-Anmeldung `Illuminate\Auth\Events\Failed`,
- * und ohne Marker landete zusätzlich zum fachlich präzisen Eintrag ein
- * generischer `login_failed` im Log.
+ * Den Marker braucht es, weil Fortify nach der abgewiesenen Anmeldung
+ * `Illuminate\Auth\Events\Failed` feuert. Ohne Marker landete zusätzlich zum
+ * fachlich präzisen Eintrag ein generischer `login_failed` im Log.
  *
  * Fachlich zählt der Eintrag als Warnsignal: Wer hier auftaucht, kennt ein
  * gültiges Passwort zu einem Konto, das sich damit nicht mehr anmelden kann —

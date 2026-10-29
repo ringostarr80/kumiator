@@ -101,6 +101,10 @@ php artisan user:create
 # mit Docker: docker compose exec app php artisan user:create
 ```
 
+Das Konto ist sofort freigeschaltet. Die E-Mail-Adresse bestätigt man nach der ersten Anmeldung über
+einen Link, den man auf der angezeigten Seite per Mail anfordert; ohne Mailversand erledigt das
+`php artisan user:verify`.
+
 ## CLI-Kommandos zur Benutzerverwaltung
 
 Siehe [docs/cli-commands.md](docs/cli-commands.md).
