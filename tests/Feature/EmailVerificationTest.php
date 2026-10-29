@@ -6,9 +6,12 @@ namespace Tests\Feature;
 
 use App\Models\Activity;
 use App\Models\User;
+use App\Notifications\VerifyEmailNotification;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\URL;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
@@ -30,6 +33,25 @@ final class EmailVerificationTest extends TestCase
         $response = $this->actingAs($user)->get('/email/verify');
 
         $response->assertStatus(200);
+        $response->assertSee(__('app.verify_email_description'));
+        $response->assertSee(__('app.resend_verification_email'));
+    }
+
+    public function testResentVerificationMailIsQueued(): void
+    {
+        if (! Features::enabled(Features::emailVerification())) {
+            $this->markTestSkipped(self::FEATURE_NOT_ENABLED_MESSAGE);
+        }
+
+        Queue::fake();
+        $user = User::factory()->unverified()->create();
+
+        $this->actingAs($user)->post(route('verification.send'));
+
+        Queue::assertPushed(
+            SendQueuedNotifications::class,
+            static fn (SendQueuedNotifications $job): bool => $job->notification instanceof VerifyEmailNotification,
+        );
     }
 
     public function testEmailCanBeVerified(): void
@@ -53,8 +75,30 @@ final class EmailVerificationTest extends TestCase
         Event::assertDispatched(Verified::class);
 
         $this->assertTrue($user->fresh()?->hasVerifiedEmail());
+        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertSessionHas('flash.banner', __('app.email_verified_message'));
+    }
+
+    public function testEmailVerifiedWhileAnotherAccountIsLoggedInRedirectsToLogin(): void
+    {
+        if (! Features::enabled(Features::emailVerification())) {
+            $this->markTestSkipped(self::FEATURE_NOT_ENABLED_MESSAGE);
+        }
+
+        $user = User::factory()->unverified()->create();
+
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(60),
+            ['id' => $user->id, 'hash' => sha1($user->email)],
+        );
+
+        $response = $this->actingAs(User::factory()->create())->get($verificationUrl);
+
+        $this->assertTrue($user->fresh()?->hasVerifiedEmail());
         $response->assertRedirect(route('login', absolute: false));
-        $response->assertSessionHas('status', __('app.email_verified_pending_approval_message'));
+        $response->assertSessionHas('status', __('app.email_verified_message'));
+        $response->assertSessionMissing('flash.banner');
     }
 
     public function testEmailCanBeVerifiedWithoutBeingLoggedIn(): void
@@ -63,11 +107,10 @@ final class EmailVerificationTest extends TestCase
             $this->markTestSkipped(self::FEATURE_NOT_ENABLED_MESSAGE);
         }
 
-        // Realszenario: User registriert sich am Desktop, klickt aber den
-        // Mail-Link auf dem Smartphone — dort hat er keine aktive Session.
-        // Die signierte URL muss trotzdem akzeptiert werden, sonst landet
-        // der User in einer Sackgasse (Login wegen `approved_at = null`
-        // ohnehin gesperrt).
+        // Realszenario: Angemeldet am Desktop, den Mail-Link aber auf dem
+        // Smartphone geklickt — dort gibt es keine Session. Die signierte URL
+        // muss trotzdem akzeptiert werden, sonst ginge es erst nach einer
+        // Anmeldung auf dem Smartphone weiter.
         $user = User::factory()->unverified()->create();
 
         $verificationUrl = URL::temporarySignedRoute(
@@ -80,6 +123,7 @@ final class EmailVerificationTest extends TestCase
 
         $this->assertTrue($user->fresh()?->hasVerifiedEmail());
         $response->assertRedirect(route('login', absolute: false));
+        $response->assertSessionHas('status', __('app.email_verified_message'));
     }
 
     public function testAlreadyVerifiedEmailShowsFlashAndRedirectsToLogin(): void
@@ -103,6 +147,26 @@ final class EmailVerificationTest extends TestCase
         Event::assertNotDispatched(Verified::class);
         $response->assertRedirect(route('login', absolute: false));
         $response->assertSessionHas('status', __('app.email_already_verified_message'));
+    }
+
+    public function testAlreadyVerifiedEmailWhileLoggedInShowsBannerOnDashboard(): void
+    {
+        if (! Features::enabled(Features::emailVerification())) {
+            $this->markTestSkipped(self::FEATURE_NOT_ENABLED_MESSAGE);
+        }
+
+        $user = User::factory()->create(['email_verified_at' => now()]);
+
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(60),
+            ['id' => $user->id, 'hash' => sha1($user->email)],
+        );
+
+        $response = $this->actingAs($user)->get($verificationUrl);
+
+        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertSessionHas('flash.banner', __('app.email_already_verified_message'));
     }
 
     public function testEmailCanNotVerifiedWithInvalidHash(): void

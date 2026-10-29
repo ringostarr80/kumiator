@@ -9,7 +9,6 @@ use App\Notifications\AccountAlreadyExistsNotification;
 use App\Notifications\CompleteRegistrationNotification;
 use App\Notifications\EmailChangeTargetTakenNotification;
 use App\Notifications\ResetPasswordNotification;
-use App\Notifications\VerifyEmailNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Facades\Notification;
@@ -19,7 +18,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Reset-, Bestätigungs- und Hinweis-Mail gehen nur für bestimmte Adressen
+ * Reset-, Registrierungs- und Hinweis-Mail gehen nur für bestimmte Adressen
  * raus. Liefen sie synchron, verriete die Antwortzeit, zu welcher Adresse ein
  * Konto besteht.
  */
@@ -45,7 +44,7 @@ final class QueuedAuthMailsTest extends TestCase
         );
     }
 
-    public function testVerificationMailIsQueued(): void
+    public function testCompleteRegistrationMailForANewAccountIsQueued(): void
     {
         Queue::fake();
         Role::findOrCreate('member');
@@ -54,7 +53,8 @@ final class QueuedAuthMailsTest extends TestCase
 
         Queue::assertPushed(
             SendQueuedNotifications::class,
-            static fn (SendQueuedNotifications $job): bool => $job->notification instanceof VerifyEmailNotification,
+            static fn (SendQueuedNotifications $job): bool => $job->notification
+                instanceof CompleteRegistrationNotification,
         );
     }
 
@@ -134,7 +134,7 @@ final class QueuedAuthMailsTest extends TestCase
         ): bool => $locale === 'de';
 
         Notification::assertSentTo($owner, ResetPasswordNotification::class, $sentInGerman);
-        Notification::assertSentTo($newUser, VerifyEmailNotification::class, $sentInGerman);
+        Notification::assertSentTo($newUser, CompleteRegistrationNotification::class, $sentInGerman);
         Notification::assertSentTo($owner, AccountAlreadyExistsNotification::class, $sentInGerman);
         Notification::assertSentTo($unverifiedOwner, CompleteRegistrationNotification::class, $sentInGerman);
     }
@@ -147,8 +147,6 @@ final class QueuedAuthMailsTest extends TestCase
         return [
             'name' => 'Test User',
             'email' => $email,
-            'password' => 'password',
-            'password_confirmation' => 'password',
             'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature(),
         ];
     }

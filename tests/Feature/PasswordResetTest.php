@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Laravel\Fortify\Features;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class PasswordResetTest extends TestCase
@@ -180,6 +181,21 @@ final class PasswordResetTest extends TestCase
         );
     }
 
+    #[DataProvider('approvalStateProvider')]
+    public function testResetTellsWhetherTheAccountAwaitsApproval(bool $approved, string $status): void
+    {
+        $user = User::factory()->create(['approved_at' => $approved ? now() : null]);
+
+        $this->post(self::RESET_PASSWORD_URL_PATH, [
+            'token' => Password::createToken($user),
+            'email' => $user->email,
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ])
+            ->assertRedirect(route('login', absolute: false))
+            ->assertSessionHas('status', __($status));
+    }
+
     /**
      * Fortify verlangt beim Einlösen nur, dass überhaupt ein Passwort kommt.
      * Länge und Bestätigung prüft allein die Action.
@@ -217,6 +233,15 @@ final class PasswordResetTest extends TestCase
         }
 
         $this->post(self::RESET_PASSWORD_URL_PATH, $this->resetInput(self::UNKNOWN_EMAIL))->assertTooManyRequests();
+    }
+
+    /**
+     * @return iterable<string, array{bool, string}>
+     */
+    public static function approvalStateProvider(): iterable
+    {
+        yield 'freigeschaltet' => [true, 'passwords.reset'];
+        yield 'nicht freigeschaltet' => [false, 'app.password_set_pending_approval_message'];
     }
 
     /**

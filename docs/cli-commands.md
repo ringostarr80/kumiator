@@ -45,13 +45,18 @@ Neuen Benutzer anlegen
 ----------------------
  Name: Max Mustermann
  E-Mail: max@example.com
+ E-Mail bestätigen: max@example.com
  Passwort:
  Passwort bestätigen:
 
 Benutzer "Max Mustermann" (max@example.com) wurde erfolgreich angelegt.
 ```
 
-Anschließend kann man sich unter `/login` mit den angelegten Zugangsdaten einloggen.
+Das Konto ist sofort freigeschaltet, anschließend kann man sich unter `/login` mit den angelegten
+Zugangsdaten einloggen. Die E-Mail-Adresse ist dabei noch unbestätigt: Nach der Anmeldung verlangt
+die Anwendung, sie über einen Link zu bestätigen, den man auf der angezeigten Seite per Mail
+anfordert. Ohne Mailversand, etwa direkt nach der Installation, übernimmt das
+[`user:verify`](#benutzer-verifizieren-userverify).
 
 ## Benutzer auflisten (`user:list`)
 
@@ -89,9 +94,13 @@ Benutzer "Max Mustermann" (max@example.com) wurde erfolgreich verifiziert.
 
 ## Benutzer freischalten (`user:approve`)
 
-Schaltet einen registrierten Benutzer frei, ohne dass dieser auf einen Bestätigungslink
-warten muss. Nützlich wenn die Applikation so konfiguriert ist, dass neue Benutzer erst
-nach manueller Freischaltung Zugang erhalten:
+Schaltet ein über die Oberfläche registriertes Konto frei. Bis dahin weist die Anmeldung es ab,
+und eine andere Möglichkeit zur Freischaltung gibt es nicht. Konten aus `user:create` sind bereits
+freigeschaltet.
+
+Die Bestätigung der E-Mail-Adresse ist davon unabhängig: Ein freigeschaltetes Konto mit
+unbestätigter Adresse muss sie nach der Anmeldung noch bestätigen (siehe
+[`user:verify`](#benutzer-verifizieren-userverify)).
 
 ```bash
 php artisan user:approve
@@ -105,14 +114,21 @@ Benutzer freischalten
 Benutzer "Max Mustermann" (max@example.com) wurde erfolgreich freigeschaltet.
 ```
 
+Der Benutzer bekommt eine E-Mail, dass er sich jetzt anmelden kann. Sie geht wie alle Mails
+über die Queue raus und kommt deshalb nur an, wenn der Worker läuft.
+
+Die Mail ist in der Sprache aus `APP_LOCALE` verfasst, auch wenn sich der Benutzer in einer
+anderen Sprache registriert hat. Das Konto speichert keine Sprache, und die Konsole hat keine
+Sitzung, aus der sie sich übernehmen ließe.
+
 Ist der Benutzer bereits freigeschaltet, gibt das Kommando eine Warnung aus und endet
 erfolgreich ohne eine erneute Änderung vorzunehmen.
 
 ## Passwort zurücksetzen (`user:reset-password`)
 
 Setzt das Passwort eines Benutzers direkt über die Kommandozeile zurück. Für das neue
-Passwort gelten dieselben Regeln wie bei der Registrierung, zur Bestätigung wird es
-zweimal abgefragt:
+Passwort gelten dieselben Regeln wie beim Festlegen oder Ändern des Passworts in der
+Anwendung, zur Bestätigung wird es zweimal abgefragt:
 
 ```bash
 php artisan user:reset-password

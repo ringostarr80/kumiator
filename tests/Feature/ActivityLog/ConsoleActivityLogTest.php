@@ -80,6 +80,7 @@ final class ConsoleActivityLogTest extends TestCase
         $command
             ->expectsQuestion(__('commands.create_user.ask_name'), self::TARGET_NAME)
             ->expectsQuestion(__('commands.common.ask_email'), self::TARGET_EMAIL)
+            ->expectsQuestion(__('commands.create_user.ask_email_confirm'), self::TARGET_EMAIL)
             ->expectsQuestion(__('commands.create_user.ask_password'), self::PASSWORD)
             ->expectsQuestion(__('commands.create_user.ask_password_confirm'), self::PASSWORD)
             ->expectsChoice(__('commands.create_user.ask_role'), 'member', ['admin', 'member'])
@@ -108,6 +109,41 @@ final class ConsoleActivityLogTest extends TestCase
                 ->count(),
             'Generischer user.created-Eintrag darf neben dem fachlichen Code nicht stehen bleiben.',
         );
+    }
+
+    /**
+     * `user:create` schaltet gleich mit frei. Wer Freischaltungen auswertet,
+     * soll sie trotzdem unter demselben Code finden wie nach `user:approve`.
+     */
+    public function testUserCreateWritesUserApprovedWithCliActor(): void
+    {
+        Activity::query()->delete();
+
+        $command = $this->artisan('user:create');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            ->expectsQuestion(__('commands.create_user.ask_name'), self::TARGET_NAME)
+            ->expectsQuestion(__('commands.common.ask_email'), self::TARGET_EMAIL)
+            ->expectsQuestion(__('commands.create_user.ask_email_confirm'), self::TARGET_EMAIL)
+            ->expectsQuestion(__('commands.create_user.ask_password'), self::PASSWORD)
+            ->expectsQuestion(__('commands.create_user.ask_password_confirm'), self::PASSWORD)
+            ->expectsChoice(__('commands.create_user.ask_role'), 'member', ['admin', 'member'])
+            ->assertSuccessful()
+            ->run();
+
+        $user = User::query()->where('email', self::TARGET_EMAIL)->firstOrFail();
+
+        $activity = Activity::query()
+            ->where('log_name', 'user')
+            ->where('subject_type', $user->getMorphClass())
+            ->where('subject_id', $user->getKey())
+            ->where('event', 'user_approved')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity, 'Erwarteter user_approved-Eintrag fehlt.');
+        $this->assertCliActorPresent($activity, 'user:create');
     }
 
     public function testUserApproveWritesUserApprovedWithCliActor(): void

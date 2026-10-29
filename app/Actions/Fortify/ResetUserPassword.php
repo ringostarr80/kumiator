@@ -52,9 +52,8 @@ class ResetUserPassword implements ResetsUserPasswords
         ])->validate();
 
         // Wer den Link einlöst, hat Zugriff auf das Postfach — derselbe Nachweis
-        // wie beim Bestätigungslink. Anders als dort gilt danach das eigene
-        // Passwort, nicht das einer fremden Registrierung mit dieser Adresse.
-        // `Verified` schreibt dasselbe Audit wie der Link.
+        // wie beim Bestätigungslink. `Verified` schreibt dasselbe Audit wie der
+        // Link.
         $verifies = !$user->hasVerifiedEmail();
 
         $user->forceFill([

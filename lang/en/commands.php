@@ -15,6 +15,7 @@ return [
     'create_user' => [
         'title' => 'Create new user',
         'ask_name' => 'Name',
+        'ask_email_confirm' => 'Confirm email',
         'ask_password' => 'Password',
         'ask_password_confirm' => 'Confirm password',
         'ask_role' => 'Role',

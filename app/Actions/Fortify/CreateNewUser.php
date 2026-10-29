@@ -6,13 +6,12 @@ namespace App\Actions\Fortify;
 
 use App\Models\User;
 use App\Services\Auth\Contracts\ExistingAccountNotifierContract;
+use App\Services\Auth\Contracts\NewAccountNotifierContract;
 use App\Services\Auth\Contracts\SelfRegistrarContract;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Timebox;
 use Laravel\Jetstream\Jetstream;
@@ -21,16 +20,18 @@ use Laravel\Jetstream\Jetstream;
  * Hinter einem eigenen Contract statt hinter Fortifys `CreatesNewUsers`:
  * Fortifys Registrierung meldet das neue Konto sofort an und verriete damit,
  * ob die Adresse frei war. Validierung und Anlage bleiben in dieser Action,
- * weil sie Jetstream und die gemeinsamen Passwortregeln brauchen, die ein
- * Service nicht kennen darf.
+ * weil sie Jetstream brauchen, das ein Service nicht kennen darf.
+ *
+ * Ohne Passwort: Wer sich registriert, muss nicht der Inhaber der Adresse
+ * sein, und dessen Bestätigung gälte sonst auch für ein fremdes Passwort.
+ * Festgelegt wird es deshalb erst über den Link aus dem Postfach.
  */
 class CreateNewUser implements SelfRegistrarContract
 {
-    use PasswordValidationRules;
-
     public function __construct(
         private readonly SelfRegistrationContextContract $selfRegistrationContext,
         private readonly ExistingAccountNotifierContract $existingAccountNotifier,
+        private readonly NewAccountNotifierContract $newAccountNotifier,
         private readonly Timebox $timebox,
     ) {
     }
@@ -49,7 +50,6 @@ class CreateNewUser implements SelfRegistrarContract
         Validator::make($input, [
             'name' => ['required', 'string', 'max:255', User::NAME_CHARACTERS_RULE],
             'email' => ['required', 'string', 'email', 'max:255'],
-            'password' => $this->passwordRules(),
             'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature() ? ['accepted', 'required'] : '',
         ])->validate();
 
@@ -70,9 +70,6 @@ class CreateNewUser implements SelfRegistrarContract
         /** @var string $email */
         $email = $input['email'];
 
-        /** @var string $password */
-        $password = $input['password'];
-
         // `withTrashed()`: Auch ein ausgetretenes Konto hält die Adresse, die
         // Anlage scheiterte sonst am Unique-Index.
         $existingUser = User::queryByEmail($email)->withTrashed()->first();
@@ -81,7 +78,7 @@ class CreateNewUser implements SelfRegistrarContract
             // Timing-Angleichung für den Fall, dass die Timebox nicht reicht:
             // Die Anlage kostet einen Hash-Lauf, ohne ihn antwortete eine
             // vergebene Adresse dann messbar schneller.
-            Hash::make($password);
+            User::unknownPasswordHash();
 
             $this->existingAccountNotifier->notify($existingUser);
 
@@ -98,11 +95,12 @@ class CreateNewUser implements SelfRegistrarContract
         $this->selfRegistrationContext->markActive();
 
         try {
-            $user = DB::transaction(static function () use ($input, $email, $password): User {
+            $user = DB::transaction(static function () use ($input, $email): User {
                 $user = User::create([
                     'name' => $input['name'],
                     'email' => $email,
-                    'password' => Hash::make($password),
+                    // Gelten soll erst das über den Link festgelegte Passwort.
+                    'password' => User::unknownPasswordHash(),
                 ]);
 
                 $user->assignRole('member');
@@ -122,6 +120,6 @@ class CreateNewUser implements SelfRegistrarContract
             $this->selfRegistrationContext->clear();
         }
 
-        event(new Registered($user));
+        $this->newAccountNotifier->notify($user);
     }
 }

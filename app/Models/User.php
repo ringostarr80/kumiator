@@ -193,16 +193,15 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
      * Abgeschaltet wird der Passwort-Login, wenn dem Passwort nicht mehr zu
      * trauen ist. Bliebe es stehen, nähme der wieder offene Zugang diese
      * Aussage still zurück; ein seither neu gesetztes trifft der Verdacht
-     * nicht. Ein Zufallswert statt eines leeren Feldes, weil die Spalte
-     * `NOT NULL` ist; hinein führt der Link zum Zurücksetzen, den es für
-     * dieses Konto ja wieder gibt.
+     * nicht. Hinein führt der Link zum Zurücksetzen, den es für dieses Konto
+     * ja wieder gibt.
      *
      * Speichert nicht: Transaktion und Zeitpunkt gehören dem Aufrufer.
      */
     public function reopenPasswordLogin(): void
     {
         if ($this->hasDistrustedPassword()) {
-            $this->password = Hash::make(Str::random(64));
+            $this->password = self::unknownPasswordHash();
         }
 
         $this->password_login_disabled_at = null;
@@ -297,6 +296,17 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
             ->logOnlyDirty()
             ->dontLogEmptyChanges()
             ->useLogName(ActivityChannel::USER->value);
+    }
+
+    /**
+     * Ein Zufallshash statt `null`, weil die Spalte `NOT NULL` ist, und statt
+     * eines Platzhalters, weil der Login sonst an der Formatprüfung des
+     * Hashers mit einem 500 endete. Hinein führt dann nur der Link zum
+     * Zurücksetzen.
+     */
+    public static function unknownPasswordHash(): string
+    {
+        return Hash::make(Str::random(64));
     }
 
     /**

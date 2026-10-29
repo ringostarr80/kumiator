@@ -19,6 +19,7 @@ final class CreateCommandTest extends TestCase
     private const array VALID_ANSWERS = [
         'name' => 'John Doe',
         'email' => 'john@example.com',
+        'email_confirmation' => 'john@example.com',
         'password' => 'password123',
         'password_confirmation' => 'password123',
     ];
@@ -34,6 +35,7 @@ final class CreateCommandTest extends TestCase
         $command
             ->expectsQuestion(__('commands.create_user.ask_name'), 'John Doe')
             ->expectsQuestion(__('commands.common.ask_email'), 'john@example.com')
+            ->expectsQuestion(__('commands.create_user.ask_email_confirm'), 'john@example.com')
             ->expectsQuestion(__('commands.create_user.ask_password'), 'password123')
             ->expectsQuestion(__('commands.create_user.ask_password_confirm'), 'password123')
             ->expectsChoice(__('commands.create_user.ask_role'), 'admin', ['admin', 'member'])
@@ -43,6 +45,32 @@ final class CreateCommandTest extends TestCase
 
         $user = User::where('email', 'john@example.com')->firstOrFail();
         $this->assertTrue($user->hasRole('admin'));
+    }
+
+    /**
+     * Die Adresse bleibt unbestätigt: Eingetippt ist sie noch nicht belegt.
+     */
+    public function testCreatedUserCanLogInWithoutSeparateApproval(): void
+    {
+        Role::findOrCreate('admin');
+
+        $command = $this->artisan('user:create');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            ->expectsQuestion(__('commands.create_user.ask_name'), 'John Doe')
+            ->expectsQuestion(__('commands.common.ask_email'), 'john@example.com')
+            ->expectsQuestion(__('commands.create_user.ask_email_confirm'), 'john@example.com')
+            ->expectsQuestion(__('commands.create_user.ask_password'), 'password123')
+            ->expectsQuestion(__('commands.create_user.ask_password_confirm'), 'password123')
+            ->expectsChoice(__('commands.create_user.ask_role'), 'admin', ['admin'])
+            ->assertSuccessful()
+            ->run();
+
+        $this->post('/login', ['email' => 'john@example.com', 'password' => 'password123']);
+
+        $this->assertAuthenticated();
+        $this->assertFalse(User::where('email', 'john@example.com')->firstOrFail()->hasVerifiedEmail());
     }
 
     public function testUserCannotBeCreatedWithoutRoles(): void
@@ -75,6 +103,8 @@ final class CreateCommandTest extends TestCase
             // zu eng.
             // @phpstan-ignore argument.type
             ->expectsQuestion(__('commands.common.ask_email'), null)
+            // @phpstan-ignore argument.type
+            ->expectsQuestion(__('commands.create_user.ask_email_confirm'), null)
             ->expectsQuestion(__('commands.create_user.ask_password'), 'password123')
             ->expectsQuestion(__('commands.create_user.ask_password_confirm'), 'password123')
             ->expectsChoice(__('commands.create_user.ask_role'), 'member', ['member'])
@@ -106,6 +136,8 @@ final class CreateCommandTest extends TestCase
             ->expectsQuestion(__('commands.create_user.ask_name'), $answers['name'])
             // @phpstan-ignore argument.type
             ->expectsQuestion(__('commands.common.ask_email'), $answers['email'])
+            // @phpstan-ignore argument.type
+            ->expectsQuestion(__('commands.create_user.ask_email_confirm'), $answers['email_confirmation'])
             // @phpstan-ignore argument.type
             ->expectsQuestion(__('commands.create_user.ask_password'), $answers['password'])
             // @phpstan-ignore argument.type
@@ -153,6 +185,7 @@ final class CreateCommandTest extends TestCase
         $command
             ->expectsQuestion(__('commands.create_user.ask_name'), 'John Doe')
             ->expectsQuestion(__('commands.common.ask_email'), 'john@example.com')
+            ->expectsQuestion(__('commands.create_user.ask_email_confirm'), 'john@example.com')
             ->expectsQuestion(__('commands.create_user.ask_password'), 'password123')
             ->expectsQuestion(__('commands.create_user.ask_password_confirm'), 'password123')
             ->expectsChoice(__('commands.create_user.ask_role'), 'member', ['member'])
@@ -176,7 +209,14 @@ final class CreateCommandTest extends TestCase
         // An ungültigem UTF-8 bricht PCRE ab. Ein Ausschluss per `not_regex`
         // wertete das als „kein Treffer“ und ließe das Steuerzeichen durch.
         yield 'Name mit ungültigem UTF-8' => [['name' => "John\xFF\tDoe"], 'name', 'regex'];
-        yield 'E-Mail ungültig' => [['email' => 'keine-adresse'], 'email', 'email'];
+        yield 'E-Mail ungültig' => [
+            ['email' => 'keine-adresse', 'email_confirmation' => 'keine-adresse'],
+            'email',
+            'email',
+        ];
+        // Das Postfach der Adresse kann das Konto samt Rolle per Reset übernehmen,
+        // ein Tippfehler darf also nicht durchgehen.
+        yield 'E-Mail-Bestätigung abweichend' => [['email_confirmation' => 'john@exmaple.com'], 'email', 'confirmed'];
         yield 'Passwort leer' => [['password' => null, 'password_confirmation' => null], 'password', 'required'];
         yield 'Passwort zu kurz' => [
             ['password' => 'kurz', 'password_confirmation' => 'kurz'],

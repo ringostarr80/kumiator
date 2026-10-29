@@ -12,17 +12,19 @@ use App\Enums\ActivityFailureReason;
 use App\Models\User;
 use App\Services\Auth\Contracts\DisabledPasswordLoginContextContract;
 use App\Services\Auth\Contracts\ExistingAccountNotifierContract;
+use App\Services\Auth\Contracts\NewAccountNotifierContract;
 use App\Services\Auth\Contracts\PasswordAttemptLimiterContract;
 use App\Services\Auth\Contracts\SelfRegistrarContract;
 use App\Services\Auth\Contracts\SelfRegistrationContextContract;
 use App\Services\Auth\Contracts\SessionConfirmationAuditContract;
-use App\Services\Auth\Contracts\UnapprovedLoginContextContract;
+use App\Services\Auth\Contracts\UnapprovedLoginAuditContract;
 use App\Services\Auth\DisabledPasswordLoginContext;
 use App\Services\Auth\ExistingAccountNotifier;
+use App\Services\Auth\NewAccountNotifier;
 use App\Services\Auth\PasswordAttemptLimiter;
 use App\Services\Auth\SelfRegistrationContext;
 use App\Services\Auth\SessionConfirmationAudit;
-use App\Services\Auth\UnapprovedLoginContext;
+use App\Services\Auth\UnapprovedLoginAudit;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
@@ -42,9 +44,11 @@ use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Contracts\FailedPasswordResetResponse;
+use Laravel\Fortify\Contracts\PasswordResetResponse;
 use Laravel\Fortify\Contracts\SuccessfulPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Fortify;
 use Laravel\Fortify\Http\Responses\FailedPasswordResetResponse as FortifyFailedPasswordResetResponse;
+use Laravel\Fortify\Http\Responses\PasswordResetResponse as FortifyPasswordResetResponse;
 use Symfony\Component\HttpFoundation\IpUtils;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -55,15 +59,16 @@ class FortifyServiceProvider extends ServiceProvider
     public function register(): void
     {
         // `scoped` statt `bind`: Marker-Setzer und -Leser müssen dieselbe
-        // Request-Instanz sehen (UnapprovedLogin: Fortify-Closure ↔ `Failed`-
+        // Request-Instanz sehen (DisabledPasswordLogin: Fortify-Closure ↔ `Failed`-
         // Listener; SelfRegistration: `CreateNewUser` ↔ `Activity::saving`-Hook).
-        $this->app->scoped(UnapprovedLoginContextContract::class, UnapprovedLoginContext::class);
         $this->app->scoped(SelfRegistrationContextContract::class, SelfRegistrationContext::class);
         $this->app->scoped(DisabledPasswordLoginContextContract::class, DisabledPasswordLoginContext::class);
+        $this->app->bind(UnapprovedLoginAuditContract::class, UnapprovedLoginAudit::class);
         $this->app->bind(SessionConfirmationAuditContract::class, SessionConfirmationAudit::class);
         $this->app->bind(PasswordAttemptLimiterContract::class, PasswordAttemptLimiter::class);
         $this->app->bind(SelfRegistrarContract::class, CreateNewUser::class);
         $this->app->bind(ExistingAccountNotifierContract::class, ExistingAccountNotifier::class);
+        $this->app->bind(NewAccountNotifierContract::class, NewAccountNotifier::class);
 
         // Eine unbekannte Adresse und eine Wiederholung innerhalb der Sperrfrist
         // des Brokers bekämen sonst eigene Meldungen, und beide verrieten, ob zur
@@ -82,6 +87,21 @@ class FortifyServiceProvider extends ServiceProvider
             FailedPasswordResetResponse::class,
             static fn (): FortifyFailedPasswordResetResponse => new FortifyFailedPasswordResetResponse(
                 Password::INVALID_TOKEN,
+            ),
+        );
+
+        // Wer das Passwort einer neuen Registrierung festlegt, erfährt so schon
+        // hier, dass das Konto noch auf die Freischaltung wartet, und nicht erst
+        // beim nächsten Login.
+        // Verraten wird damit nichts: Die Antwort kommt erst nach eingelöstem Token.
+        $this->app->bind(
+            PasswordResetResponse::class,
+            static fn (Application $app): FortifyPasswordResetResponse => new FortifyPasswordResetResponse(
+                User::queryByEmail($app->make(Request::class)->string('email')->toString())
+                    ->firstOrFail()
+                    ->isApproved()
+                    ? Password::PASSWORD_RESET
+                    : 'app.password_set_pending_approval_message',
             ),
         );
     }
@@ -307,30 +327,26 @@ class FortifyServiceProvider extends ServiceProvider
 
         // Identität verifiziert, aber Konto noch nicht freigeschaltet:
         // separater Audit-Eintrag, damit unapproved-Versuche scharf von
-        // generischen Login-Fehlern abgegrenzt werden können. Der Marker
-        // unterdrückt zugleich den nachgelagerten `login_failed`-Eintrag,
-        // den Fortify nach dem `null`-Return über `Auth\Events\Failed`
-        // auslöst (siehe `LogAuthenticationActivityListener::handleFailed`).
+        // generischen Login-Fehlern abgegrenzt werden können. Die eigene
+        // Meldung verrät nur, was das richtige Passwort ohnehin verrät, und
+        // das einer Registrierung legt nur fest, wer das Postfach hat. Die
+        // Exception übergeht Fortifys `Failed`, ein zusätzlicher
+        // `login_failed`-Eintrag entsteht also nicht.
         if ($user->approved_at === null) {
-            // Lazy auflösen: Der Callback wird einmal pro Prozess registriert
-            // und überlebt den Request — eine beim Boot aufgelöste Instanz
-            // wäre unter Long-Running-Workern nicht die scoped Instanz des
-            // laufenden Requests.
-            $unapprovedLoginContext = app(UnapprovedLoginContextContract::class);
+            app(UnapprovedLoginAuditContract::class)->record($user, 'web', $email);
 
-            // Marker VOR dem Audit-Schreiben setzen: Selbst wenn der
-            // Audit-Insert wirft, soll der nachgelagerte `Failed`-Event
-            // unterdrückt bleiben — sonst rauschte trotzdem ein doppelter
-            // `login_failed`-Eintrag.
-            $unapprovedLoginContext->markActive();
-            $unapprovedLoginContext->record($user, 'web', $email);
-
-            return null;
+            throw ValidationException::withMessages([
+                Fortify::username() => [__('app.login_pending_approval_message')],
+            ]);
         }
 
         // Nach der Freischaltung geprüft, damit ein noch nicht freigeschaltetes
         // Konto den fachlich grundlegenderen `login_unapproved`-Eintrag behält.
         if ($user->isPasswordLoginDisabled()) {
+            // Lazy auflösen: Der Callback wird einmal pro Prozess registriert
+            // und überlebt den Request — eine beim Boot aufgelöste Instanz
+            // wäre unter Long-Running-Workern nicht die scoped Instanz des
+            // laufenden Requests.
             $disabledPasswordLoginContext = app(DisabledPasswordLoginContextContract::class);
 
             $disabledPasswordLoginContext->markActive();
