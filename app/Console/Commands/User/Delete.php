@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\User\Contracts\UserSoftDeleterContract;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * Administrativer Lösch-Pfad für Benutzer.
@@ -19,20 +20,9 @@ use Illuminate\Console\Attributes\Signature;
  * Historie — und insbesondere die Activity-Log-Verweise auf den gelöschten
  * User — zu erhalten.
  *
- * Sessions, Passkey-Credentials und ein offener Link zum Zurücksetzen werden
- * trotzdem hart entfernt: Sie alle sind aktive Zugriffsmittel, die dem
- * soft-deleted User sonst nach einem späteren `restore()` wieder Zugang
- * verschaffen würden.
- * Die eigentliche Mechanik liegt im `UserSoftDeleter`-Service — dort auch
- * der Audit-Eintrag pro Passkey (Passkey-Removed via `LogsActivity`-Trait).
- * Dieser Command ist reine Presentation: Eingabe, Bestätigung, Service-Aufruf,
- * Ergebnis.
- *
- * Hinweis zum Session-Treiber: Die explizite Session-Löschung wirkt nur bei
- * `session.driver = database` (aktueller Projekt-Default). Bei Redis/File/Cookie
- * bleiben Session-Payloads im Backend liegen, bis ihre TTL abläuft. Für den
- * Auth-Schutz reicht das, weil der `SoftDeletes`-Global-Scope greift und
- * `EloquentUserProvider::retrieveById()` keinen User mehr liefert.
+ * Was dabei an Zugriffsmitteln fällt und warum, legt der
+ * `UserSoftDeleterContract` fest. Dieser Command ist reine Presentation:
+ * Eingabe, Bestätigung, Service-Aufruf, Ergebnis.
  */
 #[Signature('user:delete')]
 #[Description('Löscht einen bestehenden Benutzer')]
@@ -71,7 +61,16 @@ class Delete extends Command
             return self::SUCCESS;
         }
 
-        $this->softDeleter->softDelete($user);
+        try {
+            $this->softDeleter->softDelete($user);
+        } catch (ModelNotFoundException) {
+            // An der Rückfrage kann ein anderer Admin schneller gewesen sein.
+            // Findet das Löschen das aktive Konto deshalb nicht mehr, ist es
+            // für diesen Admin derselbe Fall wie oben.
+            $this->error(__('commands.common.not_found', ['email' => $email]));
+
+            return self::FAILURE;
+        }
 
         $this->info(__('commands.delete_user.success', ['name' => $user->name, 'email' => $email]));
 

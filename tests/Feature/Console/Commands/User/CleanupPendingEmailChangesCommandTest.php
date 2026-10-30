@@ -9,25 +9,21 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Testing\PendingCommand;
+use Tests\Support\SeedsPendingEmailChange;
 use Tests\TestCase;
 
 final class CleanupPendingEmailChangesCommandTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsPendingEmailChange;
 
     public function testCommandClearsExpiredEntriesAndWritesTtlAudit(): void
     {
-        $stale = $this->seedPendingChange(
-            User::factory()->create(['email' => 'stale@example.com']),
-            'neu-stale@example.com',
-            Carbon::now()->subMinutes(120),
-        );
+        $stale = User::factory()->create(['email' => 'stale@example.com']);
+        $this->seedPendingChange($stale, 'neu-stale@example.com', Carbon::now()->subMinutes(120));
 
-        $fresh = $this->seedPendingChange(
-            User::factory()->create(['email' => 'fresh@example.com']),
-            'neu-fresh@example.com',
-            Carbon::now()->subMinutes(5),
-        );
+        $fresh = User::factory()->create(['email' => 'fresh@example.com']);
+        $this->seedPendingChange($fresh, 'neu-fresh@example.com', Carbon::now()->subMinutes(5));
 
         Activity::query()->delete();
 
@@ -82,17 +78,5 @@ final class CleanupPendingEmailChangesCommandTest extends TestCase
         }
 
         return $command;
-    }
-
-    private function seedPendingChange(User $user, string $pendingEmail, Carbon $sentAt): User
-    {
-        $user->forceFill([
-            'pending_email' => $pendingEmail,
-            'pending_email_confirm_token_hash' => hash('sha256', bin2hex(random_bytes(32))),
-            'pending_email_cancel_token_hash' => hash('sha256', bin2hex(random_bytes(32))),
-            'pending_email_sent_at' => $sentAt,
-        ])->saveOrFail();
-
-        return $user;
     }
 }

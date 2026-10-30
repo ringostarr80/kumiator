@@ -7,34 +7,45 @@ namespace Tests\Feature\SoftDeletes;
 use App\Actions\Jetstream\DeleteUser;
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
+use App\Enums\EmailChangeCancellationReason;
 use App\Models\Activity;
 use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Notifications\PasskeyChangedNotification;
+use App\Services\Audit\AuditEmailHasher;
 use App\Services\Auth\Contracts\LoginMethodChangerContract;
 use App\Services\User\Contracts\UserHardDeleterContract;
 use App\Services\User\Contracts\UserSoftDeleterContract;
+use Illuminate\Auth\SessionGuard;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Testing\PendingCommand;
 use RuntimeException;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Support\SeedsPendingEmailChange;
 use Tests\TestCase;
 
 final class UserSoftDeleteTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsPendingEmailChange;
 
     private const string EMAIL_TAKEN = 'taken@example.com';
+    private const string PENDING_EMAIL = 'pending@example.com';
 
     public function testSoftDeletedUserIsExcludedFromDefaultQueries(): void
     {
@@ -305,6 +316,28 @@ final class UserSoftDeleteTest extends TestCase
     }
 
     /**
+     * Anders als der Hard-Delete behält der Soft-Delete die Historie des Kontos,
+     * und dazu gehört, welche Passkeys mit dem Löschen gefallen sind. Ob die
+     * Einträge entstehen, hängt allein daran, dass die Passkeys einzeln über das
+     * Model fallen und nicht per Query.
+     */
+    public function testSoftDeleteRecordsEachRemovedPasskey(): void
+    {
+        $user = User::factory()->create();
+        $credentials = PasskeyCredential::factory()->for($user)->count(2)->create();
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+
+        $removed = Activity::query()
+            ->where('log_name', ActivityChannel::PASSKEY->value)
+            ->where('event', ActivityEvent::PASSKEY_REMOVED->value)
+            ->pluck('subject_id')
+            ->all();
+
+        $this->assertEqualsCanonicalizing($credentials->modelKeys(), $removed);
+    }
+
+    /**
      * DSGVO-Symmetrie zum Passkey-/Session-Bypass: Nach dem Self-Delete
      * darf in `activity_log` kein Eintrag mehr existieren, der den gelöschten
      * User als Subject referenziert — weder durch Alt-Einträge (z. B. das
@@ -546,13 +579,11 @@ final class UserSoftDeleteTest extends TestCase
      */
     public function testSoftDeleteInvalidatesThePasswordItReopensTheLoginFor(): void
     {
-        $this->travelTo(Carbon::parse('2026-01-01 10:00:00'));
-        $user = User::factory()->create(['password' => 'verdaechtiges-passwort']);
+        $user = User::factory()->create([
+            'password' => 'verdaechtiges-passwort',
+            'password_login_disabled_at' => now(),
+        ]);
         PasskeyCredential::factory()->for($user)->create();
-
-        $this->travelTo(Carbon::parse('2026-01-02 10:00:00'));
-        $user->password_login_disabled_at = now();
-        $user->saveOrFail();
 
         app(UserSoftDeleterContract::class)->softDelete($user);
 
@@ -562,39 +593,65 @@ final class UserSoftDeleteTest extends TestCase
     }
 
     /**
-     * Der Verdacht gilt dem Passwort von vor dem Abschalten. Ein seither auf der
-     * Konsole gesetztes soll nach dem Restore hineinführen — das ist der einzige
-     * Anmeldeweg, der dem Konto dann noch bleibt.
+     * bcrypt dauert. Unter SQLite hielte die Transaktion dabei schon die
+     * Schreibsperre auf die ganze Datenbank, und jede andere Transaktion, die
+     * erst liest und dann schreibt, scheiterte in dieser Zeit sofort.
      */
-    public function testSoftDeleteKeepsAPasswordSetAfterTheDisabling(): void
+    public function testTheReplacementPasswordIsHashedOutsideTheTransaction(): void
+    {
+        $user = User::factory()->create();
+        $outside = DB::transactionLevel();
+
+        // Das Ersatzpasswort entsteht aus `Str::random()`, unmittelbar vor dem Hash.
+        $levels = [];
+        Str::createRandomStringsUsing(static function (int $length) use (&$levels): string {
+            $levels[] = DB::transactionLevel();
+
+            return str_repeat('x', $length);
+        });
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+        app(UserSoftDeleterContract::class)->restore($user);
+
+        $this->assertSame([$outside, $outside], $levels);
+    }
+
+    /**
+     * Zeitstempel sind sekundengenau. Fällt die Abschaltung in dieselbe Sekunde
+     * wie das Löschen, gälte auch das Ersatzpasswort als verdächtig und würde in
+     * der Transaktion ein zweites Mal ersetzt.
+     */
+    public function testSoftDeleteHashesOnceWhenThePasswordLoginWasDisabledInTheSameSecond(): void
     {
         $this->travelTo(Carbon::parse('2026-01-01 10:00:00'));
-        $user = User::factory()->create(['password_login_disabled_at' => now()]);
+        $user = User::factory()->create();
         PasskeyCredential::factory()->for($user)->create();
 
         $this->travelTo(Carbon::parse('2026-01-02 10:00:00'));
-        $user->password = 'seither-gesetzt';
+        $user->password_login_disabled_at = now();
         $user->saveOrFail();
+        $outside = DB::transactionLevel();
+
+        $levels = [];
+        Str::createRandomStringsUsing(static function (int $length) use (&$levels): string {
+            $levels[] = DB::transactionLevel();
+
+            return str_repeat('x', $length);
+        });
 
         app(UserSoftDeleterContract::class)->softDelete($user);
 
-        $trashed = User::query()->withTrashed()->whereKey($user->getKey())->firstOrFail();
-
-        $this->assertFalse($trashed->isPasswordLoginDisabled());
-        $this->assertTrue(Hash::check('seither-gesetzt', $trashed->password));
+        $this->assertSame([$outside], $levels);
     }
 
-    /** Ein Konto, das seinen Passwort-Login noch nutzt, hat hier nichts zu verlieren. */
-    public function testSoftDeleteLeavesAnOpenSwitchAndItsPasswordAlone(): void
+    /** Ein Konto, das seinen Passwort-Login noch nutzt, hat keine Abschaltung zu verlieren. */
+    public function testSoftDeleteLeavesAnOpenSwitchAlone(): void
     {
-        $user = User::factory()->create(['password' => 'weiter-gueltig']);
+        $user = User::factory()->create();
         Activity::query()->delete();
 
         app(UserSoftDeleterContract::class)->softDelete($user);
 
-        $trashed = User::query()->withTrashed()->whereKey($user->getKey())->firstOrFail();
-
-        $this->assertTrue(Hash::check('weiter-gueltig', $trashed->password));
         $this->assertSame(
             0,
             Activity::query()->where('event', ActivityEvent::PASSWORD_LOGIN_ENABLED->value)->count(),
@@ -605,12 +662,11 @@ final class UserSoftDeleteTest extends TestCase
      * Der Pfad nimmt jedes Zugriffsmittel mit, das ein `restore()` sonst wieder
      * scharf schaltete. Ein vorher ausgelöster Link zum Zurücksetzen überlebte als
      * einziges — und träfe auf ein Konto, dessen Passwort dieser Pfad gerade
-     * verworfen hat, weil ihm nicht mehr zu trauen war.
+     * verworfen hat.
      */
     public function testSoftDeleteInvalidatesAnOpenPasswordResetLink(): void
     {
-        $user = User::factory()->create(['password_login_disabled_at' => now()]);
-        PasskeyCredential::factory()->for($user)->create();
+        $user = User::factory()->create();
 
         $token = Password::broker()->createToken($user);
 
@@ -629,6 +685,237 @@ final class UserSoftDeleteTest extends TestCase
         $trashed->refresh();
 
         $this->assertFalse(Hash::check('brand-new-password', $trashed->password));
+    }
+
+    /**
+     * Nach einem `restore()` führt nur noch der Link zum Zurücksetzen ins Konto,
+     * und der geht an die hinterlegte Adresse. Ein vorher beantragter Wechsel
+     * gälte sonst wieder und gäbe mit der Adresse das Konto dem, der den
+     * Bestätigungslink hat.
+     */
+    public function testSoftDeleteCancelsAnOpenEmailChangeForALaterRestore(): void
+    {
+        $user = User::factory()->create();
+        $email = $user->email;
+        $confirmToken = $this->seedPendingChange($user, self::PENDING_EMAIL)['confirm'];
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+
+        $trashed = User::query()->withTrashed()->whereKey($user->getKey())->firstOrFail();
+        $this->assertTrue($trashed->restore());
+
+        $this->post(route('email.change.confirm.perform', ['token' => $confirmToken]))
+            ->assertViewIs('auth.email-change-invalid');
+
+        $this->assertSame($email, $trashed->refresh()->email);
+    }
+
+    /**
+     * Wie bei jedem anderen Ende eines offenen Wechsels hält ein eigener Eintrag
+     * fest, warum er endete. Sonst bliebe der Antrag im Log offen.
+     */
+    public function testSoftDeleteRecordsTheCancelledEmailChange(): void
+    {
+        $user = User::factory()->create();
+        $this->seedPendingChange($user, self::PENDING_EMAIL);
+        Activity::query()->delete();
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+
+        $entry = Activity::query()
+            ->where('log_name', ActivityChannel::AUTH->value)
+            ->where('event', ActivityEvent::EMAIL_CHANGE_CANCELLED->value)
+            ->first();
+
+        $this->assertNotNull($entry);
+        $this->assertNull($entry->causer_id);
+        $this->assertSame($user->getKey(), $entry->subject_id);
+
+        $properties = $entry->properties?->toArray() ?? [];
+        $this->assertSame(
+            EmailChangeCancellationReason::ACCOUNT_SOFT_DELETED->value,
+            $properties['cancelled_via'] ?? null,
+        );
+        $this->assertSame(AuditEmailHasher::hash(self::PENDING_EMAIL), $properties['pending_email_hash'] ?? null);
+    }
+
+    /** Ein Konto ohne offenen Wechsel bekäme sonst einen Abbruch-Eintrag ohne Adresse. */
+    public function testSoftDeleteWithoutAnOpenEmailChangeRecordsNoCancellation(): void
+    {
+        $user = User::factory()->create();
+        Activity::query()->delete();
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+
+        $this->assertSame(
+            0,
+            Activity::query()->where('event', ActivityEvent::EMAIL_CHANGE_CANCELLED->value)->count(),
+        );
+    }
+
+    /**
+     * Den Recaller-Cookie prüft der Guard gegen Token und Passwort-Hash, und der
+     * Token überdauert den Soft-Delete. Ein vorher ausgestellter Cookie meldete
+     * nach einem `restore()` sonst wieder an, ohne Passwort und ohne zweiten
+     * Faktor.
+     */
+    public function testSoftDeleteInvalidatesARememberMeCookieForALaterRestore(): void
+    {
+        $user = User::factory()->create(['remember_token' => Str::random(60)]);
+
+        $guard = Auth::guard('web');
+        $this->assertInstanceOf(SessionGuard::class, $guard);
+        $recaller = $user->id . '|' . $user->getRememberToken() . '|'
+            . $guard->hashPasswordForCookie($user->getAuthPassword());
+
+        $this->assertTrue($this->recallerLogsIn($recaller));
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+
+        $trashed = User::query()->withTrashed()->whereKey($user->getKey())->firstOrFail();
+        $this->assertTrue($trashed->restore());
+
+        $this->assertFalse($this->recallerLogsIn($recaller));
+    }
+
+    /**
+     * Außerhalb von `session.driver = database` erreicht der Soft-Delete keine
+     * Session, und solange jemand sie aufruft, läuft sie nicht ab. Sie trägt die
+     * ID des Kontos und meldete nach einem `restore()` wieder an, ohne Passwort
+     * und ohne zweiten Faktor.
+     *
+     * Vor dem Löschen ruft die Session keine geschützte Seite auf, wie eine, die
+     * der Weiterleitung nach dem Login nicht gefolgt ist: In ihr liegt dann nur,
+     * was der Login hinterlegt hat.
+     */
+    public function testSoftDeleteEndsAnOldSessionForALaterRestore(): void
+    {
+        $user = User::factory()->create();
+
+        $guard = Auth::guard('web');
+        $this->assertInstanceOf(SessionGuard::class, $guard);
+        $guard->login($user);
+
+        Auth::forgetGuards();
+        $this->assertSame($user->id, Auth::guard('web')->id());
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+
+        $trashed = User::query()->withTrashed()->whereKey($user->getKey())->firstOrFail();
+        $this->assertTrue($trashed->restore());
+
+        // Wie jeder echte Request lädt ein frischer Guard das Konto über die ID
+        // aus der Session neu.
+        Auth::forgetGuards();
+
+        $this->get('/user/profile')->assertRedirect(route('login', absolute: false));
+    }
+
+    /**
+     * Ein Request, der sich vor dem Löschen angemeldet hat, schreibt noch danach.
+     * Sein Passkey meldete nach dem Restore ohne Passwort an, und er läuft nicht
+     * ab.
+     */
+    public function testRestoreRemovesAPasskeyAStragglerAddedAfterTheSoftDelete(): void
+    {
+        $user = User::factory()->create();
+        $straggler = User::query()->whereKey($user->getKey())->firstOrFail();
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+        PasskeyCredential::factory()->for($straggler)->create();
+
+        $this->restoreViaCommand($user);
+
+        $this->assertSame(0, PasskeyCredential::query()->where('user_id', $user->getKey())->count());
+    }
+
+    /** Das Passwort, das ein Nachzügler gesetzt hat, kennt er. */
+    public function testRestoreDiscardsAPasswordAStragglerSetAfterTheSoftDelete(): void
+    {
+        $user = User::factory()->create();
+        $straggler = User::query()->whereKey($user->getKey())->firstOrFail();
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+        $straggler->forceFill(['password' => Hash::make('nachzuegler-passwort')])->saveOrFail();
+
+        $this->restoreViaCommand($user);
+
+        $this->assertFalse(Hash::check('nachzuegler-passwort', $user->refresh()->password));
+    }
+
+    /** Mit der Adresse bekäme der Nachzügler den Link zum Zurücksetzen und damit das Konto. */
+    public function testRestoreCancelsAnEmailChangeAStragglerRequestedAfterTheSoftDelete(): void
+    {
+        $user = User::factory()->create();
+        $email = $user->email;
+        $straggler = User::query()->whereKey($user->getKey())->firstOrFail();
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+        $confirmToken = $this->seedPendingChange($straggler, self::PENDING_EMAIL)['confirm'];
+
+        $this->restoreViaCommand($user);
+
+        $this->post(route('email.change.confirm.perform', ['token' => $confirmToken]))
+            ->assertViewIs('auth.email-change-invalid');
+
+        $this->assertSame($email, $user->refresh()->email);
+    }
+
+    /**
+     * Ein Abbruch beim Restore heißt, dass während des Löschens noch jemand im
+     * Konto geschrieben hat. Der eigene Grund hält das auseinander.
+     */
+    public function testRestoreRecordsTheEmailChangeItCancels(): void
+    {
+        $user = User::factory()->create();
+        $straggler = User::query()->whereKey($user->getKey())->firstOrFail();
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+        $this->seedPendingChange($straggler, self::PENDING_EMAIL);
+        Activity::query()->delete();
+
+        $this->restoreViaCommand($user);
+
+        $entry = Activity::query()
+            ->where('log_name', ActivityChannel::AUTH->value)
+            ->where('event', ActivityEvent::EMAIL_CHANGE_CANCELLED->value)
+            ->first();
+
+        $this->assertNotNull($entry);
+        $this->assertNull($entry->causer_id);
+        $this->assertSame($user->getKey(), $entry->subject_id);
+
+        $properties = $entry->properties?->toArray() ?? [];
+        $this->assertSame(EmailChangeCancellationReason::ACCOUNT_RESTORED->value, $properties['cancelled_via'] ?? null);
+    }
+
+    /** Die Abräumung nähme einem aktiven Konto Passwort und Passkeys. */
+    public function testRestoreRefusesAnActiveAccount(): void
+    {
+        $user = User::factory()->create();
+        PasskeyCredential::factory()->for($user)->create();
+
+        try {
+            app(UserSoftDeleterContract::class)->restore($user);
+            $this->fail('Ein aktives Konto darf nicht durch den Restore laufen.');
+        } catch (ModelNotFoundException) {
+            // Erwartet: Der Restore findet nur gelöschte Konten.
+        }
+
+        $this->assertSame(1, PasskeyCredential::query()->where('user_id', $user->getKey())->count());
+    }
+
+    public function testRestoreInvalidatesAPasswordResetLinkIssuedAfterTheSoftDelete(): void
+    {
+        $user = User::factory()->create();
+        $straggler = User::query()->whereKey($user->getKey())->firstOrFail();
+
+        app(UserSoftDeleterContract::class)->softDelete($user);
+        $token = Password::broker()->createToken($straggler);
+
+        $this->restoreViaCommand($user);
+
+        $this->assertFalse(Password::broker()->tokenExists($user->refresh(), $token));
     }
 
     /**
@@ -698,6 +985,37 @@ final class UserSoftDeleteTest extends TestCase
             DB::connection('session_store')->table('sessions')->where('user_id', $user->getKey())->count(),
             'Die Session auf der separaten Connection muss den Transaktions-Rollback überleben.',
         );
+    }
+
+    /**
+     * Frischer Guard ohne Session, nur mit dem Cookie: die Lage dessen, dessen
+     * Session inzwischen abgelaufen ist.
+     */
+    private function recallerLogsIn(string $recaller): bool
+    {
+        Auth::forgetGuards();
+        Session::flush();
+
+        $guard = Auth::guard('web');
+        $this->assertInstanceOf(SessionGuard::class, $guard);
+
+        $request = Request::create('/');
+        $request->cookies->set($guard->getRecallerName(), $recaller);
+        $guard->setRequest($request);
+
+        return $guard->check();
+    }
+
+    private function restoreViaCommand(User $user): void
+    {
+        $command = $this->artisan('user:restore');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            ->expectsQuestion(__('commands.common.ask_email'), $user->email)
+            ->expectsConfirmation(__('commands.restore_user.confirm_restore'), 'yes')
+            ->assertSuccessful()
+            ->run();
     }
 
     /**

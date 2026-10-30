@@ -527,11 +527,10 @@ final class PasswordLoginSwitchTest extends TestCase
 
     /**
      * Die Abschaltung nimmt dem Passwort den Login — ein Recaller-Cookie, das mit
-     * ebendiesem Passwort entstanden ist, meldet danach trotzdem weiter an:
-     * `SessionGuard::userFromRecaller()` vergleicht nur den Token und läuft an
-     * `Fortify::authenticateUsing` vorbei. Auch der Hash-Vergleich in
-     * `AuthenticateSession` rettet nichts, weil das Abschalten den Passwort-Hash
-     * unangetastet lässt.
+     * ebendiesem Passwort entstanden ist, meldet danach trotzdem weiter an: Der
+     * Recaller-Pfad läuft an `Fortify::authenticateUsing` vorbei, und den
+     * Passwort-Hash, den der Guard wie `AuthenticateSession` gegen den Cookie
+     * prüft, lässt das Abschalten unangetastet.
      */
     public function testDisablingInvalidatesAnExistingRecallerCookie(): void
     {

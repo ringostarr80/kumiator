@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands\User;
 
 use App\Models\User;
+use App\Services\User\Contracts\UserSoftDeleterContract;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 
@@ -12,12 +13,13 @@ use Illuminate\Console\Attributes\Signature;
  * Stellt einen administrativ soft-deleted Benutzer wieder her.
  *
  * Pendant zum admin-initiierten Soft-Delete (`user:delete`). Passkeys
- * und Sessions wurden dort hart gelöscht — sie kommen beim Restore NICHT
+ * wurden dort gelöscht und Sessions beendet — sie kommen beim Restore NICHT
  * zurück; der User muss sich neu anmelden und ggf. seine Passkeys neu
  * registrieren. Der Passwort-Login steht dabei wieder offen, auch wenn das
  * Konto ihn abgeschaltet hatte: ohne Passkey führte sonst kein Weg hinein. Das
- * damalige Passwort gilt in diesem Fall nicht mehr — hinein führt der Link zum
- * Zurücksetzen oder `user:reset-password`.
+ * damalige Passwort gilt nicht mehr — hinein führt der Link zum
+ * Zurücksetzen oder `user:reset-password`. Die Mechanik liegt wie beim Löschen
+ * im `UserSoftDeleter`-Service.
  * Rollen und Direkt-Permissions blieben dagegen erhalten und gelten sofort
  * wieder. Alles davon wird im Output prominent ausgegeben, damit
  * der Admin die Wiederherstellung bewusst auch als Privilegien-Restore
@@ -30,6 +32,11 @@ use Illuminate\Console\Attributes\Signature;
 #[Description('Stellt einen soft-deleted Benutzer wieder her')]
 class Restore extends TrashedUserActionCommand
 {
+    public function __construct(private readonly UserSoftDeleterContract $softDeleter)
+    {
+        parent::__construct();
+    }
+
     protected function titleKey(): string
     {
         return 'commands.restore_user.title';
@@ -82,6 +89,6 @@ class Restore extends TrashedUserActionCommand
 
     protected function performAction(User $user): void
     {
-        $user->restore();
+        $this->softDeleter->restore($user);
     }
 }
