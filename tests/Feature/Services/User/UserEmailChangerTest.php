@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use RuntimeException;
+use Tests\Support\SeedsPendingEmailChange;
 use Tests\TestCase;
 
 /**
@@ -37,6 +38,7 @@ use Tests\TestCase;
 final class UserEmailChangerTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsPendingEmailChange;
 
     private const string OLD_EMAIL = 'alt@example.com';
     private const string NEW_EMAIL = 'neu@example.com';
@@ -853,27 +855,6 @@ final class UserEmailChangerTest extends TestCase
         parent::setUp();
 
         $this->service = app(UserEmailChangerContract::class);
-    }
-
-    /**
-     * Hilfs-Seeder, der das Persistieren via Service umgeht — wir wollen den
-     * Service-Pfad NICHT bei jedem Vorbedingungs-Setup mit-testen. Liefert
-     * die Klartext-Tokens zurück, die über Hash wieder auflösbar sind.
-     *
-     * @return array{confirm: string, cancel: string}
-     */
-    private function seedPendingChange(User $user, string $pendingEmail, ?Carbon $sentAt = null): array
-    {
-        $plainConfirmToken = bin2hex(random_bytes(32));
-        $plainCancelToken = bin2hex(random_bytes(32));
-        $user->forceFill([
-            'pending_email' => $pendingEmail,
-            'pending_email_confirm_token_hash' => hash('sha256', $plainConfirmToken),
-            'pending_email_cancel_token_hash' => hash('sha256', $plainCancelToken),
-            'pending_email_sent_at' => $sentAt ?? Carbon::now(),
-        ])->saveOrFail();
-
-        return ['confirm' => $plainConfirmToken, 'cancel' => $plainCancelToken];
     }
 
     /**

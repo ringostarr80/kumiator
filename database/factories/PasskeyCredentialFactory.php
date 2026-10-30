@@ -55,7 +55,7 @@ class PasskeyCredentialFactory extends Factory
      */
     private static function serializeRecord(string $credentialIdBytes, mixed $userId): string
     {
-        $user = User::query()->whereKey($userId)->firstOrFail();
+        $user = User::query()->withTrashed()->whereKey($userId)->firstOrFail();
 
         $record = CredentialRecord::create(
             publicKeyCredentialId: $credentialIdBytes,

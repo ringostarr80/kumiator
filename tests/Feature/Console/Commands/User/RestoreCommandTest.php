@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Console\Commands\User;
 
-use App\Models\PasskeyCredential;
 use App\Models\User;
 use App\Services\User\Contracts\UserSoftDeleterContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -78,19 +77,15 @@ final class RestoreCommandTest extends TestCase
     }
 
     /**
-     * Nahm die Löschung dem Konto seine Passkeys, fiel dort auch die Abschaltung
-     * des Passwort-Logins — und mit ihr das Passwort, dem gerade nicht mehr zu
-     * trauen war. Wer wiederherstellt, muss wissen, dass das Konto sich damit
-     * nicht mehr wie zuvor anmeldet.
+     * Die Löschung verwirft das Passwort. Wer wiederherstellt, muss wissen, dass
+     * das Konto sich damit nicht mehr wie zuvor anmeldet.
      */
     public function testRestoreHintsThatTheFormerPasswordNoLongerApplies(): void
     {
         $user = User::factory()->create([
             'email' => self::TEST_EMAIL,
             'password' => Hash::make('old-password'),
-            'password_login_disabled_at' => now(),
         ]);
-        PasskeyCredential::factory()->for($user)->create();
 
         app(UserSoftDeleterContract::class)->softDelete($user);
 
@@ -151,6 +146,39 @@ final class RestoreCommandTest extends TestCase
         $command
             ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')
             ->expectsOutputToContain(__('commands.restore_user.not_trashed', ['email' => 'unknown@example.com']))
+            ->assertFailed()
+            ->run();
+    }
+
+    /**
+     * Zwischen Suche und Bestätigung kann ein anderer Admin das Konto schon
+     * wiederhergestellt haben. Der Admin soll dann erfahren, warum nichts
+     * geschah, statt eine Exception zu sehen.
+     */
+    public function testRestoreFailsWhenAnotherRestoreWonDuringTheConfirmation(): void
+    {
+        $user = User::factory()->create(['email' => self::TEST_EMAIL]);
+        $user->deleteOrFail();
+
+        // Der andere Admin ist fertig, sobald der Befehl das Konto gefunden hat —
+        // jeder Restore lädt die Zeile selbst noch einmal, daher nur beim ersten Mal.
+        $restored = false;
+        User::retrieved(function () use (&$restored, $user): void {
+            if ($restored) {
+                return;
+            }
+
+            $restored = true;
+            app(UserSoftDeleterContract::class)->restore($user);
+        });
+
+        $command = $this->artisan('user:restore');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
+            ->expectsConfirmation(__('commands.restore_user.confirm_restore'), 'yes')
+            ->expectsOutputToContain(__('commands.restore_user.not_trashed', ['email' => self::TEST_EMAIL]))
             ->assertFailed()
             ->run();
     }

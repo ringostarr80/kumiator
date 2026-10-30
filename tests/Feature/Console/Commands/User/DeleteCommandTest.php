@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Console\Commands\User;
 
 use App\Models\User;
+use App\Services\User\Contracts\UserSoftDeleterContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\PendingCommand;
 use Tests\TestCase;
@@ -64,6 +65,38 @@ final class DeleteCommandTest extends TestCase
         $command
             ->expectsQuestion(__('commands.common.ask_email'), 'unknown@example.com')
             ->expectsOutputToContain(__('commands.common.not_found', ['email' => 'unknown@example.com']))
+            ->assertFailed()
+            ->run();
+    }
+
+    /**
+     * Zwischen Suche und Bestätigung kann ein anderer Admin das Konto schon
+     * gelöscht haben. Der Admin soll dann erfahren, warum nichts geschah,
+     * statt eine Exception zu sehen.
+     */
+    public function testDeleteFailsWhenAnotherDeleteWonDuringTheConfirmation(): void
+    {
+        $user = User::factory()->create(['email' => self::TEST_EMAIL]);
+
+        // Der andere Admin ist fertig, sobald der Befehl das Konto gefunden hat —
+        // jedes Löschen lädt die Zeile selbst noch einmal, daher nur beim ersten Mal.
+        $deleted = false;
+        User::retrieved(function () use (&$deleted, $user): void {
+            if ($deleted) {
+                return;
+            }
+
+            $deleted = true;
+            app(UserSoftDeleterContract::class)->softDelete($user);
+        });
+
+        $command = $this->artisan('user:delete');
+        $this->assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            ->expectsQuestion(__('commands.common.ask_email'), self::TEST_EMAIL)
+            ->expectsConfirmation(__('commands.delete_user.confirm_delete'), 'yes')
+            ->expectsOutputToContain(__('commands.common.not_found', ['email' => self::TEST_EMAIL]))
             ->assertFailed()
             ->run();
     }

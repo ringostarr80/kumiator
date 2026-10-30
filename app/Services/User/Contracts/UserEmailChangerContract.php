@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\User\Contracts;
 
 use App\Enums\ActivityFailureReason;
+use App\Enums\EmailChangeCancellationReason;
 use App\Models\User;
 
 /**
@@ -81,4 +82,10 @@ interface UserEmailChangerContract
      * Datensätze zurück. Aufgerufen vom Scheduled-Cleanup-Command.
      */
     public function cancelExpired(): int;
+
+    /**
+     * Audit: `auth/email_change_cancelled` mit `$reason` als `cancelled_via`.
+     * Ohne offenen Wechsel ein No-Op, auch ohne Eintrag.
+     */
+    public function cancelOpenChange(User $user, EmailChangeCancellationReason $reason): void;
 }

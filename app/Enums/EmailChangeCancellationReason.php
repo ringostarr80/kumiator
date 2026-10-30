@@ -17,4 +17,6 @@ enum EmailChangeCancellationReason: string
     case EXPIRED_ON_CONFIRM = 'expired_on_confirm';
     case TARGET_TAKEN_ON_CONFIRM = 'target_taken_on_confirm';
     case SUPERSEDED_BY_NEW_REQUEST = 'superseded_by_new_request';
+    case ACCOUNT_SOFT_DELETED = 'account_soft_deleted';
+    case ACCOUNT_RESTORED = 'account_restored';
 }

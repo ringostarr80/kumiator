@@ -286,6 +286,15 @@ final class UserEmailChanger implements UserEmailChangerContract
         return $expired->count();
     }
 
+    public function cancelOpenChange(User $user, EmailChangeCancellationReason $reason): void
+    {
+        if ($user->pending_email_confirm_token_hash === null) {
+            return;
+        }
+
+        $this->cancelChangeForUser($user, $reason);
+    }
+
     private function cancelChangeForUser(User $user, EmailChangeCancellationReason $cancelledVia): void
     {
         $pendingEmail = $user->pending_email;

@@ -33,14 +33,14 @@ return [
         'title' => 'Restore soft-deleted user',
         'not_trashed' => 'User ":email" is not soft-deleted.',
         'confirm_restore' => 'Do you really want to restore this user?',
-        'hint' => 'Note: Passkeys and sessions were removed on deletion'
-            . ' and will not be restored. The user must log in again and re-register'
+        'hint' => 'Note: Passkeys were removed and sessions ended on deletion;'
+            . ' neither will be restored. The user must log in again and re-register'
             . ' their passkeys if applicable.',
         'permissions_hint' => 'Warning: Roles and direct permissions (e.g. activity-log.view)'
             . ' were not removed on deletion and apply again immediately after restoring.',
-        'password_hint' => 'Note: If password login was disabled for this account, it was'
-            . ' reopened on deletion and the former password was discarded. Logging in then'
-            . ' requires the password reset link or user:reset-password.',
+        'password_hint' => 'Note: The password was discarded on deletion, and a disabled password'
+            . ' login was reopened. Logging in requires the password reset link or'
+            . ' user:reset-password.',
         'success' => 'User ":name" (:email) was successfully restored.',
     ],
 

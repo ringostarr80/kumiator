@@ -6,6 +6,7 @@ namespace App\Console\Commands\User;
 
 use App\Console\Commands\Command;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * Gemeinsamer Ablauf der `user:restore`/`user:force-delete`-Commands, die
@@ -78,7 +79,16 @@ abstract class TrashedUserActionCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->performAction($user);
+        try {
+            $this->performAction($user);
+        } catch (ModelNotFoundException) {
+            // An der Rückfrage kann ein anderer Admin schneller gewesen sein.
+            // Findet die Aktion das gelöschte Konto deshalb nicht mehr, ist es
+            // für diesen Admin derselbe Fall wie oben.
+            $this->error(__($this->notTrashedKey(), ['email' => $email]));
+
+            return self::FAILURE;
+        }
 
         $this->info(__($this->successKey(), $this->successReplacements($user, $email)));
 
