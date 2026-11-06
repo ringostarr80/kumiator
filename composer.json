@@ -101,6 +101,18 @@
             "@php artisan config:clear --ansi",
             "@php artisan test --coverage --parallel --coverage-html=build/phpunit/coverage-html"
         ],
+        "test:mariadb": [
+            "Composer\\Config::disableProcessTimeout",
+            "@putenv TEST_DB_SERVER=mariadb",
+            "@php artisan config:clear --ansi @no_additional_args",
+            "@php artisan test --parallel --recreate-databases --bootstrap=tests/bootstrap-db-server.php"
+        ],
+        "test:pgsql": [
+            "Composer\\Config::disableProcessTimeout",
+            "@putenv TEST_DB_SERVER=pgsql",
+            "@php artisan config:clear --ansi @no_additional_args",
+            "@php artisan test --parallel --recreate-databases --bootstrap=tests/bootstrap-db-server.php"
+        ],
         "test:debug": [
             "@putenv XDEBUG_MODE=debug",
             "@putenv XDEBUG_TRIGGER=1",
