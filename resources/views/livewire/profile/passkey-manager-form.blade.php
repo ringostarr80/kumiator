@@ -25,11 +25,11 @@
         @enderror
 
         {{-- Liste der registrierten Passkeys --}}
-        @if ($passkeys->isEmpty())
+        @if ($this->passkeys->isEmpty())
             <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('app.passkeys_empty') }}</p>
         @else
             <div class="space-y-3">
-                @foreach ($passkeys as $passkey)
+                @foreach ($this->passkeys as $passkey)
                     <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg"
                          wire:key="passkey-{{ $passkey->uuid }}">
                         @if ($editingPasskeyId === $passkey->uuid)
@@ -101,7 +101,7 @@
 
         {{-- Unabhängig vom Schalter: Gerade ohne Passwort-Login führt der Verlust des
              einzigen Passkeys nur noch über die Administration zurück. --}}
-        @if ($passkeys->count() === 1)
+        @if ($this->passkeys->count() === 1)
             <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">{{ __('app.passkey_second_hint') }}</p>
         @endif
 

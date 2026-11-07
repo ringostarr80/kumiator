@@ -62,7 +62,29 @@ final class PasskeyManagerFormTest extends TestCase
             ->assertSet('passkeys.1.id', $old->id);
     }
 
-    public function testLoadPasskeysAbortsWhenAuthUserIsNull(): void
+    /**
+     * Der interne Schlüssel wird über alle Konten der Instanz hochgezählt. Erreichte er
+     * den Browser, verriete er jedem Nutzer ungefähr, wie viele Passkeys die Instanz je
+     * registriert hat.
+     */
+    public function testTheInternalKeyDoesNotReachTheBrowser(): void
+    {
+        $user = User::factory()->create();
+        $passkey = PasskeyCredential::factory()->for($user)->create(['id' => 987_654_321]);
+
+        $html = Livewire::actingAs($user)
+            ->test(PasskeyManagerForm::class)
+            ->html();
+
+        $this->assertStringContainsString(
+            $passkey->uuid,
+            $html,
+            'Ohne den Eintrag prüft die Abfrage darunter nichts.',
+        );
+        $this->assertStringNotContainsString('987654321', $html);
+    }
+
+    public function testComponentAbortsWhenAuthUserIsNull(): void
     {
         Livewire::test(PasskeyManagerForm::class)->assertStatus(401);
     }
@@ -83,9 +105,8 @@ final class PasskeyManagerFormTest extends TestCase
     }
 
     /**
-     * Gelöschte Passkeys fielen auch ohne Neuladen aus der Liste: Livewire fragt
-     * die gemerkten Einträge bei jedem Request neu ab. Einen Passkey, den ein
-     * anderer Tab inzwischen angelegt hat, bringt erst das Neuladen.
+     * Auch ein Passkey, den ein anderer Tab inzwischen angelegt hat, gehört nach
+     * dem Löschen in die Liste, nicht erst nach dem nächsten Seitenaufbau.
      */
     public function testDeletePasskeyRefreshesPasskeyList(): void
     {
@@ -222,8 +243,8 @@ final class PasskeyManagerFormTest extends TestCase
     }
 
     /**
-     * Wie beim Löschen: Den neuen Namen zeigte die Liste auch ohne Neuladen, einen
-     * inzwischen anderswo angelegten Passkey nicht.
+     * Wie beim Löschen: Auch ein inzwischen anderswo angelegter Passkey gehört
+     * nach dem Speichern in die Liste.
      */
     public function testRenamePasskeyRefreshesPasskeyList(): void
     {

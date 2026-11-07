@@ -14,6 +14,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -24,14 +25,10 @@ use Livewire\Component;
  * JSON-Endpunkte. Danach löst das JavaScript das Browser-Event
  * "passkey-registered" aus, worauf die Liste ohne vollen Seiten-Reload neu lädt.
  */
+#[On('passkey-registered')]
 class PasskeyManagerForm extends Component
 {
     use RequiresFreshPasswordConfirmation;
-
-    /**
-     * @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\PasskeyCredential>
-     */
-    public Collection $passkeys;
 
     public ?string $editingPasskeyId = null;
 
@@ -47,17 +44,6 @@ class PasskeyManagerForm extends Component
     ): void {
         $this->repository = $repository;
         $this->loginMethods = $loginMethods;
-    }
-
-    public function mount(): void
-    {
-        $this->loadPasskeys();
-    }
-
-    #[On('passkey-registered')]
-    public function onPasskeyRegistered(): void
-    {
-        $this->loadPasskeys();
     }
 
     /**
@@ -117,8 +103,6 @@ class PasskeyManagerForm extends Component
         $this->editingPasskeyId = null;
         $this->editingPasskeyName = '';
 
-        $this->loadPasskeys();
-
         session()->flash('passkey_renamed', true);
     }
 
@@ -139,8 +123,6 @@ class PasskeyManagerForm extends Component
                 'passkey_delete' => [__('app.passkey_delete_last_blocked')],
             ]);
         }
-
-        $this->loadPasskeys();
 
         session()->flash('passkey_deleted', true);
     }
@@ -208,6 +190,18 @@ class PasskeyManagerForm extends Component
     }
 
     /**
+     * Nicht als public Property: Livewire schriebe die internen Schlüssel in den Snapshot, und
+     * der geht an den Browser.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, \App\Models\PasskeyCredential>
+     */
+    #[Computed]
+    protected function passkeys(): Collection
+    {
+        return $this->repository->findAllForUser($this->currentUser());
+    }
+
+    /**
      * Das Abschalten sperrt fremde Geräte aus, und ein neuer Passkey meldet ohne
      * Passwort und 2FA an, auch wenn die Sitzung, aus der er kam, längst beendet
      * ist. Das Einschalten meldet andere Geräte bei verworfenem Passwort zwar ab,
@@ -225,11 +219,6 @@ class PasskeyManagerForm extends Component
     private function flashPasswordLoginState(bool $disabled): void
     {
         session()->flash($disabled ? 'password_login_disabled' : 'password_login_enabled', true);
-    }
-
-    private function loadPasskeys(): void
-    {
-        $this->passkeys = $this->repository->findAllForUser($this->currentUser());
     }
 
     private function currentUser(): User
