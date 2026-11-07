@@ -78,11 +78,11 @@ class PasskeyManagerForm extends Component
      */
     public function startRenaming(string $passkeyId): void
     {
-        $passkey = $this->repository->findByIdOrFail($passkeyId);
+        $passkey = $this->repository->findByUuidOrFail($passkeyId);
 
         Gate::authorize('update', $passkey);
 
-        $this->editingPasskeyId = $passkey->id;
+        $this->editingPasskeyId = $passkey->uuid;
         $this->editingPasskeyName = $passkey->name;
         $this->resetValidation();
     }
@@ -103,7 +103,7 @@ class PasskeyManagerForm extends Component
             return;
         }
 
-        $passkey = $this->repository->findByIdOrFail($this->editingPasskeyId);
+        $passkey = $this->repository->findByUuidOrFail($this->editingPasskeyId);
 
         Gate::authorize('update', $passkey);
 
@@ -124,7 +124,7 @@ class PasskeyManagerForm extends Component
 
     public function deletePasskey(string $passkeyId): void
     {
-        $passkey = $this->repository->findByIdOrFail($passkeyId);
+        $passkey = $this->repository->findByUuidOrFail($passkeyId);
 
         Gate::authorize('delete', $passkey);
 

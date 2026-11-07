@@ -9,6 +9,9 @@
  * geschriebenen User nicht finden. `collate nocase` zieht die
  * Case-Insensitivität auf DB-Ebene — alle Lookups und die Eindeutigkeit
  * greifen ohne App-Code-Änderung.
+ *
+ * Nur für SQLite: `nocase` gibt es sonst nirgends. MariaDB und PostgreSQL vergleichen
+ * exakt, dort trägt `User::normalizeEmail()` die Garantie allein.
  */
 
 declare(strict_types=1);
@@ -21,6 +24,10 @@ use Illuminate\Support\Facades\Schema;
 return new class () extends Migration {
     public function up(): void
     {
+        if (DB::getDriverName() !== 'sqlite') {
+            return;
+        }
+
         $this->guardAgainstCaseInsensitiveCollisions();
 
         Schema::table('users', static function (Blueprint $table): void {
@@ -30,6 +37,10 @@ return new class () extends Migration {
 
     public function down(): void
     {
+        if (DB::getDriverName() !== 'sqlite') {
+            return;
+        }
+
         Schema::table('users', static function (Blueprint $table): void {
             $table->string('email')->collation('binary')->change();
         });

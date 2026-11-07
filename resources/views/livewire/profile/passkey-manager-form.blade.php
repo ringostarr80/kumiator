@@ -31,15 +31,15 @@
             <div class="space-y-3">
                 @foreach ($passkeys as $passkey)
                     <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg"
-                         wire:key="passkey-{{ $passkey->id }}">
-                        @if ($editingPasskeyId === $passkey->id)
-                            <div class="flex-1 mr-3" wire:key="passkey-{{ $passkey->id }}-edit-input">
+                         wire:key="passkey-{{ $passkey->uuid }}">
+                        @if ($editingPasskeyId === $passkey->uuid)
+                            <div class="flex-1 mr-3" wire:key="passkey-{{ $passkey->uuid }}-edit-input">
                                 <x-input
                                     type="text"
                                     wire:model="editingPasskeyName"
                                     maxlength="80"
                                     x-data
-                                    @keydown.enter="document.getElementById('passkey-save-{{ $passkey->id }}').click()"
+                                    @keydown.enter="document.getElementById('passkey-save-{{ $passkey->uuid }}').click()"
                                     wire:keydown.escape="cancelRenaming"
                                     class="w-full"
                                     autofocus
@@ -48,18 +48,18 @@
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
-                            <div class="flex items-center gap-2" wire:key="passkey-{{ $passkey->id }}-edit-actions">
+                            <div class="flex items-center gap-2" wire:key="passkey-{{ $passkey->uuid }}-edit-actions">
                                 <x-confirms-password wire:then="renamePasskey">
-                                    <x-button type="button" id="passkey-save-{{ $passkey->id }}" wire:key="passkey-{{ $passkey->id }}-save">
+                                    <x-button type="button" id="passkey-save-{{ $passkey->uuid }}" wire:key="passkey-{{ $passkey->uuid }}-save">
                                         {{ __('app.save') }}
                                     </x-button>
                                 </x-confirms-password>
-                                <x-secondary-button type="button" wire:click="cancelRenaming" wire:key="passkey-{{ $passkey->id }}-cancel">
+                                <x-secondary-button type="button" wire:click="cancelRenaming" wire:key="passkey-{{ $passkey->uuid }}-cancel">
                                     {{ __('app.cancel') }}
                                 </x-secondary-button>
                             </div>
                         @else
-                            <div wire:key="passkey-{{ $passkey->id }}-info">
+                            <div wire:key="passkey-{{ $passkey->uuid }}-info">
                                 <p class="font-medium text-sm text-gray-900 dark:text-gray-100">{{ $passkey->name }}</p>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                     {{ __('app.passkey_registered_at') }}: {{ $passkey->created_at->format('d.m.Y') }}
@@ -71,23 +71,23 @@
                                     @endif
                                 </p>
                             </div>
-                            <div class="flex items-center gap-2" wire:key="passkey-{{ $passkey->id }}-view-actions">
-                                <x-confirms-password wire:then="startRenaming('{{ $passkey->id }}')">
+                            <div class="flex items-center gap-2" wire:key="passkey-{{ $passkey->uuid }}-view-actions">
+                                <x-confirms-password wire:then="startRenaming('{{ $passkey->uuid }}')">
                                     <x-secondary-button
                                         size="sm"
                                         type="button"
-                                        wire:key="passkey-{{ $passkey->id }}-rename"
+                                        wire:key="passkey-{{ $passkey->uuid }}-rename"
                                     >
                                         {{ __('app.passkey_rename') }}
                                     </x-secondary-button>
                                 </x-confirms-password>
                                 <x-confirms-password
-                                    wire:then="deletePasskey('{{ $passkey->id }}')"
+                                    wire:then="deletePasskey('{{ $passkey->uuid }}')"
                                     wire:confirm="{{ __('app.passkey_delete_confirm') }}"
                                 >
                                     <x-danger-button
                                         size="sm"
-                                        wire:key="passkey-{{ $passkey->id }}-delete"
+                                        wire:key="passkey-{{ $passkey->uuid }}-delete"
                                     >
                                         {{ __('app.delete') }}
                                     </x-danger-button>

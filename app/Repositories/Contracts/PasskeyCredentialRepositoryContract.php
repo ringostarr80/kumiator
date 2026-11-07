@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Collection;
 
 interface PasskeyCredentialRepositoryContract
 {
-    public function findByIdOrFail(string $id): PasskeyCredential;
+    public function findByUuidOrFail(string $uuid): PasskeyCredential;
 
     public function findByCredentialId(string $credentialId): ?PasskeyCredential;
 

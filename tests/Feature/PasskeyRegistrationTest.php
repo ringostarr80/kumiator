@@ -273,6 +273,7 @@ final class PasskeyRegistrationTest extends TestCase
         $credential = PasskeyCredential::query()->where('user_id', $user->getKey())->sole();
 
         $this->assertSame('Test Passkey', $credential->name);
+        $response->assertJsonPath('id', $credential->uuid);
     }
 
     /**

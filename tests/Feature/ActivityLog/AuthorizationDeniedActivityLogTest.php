@@ -124,7 +124,7 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
 
         Livewire::actingAs($other)
             ->test(PasskeyManagerForm::class)
-            ->call('startRenaming', $passkey->id)
+            ->call('startRenaming', $passkey->uuid)
             ->assertForbidden();
 
         $this->assertAuthorizationDeniedLogged($other, 'update', $passkey);
@@ -138,7 +138,7 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
 
         Livewire::actingAs($other)
             ->test(PasskeyManagerForm::class)
-            ->set('editingPasskeyId', $passkey->id)
+            ->set('editingPasskeyId', $passkey->uuid)
             ->set('editingPasskeyName', 'Hijacked')
             ->call('renamePasskey')
             ->assertForbidden();
@@ -154,7 +154,7 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
 
         Livewire::actingAs($other)
             ->test(PasskeyManagerForm::class)
-            ->call('deletePasskey', $passkey->id)
+            ->call('deletePasskey', $passkey->uuid)
             ->assertForbidden();
 
         $this->assertAuthorizationDeniedLogged($other, 'delete', $passkey);
@@ -189,7 +189,7 @@ final class AuthorizationDeniedActivityLogTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('startRenaming', $passkey->id)
+            ->call('startRenaming', $passkey->uuid)
             ->set('editingPasskeyName', 'Neu')
             ->call('renamePasskey');
 

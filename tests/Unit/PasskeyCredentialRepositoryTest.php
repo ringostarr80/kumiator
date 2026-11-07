@@ -18,20 +18,20 @@ final class PasskeyCredentialRepositoryTest extends TestCase
 
     private PasskeyCredentialRepository $repository;
 
-    public function testFindByIdOrFailReturnsModelForKnownId(): void
+    public function testFindByUuidOrFailReturnsModelForKnownUuid(): void
     {
         $model = PasskeyCredential::factory()->create();
 
-        $result = $this->repository->findByIdOrFail($model->id);
+        $result = $this->repository->findByUuidOrFail($model->uuid);
 
         $this->assertSame($model->id, $result->id);
     }
 
-    public function testFindByIdOrFailThrowsForUnknownId(): void
+    public function testFindByUuidOrFailThrowsForUnknownUuid(): void
     {
         $this->expectException(ModelNotFoundException::class);
 
-        $this->repository->findByIdOrFail('00000000-0000-0000-0000-000000000000');
+        $this->repository->findByUuidOrFail('00000000-0000-0000-0000-000000000000');
     }
 
     public function testFindByCredentialIdReturnsNullForUnknownId(): void
