@@ -10,19 +10,22 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Testing\PendingCommand;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionMethod;
 use RuntimeException;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * E-Mail-Identität ist case-insensitiv (DB-Collation NOCASE). Sichert die
- * Wirkung über alle Pfade ab — auch die Fortify-umgehenden CLI-Wege.
+ * E-Mail-Identität ist case-insensitiv (Mutator am Model, auf SQLite zusätzlich
+ * die Collation NOCASE). Sichert die Wirkung über alle Pfade ab — auch die
+ * Fortify-umgehenden CLI-Wege.
  */
 final class EmailCaseInsensitivityTest extends TestCase
 {
@@ -40,6 +43,8 @@ final class EmailCaseInsensitivityTest extends TestCase
 
     public function testLookupIgnoresCase(): void
     {
+        $this->requireNocase();
+
         User::factory()->create(['email' => self::EMAIL]);
 
         $this->assertTrue(
@@ -58,6 +63,8 @@ final class EmailCaseInsensitivityTest extends TestCase
 
     public function testUniqueValidationRuleRejectsCaseOnlyDuplicate(): void
     {
+        $this->requireNocase();
+
         User::factory()->create(['email' => self::EMAIL]);
 
         $validator = Validator::make(
@@ -187,6 +194,8 @@ final class EmailCaseInsensitivityTest extends TestCase
 
     public function testMigrationAbortsOnExistingCaseCollision(): void
     {
+        $this->requireNocase();
+
         // Spalte case-sensitiv machen, damit zwei nur in der Schreibweise
         // verschiedene Adressen überhaupt nebeneinander existieren können.
         $this->setEmailCollation('binary');
@@ -227,6 +236,30 @@ final class EmailCaseInsensitivityTest extends TestCase
         }
     }
 
+    /**
+     * Ähnlich geschriebene Adressen gehören verschiedenen Postfächern. Faltete die
+     * Datenbank Akzente oder `ß`, scheiterte das zweite Konto am Unique-Index, und
+     * ein Lookup über die Adresse träfe womöglich das falsche Konto.
+     */
+    #[DataProvider('lookalikeAddressProvider')]
+    public function testLookalikeAddressesAreSeparateAccounts(string $first, string $second): void
+    {
+        $firstUser = User::factory()->create(['email' => $first]);
+        $secondUser = User::factory()->create(['email' => $second]);
+
+        $this->assertSame($firstUser->id, User::query()->where('email', $first)->sole()->id);
+        $this->assertSame($secondUser->id, User::query()->where('email', $second)->sole()->id);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function lookalikeAddressProvider(): iterable
+    {
+        yield 'Umlaut' => [self::EMAIL_UMLAUT, 'muller@example.com'];
+        yield 'Eszett' => ['straße@example.com', 'strasse@example.com'];
+    }
+
     private function runCreateCommand(string $email): PendingCommand
     {
         $command = $this->artisan('user:create');
@@ -239,6 +272,17 @@ final class EmailCaseInsensitivityTest extends TestCase
             ->expectsQuestion(__('commands.create_user.ask_password'), 'password123')
             ->expectsQuestion(__('commands.create_user.ask_password_confirm'), 'password123')
             ->expectsChoice(__('commands.create_user.ask_role'), 'member', ['member']);
+    }
+
+    /**
+     * Auf MariaDB und PostgreSQL vergleicht die Spalte exakt, dort hält allein der
+     * Mutator die Adressen eindeutig. Das prüfen die übrigen Tests dieser Klasse.
+     */
+    private function requireNocase(): void
+    {
+        if (DB::getDriverName() !== 'sqlite') {
+            $this->markTestSkipped('Prüft die Collation NOCASE, die es nur auf SQLite gibt.');
+        }
     }
 
     private function setEmailCollation(string $collation): void

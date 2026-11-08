@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Session;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\Serializer\SerializerInterface;
 use Tests\Support\ConfirmsPassword;
+use Tests\Support\FailsQueries;
 use Tests\Support\FakeAttestationStatementSupport;
 use Tests\Support\VirtualAuthenticator;
 use Tests\TestCase;
@@ -31,6 +32,7 @@ use Webauthn\PublicKeyCredentialCreationOptions;
 final class PasskeyRegistrationTest extends TestCase
 {
     use ConfirmsPassword;
+    use FailsQueries;
     use RefreshDatabase;
 
     private const string REGISTER_OPTIONS_URL = '/user/passkeys/register/options';
@@ -560,9 +562,9 @@ final class PasskeyRegistrationTest extends TestCase
         $user = User::factory()->create();
         $options = $this->startCeremony($user);
 
-        // Die Zeremonie läuft vollständig durch; erst das Speichern trifft die
-        // fehlende Tabelle und erzeugt so den Fehler unterhalb der Zeremonie.
-        Schema::drop('passkey_credentials');
+        // Die Zeremonie läuft vollständig durch; erst das Speichern scheitert und
+        // erzeugt so den Fehler unterhalb der Zeremonie.
+        $this->failQueriesOn('passkey_credentials');
 
         $response = $this->actingAsConfirmed($user)->postJson(
             self::REGISTER_URL,

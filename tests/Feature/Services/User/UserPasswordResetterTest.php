@@ -12,7 +12,7 @@ use App\Services\User\Contracts\UserPasswordResetterContract;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
+use Tests\Support\FailsQueries;
 use Tests\TestCase;
 
 /**
@@ -21,6 +21,7 @@ use Tests\TestCase;
  */
 final class UserPasswordResetterTest extends TestCase
 {
+    use FailsQueries;
     use RefreshDatabase;
 
     private UserPasswordResetterContract $resetter;
@@ -35,7 +36,7 @@ final class UserPasswordResetterTest extends TestCase
     {
         $user = User::factory()->create(['password_login_disabled_at' => now()]);
 
-        Schema::drop('activity_log');
+        $this->failQueriesOn('activity_log');
 
         $this->assertThrows(
             fn () => $this->resetter->reset($user, 'new-password123', true),
