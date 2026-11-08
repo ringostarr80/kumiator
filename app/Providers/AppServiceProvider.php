@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Database\UnicodeSqliteConnector;
 use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Models\Activity;
@@ -75,6 +76,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(LoginMethodChangerContract::class, LoginMethodChanger::class);
         $this->app->bind(AuthorizationAuditorContract::class, AuthorizationAuditor::class);
         $this->app->singleton(ConsoleActorContextContract::class, ConsoleActorContext::class);
+
+        // Laravels Erweiterungspunkt für den Verbindungsaufbau je Treiber.
+        $this->app->bind('db.connector.sqlite', UnicodeSqliteConnector::class);
 
         // Beim Löschen einer Rolle räumt Spatie die User-Zuordnungen still ab
         // (ohne Event) — der Entzug würde sonst nicht im Activity-Log landen.

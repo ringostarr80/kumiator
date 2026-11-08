@@ -8,6 +8,7 @@ use App\Enums\ActivityChannel;
 use App\Enums\ActivityEvent;
 use App\Enums\AppTimezone;
 use App\Enums\PermissionName;
+use App\Enums\SqliteFunction;
 use App\Models\Activity;
 use App\Models\User;
 use App\Services\Audit\Contracts\AuthorizationAuditorContract;
@@ -364,7 +365,16 @@ final class ActivityLogTable extends Component
             $relation,
             array_keys(Relation::morphMap()),
             static function (Builder $related) use ($escaped): void {
-                $related->whereRaw('name like ? escape ?', ['%' . $escaped . '%', '\\']);
+                // Ohne Rücksicht auf die Schreibweise, auch bei Umlauten: Die Collation von
+                // MariaDB leistet das von sich aus. PostgreSQL vergleicht bei `like` exakt,
+                // `ilike` faltet nach der Locale der Datenbank. SQLite faltet nur ASCII.
+                $sql = match ($related->getModel()->getConnection()->getDriverName()) {
+                    'pgsql' => 'name ilike ? escape ?',
+                    'sqlite' => sprintf('%1$s(name) like %1$s(?) escape ?', SqliteFunction::UNICODE_LOWER->value),
+                    default => 'name like ? escape ?',
+                };
+
+                $related->whereRaw($sql, ['%' . $escaped . '%', '\\']);
             },
         );
     }
