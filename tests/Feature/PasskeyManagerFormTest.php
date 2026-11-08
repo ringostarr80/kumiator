@@ -12,6 +12,7 @@ use DOMElement;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\ConfirmsPassword;
 use Tests\TestCase;
 
@@ -393,6 +394,39 @@ final class PasskeyManagerFormTest extends TestCase
         $this->assertSame('Owner-Name', $passkey->fresh()?->name);
     }
 
+    #[DataProvider('invalidPasskeyIdProvider')]
+    public function testStartRenamingAnInvalidIdEndsInNotFound(string $passkeyId): void
+    {
+        Livewire::actingAs(User::factory()->create())
+            ->test(PasskeyManagerForm::class)
+            ->call('startRenaming', $passkeyId)
+            ->assertNotFound();
+    }
+
+    #[DataProvider('invalidPasskeyIdProvider')]
+    public function testRenamingAnInvalidIdEndsInNotFound(string $passkeyId): void
+    {
+        $this->confirmPassword();
+
+        Livewire::actingAs(User::factory()->create())
+            ->test(PasskeyManagerForm::class)
+            ->set('editingPasskeyId', $passkeyId)
+            ->set('editingPasskeyName', 'Neu')
+            ->call('renamePasskey')
+            ->assertNotFound();
+    }
+
+    #[DataProvider('invalidPasskeyIdProvider')]
+    public function testDeletingAnInvalidIdEndsInNotFound(string $passkeyId): void
+    {
+        $this->confirmPassword();
+
+        Livewire::actingAs(User::factory()->create())
+            ->test(PasskeyManagerForm::class)
+            ->call('deletePasskey', $passkeyId)
+            ->assertNotFound();
+    }
+
     public function testDeletePasskeyRequiresConfirmedPassword(): void
     {
         $user = User::factory()->create();
@@ -671,6 +705,20 @@ final class PasskeyManagerFormTest extends TestCase
         $element = $block->item(0);
         $this->assertInstanceOf(DOMElement::class, $element);
         $this->assertSame("errorMessage = ''", $element->getAttribute('x-on:confirming-password.window'));
+    }
+
+    /**
+     * Die ID kommt vom Browser und kann beliebig sein. Nähme die Spalte nur gültige
+     * Werte an, scheiterte die Abfrage mit HTTP 500, statt nichts zu finden: der
+     * Typ uuid auf PostgreSQL an allem, was keine UUID ist, eine ASCII-Spalte auf
+     * MariaDB an jedem Umlaut.
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function invalidPasskeyIdProvider(): iterable
+    {
+        yield 'keine UUID' => ['not-a-uuid'];
+        yield 'Umlaut' => ['schlüssel'];
     }
 
     private function assertDialogSitsOutsideTheRegistrationBlock(string $html): void
