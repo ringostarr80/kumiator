@@ -8,6 +8,7 @@ use App\Enums\SqliteFunction;
 use Illuminate\Database\Connectors\SQLiteConnector;
 use Override;
 use PDO;
+use Pdo\Sqlite;
 
 /**
  * SQLite ändert bei `lower()` und `like` nur ASCII. Eine Suche, die die
@@ -23,10 +24,11 @@ final class UnicodeSqliteConnector extends SQLiteConnector
     #[Override]
     public function connect(array $config): PDO
     {
-        /** @var \Pdo\Sqlite $pdo */
+        /** @var Sqlite $pdo */
         $pdo = parent::connect($config);
 
-        $pdo->createFunction(SqliteFunction::UNICODE_LOWER->value, mb_strtolower(...), 1);
+        // Erst das Flag erlaubt SQLite, einen Aufruf mit konstantem Argument einmal je Abfrage auszuwerten
+        $pdo->createFunction(SqliteFunction::UNICODE_LOWER->value, mb_strtolower(...), 1, Sqlite::DETERMINISTIC);
 
         return $pdo;
     }
