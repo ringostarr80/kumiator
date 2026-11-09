@@ -16,7 +16,7 @@ System_Boundary(app, "Kumiator Web Application") {
 
     Container(cli, "Artisan CLI", "Laravel Console, PHP", "Verwaltung von Nutzern und Rollen außerhalb der Web-UI")
 
-    ContainerDb(db, "Datenbank", "SQLite (dev) / kompatibel", "Speichert Nutzer, Passkey-Credentials, Rollen, Sessions, Jobs")
+    ContainerDb(db, "Datenbank", "SQLite, MariaDB oder PostgreSQL", "Speichert Nutzer, Passkey-Credentials, Rollen, Sessions, Jobs")
 }
 
 System_Ext(mailserver, "Mail-Server", "Versendet Verifikations- und Benachrichtigungs-E-Mails")

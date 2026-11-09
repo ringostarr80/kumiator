@@ -62,6 +62,7 @@ geänderten Zeilen.
 Vorausgesetzt werden PHP 8.4 und Node.js in der Version aus `.nvmrc` — oder alternativ Docker,
 dann genügt Docker allein.
 Als Datenbank dient standardmäßig SQLite, ein eigener Datenbankserver ist also nicht nötig.
+MariaDB und PostgreSQL werden ebenfalls unterstützt, siehe [docs/deployment.md](docs/deployment.md#datenbank).
 
 ### Mit Docker
 
@@ -104,6 +105,28 @@ php artisan user:create
 Das Konto ist sofort freigeschaltet. Die E-Mail-Adresse bestätigt man nach der ersten Anmeldung über
 einen Link, den man auf der angezeigten Seite per Mail anfordert; ohne Mailversand erledigt das
 `php artisan user:verify`.
+
+### Tests gegen MariaDB und PostgreSQL
+
+`composer test` prüft gegen SQLite. Für MariaDB und PostgreSQL liegen in
+`docker/test-databases/compose.yml` dieselben Wegwerf-Server wie in der CI. Sie lauschen auf
+eigenen Ports (33306 und 55432), ein lokal installierter Datenbankserver bleibt also unberührt,
+und die `.env` spielt für diese Läufe keine Rolle.
+
+```bash
+docker compose --file docker/test-databases/compose.yml up --detach --wait
+composer test:mariadb
+composer test:pgsql -- --filter=ActivityLogAccessTest   # nur einzelne Tests
+docker compose --file docker/test-databases/compose.yml down --volumes
+```
+
+Mit Podman bleibt nach `podman-compose … down --volumes` je Server ein anonymes Volume zurück.
+Ihre Namen deshalb vor dem `down` notieren und danach einzeln mit `podman volume rm` löschen:
+
+```bash
+podman inspect test-databases_mariadb_1 test-databases_pgsql_1 \
+  --format '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}}{{"\n"}}{{end}}{{end}}'
+```
 
 ## CLI-Kommandos zur Benutzerverwaltung
 

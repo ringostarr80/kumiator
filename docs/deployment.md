@@ -10,6 +10,17 @@ Dev-Abhängigkeiten) und darf in Produktion nicht verwendet werden.
 Den **laufenden Betrieb** nach dem Deploy (Scheduler/Cron, Schedule-Healthcheck)
 beschreibt separat [docs/operations.md](operations.md).
 
+## Datenbank
+
+Unterstützt werden SQLite, MariaDB und PostgreSQL, die Gründe stehen in
+[ADR-0006](ADR/0006-datenbanken.md). Die CI testet je eine Version, welche, steht in
+`docker/test-databases/compose.yml`. MySQL wird nicht getestet.
+
+**PostgreSQL** braucht eine UTF-8-Locale, etwa `en_US.utf8` wie im Test-Image. Unter der
+Locale `C` unterscheidet die Namenssuche im Aktivitätslog bei Umlauten Groß- und
+Kleinschreibung: `özdemir` findet dann `Özdemir` nicht. Die Locale wird beim Anlegen der
+Datenbank festgelegt und lässt sich danach nicht mehr ändern.
+
 ## Deployment mit `composer deploy`
 
 Alle Deploy-Schritte sind im `deploy`-Script in `composer.json` zusammengefasst und
