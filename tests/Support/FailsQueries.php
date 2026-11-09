@@ -13,6 +13,9 @@ use PDOException;
  * Der Fehler entsteht, bevor das Statement die Datenbank erreicht, und lässt die Transaktion des Tests deshalb
  * intakt. Eine gelöschte Tabelle nähme sie mit: MariaDB schließt sie mit dem DDL ab, PostgreSQL lehnt nach dem
  * gescheiterten Statement jede weitere Abfrage darin ab.
+ *
+ * `DB::beforeExecuting()` erreicht nur die Standardverbindung. Liegt die Tabelle auf einer eigenen, etwa über
+ * `session.connection`, greift der simulierte Fehler nicht.
  */
 trait FailsQueries
 {
