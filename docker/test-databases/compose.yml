@@ -1,6 +1,8 @@
 # Disposable servers for `composer test:mariadb` and `composer test:pgsql`, in CI and locally.
 # They hold nothing worth a password, so the ports stay on the loopback interface. The host ports differ
 # from the defaults, otherwise a test run could reach a database server installed on the developer machine.
+# The data directories the images declare as volumes are tmpfs mounts instead, so no anonymous volume is
+# created that podman-compose would leave behind on `down --volumes`.
 services:
   mariadb:
     # The lts tag follows the current LTS line. Dependabot only moves the digest here, a version number
@@ -9,6 +11,8 @@ services:
     environment:
       MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "1"
       MARIADB_DATABASE: kumiator_test
+    tmpfs:
+      - /var/lib/mysql
     ports:
       - "127.0.0.1:33306:3306"
     healthcheck:
@@ -23,6 +27,8 @@ services:
       POSTGRES_DB: kumiator_test
       POSTGRES_HOST_AUTH_METHOD: trust
       POSTGRES_USER: root
+    tmpfs:
+      - /var/lib/postgresql
     ports:
       - "127.0.0.1:55432:5432"
     healthcheck:

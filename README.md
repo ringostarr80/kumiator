@@ -117,15 +117,7 @@ und die `.env` spielt für diese Läufe keine Rolle.
 docker compose --file docker/test-databases/compose.yml up --detach --wait
 composer test:mariadb
 composer test:pgsql -- --filter=ActivityLogAccessTest   # nur einzelne Tests
-docker compose --file docker/test-databases/compose.yml down --volumes
-```
-
-Mit Podman bleibt nach `podman-compose … down --volumes` je Server ein anonymes Volume zurück.
-Ihre Namen deshalb vor dem `down` notieren und danach einzeln mit `podman volume rm` löschen:
-
-```bash
-podman inspect test-databases_mariadb_1 test-databases_pgsql_1 \
-  --format '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}}{{"\n"}}{{end}}{{end}}'
+docker compose --file docker/test-databases/compose.yml down
 ```
 
 ## CLI-Kommandos zur Benutzerverwaltung
