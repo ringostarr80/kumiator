@@ -16,6 +16,8 @@ $values = [
     'DB_DATABASE' => 'kumiator_test',
     'DB_USERNAME' => 'root',
     'DB_PASSWORD' => '',
+    // Leer, weil ein Socket Host und Port aussticht
+    'DB_SOCKET' => '',
 ];
 
 foreach ($values as $name => $value) {

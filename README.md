@@ -110,8 +110,8 @@ einen Link, den man auf der angezeigten Seite per Mail anfordert; ohne Mailversa
 
 `composer test` prüft gegen SQLite. Für MariaDB und PostgreSQL liegen in
 `docker/test-databases/compose.yml` dieselben Wegwerf-Server wie in der CI. Sie lauschen auf
-eigenen Ports (33306 und 55432), ein lokal installierter Datenbankserver bleibt also unberührt,
-und die `.env` spielt für diese Läufe keine Rolle.
+eigenen Ports (33306 und 55432), ein lokal installierter Datenbankserver bleibt also unberührt.
+Server und Zugangsdaten aus der `.env` gelten für diese Läufe nicht.
 
 ```bash
 docker compose --file docker/test-databases/compose.yml up --detach --wait
