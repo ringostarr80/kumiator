@@ -16,6 +16,10 @@ Unterstützt werden SQLite, MariaDB und PostgreSQL, die Gründe stehen in
 [ADR-0006](ADR/0006-datenbanken.md). Die CI testet je eine Version, welche, steht in
 `docker/test-databases/compose.yml`. MySQL wird nicht getestet.
 
+**MariaDB** braucht `DB_CONNECTION=mariadb`, mit `DB_URL` das Schema `mariadb://`. Mit dem
+Treiber `mysql` bricht `php artisan migrate` ab, weil die Migrationen sonst E-Mail- und
+Passkey-Spalten anlegen, die Groß- und Kleinschreibung nicht unterscheiden.
+
 **PostgreSQL** braucht eine UTF-8-Locale, etwa `en_US.utf8` wie im Test-Image. Unter der
 Locale `C` unterscheidet die Namenssuche im Aktivitätslog bei Umlauten Groß- und
 Kleinschreibung: `özdemir` findet dann `Özdemir` nicht. Die Locale wird beim Anlegen der
