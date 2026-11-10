@@ -81,6 +81,9 @@ Assets gebaut und die Migrationen ausgeführt werden. Danach ist die Anwendung u
 <https://localhost:8443> erreichbar; das selbstsignierte Zertifikat quittiert der Browser
 mit einer Warnung.
 
+Verschickte Mails verlassen den Rechner nicht: Mailpit fängt sie ab und zeigt sie unter
+<https://localhost:8443/mailpit/>.
+
 ### Ohne Docker
 
 ```bash
@@ -90,7 +93,9 @@ composer dev     # Webserver, Queue-Worker, Logs und Vite in einem Rutsch
 
 Die Anwendung läuft dann unter <http://localhost:8000>. Dafür sind in der `.env` zusätzlich
 `APP_URL=http://localhost:8000` und `SESSION_SECURE_COOKIE=false` zu setzen — die Vorgaben
-verlangen HTTPS, andernfalls nimmt der Browser das Sitzungs-Cookie nicht an.
+verlangen HTTPS, andernfalls nimmt der Browser das Sitzungs-Cookie nicht an. Außerdem
+`MAIL_MAILER=log`, weil das Mailpit der Vorgaben nur im Docker-Setup läuft; die Mails stehen dann
+im Log.
 
 ### Ersten Benutzer anlegen
 
