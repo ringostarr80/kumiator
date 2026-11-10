@@ -10,6 +10,12 @@ services:
       - .:/var/www/html
     env_file:
       - .env
+    # Wins over env_file, so mail reaches Mailpit whatever the .env says; its defaults serve the
+    # setup without Docker
+    environment:
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
     healthcheck:
       # php-fpm only starts once entrypoint.sh has installed the dependencies and run the migrations
       test: ["CMD", "pgrep", "php-fpm"]
@@ -30,6 +36,10 @@ services:
       - .:/var/www/html
     env_file:
       - .env
+    environment:
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
     depends_on:
       app:
         condition: service_healthy
