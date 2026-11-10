@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Repositories\PasskeyCredentialRepository;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use ParagonIE\ConstantTime\Base64UrlSafe;
 use Tests\TestCase;
 
 final class PasskeyCredentialRepositoryTest extends TestCase
@@ -18,20 +19,20 @@ final class PasskeyCredentialRepositoryTest extends TestCase
 
     private PasskeyCredentialRepository $repository;
 
-    public function testFindByIdOrFailReturnsModelForKnownId(): void
+    public function testFindByUuidOrFailReturnsModelForKnownUuid(): void
     {
         $model = PasskeyCredential::factory()->create();
 
-        $result = $this->repository->findByIdOrFail($model->id);
+        $result = $this->repository->findByUuidOrFail($model->uuid);
 
         $this->assertSame($model->id, $result->id);
     }
 
-    public function testFindByIdOrFailThrowsForUnknownId(): void
+    public function testFindByUuidOrFailThrowsForUnknownUuid(): void
     {
         $this->expectException(ModelNotFoundException::class);
 
-        $this->repository->findByIdOrFail('00000000-0000-0000-0000-000000000000');
+        $this->repository->findByUuidOrFail('00000000-0000-0000-0000-000000000000');
     }
 
     public function testFindByCredentialIdReturnsNullForUnknownId(): void
@@ -49,6 +50,21 @@ final class PasskeyCredentialRepositoryTest extends TestCase
 
         $this->assertNotNull($result);
         $this->assertSame($passkey->id, $result->id);
+    }
+
+    /**
+     * Base64URL unterscheidet Groß- und Kleinschreibung, die beiden IDs gehören
+     * verschiedenen Passkeys. Die ID bringt der Client bei der Registrierung mit.
+     * Faltete die Spalte sie zusammen, scheiterte der zweite am Unique-Index, und
+     * der Lookup bei der Anmeldung fände womöglich den falschen.
+     */
+    public function testFindByCredentialIdTellsApartIdsThatDifferOnlyInCase(): void
+    {
+        $lower = PasskeyCredential::factory()->create(['credential_id' => 'abc-credential']);
+        $upper = PasskeyCredential::factory()->create(['credential_id' => 'ABC-credential']);
+
+        $this->assertSame($lower->id, $this->repository->findByCredentialId('abc-credential')?->id);
+        $this->assertSame($upper->id, $this->repository->findByCredentialId('ABC-credential')?->id);
     }
 
     public function testFindAllForUserReturnsOnlyUserCredentials(): void
@@ -107,6 +123,25 @@ final class PasskeyCredentialRepositoryTest extends TestCase
             $data->serializedCredentialSource,
             $this->repository->getSerializedCredentialSource($model),
         );
+    }
+
+    /**
+     * Die WebAuthn-Bibliothek nimmt Credential-IDs bis 1023 Byte an, als Base64URL
+     * 1364 Zeichen. Fasste die Spalte weniger, scheiterte die Registrierung solcher
+     * Passkeys beim Speichern. SQLite setzt die Länge nicht durch, die Probe gilt
+     * MariaDB und PostgreSQL.
+     */
+    public function testSaveNewCredentialKeepsTheLongestIdTheLibraryAccepts(): void
+    {
+        $credentialId = Base64UrlSafe::encodeUnpadded(random_bytes(1_023));
+
+        $this->repository->saveNewCredential(
+            User::factory()->create(),
+            $this->buildNewCredentialData(credentialId: $credentialId),
+            'Key',
+        );
+
+        $this->assertSame($credentialId, $this->repository->findByCredentialId($credentialId)?->credential_id);
     }
 
     public function testUpdateAfterAuthenticationUpdatesCounter(): void
@@ -229,9 +264,10 @@ final class PasskeyCredentialRepositoryTest extends TestCase
     private function buildNewCredentialData(
         bool $backupState = false,
         bool $backupEligible = false,
+        string $credentialId = 'dGVzdC1jcmVkZW50aWFsLWlk',
     ): NewPasskeyCredentialData {
         return new NewPasskeyCredentialData(
-            credentialId: 'dGVzdC1jcmVkZW50aWFsLWlk',
+            credentialId: $credentialId,
             serializedCredentialSource: '{"type":"public-key","id":"dGVzdA"}',
             counter: 0,
             transports: ['internal'],

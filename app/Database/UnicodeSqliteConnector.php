@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Database;
+
+use App\Enums\SqliteFunction;
+use Illuminate\Database\Connectors\SQLiteConnector;
+use Override;
+use PDO;
+use Pdo\Sqlite;
+
+/**
+ * SQLite ändert bei `lower()` und `like` nur ASCII. Eine Suche, die die
+ * Schreibweise ignoriert, braucht deshalb eine eigene Funktion, und die hängt
+ * am PDO-Objekt. Hier entsteht jedes davon, auch beim Reconnect, und erst,
+ * wenn die Verbindung wirklich gebraucht wird.
+ */
+final class UnicodeSqliteConnector extends SQLiteConnector
+{
+    /**
+     * @param array<string, mixed> $config
+     */
+    #[Override]
+    public function connect(array $config): PDO
+    {
+        /** @var Sqlite $pdo */
+        $pdo = parent::connect($config);
+
+        // Erst das Flag erlaubt SQLite, einen Aufruf mit konstantem Argument einmal je Abfrage auszuwerten
+        $pdo->createFunction(SqliteFunction::UNICODE_LOWER->value, mb_strtolower(...), 1, Sqlite::DETERMINISTIC);
+
+        return $pdo;
+    }
+}

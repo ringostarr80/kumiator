@@ -191,3 +191,42 @@ jobs:
           report_type: test_results
           flags: php
           fail_ci_if_error: true
+
+  # Apart from the test job, whose coverage report only needs a single database
+  test-db-server:
+    name: Tests (${{ matrix.database }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read  # Required by actions/checkout to read the repository
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ['mariadb', 'pgsql']
+    env:
+      DATABASE: ${{ matrix.database }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # A compose file instead of job services, because Dependabot reads no images from workflow files
+      - name: Start database server
+        run: docker compose --file docker/test-databases/compose.yml up --detach --wait "$DATABASE"
+
+      # A database server sees the same queries on every PHP version, so a single run covers it
+      - uses: $/.github/actions/setup-php-env
+        with:
+          php-version: '8.4'
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      - uses: $/.github/actions/setup-node-env
+
+      # Feature tests render layouts using @vite, which needs a built manifest
+      - name: Build assets
+        run: npm run build
+
+      - name: Run tests
+        run: composer "test:${DATABASE}"

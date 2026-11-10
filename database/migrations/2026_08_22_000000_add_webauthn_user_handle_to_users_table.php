@@ -45,7 +45,12 @@ return new class () extends Migration {
         });
 
         Schema::table('users', static function (Blueprint $table): void {
-            $table->string('webauthn_user_handle', 43)->nullable(false)->change();
+            $column = $table->string('webauthn_user_handle', 43)->nullable(false)->change();
+
+            // Base64URL unterscheidet Groß- und Kleinschreibung, MariaDBs Standard-Collation nicht.
+            if (DB::getDriverName() === 'mariadb') {
+                $column->charset('ascii')->collation('ascii_bin');
+            }
         });
 
         Schema::table('users', static function (Blueprint $table): void {

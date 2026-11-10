@@ -19,14 +19,15 @@ use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
+use Tests\Support\FailsQueries;
 use Tests\Support\InsertsSessions;
 use Tests\TestCase;
 
 final class LoginMethodChangerTest extends TestCase
 {
+    use FailsQueries;
     use InsertsSessions;
     use RefreshDatabase;
 
@@ -308,7 +309,7 @@ final class LoginMethodChangerTest extends TestCase
         Config::set('queue.default', 'database');
         $passkey = PasskeyCredential::factory()->for(User::factory())->create();
 
-        Schema::drop('jobs');
+        $this->failQueriesOn('jobs');
 
         $this->assertTrue($this->changer->deletePasskey($passkey));
 

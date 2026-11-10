@@ -315,8 +315,8 @@ class User extends Authenticatable implements MustBeApproved, MustVerifyEmail
      * mb-basiert. Ohne eine hier festgelegte Normalform driften Schreib- und
      * Lesepfad bei jedem Nicht-ASCII-Buchstaben auseinander: der Login findet
      * die Adresse nicht mehr, und `MÜLLER@…`/`müller@…` stehen als zwei Konten
-     * nebeneinander. `NOCASE` bleibt darunter als Netz, trägt die Garantie
-     * aber nicht mehr.
+     * nebeneinander. Auf SQLite bleibt `NOCASE` darunter als Netz, trägt die
+     * Garantie aber nicht mehr. MariaDB und PostgreSQL vergleichen exakt.
      */
     public static function normalizeEmail(string $email): string
     {

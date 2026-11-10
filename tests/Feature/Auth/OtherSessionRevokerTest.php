@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Cookie as HttpCookie;
+use Tests\Support\FailsQueries;
 use Tests\Support\InsertsSessions;
 use Tests\TestCase;
 
@@ -26,6 +27,7 @@ use Tests\TestCase;
  */
 final class OtherSessionRevokerTest extends TestCase
 {
+    use FailsQueries;
     use InsertsSessions;
     use RefreshDatabase;
 
@@ -146,7 +148,7 @@ final class OtherSessionRevokerTest extends TestCase
     public function testItReplacesTheTokenEvenWhenTheSessionDeleteFails(): void
     {
         Config::set('session.driver', 'database');
-        Config::set('session.table', 'no_such_table');
+        $this->failQueriesOn('sessions');
 
         $user = User::factory()->create(['remember_token' => $stolen = Str::random(60)]);
 

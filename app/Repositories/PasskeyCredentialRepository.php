@@ -19,9 +19,9 @@ use Illuminate\Database\Eloquent\Collection;
  */
 final class PasskeyCredentialRepository implements PasskeyCredentialRepositoryContract
 {
-    public function findByIdOrFail(string $id): PasskeyCredential
+    public function findByUuidOrFail(string $uuid): PasskeyCredential
     {
-        return PasskeyCredential::findOrFail($id);
+        return PasskeyCredential::where('uuid', $uuid)->firstOrFail();
     }
 
     public function findByCredentialId(string $credentialId): ?PasskeyCredential

@@ -26,7 +26,9 @@ use Spatie\Activitylog\Support\LogOptions;
  * serialisiert in der Spalte `credential_public_key` abgelegt, damit das
  * Eloquent-Model von der internen Struktur der Library entkoppelt bleibt.
  *
- * @property string $id UUID-Primärschlüssel (über HasUuids).
+ * @property int $id Interner Schlüssel. Numerisch, weil `activity_log.subject_id` die polymorphen Bezüge
+ *           aller Models als Zahl hält.
+ * @property string $uuid Öffentliche Kennung (über HasUuids) für Livewire-Parameter und JSON-Antworten.
  * @property int $user_id Fremdschlüssel auf die users-Tabelle.
  * @property string $credential_id Base64URL-kodierte (ohne Padding) rohe Credential-ID, wie vom
  *           Authenticator zurückgegeben.
@@ -75,6 +77,14 @@ final class PasskeyCredential extends Model implements AuthorizationAuditable
         'name',
         'last_used_at',
     ];
+
+    /**
+     * @return list<string>
+     */
+    public function uniqueIds(): array
+    {
+        return ['uuid'];
+    }
 
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo

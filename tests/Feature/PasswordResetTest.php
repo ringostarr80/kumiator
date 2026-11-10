@@ -23,6 +23,27 @@ final class PasswordResetTest extends TestCase
     private const string RESET_PASSWORD_URL_PATH = '/reset-password';
     private const string UNKNOWN_EMAIL = 'unknown@example.com';
 
+    /**
+     * Der Token-Lookup läuft über die Adresse. Faltete die Spalte Akzente, öffnete das Token für `muller@`
+     * auch das Konto von `müller@`: Beide sind verschiedene Konten, die Hash-Prüfung bestünde trotzdem.
+     */
+    public function testATokenDoesNotOpenTheAccountOfALookalikeAddress(): void
+    {
+        $holder = User::factory()->create(['email' => 'muller@example.com']);
+        $target = User::factory()->create(['email' => 'müller@example.com']);
+
+        $this->post(self::RESET_PASSWORD_URL_PATH, [
+            'token' => Password::broker()->createToken($holder),
+            'email' => $target->email,
+            'password' => 'brand-new-password',
+            'password_confirmation' => 'brand-new-password',
+        ])->assertSessionHasErrors('email');
+
+        $target->refresh();
+
+        $this->assertFalse(Hash::check('brand-new-password', $target->password));
+    }
+
     public function testResetPasswordLinkScreenCanBeRendered(): void
     {
         if (! Features::enabled(Features::resetPasswords())) {

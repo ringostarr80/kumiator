@@ -774,6 +774,25 @@ final class ActivityLogAccessTest extends TestCase
     }
 
     /**
+     * Wer sucht, tippt selten die Schreibweise des Namens nach, und Namen tragen
+     * Umlaute. Von sich aus vergleicht PostgreSQL bei `like` exakt, SQLite
+     * ignoriert die Schreibweise nur bei ASCII.
+     */
+    #[DataProvider('nameInOtherCaseProvider')]
+    public function testNameFilterIgnoresCase(string $name, string $term): void
+    {
+        $admin = $this->makeAuditor();
+
+        $causer = User::factory()->create(['name' => $name]);
+        ActivityFacade::useLog('test')->event('treffer_schreibweise')->causedBy($causer)->log('');
+
+        $component = Livewire::actingAs($admin)->test(ActivityLogTable::class);
+        $component->set('filters.causer', $term);
+
+        $component->assertSee('treffer_schreibweise');
+    }
+
+    /**
      * Regression: `%`/`_` im Suchbegriff sind LIKE-Wildcards und müssen als
      * Literale behandelt werden — sonst träfe `?causer=%` jede Zeile. SQLite
      * hat kein Default-Escape-Zeichen, daher die explizite ESCAPE-Klausel.
@@ -1153,6 +1172,17 @@ final class ActivityLogAccessTest extends TestCase
             'obere Grenze exakt: sichtbar' => ['2026-06-20 21:59:59', 'filters.dateTo', '2026-06-20', true],
             'kurz nach oberer Grenze: ausgeblendet' => ['2026-06-20 22:00:00', 'filters.dateTo', '2026-06-20', false],
         ];
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function nameInOtherCaseProvider(): iterable
+    {
+        yield 'klein gesucht' => ['Gesuchter Verursacher', 'gesuchter'];
+        yield 'groß gesucht' => ['gesuchter verursacher', 'GESUCHTER'];
+        yield 'Umlaut klein gesucht' => ['Jürgen Özdemir', 'özdemir'];
+        yield 'Umlaut groß gesucht' => ['jürgen özdemir', 'JÜRGEN'];
     }
 
     /**

@@ -116,7 +116,7 @@ final class PasskeyRegistrationController extends Controller
         $request->session()->regenerate(true);
 
         return response()->json([
-            'id' => $passkeyCredential->id,
+            'id' => $passkeyCredential->uuid,
             'name' => $passkeyCredential->name,
             'created_at' => $passkeyCredential->created_at->toIso8601String(),
         ], Response::HTTP_CREATED);

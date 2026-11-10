@@ -12,6 +12,7 @@ use DOMElement;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\ConfirmsPassword;
 use Tests\TestCase;
 
@@ -62,7 +63,29 @@ final class PasskeyManagerFormTest extends TestCase
             ->assertSet('passkeys.1.id', $old->id);
     }
 
-    public function testLoadPasskeysAbortsWhenAuthUserIsNull(): void
+    /**
+     * Der interne Schlüssel wird über alle Konten der Instanz hochgezählt. Erreichte er
+     * den Browser, verriete er jedem Nutzer ungefähr, wie viele Passkeys die Instanz je
+     * registriert hat.
+     */
+    public function testTheInternalKeyDoesNotReachTheBrowser(): void
+    {
+        $user = User::factory()->create();
+        $passkey = PasskeyCredential::factory()->for($user)->create(['id' => 987_654_321]);
+
+        $html = Livewire::actingAs($user)
+            ->test(PasskeyManagerForm::class)
+            ->html();
+
+        $this->assertStringContainsString(
+            $passkey->uuid,
+            $html,
+            'Ohne den Eintrag prüft die Abfrage darunter nichts.',
+        );
+        $this->assertStringNotContainsString('987654321', $html);
+    }
+
+    public function testComponentAbortsWhenAuthUserIsNull(): void
     {
         Livewire::test(PasskeyManagerForm::class)->assertStatus(401);
     }
@@ -76,16 +99,15 @@ final class PasskeyManagerFormTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('deletePasskey', $passkey->id)
+            ->call('deletePasskey', $passkey->uuid)
             ->assertSee(__('app.passkey_deleted'));
 
         $this->assertModelMissing($passkey);
     }
 
     /**
-     * Gelöschte Passkeys fielen auch ohne Neuladen aus der Liste: Livewire fragt
-     * die gemerkten Einträge bei jedem Request neu ab. Einen Passkey, den ein
-     * anderer Tab inzwischen angelegt hat, bringt erst das Neuladen.
+     * Auch ein Passkey, den ein anderer Tab inzwischen angelegt hat, gehört nach
+     * dem Löschen in die Liste, nicht erst nach dem nächsten Seitenaufbau.
      */
     public function testDeletePasskeyRefreshesPasskeyList(): void
     {
@@ -101,7 +123,7 @@ final class PasskeyManagerFormTest extends TestCase
         $added = PasskeyCredential::factory()->for($user)->create();
 
         $component
-            ->call('deletePasskey', $passkey->id)
+            ->call('deletePasskey', $passkey->uuid)
             ->assertCount('passkeys', 1)
             ->assertSet('passkeys.0.id', $added->id);
     }
@@ -171,7 +193,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         Livewire::actingAs($other)
             ->test(PasskeyManagerForm::class)
-            ->call('deletePasskey', $passkey->id)
+            ->call('deletePasskey', $passkey->uuid)
             ->assertForbidden();
 
         $this->assertModelExists($passkey);
@@ -184,8 +206,8 @@ final class PasskeyManagerFormTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('startRenaming', $passkey->id)
-            ->assertSet('editingPasskeyId', $passkey->id)
+            ->call('startRenaming', $passkey->uuid)
+            ->assertSet('editingPasskeyId', $passkey->uuid)
             ->assertSet('editingPasskeyName', 'Mein iPhone');
     }
 
@@ -196,7 +218,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('startRenaming', $passkey->id)
+            ->call('startRenaming', $passkey->uuid)
             ->call('cancelRenaming')
             ->assertSet('editingPasskeyId', null)
             ->assertSet('editingPasskeyName', '');
@@ -211,7 +233,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('startRenaming', $passkey->id)
+            ->call('startRenaming', $passkey->uuid)
             ->set('editingPasskeyName', 'Neu')
             ->call('renamePasskey')
             ->assertSet('editingPasskeyId', null)
@@ -222,8 +244,8 @@ final class PasskeyManagerFormTest extends TestCase
     }
 
     /**
-     * Wie beim Löschen: Den neuen Namen zeigte die Liste auch ohne Neuladen, einen
-     * inzwischen anderswo angelegten Passkey nicht.
+     * Wie beim Löschen: Auch ein inzwischen anderswo angelegter Passkey gehört
+     * nach dem Speichern in die Liste.
      */
     public function testRenamePasskeyRefreshesPasskeyList(): void
     {
@@ -234,7 +256,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         $component = Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('startRenaming', $passkey->id);
+            ->call('startRenaming', $passkey->uuid);
 
         $added = PasskeyCredential::factory()->for($user)->create();
 
@@ -254,7 +276,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('startRenaming', $passkey->id)
+            ->call('startRenaming', $passkey->uuid)
             ->set('editingPasskeyName', '  Mein YubiKey  ')
             ->call('renamePasskey');
 
@@ -270,7 +292,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('startRenaming', $passkey->id)
+            ->call('startRenaming', $passkey->uuid)
             ->set('editingPasskeyName', '')
             ->call('renamePasskey')
             ->assertHasErrors(['editingPasskeyName' => 'required']);
@@ -289,7 +311,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         $component = Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('startRenaming', $passkey->id)
+            ->call('startRenaming', $passkey->uuid)
             ->set('editingPasskeyName', '')
             ->call('renamePasskey');
 
@@ -314,14 +336,14 @@ final class PasskeyManagerFormTest extends TestCase
 
         $component = Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('startRenaming', $first->id)
+            ->call('startRenaming', $first->uuid)
             ->set('editingPasskeyName', '')
             ->call('renamePasskey');
 
         $component->assertHasErrors('editingPasskeyName');
 
         $component
-            ->call('startRenaming', $second->id)
+            ->call('startRenaming', $second->uuid)
             ->assertHasNoErrors();
     }
 
@@ -334,7 +356,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('startRenaming', $passkey->id)
+            ->call('startRenaming', $passkey->uuid)
             ->set('editingPasskeyName', str_repeat('x', 81))
             ->call('renamePasskey')
             ->assertHasErrors(['editingPasskeyName' => 'max']);
@@ -350,7 +372,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         Livewire::actingAs($other)
             ->test(PasskeyManagerForm::class)
-            ->call('startRenaming', $passkey->id)
+            ->call('startRenaming', $passkey->uuid)
             ->assertForbidden();
     }
 
@@ -364,12 +386,45 @@ final class PasskeyManagerFormTest extends TestCase
 
         Livewire::actingAs($other)
             ->test(PasskeyManagerForm::class)
-            ->set('editingPasskeyId', $passkey->id)
+            ->set('editingPasskeyId', $passkey->uuid)
             ->set('editingPasskeyName', 'Hijacked')
             ->call('renamePasskey')
             ->assertForbidden();
 
         $this->assertSame('Owner-Name', $passkey->fresh()?->name);
+    }
+
+    #[DataProvider('invalidPasskeyIdProvider')]
+    public function testStartRenamingAnInvalidIdEndsInNotFound(string $passkeyId): void
+    {
+        Livewire::actingAs(User::factory()->create())
+            ->test(PasskeyManagerForm::class)
+            ->call('startRenaming', $passkeyId)
+            ->assertNotFound();
+    }
+
+    #[DataProvider('invalidPasskeyIdProvider')]
+    public function testRenamingAnInvalidIdEndsInNotFound(string $passkeyId): void
+    {
+        $this->confirmPassword();
+
+        Livewire::actingAs(User::factory()->create())
+            ->test(PasskeyManagerForm::class)
+            ->set('editingPasskeyId', $passkeyId)
+            ->set('editingPasskeyName', 'Neu')
+            ->call('renamePasskey')
+            ->assertNotFound();
+    }
+
+    #[DataProvider('invalidPasskeyIdProvider')]
+    public function testDeletingAnInvalidIdEndsInNotFound(string $passkeyId): void
+    {
+        $this->confirmPassword();
+
+        Livewire::actingAs(User::factory()->create())
+            ->test(PasskeyManagerForm::class)
+            ->call('deletePasskey', $passkeyId)
+            ->assertNotFound();
     }
 
     public function testDeletePasskeyRequiresConfirmedPassword(): void
@@ -379,7 +434,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('deletePasskey', $passkey->id)
+            ->call('deletePasskey', $passkey->uuid)
             ->assertForbidden();
 
         $this->assertModelExists($passkey);
@@ -392,7 +447,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->set('editingPasskeyId', $passkey->id)
+            ->set('editingPasskeyId', $passkey->uuid)
             ->set('editingPasskeyName', 'Neu')
             ->call('renamePasskey')
             ->assertForbidden();
@@ -464,7 +519,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->assertSeeHtml("wire:then=\"deletePasskey('{$passkey->id}')\"")
+            ->assertSeeHtml("wire:then=\"deletePasskey('{$passkey->uuid}')\"")
             ->assertSeeHtml('wire:then="startPasskeyRegistration"');
     }
 
@@ -479,7 +534,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->assertSeeHtml("wire:then=\"startRenaming('{$passkey->id}')\"");
+            ->assertSeeHtml("wire:then=\"startRenaming('{$passkey->uuid}')\"");
     }
 
     /**
@@ -496,7 +551,7 @@ final class PasskeyManagerFormTest extends TestCase
             ->test(PasskeyManagerForm::class)
             ->html();
 
-        $pattern = '/' . preg_quote("wire:then=\"deletePasskey('{$passkey->id}')\"", '/')
+        $pattern = '/' . preg_quote("wire:then=\"deletePasskey('{$passkey->uuid}')\"", '/')
             . '\s+' . preg_quote('wire:confirm="' . __('app.passkey_delete_confirm') . '"', '/') . '/';
 
         $this->assertMatchesRegularExpression($pattern, $html);
@@ -518,7 +573,7 @@ final class PasskeyManagerFormTest extends TestCase
 
         $html = Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->set('editingPasskeyId', $passkey->id)
+            ->set('editingPasskeyId', $passkey->uuid)
             ->html();
 
         $this->assertStringContainsString('wire:then="renamePasskey"', $html);
@@ -526,8 +581,8 @@ final class PasskeyManagerFormTest extends TestCase
         $this->assertStringNotContainsString('wire:keydown.enter="renamePasskey"', $html);
 
         // Die Enter-Taste klickt den Button und nimmt damit denselben Weg.
-        $this->assertStringContainsString("id=\"passkey-save-{$passkey->id}\"", $html);
-        $this->assertStringContainsString("getElementById('passkey-save-{$passkey->id}')", $html);
+        $this->assertStringContainsString("id=\"passkey-save-{$passkey->uuid}\"", $html);
+        $this->assertStringContainsString("getElementById('passkey-save-{$passkey->uuid}')", $html);
     }
 
     /**
@@ -582,7 +637,7 @@ final class PasskeyManagerFormTest extends TestCase
         $this->assertDialogSitsOutsideTheRegistrationBlock(
             Livewire::actingAs($user)
                 ->test(PasskeyManagerForm::class)
-                ->set('editingPasskeyId', $passkey->id)
+                ->set('editingPasskeyId', $passkey->uuid)
                 ->html(),
         );
     }
@@ -650,6 +705,20 @@ final class PasskeyManagerFormTest extends TestCase
         $element = $block->item(0);
         $this->assertInstanceOf(DOMElement::class, $element);
         $this->assertSame("errorMessage = ''", $element->getAttribute('x-on:confirming-password.window'));
+    }
+
+    /**
+     * Die ID kommt vom Browser und kann beliebig sein. Nähme die Spalte nur gültige
+     * Werte an, scheiterte die Abfrage mit HTTP 500, statt nichts zu finden: der
+     * Typ uuid auf PostgreSQL an allem, was keine UUID ist, eine ASCII-Spalte auf
+     * MariaDB an jedem Umlaut.
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function invalidPasskeyIdProvider(): iterable
+    {
+        yield 'keine UUID' => ['not-a-uuid'];
+        yield 'Umlaut' => ['schlüssel'];
     }
 
     private function assertDialogSitsOutsideTheRegistrationBlock(string $html): void

@@ -420,12 +420,12 @@ final class PasswordLoginSwitchTest extends TestCase
 
         $form = Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('startConfirmingPassword', md5("startRenaming('{$passkey->id}')"))
+            ->call('startConfirmingPassword', md5("startRenaming('{$passkey->uuid}')"))
             ->assertSet('confirmingPassword', false);
 
         $form->assertDispatched('password-confirmed');
 
-        $form->call('startRenaming', $passkey->id)
+        $form->call('startRenaming', $passkey->uuid)
             ->set('editingPasskeyName', 'Laptop')
             ->call('renamePasskey')
             ->assertHasNoErrors();
@@ -460,7 +460,7 @@ final class PasswordLoginSwitchTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('deletePasskey', $passkey->id)
+            ->call('deletePasskey', $passkey->uuid)
             ->assertSee(__('app.passkey_delete_last_blocked'))
             ->assertHasErrors('passkey_delete');
 
@@ -477,7 +477,7 @@ final class PasswordLoginSwitchTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('deletePasskey', $second->id)
+            ->call('deletePasskey', $second->uuid)
             ->assertHasNoErrors();
 
         $this->assertModelMissing($second);
@@ -492,7 +492,7 @@ final class PasswordLoginSwitchTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PasskeyManagerForm::class)
-            ->call('deletePasskey', $passkey->id)
+            ->call('deletePasskey', $passkey->uuid)
             ->assertHasNoErrors();
 
         $this->assertModelMissing($passkey);
@@ -519,7 +519,7 @@ final class PasswordLoginSwitchTest extends TestCase
         $otherTab->saveOrFail();
 
         Livewire::test(PasskeyManagerForm::class)
-            ->call('deletePasskey', $passkey->id)
+            ->call('deletePasskey', $passkey->uuid)
             ->assertHasErrors('passkey_delete');
 
         $this->assertModelExists($passkey);
