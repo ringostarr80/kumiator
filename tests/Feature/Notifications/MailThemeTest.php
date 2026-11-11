@@ -27,6 +27,14 @@ final class MailThemeTest extends TestCase
         $this->assertMatchesRegularExpression('/<a [^>]*class="button [^>]*box-sizing: border-box/', $html);
     }
 
+    public function testTextAlignAvoidsFlowRelativeValues(): void
+    {
+        $html = $this->renderMail();
+
+        $this->assertDoesNotMatchRegularExpression('/text-align: (start|end)/', $html);
+        $this->assertMatchesRegularExpression('/<h1 [^>]*text-align: left/', $html);
+    }
+
     private function renderMail(): string
     {
         return (string) (new AccountApprovedNotification())->toMail(User::factory()->make())->render();

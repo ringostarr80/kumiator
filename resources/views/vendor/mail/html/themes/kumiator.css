@@ -5,6 +5,10 @@
  * von Mailpit werten deshalb die ganze Mail ab. `position: relative` ohne Versatz bewirkt nichts;
  * `box-sizing` steht stattdessen bei `.button`, dem einzigen Element, an dem eine Breite auf Rahmen
  * trifft.
+ *
+ * `text-align: left` statt `start`: GMX, Web.de und Outlook für Windows kennen `start` nicht, und
+ * Überschriften erben dort die Zentrierung, die das Layout außen per `align="center"` setzt. Kumiators
+ * Sprachen laufen alle von links nach rechts.
  */
 
 /* Base */
@@ -31,7 +35,7 @@ ul,
 ol,
 blockquote {
     line-height: 1.4;
-    text-align: start;
+    text-align: left;
 }
 
 a {
@@ -49,14 +53,14 @@ h1 {
     font-size: 18px;
     font-weight: bold;
     margin-top: 0;
-    text-align: start;
+    text-align: left;
 }
 
 h2 {
     font-size: 16px;
     font-weight: bold;
     margin-top: 0;
-    text-align: start;
+    text-align: left;
 }
 
 h3 {
