@@ -30,7 +30,9 @@ updates:
       default-days: 7
 
   - package-ecosystem: docker-compose
-    directory: /docker/test-databases
+    directories:
+      - /
+      - /docker/test-databases
     schedule:
       interval: weekly
     cooldown:
