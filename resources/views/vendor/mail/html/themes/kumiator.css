@@ -9,6 +9,9 @@
  * `text-align: left` statt `start`: GMX, Web.de und Outlook für Windows kennen `start` nicht, und
  * Überschriften erben dort die Zentrierung, die das Layout außen per `align="center"` setzt. Kumiators
  * Sprachen laufen alle von links nach rechts.
+ *
+ * `.action` und `.footer` ohne `text-align: center`: Ihre Zellen zentrieren schon per `align="center"`,
+ * und Mailpit wertet jedes Element mit `text-align` ab, egal mit welchem Wert.
  */
 
 /* Base */
@@ -182,7 +185,6 @@ img {
     -premailer-width: 570px;
     margin: 0 auto;
     padding: 0;
-    text-align: center;
     width: 570px;
 }
 
@@ -234,7 +236,6 @@ img {
     -premailer-width: 100%;
     margin: 30px auto;
     padding: 0;
-    text-align: center;
     width: 100%;
     float: unset;
 }

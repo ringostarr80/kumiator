@@ -35,6 +35,21 @@ final class MailThemeTest extends TestCase
         $this->assertMatchesRegularExpression('/<h1 [^>]*text-align: left/', $html);
     }
 
+    public function testCenteredTablesRelyOnAlignAttributes(): void
+    {
+        $html = $this->renderMail();
+
+        $this->assertDoesNotMatchRegularExpression('/<table class="action"[^>]*text-align/', $html);
+        $this->assertDoesNotMatchRegularExpression('/<table class="footer"[^>]*text-align/', $html);
+        // Die Attribute kommen aus Laravels Blade-Vorlagen, die kein Hash-Test bewacht; ohne sie wäre nichts
+        // mehr zentriert
+        $this->assertMatchesRegularExpression('/<table class="action"[^>]*>\s*<tr>\s*<td align="center"/', $html);
+        $this->assertMatchesRegularExpression(
+            '/<table class="footer"[^>]*>\s*<tr>\s*<td class="content-cell" align="center"/',
+            $html,
+        );
+    }
+
     private function renderMail(): string
     {
         return (string) (new AccountApprovedNotification())->toMail(User::factory()->make())->render();
