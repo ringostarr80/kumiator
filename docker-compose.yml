@@ -26,10 +26,11 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
     healthcheck:
-      # php-fpm only starts once entrypoint.sh has installed the dependencies and run the migrations
+      # php-fpm only starts once entrypoint.sh has installed the dependencies and run the migrations,
+      # which can take a long while on the first start over a slow connection
       test: ["CMD", "pgrep", "php-fpm"]
       interval: 5s
-      start_period: 10m
+      start_period: 30m
 
   queue:
     <<: *php
