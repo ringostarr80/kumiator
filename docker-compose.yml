@@ -60,10 +60,15 @@ services:
       - .:/var/www/html:ro
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - nginx-ssl:/etc/nginx/ssl
-    # nginx resolves its upstream hosts at startup and refuses to start without them
+    # nginx resolves its upstream hosts only at startup and refuses to start without them, so it has
+    # to start after them and again whenever one of them is recreated
     depends_on:
-      - app
-      - mailpit
+      app:
+        condition: service_started
+        restart: true
+      mailpit:
+        condition: service_started
+        restart: true
     networks:
       - app-network
 
