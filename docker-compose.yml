@@ -1,33 +1,38 @@
 # Local development only — never use this setup as a production template:
 # the PHP, entrypoint and nginx configs deliberately trade security for dev
 # convenience. Production deploys via `composer deploy` (see docs/deployment.md).
+
+# Shared by app and queue. Only app builds the image, so a rebuild can never leave the queue on an
+# older one; the localhost/ prefix keeps podman-compose from first trying to pull it from a registry
+x-php: &php
+  image: localhost/kumiator-php
+  volumes:
+    - .:/var/www/html
+  env_file:
+    - .env
+  # Wins over env_file, so mail reaches Mailpit whatever the .env says; its defaults serve the
+  # setup without Docker
+  environment:
+    MAIL_MAILER: smtp
+    MAIL_HOST: mailpit
+    MAIL_PORT: "1025"
+  networks:
+    - app-network
+
 services:
   app:
+    <<: *php
     build:
       context: .
       dockerfile: docker/php/Dockerfile
-    volumes:
-      - .:/var/www/html
-    env_file:
-      - .env
-    # Wins over env_file, so mail reaches Mailpit whatever the .env says; its defaults serve the
-    # setup without Docker
-    environment:
-      MAIL_MAILER: smtp
-      MAIL_HOST: mailpit
-      MAIL_PORT: "1025"
     healthcheck:
       # php-fpm only starts once entrypoint.sh has installed the dependencies and run the migrations
       test: ["CMD", "pgrep", "php-fpm"]
       interval: 5s
       start_period: 10m
-    networks:
-      - app-network
 
   queue:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
+    <<: *php
     # Bypasses entrypoint.sh, which the app container already runs: started side by side on the first
     # run, both would install the dependencies and migrate the database in the shared project folder.
     # queue:listen boots a fresh worker for every poll, so code changes apply without a container
@@ -38,21 +43,11 @@ services:
     init: true
     # queue:listen exits when its own boot fails or a worker dies from a signal
     restart: unless-stopped
-    volumes:
-      - .:/var/www/html
-    env_file:
-      - .env
-    environment:
-      MAIL_MAILER: smtp
-      MAIL_HOST: mailpit
-      MAIL_PORT: "1025"
     depends_on:
       app:
         condition: service_healthy
       mailpit:
         condition: service_started
-    networks:
-      - app-network
 
   nginx:
     build:
