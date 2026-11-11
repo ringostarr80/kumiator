@@ -30,8 +30,14 @@ services:
       dockerfile: docker/php/Dockerfile
     # Bypasses entrypoint.sh, which the app container already runs: started side by side on the first
     # run, both would install the dependencies and migrate the database in the shared project folder.
-    # queue:listen boots the application per job, so code changes apply without a container restart
-    entrypoint: ["php", "artisan", "queue:listen", "--tries=1", "--timeout=0"]
+    # queue:listen boots a fresh worker for every poll, so code changes apply without a container
+    # restart; the longer --sleep spaces out those boots, --rest keeps a worker that fails on boot
+    # from respawning in a tight loop
+    entrypoint: ["php", "artisan", "queue:listen", "--tries=1", "--timeout=0", "--sleep=10", "--rest=1"]
+    # PHP as PID 1 does not end on the stop signal, so every stop would wait out the grace period
+    init: true
+    # queue:listen exits when its own boot fails or a worker dies from a signal
+    restart: unless-stopped
     volumes:
       - .:/var/www/html
     env_file:
