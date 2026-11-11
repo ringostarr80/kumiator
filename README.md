@@ -82,7 +82,11 @@ Assets gebaut und die Migrationen ausgeführt werden. Danach ist die Anwendung u
 mit einer Warnung.
 
 Verschickte Mails verlassen den Rechner nicht: Mailpit fängt sie ab und zeigt sie unter
-<https://localhost:8443/mailpit/>.
+<https://localhost:8443/mailpit/>. Weil diese Oberfläche keine Anmeldung kennt, nimmt das Setup
+nur Verbindungen vom eigenen Rechner an. Wer die Anwendung aus dem lokalen Netz aufrufen will,
+etwa auf einem Smartphone, entfernt in `docker-compose.yml` beim Dienst `nginx` das `127.0.0.1:`
+vor beiden Ports und startet mit `docker compose up -d` neu — dann ist allerdings auch Mailpit im
+lokalen Netz erreichbar.
 
 ### Ohne Docker
 
