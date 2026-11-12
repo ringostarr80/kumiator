@@ -6,9 +6,8 @@
  * `box-sizing` steht stattdessen bei `.button`, dem einzigen Element, an dem eine Breite auf Rahmen
  * trifft.
  *
- * `text-align: left` statt `start`: GMX, Web.de und Outlook für Windows kennen `start` nicht, und
- * Überschriften erben dort die Zentrierung, die das Layout außen per `align="center"` setzt. Kumiators
- * Sprachen laufen alle von links nach rechts.
+ * `text-align: left` statt `start`: Laut caniemail verstehen Outlook für Windows, Yahoo und AOL `start`
+ * nicht, `left` dagegen alle. Kumiators Sprachen laufen alle von links nach rechts.
  *
  * `.action` und `.footer` ohne `text-align: center`: Ihre Zellen zentrieren schon per `align="center"`,
  * und Mailpit wertet jedes Element mit `text-align` ab, egal mit welchem Wert.
