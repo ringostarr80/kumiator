@@ -30,7 +30,10 @@
     <arg name="parallel" value="4"/>
 
     <!-- Standard -->
-    <rule ref="PSR12"/>
+    <rule ref="PSR12">
+        <!-- Zeilenlänge prüft SlevomatCodingStandard.Files.LineLength; sonst wird jede zu lange Zeile doppelt gemeldet. -->
+        <exclude name="Generic.Files.LineLength"/>
+    </rule>
 
     <rule ref="SlevomatCodingStandard.Arrays.ArrayAccess"/>
     <rule ref="SlevomatCodingStandard.Arrays.DisallowImplicitArrayCreation"/>
