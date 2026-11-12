@@ -123,4 +123,23 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Markdown Mail Settings
+    |--------------------------------------------------------------------------
+    |
+    | Warum ein eigenes Theme: Kommentar am Anfang von
+    | `resources/views/vendor/mail/html/themes/kumiator.css`. Laravel ersetzt
+    | diesen Abschnitt als Ganzes, statt ihn mit seinem eigenen zu mischen;
+    | ohne `paths` fände es das Theme deshalb nicht.
+    |
+    */
+
+    'markdown' => [
+        'theme' => 'kumiator',
+        'paths' => [
+            resource_path('views/vendor/mail'),
+        ],
+    ],
+
 ];
