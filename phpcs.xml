@@ -25,6 +25,10 @@
     <arg name="colors"/>
     <arg value="sp"/>
 
+    <!-- Laufzeit -->
+    <arg name="cache" value="build/phpcs.cache"/>
+    <arg name="parallel" value="4"/>
+
     <!-- Standard -->
     <rule ref="PSR12"/>
 
