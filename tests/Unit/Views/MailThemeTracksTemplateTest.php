@@ -8,20 +8,28 @@ use Tests\TestCase;
 
 /**
  * `resources/views/vendor/mail/html/themes/kumiator.css` ist eine Kopie: Verbessert Laravel sein
- * Mail-Theme, kommt davon nichts mehr an, und niemand würde es bemerken. Schlägt der Hash an, gehören
- * beide Fassungen verglichen, die Änderung übernommen und der Wert hier nachgezogen.
+ * Mail-Theme, kommt davon nichts mehr an, und niemand würde es bemerken. `fixtures/laravel-mail-default.css`
+ * hält die Fassung fest, auf der die Kopie beruht, damit der Diff beim Fehlschlag Laravels Änderung zeigt.
+ * Übernehmen per Dreiwege-Merge, Konflikte auflösen, den Kopfkommentar der Kopie prüfen, dann die Basis
+ * nachziehen:
+ *
+ *     git merge-file resources/views/vendor/mail/html/themes/kumiator.css \
+ *         tests/Unit/Views/fixtures/laravel-mail-default.css \
+ *         vendor/laravel/framework/src/Illuminate/Mail/resources/views/html/themes/default.css
+ *     cp vendor/laravel/framework/src/Illuminate/Mail/resources/views/html/themes/default.css \
+ *         tests/Unit/Views/fixtures/laravel-mail-default.css
  */
 final class MailThemeTracksTemplateTest extends TestCase
 {
     private const TEMPLATE = 'vendor/laravel/framework/src/Illuminate/Mail/resources/views/html/themes/default.css';
 
-    private const TEMPLATE_HASH = 'e4ad64d3a202a3cc5df8b56ef2b5de71fd75c7e238ecb132e54fdcfcde4a3a4a';
+    private const BASELINE = __DIR__ . '/fixtures/laravel-mail-default.css';
 
     public function testTemplateIsUnchanged(): void
     {
-        $this->assertSame(
-            self::TEMPLATE_HASH,
-            hash_file('sha256', base_path(self::TEMPLATE)),
+        $this->assertFileEquals(
+            self::BASELINE,
+            base_path(self::TEMPLATE),
             'Laravel hat sein Mail-Theme geändert — die Kopie hinkt hinterher.',
         );
     }
