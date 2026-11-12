@@ -20,7 +20,7 @@ Jeder Verein hat dabei seine eigene unabhängige Instanz (URL) zur Verfügung.
 
 3. **Tabu-Verzeichnisse:** In `./node_modules/` und `./vendor/` keine Dateien erstellen, ändern oder löschen. Der restliche Quellcode darf vollständig gelesen werden.
 
-4. **Beim Schreiben die Fallen vermeiden, die kein Tool automatisch behebt.** Nach jedem Edit an einer PHP-Datei lässt ein Hook phpcbf laufen und meldet, was phpcs danach noch findet. phpcbf behebt nicht:
+4. **Beim Schreiben die Fallen vermeiden, die kein Tool automatisch behebt.** Nach jedem Edit oder Write an einer PHP-Datei lässt ein Hook phpcbf laufen und meldet, was phpcs danach noch findet. Ändert ein Bash-Befehl PHP-Dateien (`sed -i`, Heredoc), läuft der Hook nicht: danach `vendor/bin/phpcbf` und `vendor/bin/phpcs` mit diesen Dateien selbst aufrufen. Am häufigsten bleibt nach phpcbf übrig:
     - Zeilen über 120 Zeichen, Kommentare eingeschlossen.
     - Zahlen ab vier Ziffern ohne `_`-Trenner: `1_000`, `2_048`.
     - Ungenutzte Imports: Der Hook meldet sie nur. Den Import deshalb erst nach der Verwendung einfügen, sonst meldet ihn der Hook zwischen den beiden Edits als ungenutzt.
