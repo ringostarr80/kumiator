@@ -20,7 +20,15 @@ Jeder Verein hat dabei seine eigene unabhängige Instanz (URL) zur Verfügung.
 
 3. **Tabu-Verzeichnisse:** In `./node_modules/` und `./vendor/` keine Dateien erstellen, ändern oder löschen. Der restliche Quellcode darf vollständig gelesen werden.
 
-4. **PHPCS-Regeln (`phpcs.xml`) vor dem Schreiben prüfen**, um unnötige Lint-Roundtrips zu vermeiden.
+4. **Beim Schreiben die Fallen vermeiden, die kein Tool automatisch behebt.** Nach jedem Edit an einer PHP-Datei lässt ein Hook phpcbf laufen und meldet, was phpcs danach noch findet. phpcbf behebt nicht:
+    - Zeilen über 120 Zeichen, Kommentare eingeschlossen.
+    - Zahlen ab vier Ziffern ohne `_`-Trenner: `1_000`, `2_048`.
+    - Ungenutzte Imports: Der Hook meldet sie nur. Den Import deshalb erst nach der Verwendung einfügen, sonst meldet ihn der Hook zwischen den beiden Edits als ungenutzt.
+
+   PHPStan (Level max) scheitert in diesem Projekt am häufigsten an:
+    - `mixed` oder `?string` als Argument, wo ein konkreter Typ erwartet wird (`argument.type`): vorher eingrenzen, etwa mit `Config::string()`, `is_string()`, `?? throw` oder einem frühen `return`; `/** @var */` nur, wo der Typ sicher feststeht. Ein `(string)`-Cast auf `mixed` scheitert selbst.
+    - `?->` beim Property-Zugriff links von `??` (`nullsafe.neverNull`): `->` genügt, weil `??` den null-Fall schon abfängt.
+    - Arrays ohne Werttyp im Docblock (`missingType.iterableValue`): z. B. `list<string>` oder `array<string, int>` angeben.
 
 5. **Hash-relevantes Feld in `composer.json` geändert?** Dann `composer update --lock` ausführen, damit der Hash in `composer.lock` aktualisiert wird. Welche Felder das sind, legt Composers `Locker::getContentHash()` fest – im Alltag `require`, `require-dev`, `extra`, `repositories`, `minimum-stability`, `config.platform` und `config.policy`. Reine `scripts`-Änderungen lassen den Hash unberührt.
 

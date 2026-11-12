@@ -25,6 +25,10 @@
     <arg name="colors"/>
     <arg value="sp"/>
 
+    <!-- Laufzeit -->
+    <arg name="cache" value="build/phpcs.cache"/>
+    <arg name="parallel" value="4"/>
+
     <!-- Standard -->
     <rule ref="PSR12"/>
 
@@ -113,7 +117,6 @@
     <rule ref="SlevomatCodingStandard.Exceptions.DeadCatch"/>
     <rule ref="SlevomatCodingStandard.Exceptions.ReferenceThrowableOnly"/>
     <rule ref="SlevomatCodingStandard.Exceptions.RequireNonCapturingCatch"/>
-    <rule ref="SlevomatCodingStandard.Files.LineLength"/>
     <rule ref="SlevomatCodingStandard.Functions.ArrowFunctionDeclaration"/>
     <rule ref="SlevomatCodingStandard.Functions.DisallowEmptyFunction"/>
     <rule ref="SlevomatCodingStandard.Functions.RequireArrowFunction"/>
